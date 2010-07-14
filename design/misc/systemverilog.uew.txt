@@ -1,0 +1,130 @@
+/L20"SystemVerilog" Line Comment = /// Block Comment On = /* Block Comment Off = */ String Chars = " File Extensions = V VL SV SVH VH VMD
+/Delimiters = ~!@%^&*()-+=|\/{}[]:;"<> ,	.?#
+/Function String = "%[a-z0-9]+[ ^t]+[a-z_0-9]+[ ^t]+("
+/Function String = "%[ ^t]++^(config[ ^t^p]+[a-zA-Z0-9_]+^)" 
+/Function String 1 = "%[ ^t]++^(module[ ^t^p]+[a-zA-Z0-9_]+^)[ ^t^p]++[(;#]" 
+/Function String 2 = "%[ ^t]++^(task[ ^t^p]+[~(;]+^)[ ^t^p]++[(;#]" 
+/Function String 3 = "%[ ^t]++^(function[ ^t^p]+[~(;]+^)[ ^t^p]++[(;#]" 
+/Function String 4 = "%[ ^t]++^(primitive[ ^t^p]+[~(;]+^)[ ^t^p]++[(;#]" 
+/Function String 5 = "begin[ ^t^p]++^(:[ ^t^p]++[a-zA-Z0-9_]+^)" 
+/Indent Strings = "begin" "case" "fork" "specify" "table" "config" 
+/Unindent Strings = "end" "endcase" "join" "endspecify" "endtable" "endconfig" 
+/Open Fold Strings = "package" "class" "module" "task" "function" "generate" "primitive" "begin" "case" "fork" "specify" "table" "config" "`ifdef" 
+/Close Fold Strings = "endpackage" "endclass" "endmodule" "endtask" "endfunction" "endgenerate" "endprimitive" "end" "endcase" "join" "endspecify" "endtable" "endconfig" "`endif" 
+/Open Brace Strings = "{" "(" "["
+/Close Brace Strings = "}" ")" "]"
+/C1"Keywords"
+alias always always_comb always_ff always_latch and assert assign assume automatic 
+before begin bind bins binsof bit break buf bufif0 bufif1 byte
+case casex casez cell chandle class clocking cmos config const constraint context continue cover covergroup coverpoint cross
+deassign default defparam design disable dist do
+edge else end endcase endclass endclocking endconfig endmodule endgroup endfunction endgenerate endinterface endmodule endpackage
+endprimitive endprogram endproperty endspecify endsequence endtable endtask enum event expect export extends extern
+final first_match foreach for force forever fork forkjoin function 
+generate genvar 
+highz0 highz1 
+if iff ifnone ignore_bins illegal_bins import incdir include initial inout input inside instance int interface integer intersect
+join join_any join_none
+large liblist library local localparam longint
+macromodule matches medium modport module 
+nand negedge new nmos none nor noshowcancelled not notif0 notif1 null
+or output 
+package packed parameter pulsestyle_onevent pulsestyle_ondetect pmos posedge primitive priority program property protected pull0 pull1 pullup pulldown pulsestyle_onevent pulsestyle_ondetect pure
+rand randc randcase randsequence randomize real realtime ref reg release return repeat rcmos rnmos rpmos rtran rtranif0 rtanif1
+scalared sequence showcancelled shortint shortreal signed small solve specify specparam static strength string strong0 strong1 struct super supply0 supply1 
+table tagged task this time timeprecision timeunit tran tranif0 tranif1 tri tri1 tri0 triand trior trireg throughout type typedef
+union unique unsigned use uwire
+var vectored virtual void
+wait wait_order wand weak0 weak1 while wildcard with within wire wor 
+xnor xor 
+/C2"System"
+. 
+** # ##
+** 'b 'B 'o 'O 'd 'D 'h 'H 'sb 'sB 'so 'sO 'sd 'sD 'sh 'sH 'Sb 'SB 'So 'SO 'Sd 'SD 'Sh 'SH 
+** $ 
+$assertkill $assertoff $asserton $async$and$array $async$and$plane $async$nand$array $async$nand$plane $async$nor$array $async$nor$plane $async$or$array $async$or$plane 
+$bits $bitstoreal $bitstoshortreal
+$cast $countdrivers $countones $coverage_control $coverage_merge $coverage_save
+$dimensions $display $displayb $displayh $displayo 
+$dist_chi_square $dist_erlang $dist_exponential $dist_normal $dist_poisson $dist_t $dist_uniform $dumpall $dumpfile $dumpflush $dumplimit $dumpoff $dumpon $dumpportsall $dumpportsflush $dumpportslimit $dumpportsoff $dumpportson $dumpvars 
+$error $exit 
+$fatal $fell $fclose $fdisplayh $fdisplay $fdisplayf $fdisplayb $ferror $fflush $fgetc $fgets $finish $fmonitorb $fmonitor $fmonitorf $fmonitorh $fopen $fread $fscanf $fseek $fsscanf $fstrobe $fstrobebb $fstrobef $fstrobeh $ftel $fullskew $fwriteb $fwritef $fwriteh $fwrite 
+$getpattern $get_coverage 
+$high $history $hold 
+$increment $info $incsave $input $isunbounded $isunknown $itor 
+$key 
+$left $list $load_coverage_db $log $low
+$monitorb $monitorh $monitoroff $monitoron $monitor $monitorb $monitorh $monitoro $monitoroff $monitoron
+$nochange $nokey $nolog 
+$onehot $onehot0
+$past $period $printtimescale 
+$q_add $q_exam $q_full $q_initialize $q_remove 
+$random $readmemb $readmemh $realtime $realtobits $recovery $recrem $removal $reset_count $reset $reset_value $restart $rewind $right $root $rose $rtoi 
+$sampled $save $scale $scope $sdf_annotate $setup $setuphold $set_coverage_db_name $sformat $showscopes $showvariables $showvars $shortrealtobits $signed $size $skew $sreadmemb $sreadmemh $stable $stime $stop $strobeb $strobe $strobeh $strobeo $swriteb $swriteh $swriteo $swrite $sync$and$array $sync$and$plane $sync$nand$array $sync$nand$plane $sync$nor$array $sync$nor$plane $sync$or$array $sync$or$plane 
+$test$plusargs $time $timeformat $timeskew $typename
+$ungetc $unit $unsigned $urandom $urandom_range
+$value$plusargs 
+$warning $width $writeb $writeh $write $writememb $writememh $writeo 
+/C3"Operators"
+->
++:
+-:
+@
+@*
+*>
+,
+;
+{
+}
++
+-
+// /
+*
+**
+%
+>
+>=
+>>
+>>>
+<
+<=
+<<
+<<<
+!
+!=
+!==
+&
+&&
+|
+||
+=
+==
+===
+^
+^~
+~
+~^
+~&
+~|
+?
+:
+/C4"Directives"
+** ` 
+`accelerate `autoexepand_vectornets 
+`begin_keywords 
+`cast `celldefine 
+`default_nettype `define `default_decay_time `default_trireg_strength `delay_mode_distributed `delay_mode_path `delay_mode_unit `delay_mode_zero 
+`else `elsif `endcelldefine `endif `endprotect `endprotected `end_keywords `expand_vectornets 
+`file 
+`ifdef `ifndef `include 
+`line 
+`noaccelerate `noexpand_vectornets `noremove_gatenames `noremove_netnames `nounconnected_drive 
+`protect `protected 
+`remove_gatenames `remove_netnames `resetall 
+`timescale 
+`unconnected_drive `undef `uselib 
+/C5"DelaysAndParameters"
+[
+]
+** \
+
