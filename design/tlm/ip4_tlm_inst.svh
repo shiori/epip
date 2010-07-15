@@ -35,11 +35,16 @@ typedef struct packed{
   bit[7] imm1;
 }i_1r1w;
 
+typedef enum bit[4:0] {
+  iop31_mul,    iop31_mad,    iop31_msu,
+  iop31_add3,   iop31_perm
+} iop_3r1w_e;
+
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1, rs2;
   bit[4] dummy0;
-  bit[5] fun;
+  iop_3r1w_e fun;
   bit s, d;
 }i_3r1w;
 
@@ -235,6 +240,16 @@ typedef union packed{
 } i_ap2_u;
 
 
+parameter iop_e iop_1r1wi[] = '{
+        iop_lu,     iop_li,     iop_addi,     iop_andi,     iop_ori,
+        iop_xori,   iop_addsi,  iop_andsi,    iop_orsi,     iop_xorsi
+        };
+
+parameter iop_e iop_fcr_b[] = '{
+        iop_fcr,    iop_fcrn,   iop_fcrb,   iop_fcrbn,    iop_b,
+        iop_bn,     iop_bb,     iop_bbn 
+        };
+                
 class inst_c extends ovm_object;
   inst_u inst;
   
@@ -251,19 +266,44 @@ class inst_c extends ovm_object;
 		  inst.b[i] = data[start+i];
 	endfunction : set_data
 
-  function void analyze_rs(ref bit vrf_en[cyc_vec][num_vreg_bks], srf_en[cyc_vec][num_sreg_bks], inout uchar sv, vec, scl, dse);
+  function void analyze_rs(input bit wr_vec, ref bit vrf_en[cyc_vec][num_vreg_bks], srf_en[cyc_vec][num_sreg_bks], inout uchar sv, vec, scl, dse);
     
   endfunction : analyze_rs
 
-  function void analyze_rd(ref uchar vrf[num_vreg_bks], srf[num_sreg_bks], inout uchar pr);
+  function void analyze_rd(input bit wr_vec, ref uchar vrf[num_vreg_bks], srf[num_sreg_bks], inout uchar pr);
     
   endfunction : analyze_rd
   
-  function void analyze_fu(inout bit spu, dse, ref bit en_fu[num_fu], input bit sgl);
+  function void analyze_fu(input bit vec, sgl, inout bit spu, dse, ref bit en_fu[num_fu]);
     if(inst.i.op inside {
-        iop_lu
-        }) begin
+        iop_ma
+        })
+    begin
+      foreach(fu_cfg[i])
+        if(fu_cfg[i] == mac || fu_cfg[i] == alu) begin
+          en_fu[i] = 1;
+          break;
+        end
     end
+    
+    if(!sgl) return;
+    
+    if(inst.i.op inside {iop_1r1wi, iop_ma})
+    begin
+      if(vec) begin
+        foreach(fu_cfg[i])
+          if(fu_cfg[i] == mac || fu_cfg[i] == alu) begin
+            en_fu[i] = 1;
+            break;
+          end
+      end
+      else spu = 1;
+    end
+    
+    if(inst.i.op inside {iop_fcr_b})
+    begin
+    end
+    
   endfunction : analyze_fu
 
   function void fill_rfm(input tr_ise2rfm rfm);
