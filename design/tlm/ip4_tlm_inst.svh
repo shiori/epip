@@ -249,7 +249,20 @@ parameter iop_e iop_fcr_b[] = '{
         iop_fcr,    iop_fcrn,   iop_fcrb,   iop_fcrbn,    iop_b,
         iop_bn,     iop_bb,     iop_bbn 
         };
-                
+
+parameter iop_e iop_sp_dse[] = '{
+        iop_sc,     iop_cmpxchg,    iop_fetadd,   iop_pref
+        };
+
+parameter iop_e iop_ls_dse[] = '{
+        iop_lw,     iop_sw,    iop_lh,   iop_sh,    iop_lb,
+        iop_sb,     iop_ll,    iop_sc,   iop_lhu,   iop_lbu
+        };
+
+parameter iop_e iop_msg[] = '{
+        iop_smsg,     iop_rmsg
+        };                                
+        
 class inst_c extends ovm_object;
   inst_u inst;
   
@@ -261,6 +274,26 @@ class inst_c extends ovm_object;
 		super.new(name);
 	endfunction : new
 
+	function bit is_sp_dse();
+    if(inst.i.op inside {iop_sp_dse})
+      return 1;
+    return 0;  
+	endfunction : is_sp_dse
+	
+	function bit is_scl_dse(input bit vec);
+    if(inst.i.op inside {iop_ls_dse} && !vec)
+      return 1;
+    if(is_sp_dse())
+      return 1;
+    return 0;
+	endfunction : is_scl_dse
+
+	function bit is_scl_ma(input bit vec);
+    if(inst.i.op == iop_ma && inst.i.b.ma.fun == iop31_mul && !vec)
+      return 1
+    return 0;
+	endfunction : is_scl_ma	
+	
 	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start);
 	  foreach(inst.b[i])
 		  inst.b[i] = data[start+i];
@@ -274,21 +307,11 @@ class inst_c extends ovm_object;
     
   endfunction : analyze_rd
   
-  function void analyze_fu(input bit vec, sgl, inout bit spu, dse, ref bit en_fu[num_fu]);
-    if(inst.i.op inside {
-        iop_ma
-        })
-    begin
-      foreach(fu_cfg[i])
-        if(fu_cfg[i] == mac || fu_cfg[i] == alu) begin
-          en_fu[i] = 1;
-          break;
-        end
-    end
+  function void analyze_fu(input bit vec, sgl, inout bit en_spu, en_dse, ref bit en_fu[num_fu]);
     
     if(!sgl) return;
     
-    if(inst.i.op inside {iop_1r1wi, iop_ma})
+    if(inst.i.op inside {iop_1r1wi})
     begin
       if(vec) begin
         foreach(fu_cfg[i])
@@ -297,11 +320,17 @@ class inst_c extends ovm_object;
             break;
           end
       end
-      else spu = 1;
+      else
+        en_spu = 1;
     end
-    
+
+    if(is_scl_ma(vec)) begin
+      en_spu = 1;
+    end
+            
     if(inst.i.op inside {iop_fcr_b})
     begin
+      en_spu = 1;
     end
     
   endfunction : analyze_fu
