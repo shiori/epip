@@ -57,21 +57,21 @@ endclass : ip4_tlm_ise_vars
 class ise_thread_inf extends ovm_object;
   ise_thread_state ts;
   uchar ibuf[num_ibuf_bytes];
-  bit nck, dse_vec;
+  bit nck, dse_vec, no_sp_rot;
   uchar ibuf_level, igrp_bytes, ap_bytes, num_imms,
-        cnt_scl_rd, cnt_vec_rd, cnt_dse_rd;
+        cnt_srf_rd, cnt_vrf_rd, cnt_dse_rd;
   word imms[num_bp_imm];
-  uchar vrf_adr[cyc_vec][num_vreg_bks], vrf_grp[cyc_vec][num_sreg_bks],
-        srf_adr[cyc_vec][num_vreg_bks], srf_grp[cyc_vec][num_sreg_bks];
-  bit vrf_rd_en[cyc_vec][num_vreg_bks], srf_rd_en[cyc_vec][num_sreg_bks];
-  uchar cnt_pr_wr, cnt_vec_wr[num_vreg_bks], cnt_scl_wr[num_sreg_bks];
+  uchar vrf_adr[cyc_vec][num_vrf_bks], vrf_grp[cyc_vec][num_srf_bks],
+        srf_adr[cyc_vec][num_vrf_bks], srf_grp[cyc_vec][num_srf_bks];
+  bit vrf_rd_en[cyc_vec][num_vrf_bks], srf_rd_en[cyc_vec][num_srf_bks];
+  uchar cnt_pr_wr, cnt_vrf_wr[num_vrf_bks], cnt_srf_wr[num_srf_bks];
   
   bit en_spu, en_dse, en_fu[num_fu];
 ///  bit sgl_mode;
   bit pri_state;  ///privilege running status
   
-  uchar vrf_map[num_inst_vreg/num_phy_reg_grp], 
-        srf_map[num_inst_sreg/num_phy_reg_grp];
+  uchar vrf_map[num_inst_vrf/num_prf_per_grp], 
+        srf_map[num_inst_srf/num_prf_per_grp];
   uchar pd_ifet;
   
   inst_c i_spu, i_dse, i_fu[num_fu];
@@ -84,6 +84,7 @@ class ise_thread_inf extends ovm_object;
     `ovm_field_int(pri_state, OVM_ALL_ON)
     `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nck, OVM_ALL_ON)
+    `ovm_field_int(no_sp_rot, OVM_ALL_ON)
     `ovm_field_int(ibuf_level, OVM_ALL_ON)
 ///    `ovm_field_int(sgl_mode, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
@@ -101,14 +102,14 @@ class ise_thread_inf extends ovm_object;
   endfunction : new
  
   function void map_vreg(input uchar oadr, output uchar grp, adr);
-    uchar adr_bits =  clogb2(num_phy_reg_grp/num_vreg_bks);
+    uchar adr_bits =  clogb2(num_prf_per_grp/num_vrf_bks);
     adr = oadr & ('1 << adr_bits);
     grp = oadr >> adr_bits;
     adr = vrf_map[adr];
   endfunction : map_vreg
 
   function void map_sreg(input uchar oadr, output uchar grp, adr);
-    uchar adr_bits =  clogb2(num_phy_reg_grp/num_sreg_bks);
+    uchar adr_bits =  clogb2(num_prf_per_grp/num_srf_bks);
     adr = oadr & ('1 << adr_bits);
     grp = oadr >> adr_bits;
     adr = srf_map[adr];    
@@ -155,14 +156,16 @@ class ise_thread_inf extends ovm_object;
     i_gs1_t gs1 = ibuf[0];
     
     if(gs1.t) begin
+      tmp = 1;
+      if(ap_bytes != 0) ap_bytes --;
       i_spu.set_data(ibuf, os);
       i_dse.set_data(ibuf, os);
       foreach(i_fu[i])
         i_fu[i].set_data(ibuf, os);
         
       os = 1 + num_inst_bytes;
-      i_spu.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vec_rd, cnt_scl_rd, cnt_dse_rd);
-      i_spu.analyze_rd(dse_vec, cnt_vec_wr, cnt_scl_wr, cnt_pr_wr);
+      i_spu.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+      i_spu.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
       i_spu.analyze_fu(dse_vec, 1, en_spu, en_dse, en_fu);
       a[0] = gs1.a;
       if(ap_bytes) begin
@@ -174,21 +177,26 @@ class ise_thread_inf extends ovm_object;
     end
     else begin
       bit tmp_en_spu = en_spu, tmp_en_dse = en_dse, tmp_en_fu[num_fu] = en_fu;
+      i_gs0_u gs;
+      gs.b[0] = ibuf[0];
+      gs.b[1] = ibuf[1];
       os = 2;
-      tmp = 0;
+      tmp = 1;
+      if(ap_bytes != 0) ap_bytes --;
+      
       if(en_spu) begin
         i_spu.set_data(ibuf, os);
         i_spu.analyze_fu(0, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
-        i_spu.analyze_rs(0, vrf_rd_en, srf_rd_en, dse_vec, cnt_vec_rd, cnt_scl_rd, cnt_dse_rd);
-        i_spu.analyze_rd(0, cnt_vec_wr, cnt_scl_wr, cnt_pr_wr);
+        i_spu.analyze_rs(0, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+        i_spu.analyze_rd(0, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
       end
       
       if(en_dse) begin
         i_dse.set_data(ibuf, os);
         i_dse.analyze_fu(dse_vec, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
-        i_dse.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vec_rd, cnt_scl_rd, cnt_dse_rd);
-        i_dse.analyze_rd(dse_vec, cnt_vec_wr, cnt_scl_wr, cnt_pr_wr);
+        i_dse.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+        i_dse.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
       end
       
@@ -196,47 +204,49 @@ class ise_thread_inf extends ovm_object;
         if(en_fu[i]) begin
           i_fu[i].set_data(ibuf, os);
           i_spu.analyze_fu(1, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
-          i_fu[i].analyze_rs(1, vrf_rd_en, srf_rd_en, dse_vec, cnt_vec_rd, cnt_scl_rd, cnt_dse_rd);
-          i_spu.analyze_rd(1, cnt_vec_wr, cnt_scl_wr, cnt_pr_wr);
+          i_fu[i].analyze_rs(1, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+          i_spu.analyze_rd(1, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
           os += num_inst_bytes;          
         end
       
       en_fu = tmp_en_fu;
       en_dse = tmp_en_dse;
       en_spu = tmp_en_spu;
-      
-      while(ap_bytes != 0) begin
-        if(ap_bytes >= 3) begin
-          i_ap2_u ap;
-          foreach(ap.b[i]) begin
-            ap.b[i] = ibuf[os];
-            os++;
-          end
-          foreach(ap.i.a[i])
-            a[tmp++] = ap.i.a[i];
-          ap_bytes -= 3;
-        end
-        else if(ap_bytes >= 2) begin
-          i_ap1_u ap;
-          foreach(ap.b[i]) begin
-            ap.b[i] = ibuf[os];
-            os++;
-          end
-          foreach(ap.i.a[i])
-            a[tmp++] = ap.i.a[i];
-          ap_bytes -= 2;
-        end
-        else if(ap_bytes >= 1) begin
-          i_ap0_t ap;
-          ap = ibuf[os];
+      a[0] = gs.i.a;
+    end
+    
+    ///fill in rf address
+    while(ap_bytes != 0) begin
+      if(ap_bytes >= 3) begin
+        i_ap2_u ap;
+        foreach(ap.b[i]) begin
+          ap.b[i] = ibuf[os];
           os++;
-          foreach(ap.a[i])
-            a[tmp++] = ap.a[i];
-          ap_bytes -= 1;
         end
+        foreach(ap.i.a[i])
+          a[tmp++] = ap.i.a[i];
+        ap_bytes -= 3;
+      end
+      else if(ap_bytes >= 2) begin
+        i_ap1_u ap;
+        foreach(ap.b[i]) begin
+          ap.b[i] = ibuf[os];
+          os++;
+        end
+        foreach(ap.i.a[i])
+          a[tmp++] = ap.i.a[i];
+        ap_bytes -= 2;
+      end
+      else if(ap_bytes >= 1) begin
+        i_ap0_t ap;
+        ap = ibuf[os];
+        os++;
+        foreach(ap.a[i])
+          a[tmp++] = ap.a[i];
+        ap_bytes -= 1;
       end
     end
-
+      
     for(int i = 0; i < num_imms; i++) begin
       imms[i] = {ibuf[i+3], ibuf[i+2], ibuf[i+1], ibuf[i]};
       os += num_word_bytes;
@@ -244,17 +254,20 @@ class ise_thread_inf extends ovm_object;
       
     ///allocate reg read address
     tmp = 0;
-    foreach(vrf_rd_en[i,j]) 
-      if(vrf_rd_en[i][j]) begin
-        map_vreg(a[tmp], vrf_grp[i][j], vrf_adr[i][j]);
-        tmp++;
-      end
-    foreach(srf_rd_en[i,j]) 
-      if(srf_rd_en[i][j]) begin
-        map_sreg(a[tmp], srf_grp[i][j], srf_adr[i][j]);
-        tmp++;
-      end
-          
+    
+    for(int i = 0; i < cyc_vec; i++) begin
+      for(int j = 0; j < num_vrf_bks; j++)
+        if(vrf_rd_en[i][j]) begin
+          map_vreg(a[tmp], vrf_grp[i][j], vrf_adr[i][j]);
+          tmp++;
+        end
+
+      for(int j = 0; j < num_srf_bks; j++)
+        if(srf_rd_en[i][j]) begin
+          map_sreg(a[tmp], vrf_grp[i][j], vrf_adr[i][j]);
+          tmp++;
+        end
+    end
   endfunction : decode_ig
 
   function void dse_cancel();
@@ -306,8 +319,8 @@ endclass : ise_thread_inf
 
 class ise_iss_inf extends ovm_object;
   ovm_component pa;
-  uchar cnt_vec_rd, cnt_scl_rd, cnt_dse_rd,
-        cnt_pr_wr,  cnt_scl_wr[num_sreg_bks], cnt_vec_wr[num_vreg_bks];
+  uchar cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd,
+        cnt_pr_wr,  cnt_srf_wr[num_srf_bks], cnt_vrf_wr[num_vrf_bks];
         
   bit no_ld, no_st, no_smsg, no_rmsg, no_fu[num_fu];
   
@@ -317,8 +330,8 @@ class ise_iss_inf extends ovm_object;
   tr_ise2dse ci_dse[cyc_vec];
     
   `ovm_object_utils_begin(ise_iss_inf)
-    `ovm_field_int(cnt_vec_rd, OVM_ALL_ON)
-    `ovm_field_int(cnt_scl_rd, OVM_ALL_ON)
+    `ovm_field_int(cnt_vrf_rd, OVM_ALL_ON)
+    `ovm_field_int(cnt_srf_rd, OVM_ALL_ON)
     `ovm_field_int(cnt_dse_rd, OVM_ALL_ON)
     `ovm_field_sarray_object(ci_rfm, OVM_ALL_ON)
     `ovm_field_sarray_object(ci_spa, OVM_ALL_ON)
@@ -335,12 +348,12 @@ class ise_iss_inf extends ovm_object;
       ci_spa[i] = tr_ise2spa::type_id::create("to_spa", pa);
       ci_spu[i] = tr_ise2spu::type_id::create("to_spu", pa);
     end
-    cnt_vec_rd = 0;
-    cnt_scl_rd = 0;
+    cnt_vrf_rd = 0;
+    cnt_srf_rd = 0;
     cnt_dse_rd = 0;
     cnt_pr_wr = 0;
-    cnt_scl_wr[num_sreg_bks] = '{default: 0};
-    cnt_vec_wr[num_vreg_bks] = '{default: 0};
+    cnt_srf_wr[num_srf_bks] = '{default: 0};
+    cnt_vrf_wr[num_vrf_bks] = '{default: 0};
   endfunction : new
 
   function void cyc_new();
@@ -356,14 +369,14 @@ class ise_iss_inf extends ovm_object;
     ci_spu[cyc_vec-1] = tr_ise2spu::type_id::create("to_spu", pa);
     ci_dse[cyc_vec-1] = tr_ise2dse::type_id::create("to_dse", pa);
     
-    if(cnt_vec_rd != 0) cnt_vec_rd--;
+    if(cnt_vrf_rd != 0) cnt_vrf_rd--;
     if(cnt_dse_rd != 0) cnt_dse_rd--;
-    if(cnt_scl_rd != 0) cnt_scl_rd--;
+    if(cnt_srf_rd != 0) cnt_srf_rd--;
     if(cnt_pr_wr != 0) cnt_pr_wr--;
-    foreach(cnt_scl_wr[i])
-      if(cnt_scl_wr[i] != 0) cnt_scl_wr[i]--;
-    foreach(cnt_vec_wr[i])
-      if(cnt_vec_wr[i] != 0) cnt_vec_wr[i]--;
+    foreach(cnt_srf_wr[i])
+      if(cnt_srf_wr[i] != 0) cnt_srf_wr[i]--;
+    foreach(cnt_vrf_wr[i])
+      if(cnt_vrf_wr[i] != 0) cnt_vrf_wr[i]--;
     
     no_fu = '{default: 0};
     no_ld = 0;
@@ -391,9 +404,12 @@ class ise_iss_inf extends ovm_object;
   endfunction : get_tr
 
   function bit can_iss(input ise_thread_inf tif, output bit vec);
+    /// the vec value indicate 4 cyc issue style is needed
     vec = tif.dse_vec;
     foreach(tif.en_fu[i])
       vec |= tif.en_fu[i];
+    
+    ///issue disable check
     if(tif.i_dse.dse_block(no_ld, no_st, no_smsg, no_rmsg))
       return 0;
     
@@ -401,24 +417,26 @@ class ise_iss_inf extends ovm_object;
       if(no_fu[i] && tif.en_fu[i])
         return 0;
     
-    if(cnt_scl_rd > 0 && tif.cnt_scl_rd > 0)
+    ///read cyc check
+    if(cnt_srf_rd > 0 && tif.cnt_srf_rd > 0)
       return 0;
 
-    if(cnt_vec_rd > 0 && tif.cnt_vec_rd > 0)
+    if(cnt_vrf_rd > 0 && tif.cnt_vrf_rd > 0)
       return 0;
 
     if(cnt_dse_rd > 0 && tif.cnt_dse_rd > 0)
       return 0;
 
+    /// write buf overflow check
     if(cnt_pr_wr + tif.cnt_pr_wr > cyc_vec)
       return 0;
     
-    foreach(cnt_vec_wr[i])
-      if(cnt_vec_wr[i] + tif.cnt_vec_wr[i] > cyc_vec)
+    foreach(cnt_vrf_wr[i])
+      if(cnt_vrf_wr[i] + tif.cnt_vrf_wr[i] > cyc_vec)
         return 0;      
 
-    foreach(cnt_scl_wr[i])
-      if(cnt_scl_wr[i] + tif.cnt_scl_wr[i] > cyc_vec)
+    foreach(cnt_srf_wr[i])
+      if(cnt_srf_wr[i] + tif.cnt_srf_wr[i] > cyc_vec)
         return 0;
     return 1;
   endfunction : can_iss
@@ -426,7 +444,7 @@ class ise_iss_inf extends ovm_object;
   function void iss_scl(input ise_thread_inf tif);
   /// spu or scalar dse issue
     if(tif.en_spu) begin
-      for(int i = 0; i < tif.cnt_scl_rd; i++) begin
+      for(int i = 0; i < tif.cnt_srf_rd; i++) begin
         tif.i_dse.fill_rfm(ci_rfm[i]);
         tif.i_dse.fill_spa(ci_spa[i]);
         ci_rfm[i].subv = 0;
@@ -440,20 +458,20 @@ class ise_iss_inf extends ovm_object;
       cnt_dse_rd = tif.cnt_dse_rd;
     end
     
-    cnt_scl_rd = tif.cnt_scl_rd;
-    cnt_vec_rd = tif.cnt_vec_rd;
+    cnt_srf_rd = tif.cnt_srf_rd;
+    cnt_vrf_rd = tif.cnt_vrf_rd;
     cnt_dse_rd = tif.cnt_dse_rd;
     cnt_pr_wr += tif.cnt_pr_wr;
   
-    foreach(cnt_vec_wr[i])
-      cnt_vec_wr[i] += tif.cnt_vec_wr[i];
+    foreach(cnt_vrf_wr[i])
+      cnt_vrf_wr[i] += tif.cnt_vrf_wr[i];
 
-    foreach(cnt_scl_wr[i])
-      cnt_scl_wr[i] += tif.cnt_scl_wr[i];
+    foreach(cnt_srf_wr[i])
+      cnt_srf_wr[i] += tif.cnt_srf_wr[i];
   endfunction : iss_scl
       
   function void iss_vec(input ise_thread_inf tif);
-    for(int i = 0; i < tif.cnt_vec_rd; i++) begin
+    for(int i = 0; i < tif.cnt_vrf_rd; i++) begin
       foreach(tif.i_fu[fid]) begin
         tif.i_fu[fid].fill_rfm(ci_rfm[i]);
         tif.i_fu[fid].fill_spa(ci_spa[i]);

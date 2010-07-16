@@ -9,9 +9,9 @@ class ise2rfm_fu extends ovm_object;
   constraint valid_var {
 	  foreach(rd_bk[i])
 	    rd_bk[i] inside {[selv0:selv_e], [sels0:sels_e], [seli0:seli_e], selz, selii};
-/// 		vrf_wr_grp inside {[0:num_phy_vreg_grp-1]};
-/// 		vrf_wr_bk  inside {[0:num_vreg_bks-1]};
-/// 		vrf_wr_adr inside {[0:num_phy_sreg_grp-1]};
+/// 		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
+/// 		vrf_wr_bk  inside {[0:num_vrf_bks-1]};
+/// 		vrf_wr_adr inside {[0:num_phy_srf_grp-1]};
   }
   `ovm_object_utils_begin(ise2rfm_fu)
     `ovm_field_sarray_enum(rbk_sel_e, rd_bk, OVM_ALL_ON)
@@ -27,8 +27,8 @@ class ise2rfm_fu extends ovm_object;
 endclass : ise2rfm_fu
 
 class tr_ise2rfm extends ovm_sequence_item;
-	rand uchar vrf_rd_grp[num_vreg_bks], srf_rd_grp[num_sreg_bks],
-	           vrf_rd_adr[num_vreg_bks], srf_rd_adr[num_sreg_bks];
+	rand uchar vrf_rd_grp[num_vrf_bks], srf_rd_grp[num_srf_bks],
+	           vrf_rd_adr[num_vrf_bks], srf_rd_adr[num_srf_bks];
 	
 	rand ise2rfm_fu fu[num_fu];
 	rand rbk_sel_e dse_rd_bk[3], spu_rd_bk[2];
@@ -41,12 +41,12 @@ class tr_ise2rfm extends ovm_sequence_item;
 	
 	constraint valid_var {
 		foreach(vrf_rd_grp[i]) {
-			vrf_rd_grp[i] inside {[0:num_phy_vreg_grp-1]};
-			vrf_rd_adr[i] inside {[0:num_phy_reg_grp/num_vreg_bks-1]};
+			vrf_rd_grp[i] inside {[0:num_phy_vrf_grp-1]};
+			vrf_rd_adr[i] inside {[0:num_prf_per_grp/num_vrf_bks-1]};
     }
 		foreach(srf_rd_grp[i]) {
-			srf_rd_grp[i] inside {[0:num_phy_sreg_grp-1]};
-			srf_rd_adr[i] inside {[0:num_phy_reg_grp/num_sreg_bks-1]};
+			srf_rd_grp[i] inside {[0:num_phy_srf_grp-1]};
+			srf_rd_adr[i] inside {[0:num_prf_per_grp/num_srf_bks-1]};
     }
 ///	  cycv == cyc_vec - 1;
 ///	  cycs inside {[1:cyc_vec]};
@@ -163,9 +163,9 @@ class tr_spu2rfm extends ovm_sequence_item;
 	
 	constraint valid_spu {
 ///		sel_vsbp dist {spu0:=20, mac0:=2, alu0:=2, dse0:=5, sfu0:=1};
-		srf_wr_bk inside {[0:num_vreg_bks-1]};
-		srf_wr_grp inside {[0:num_phy_vreg_grp-1]};
-		srf_wr_adr inside {[0:num_phy_reg_grp/num_vreg_bks-1]};
+		srf_wr_bk inside {[0:num_vrf_bks-1]};
+		srf_wr_grp inside {[0:num_phy_vrf_grp-1]};
+		srf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
 		srf_wr_dsel < 2;
 	}
 		
@@ -253,9 +253,9 @@ class spa2rfm_fu extends ovm_object;
   rand uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv;
   
 	constraint valid_vars{
-		vrf_wr_grp inside {[0:num_phy_vreg_grp-1]};
-		vrf_wr_adr inside {[0:num_phy_reg_grp/num_vreg_bks-1]};
-		vrf_wr_bk inside {[0:num_vreg_bks-1]};
+		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
+		vrf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		vrf_wr_bk inside {[0:num_vrf_bks-1]};
 		subv dist {0:=5, 1:=5};
 		foreach(wen[i])
 			wen[i] dist {0:=1, 1:=9};				
@@ -317,9 +317,9 @@ class tr_dse2rfm extends ovm_sequence_item;
 	constraint valid_dse{
 		foreach(wen[i])
 			wen[i] dist {0:=1, 1:=9};
-		vrf_wr_grp inside {[0:num_phy_vreg_grp-1]};
-		vrf_wr_adr inside {[0:num_phy_reg_grp/num_vreg_bks-1]};
-		vrf_wr_bk inside {[0:num_vreg_bks-1]};
+		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
+		vrf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		vrf_wr_bk inside {[0:num_vrf_bks-1]};
 		subv dist {0:=5, 1:=5};
 	}
 
@@ -383,9 +383,9 @@ class ise2spa_fu extends ovm_object;
 
   constraint valid_vars{
     en dist {0:=1, 1:=9};
-		vrf_wr_grp inside {[0:num_phy_vreg_grp-1]};
-		vrf_wr_adr inside {[0:num_phy_reg_grp/num_vreg_bks-1]};
-		vrf_wr_bk inside {[0:num_vreg_bks-1]};
+		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
+		vrf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		vrf_wr_bk inside {[0:num_vrf_bks-1]};
   }
     
   `ovm_object_utils_begin(ise2spa_fu)
@@ -624,9 +624,9 @@ class tr_ise2spu extends ovm_sequence_item;
     pr_up_adr_rot <= num_pr;
     pr_rd_adr_spu <= num_pr;
     pr_rd_adr_dse <= num_pr;
-		srf_wr_bk inside {[0:num_vreg_bks-1]};
-		srf_wr_grp inside {[0:num_phy_vreg_grp-1]};
-		srf_wr_adr inside {[0:num_phy_reg_grp/num_vreg_bks-1]};
+		srf_wr_bk inside {[0:num_vrf_bks-1]};
+		srf_wr_grp inside {[0:num_phy_vrf_grp-1]};
+		srf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
 		srf_wr_dsel < 2;
     solve pr_br_adr before pr_br_dep;
     solve op before sop, mop, bop;

@@ -290,7 +290,7 @@ class inst_c extends ovm_object;
 
 	function bit is_scl_ma(input bit vec);
     if(inst.i.op == iop_ma && inst.i.b.ma.fun == iop31_mul && !vec)
-      return 1
+      return 1;
     return 0;
 	endfunction : is_scl_ma	
 	
@@ -299,11 +299,11 @@ class inst_c extends ovm_object;
 		  inst.b[i] = data[start+i];
 	endfunction : set_data
 
-  function void analyze_rs(input bit wr_vec, ref bit vrf_en[cyc_vec][num_vreg_bks], srf_en[cyc_vec][num_sreg_bks], inout uchar sv, vec, scl, dse);
+  function void analyze_rs(input bit wr_vec, ref bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], inout uchar sv, vec, scl, dse);
     
   endfunction : analyze_rs
 
-  function void analyze_rd(input bit wr_vec, ref uchar vrf[num_vreg_bks], srf[num_sreg_bks], inout uchar pr);
+  function void analyze_rd(input bit wr_vec, ref uchar vrf[num_vrf_bks], srf[num_srf_bks], inout uchar pr);
     
   endfunction : analyze_rd
   

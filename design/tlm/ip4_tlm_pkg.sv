@@ -37,16 +37,16 @@ parameter uchar num_sp            = 8,
                 num_fu            = 3,
                 num_fu_rp         = 4,
 ///                num_fu_wp         = 2,
-                num_phy_vreg_grp  = 64,
-                num_phy_sreg_grp  = 32,
-                num_phy_reg_grp   = 8,
-                num_vreg_bks      = 4,
-                num_sreg_bks      = 2,
+                num_phy_vrf_grp   = 64,
+                num_phy_srf_grp   = 32,
+                num_prf_per_grp   = 8,
+                num_vrf_bks       = 4,
+                num_srf_bks       = 2,
                 num_bp_imm        = 1,
                 num_pr            = 7,
                 num_ifet_bytes    = 16,
-                num_inst_vreg     = 32,
-                num_inst_sreg     = 16;
+                num_inst_vrf      = 32,
+                num_inst_srf      = 16;
                 
 parameter uchar lat_mac           = 4,
                 lat_sfu           = 16,
@@ -159,8 +159,8 @@ typedef enum uchar {
   selv[0:127], sels[0:31], seli[0:7], selz, selspu, selii, selnull
 } rbk_sel_e;
   
-parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + num_vreg_bks - 1),
-                    sels_e = rbk_sel_e'(sels0 + num_sreg_bks - 1),
+parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + num_vrf_bks - 1),
+                    sels_e = rbk_sel_e'(sels0 + num_srf_bks - 1),
                     seli_e = rbk_sel_e'(seli0 + num_bp_imm - 1);
 
 typedef enum uchar {

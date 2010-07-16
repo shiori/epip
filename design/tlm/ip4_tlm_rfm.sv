@@ -46,11 +46,11 @@ class ip4_tlm_rfm extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
     
-  local word vrf[num_phy_vreg_grp][num_phy_reg_grp/num_vreg_bks][num_vreg_bks][cyc_vec][num_sp];
-  local word srf[num_phy_sreg_grp][num_phy_reg_grp/num_vreg_bks][num_sreg_bks];
+  local word vrf[num_phy_vrf_grp][num_prf_per_grp/num_vrf_bks][num_vrf_bks][cyc_vec][num_sp];
+  local word srf[num_phy_srf_grp][num_prf_per_grp/num_vrf_bks][num_srf_bks];
     
   local ip4_tlm_rfm_vars v, vn;
-  local word csrf_l[num_sreg_bks];
+  local word csrf_l[num_srf_bks];
   local word bp_imm_l[num_bp_imm];
   
   `ovm_component_utils_begin(ip4_tlm_rfm)
@@ -65,7 +65,7 @@ class ip4_tlm_rfm extends ovm_component;
   ovm_nonblocking_transport_port #(tr_rfm2dse, tr_rfm2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_rfm2spu, tr_rfm2spu) spu_tr_port;
   
-  extern function word read_rf(input rbk_sel_e, uchar, const ref word cvrf[num_vreg_bks][num_sp], csrf[num_sreg_bks], 
+  extern function word read_rf(input rbk_sel_e, uchar, const ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks], 
                                 bp_imm[num_bp_imm], input word imm);
   //endfunction
   
@@ -89,8 +89,8 @@ class ip4_tlm_rfm extends ovm_component;
     tr_rfm2spa to_spa;
     tr_rfm2spu to_spu;
     tr_rfm2dse to_dse;
-    word cvrf[num_vreg_bks][num_sp];
-    word csrf[num_sreg_bks];
+    word cvrf[num_vrf_bks][num_sp];
+    word csrf[num_srf_bks];
       
     ovm_report_info("RFM", "req_proc procing...", OVM_HIGH); 
    
@@ -317,12 +317,12 @@ class ip4_tlm_rfm extends ovm_component;
 endclass : ip4_tlm_rfm
 
 ///-------------------------------------other functions-----------------------------------------
-///  function void ip4_tlm_rfm::read_crf(input tr_ise2rfm t, uchar vec, ref word cvrf[num_vreg_bks][num_sp], csrf[num_sreg_bks]);
+///  function void ip4_tlm_rfm::read_crf(input tr_ise2rfm t, uchar vec, ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks]);
 ///    if(t == null)
 ///      return;
 ///  endfunction
   
-  function word ip4_tlm_rfm::read_rf(input rbk_sel_e s, uchar i, const ref word cvrf[num_vreg_bks][num_sp], csrf[num_sreg_bks], 
+  function word ip4_tlm_rfm::read_rf(input rbk_sel_e s, uchar i, const ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks], 
                                       bp_imm[num_bp_imm], input word imm);
     case(s)
     selv0:    return cvrf[0][i];
