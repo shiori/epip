@@ -311,8 +311,8 @@ endclass : tr_spa2rfm
 
 class tr_dse2rfm extends ovm_sequence_item;
 	rand word res[num_sp];
-	rand bit wen[num_sp];
-	rand uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv;
+	rand bit wen[num_sp], srf_wr;
+	rand uchar wr_grp, wr_adr, wr_bk, subv;
 	
 	constraint valid_dse{
 		foreach(wen[i])
