@@ -134,7 +134,9 @@ class ip4_tlm_rfm extends ovm_component;
       ovm_report_info("RFM_WR", "Write Back DSE...", OVM_HIGH);
       foreach(dse.wen[sp])
         if(dse.wen[sp])
-          vrf[dse.vrf_wr_grp][dse.vrf_wr_adr][dse.vrf_wr_bk][dse.subv][sp] = dse.res[sp];
+          vrf[dse.wr_grp][dse.wr_adr][dse.wr_bk][dse.subv][sp] = dse.res[sp];
+      if(dse.srf_wr)
+        srf[dse.wr_grp][dse.wr_adr][dse.wr_bk] = v.fm_dse.res[0];
     end
     
     if(v.fm_spu != null && v.fm_spu.wen) begin
@@ -145,8 +147,8 @@ class ip4_tlm_rfm extends ovm_component;
       bit dw = 0;
       ovm_report_info("RFM_WR", "Write Back SPU...", OVM_HIGH);
       res = spu.res;
-      if(spu.sel_dwbp && dse != null)
-        res = dse.res[0];
+///      if(spu.sel_dwbp && dse != null)
+///        res = dse.res[0];
       srf[spu.srf_wr_grp][spu.srf_wr_adr][spu.srf_wr_bk] = res;
     end
          

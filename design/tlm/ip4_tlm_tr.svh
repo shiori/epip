@@ -151,14 +151,14 @@ class tr_spu2rfm extends ovm_sequence_item;
 	rand word res; ///BRU ScalarP use port4
 	rand uchar srf_wr_bk, srf_wr_grp, srf_wr_adr, 
 	           srf_wr_dsel; ///select which res from dual res
-	rand bit sel_dwbp; ///unit_inst_e
+///	rand bit sel_dwbp; ///unit_inst_e
 	
 	///wen signal is given one cycle before writeback
 	
 	constraint valid_wen {
 		wen dist {0:=1, 1:=9};
 ///		sel_vsbp dist {0:=9, 1:=1};
-		sel_dwbp dist {0:=9, 1:=1};
+///		sel_dwbp dist {0:=9, 1:=1};
 	}
 	
 	constraint valid_spu {
@@ -172,7 +172,7 @@ class tr_spu2rfm extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_spu2rfm)
 		`ovm_field_int(wen, OVM_ALL_ON)
 		`ovm_field_int(res, OVM_ALL_ON)
-		`ovm_field_int(sel_dwbp, OVM_ALL_ON)
+///		`ovm_field_int(sel_dwbp, OVM_ALL_ON)
 ///		`ovm_field_int(sel_vsbp, OVM_ALL_ON)
 ///		`ovm_field_enum(unit_inst_e, sel_vsbp, OVM_ALL_ON)
 		`ovm_field_int(srf_wr_dsel, OVM_ALL_ON)
@@ -317,10 +317,11 @@ class tr_dse2rfm extends ovm_sequence_item;
 	constraint valid_dse{
 		foreach(wen[i])
 			wen[i] dist {0:=1, 1:=9};
-		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
-		vrf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
-		vrf_wr_bk inside {[0:num_vrf_bks-1]};
+		wr_grp inside {[0:num_phy_vrf_grp-1]};
+		wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		wr_bk inside {[0:num_vrf_bks-1]};
 		subv dist {0:=5, 1:=5};
+		srf_wr dist {0:=9, 1:=1};
 	}
 
 	function void post_randomize();
@@ -337,10 +338,11 @@ class tr_dse2rfm extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_dse2rfm)
 		`ovm_field_sarray_int(res, OVM_ALL_ON)
 		`ovm_field_sarray_int(wen, OVM_ALL_ON)
-		`ovm_field_int(vrf_wr_grp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(vrf_wr_adr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(vrf_wr_bk, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(wr_grp, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(wr_adr, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(wr_bk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(subv, OVM_ALL_ON)
+		`ovm_field_int(srf_wr, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2rfm");
@@ -351,17 +353,33 @@ endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
 	rand word op[num_sp], op1, op2;
-		
+	rand uchar subv;
+	
+	constraint valid_vars{
+	  subv dist {0:=5, 1:=5};
+	}
+	
 	`ovm_object_utils_begin(tr_rfm2dse)
 		`ovm_field_sarray_int(op, OVM_ALL_ON)
 		`ovm_field_int(op1, OVM_ALL_ON)
 		`ovm_field_int(op2, OVM_ALL_ON)
+		`ovm_field_int(subv, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2dse");
 		super.new(name);
 	endfunction : new
-	
+
+	function void post_randomize();
+	  static uchar last_subv = 0;
+		if(last_subv == 0 || last_subv == (cyc_vec - 1)) begin
+  			last_subv = subv;
+  		end
+  		else begin
+  		  last_subv++;
+  			subv = last_subv;
+  		end	    
+	endfunction : post_randomize	
 endclass : tr_rfm2dse
 
 ///---------------------------trsaction spa_ise ise_spa------------------------
@@ -799,36 +817,33 @@ endclass : tr_dse2spa
 ///---------------------------trsaction dse_ise ise_dse------------------------
 
 class tr_ise2dse extends ovm_sequence_item;
-  uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv, en;
+  rand uchar wr_grp, wr_adr, wr_bk, tid;
+  rand bit vec, en, bp_data;
+  rand opcode_e op;
   
 	`ovm_object_utils_begin(tr_ise2dse)
-	  `ovm_field_int(vrf_wr_bk, OVM_ALL_ON)
-	  `ovm_field_int(vrf_wr_adr, OVM_ALL_ON)
-	  `ovm_field_int(vrf_wr_grp, OVM_ALL_ON)
-	  `ovm_field_int(subv, OVM_ALL_ON)
+	  `ovm_field_int(wr_bk, OVM_ALL_ON)
+	  `ovm_field_int(wr_adr, OVM_ALL_ON)
+	  `ovm_field_int(wr_grp, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
+	  `ovm_field_int(vec, OVM_ALL_ON)
+	  `ovm_field_int(bp_data, OVM_ALL_ON)
+	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
   constraint valid_vars{
-    subv dist {0:=5, 1:=5};
     en dist {0:=4, 1:=6};
+    bp_data dist {0:=4, 1:=6};
+    op inside {dse_ops};
+    bp_data -> vec;
+    solve vec before bp_data;
   }
   
 	function new (string name = "tr_ise2dse");
 		super.new(name);
 	endfunction : new
 
-	function void post_randomize();
-	  static uchar last_subv = 0;
-		if(last_subv == 0 || last_subv == (cyc_vec - 1)) begin
-  			last_subv = subv;
-  		end
-  		else begin
-  		  last_subv++;
-  			subv = last_subv;
-  		end	    
-	endfunction : post_randomize
-		
 endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
