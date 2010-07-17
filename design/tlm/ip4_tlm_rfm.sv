@@ -164,14 +164,14 @@ class ip4_tlm_rfm extends ovm_component;
       foreach(csrf[bk])
         csrf[bk] = srf[ise.srf_rd_grp[bk]][ise.srf_rd_adr[bk]][bk];  
                 
-      if(ise.subv == 0) begin
+      if(ise.start) begin
         csrf_l = csrf;
         bp_imm_l = ise.bp_imm;
       end
       
       foreach(ise.en[fid]) begin
         if(!ise.en[fid]) continue;
-        ovm_report_info("RFM_RD", $psprintf("Read for SPA subv %0d, FU%0d : %s ...", cyc, fid, fu_cfg[fid].name), OVM_HIGH);
+        ovm_report_info("RFM_RD", $psprintf("Read for SPA cyc %0d, FU%0d : %s ...", cyc, fid, fu_cfg[fid].name), OVM_HIGH);
 
         if(vn.spa[cyc] == null) vn.spa[cyc] = tr_rfm2spa::type_id::create("to_spa", this);
         foreach(vn.spa[cyc].fu[fid].rp[rp])
@@ -180,7 +180,7 @@ class ip4_tlm_rfm extends ovm_component;
       end
       
       if(ise.dse_en) begin
-        ovm_report_info("RFM_RD", $psprintf("Read for DSE subv %0d ...", cyc), OVM_HIGH);
+        ovm_report_info("RFM_RD", $psprintf("Read for DSE cyc %0d ...", cyc), OVM_HIGH);
         if(to_dse == null) to_dse = tr_rfm2dse::type_id::create("to_dse", this);
         foreach(to_dse.op[sp])
           to_dse.op[sp] = read_rf(ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
@@ -198,20 +198,13 @@ class ip4_tlm_rfm extends ovm_component;
       end
     end
     
-///    for(int sg = stage_rrf_rrc; sg > stage_rrf_rrc0; sg--)
-    if(v.fm_ise[stage_rrf_rrc] != null && v.fm_ise[stage_rrf_rrc].vec_end) begin
-      tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc];
-      to_spa = vn.spa[ise.subv];
-      vn.spa[ise.subv] = null;
-  ///    break;
-  ///      vn.dse[ise.subv] = null;
-  ///      to_dse = vn.dse[ise.subv];
-    end
-    else if(v.fm_ise[stage_rrf_rrc0] != null && v.fm_ise[stage_rrf_rrc0].scl_end) begin
-      tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0];
-      to_spa = vn.spa[ise.subv];
-      vn.spa[ise.subv] = null;
-    end
+    for(int cyc = 0; cyc < cyc_vec; cyc++)
+      if(v.fm_ise[cyc] != null && v.fm_ise[cyc].vec_end) begin
+        tr_ise2rfm ise = v.fm_ise[cyc];
+        to_spa = vn.spa[cyc];
+        vn.spa[cyc] = null;
+        break;
+      end
     
     if(v.fm_ise[stage_rrf_rrc0] != null && v.fm_ise[stage_rrf_rrc0].scl_end) begin
       tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0];

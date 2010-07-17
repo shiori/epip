@@ -447,8 +447,9 @@ class ise_iss_inf extends ovm_object;
       for(int i = 0; i < tif.cnt_srf_rd; i++) begin
         tif.i_dse.fill_rfm(ci_rfm[i]);
         tif.i_dse.fill_spa(ci_spa[i]);
-        ci_rfm[i].subv = 0;
       end
+      ci_rfm[0].start = 1;
+      ci_rfm[tif.cnt_srf_rd].scl_end = 1;
     end
     
     if(tif.en_dse) begin
@@ -476,9 +477,11 @@ class ise_iss_inf extends ovm_object;
         tif.i_fu[fid].fill_rfm(ci_rfm[i]);
         tif.i_fu[fid].fill_spa(ci_spa[i]);
       end
-      ci_rfm[i].subv = i;
       ci_spa[i].subv = i;
     end
+    ci_rfm[0].start = 1;
+    ci_rfm[tif.cnt_vrf_rd].vec_end = 1;
+      
     iss_scl(tif);
   endfunction : iss_vec
 

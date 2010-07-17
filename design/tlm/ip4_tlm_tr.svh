@@ -32,8 +32,8 @@ class tr_ise2rfm extends ovm_sequence_item;
 	
 	rand ise2rfm_fu fu[num_fu];
 	rand rbk_sel_e dse_rd_bk[3], spu_rd_bk[2];
-	rand uchar subv; ///cycs, subs;
-	rand bit vec_end, scl_end;
+///	rand uchar subv; ///cycs, subs;
+	rand bit vec_end, scl_end, start;
 ///	rand uchar tid;
 	rand word bp_imm[num_bp_imm], dse_imm, spu_imm;
 	rand bit en[num_fu], dse_en, spu_en;
@@ -60,7 +60,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	}
 	
 	constraint dist_var {
-		subv dist {0:=5, 1:=5};
+///		subv dist {0:=5, 1:=5};
 ///		subs dist {0:=5, 1:=5};
 		foreach(en[i])
 		  en[i] dist {0:=1, 1:=9};
@@ -79,14 +79,14 @@ class tr_ise2rfm extends ovm_sequence_item;
   endfunction
     
 	function void post_randomize();
-		static uchar last_subv = 0, last_subs = 0, last_cycs;
-		if(last_subv == 0 || last_subv == (cyc_vec - 1)) begin
-			last_subv = subv;
-		end
-		else begin
-		  last_subv++;
-			subv = last_subv;
-	  end
+///		static uchar last_subv = 0, last_subs = 0, last_cycs;
+///		if(last_subv == 0 || last_subv == (cyc_vec - 1)) begin
+///			last_subv = subv;
+///		end
+///		else begin
+///		  last_subv++;
+///			subv = last_subv;
+///	  end
 	  
 ///		if(last_subs == 0 || last_subs == (last_cycs - 1)) begin
 ///			last_subs = subs;
@@ -110,9 +110,10 @@ class tr_ise2rfm extends ovm_sequence_item;
 ///		`ovm_field_int(cycv, OVM_ALL_ON)
 ///		`ovm_field_int(cycs, OVM_ALL_ON)
 ///		`ovm_field_int(subs, OVM_ALL_ON)
-		`ovm_field_int(subv, OVM_ALL_ON)
+///		`ovm_field_int(subv, OVM_ALL_ON)
 	  `ovm_field_int(vec_end, OVM_ALL_ON)
 		`ovm_field_int(scl_end, OVM_ALL_ON)
+		`ovm_field_int(start, OVM_ALL_ON)
 		`ovm_field_sarray_int(vrf_rd_grp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(vrf_rd_adr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srf_rd_grp, OVM_ALL_ON + OVM_DEC)
