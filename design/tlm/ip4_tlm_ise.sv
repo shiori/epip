@@ -12,7 +12,7 @@
 
 typedef enum uchar {
   ts_disabled,    ts_rdy,     ts_w_sfu,     ts_w_ls,
-  ts_w_msg,       ts_w_spu,   ts_w_b
+  ts_w_msg,       ts_w_spu,   ts_w_b,       ts_w_pip
 }ise_thread_state;
 
 class ip4_tlm_ise_vars extends ovm_object;
@@ -69,9 +69,10 @@ class ise_thread_inf extends ovm_object;
   bit en_spu, en_dse, en_fu[num_fu];
 ///  bit sgl_mode;
   bit pri_state;  ///privilege running status
+  uchar wcnt, vec_mode;
   
-  uchar vrf_map[num_inst_vrf/num_prf_per_grp], 
-        srf_map[num_inst_srf/num_prf_per_grp];
+  uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
+        srf_map[num_inst_srf/num_prf_p_grp];
   uchar pd_ifet;
   
   inst_c i_spu, i_dse, i_fu[num_fu];
@@ -102,21 +103,31 @@ class ise_thread_inf extends ovm_object;
   endfunction : new
  
   function void map_vreg(input uchar oadr, output uchar grp, adr);
-    uchar adr_bits =  clogb2(num_prf_per_grp/num_vrf_bks);
+    uchar adr_bits =  bits_prf_p_grp - bits_vrf_bks;
     adr = oadr & ('1 << adr_bits);
     grp = oadr >> adr_bits;
     adr = vrf_map[adr];
   endfunction : map_vreg
 
   function void map_sreg(input uchar oadr, output uchar grp, adr);
-    uchar adr_bits =  clogb2(num_prf_per_grp/num_srf_bks);
+    uchar adr_bits =  bits_prf_p_grp - bits_srf_bks;
     adr = oadr & ('1 << adr_bits);
     grp = oadr >> adr_bits;
     adr = srf_map[adr];    
   endfunction : map_sreg
-
+  
+  function void cyc_new();
+    if(wcnt != 0) wcnt--;
+    if(ts == ts_w_pip)
+      ts = ts_rdy;
+  endfunction
+  
   function void decode_igs();
     i_gs1_t gs1 = ibuf[0];
+    en_spu = 0;
+    en_dse = 0;
+    en_fu = '{default : 0};
+    
     if(gs1.t) begin
 ///      sgl_mode = 1;
       nck = gs1.nc;
@@ -155,6 +166,16 @@ class ise_thread_inf extends ovm_object;
     uchar os;
     i_gs1_t gs1 = ibuf[0];
     
+    vrf_rd_en = '{default : 0};
+    srf_rd_en = '{default : 0};
+    dse_vec = 0;
+    cnt_vrf_rd = 0;
+    cnt_srf_rd = 0;
+    cnt_dse_rd = 0;
+    cnt_vrf_wr = '{default : 0};
+    cnt_srf_wr = '{default : 0};
+    cnt_pr_wr = 0;
+    
     if(gs1.t) begin
       tmp = 1;
       if(ap_bytes != 0) ap_bytes --;
@@ -166,7 +187,7 @@ class ise_thread_inf extends ovm_object;
       os = 1 + num_inst_bytes;
       i_spu.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
       i_spu.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
-      i_spu.analyze_fu(dse_vec, 1, en_spu, en_dse, en_fu);
+      i_spu.analyze_fu(dse_vec, en_spu, en_dse, en_fu);
       a[0] = gs1.a;
       if(ap_bytes) begin
         i_ap0_t ap = ibuf[os];
@@ -186,7 +207,7 @@ class ise_thread_inf extends ovm_object;
       
       if(en_spu) begin
         i_spu.set_data(ibuf, os);
-        i_spu.analyze_fu(0, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
+///        i_spu.analyze_fu(0, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_spu.analyze_rs(0, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_spu.analyze_rd(0, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
@@ -194,7 +215,7 @@ class ise_thread_inf extends ovm_object;
       
       if(en_dse) begin
         i_dse.set_data(ibuf, os);
-        i_dse.analyze_fu(dse_vec, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
+///        i_dse.analyze_fu(dse_vec, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_dse.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_dse.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
@@ -203,7 +224,7 @@ class ise_thread_inf extends ovm_object;
       foreach(i_fu[i])
         if(en_fu[i]) begin
           i_fu[i].set_data(ibuf, os);
-          i_spu.analyze_fu(1, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
+///          i_spu.analyze_fu(1, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
           i_fu[i].analyze_rs(1, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
           i_spu.analyze_rd(1, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
           os += num_inst_bytes;          
@@ -297,7 +318,7 @@ class ise_thread_inf extends ovm_object;
   function void fill_ife_req(input tr_ise2ife ife);
     ife.fetch_req = 1;
     pd_ifet++;
-    ife.pc = (pc + num_ifet_bytes * pd_ifet) & {'1 << clogb2(num_ifet_bytes)};
+    ife.pc = (pc + num_ifet_bytes * pd_ifet) & {'1 << bits_ifet};
   endfunction : fill_ife_req
 
   function void update_inst(input inst_fg_c fg);
@@ -305,7 +326,7 @@ class ise_thread_inf extends ovm_object;
     if(ibuf_level  >= num_max_igrp_bytes)
       ovm_report_warning("ISE", "ibuf overflow!");
     if(ibuf_level == 0)
-      os = pc & ~{'1 << clogb2(num_ifet_bytes)};
+      os = pc & ~{'1 << bits_ifet};
     foreach(fg.data[i])
       if(i > os)
         ibuf[ibuf_level++] = fg.data[i];
@@ -319,7 +340,7 @@ endclass : ise_thread_inf
 
 class ise_iss_inf extends ovm_object;
   ovm_component pa;
-  uchar cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd,
+  uchar cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd, cnt_vec_proc,
         cnt_pr_wr,  cnt_srf_wr[num_srf_bks], cnt_vrf_wr[num_vrf_bks];
         
   bit no_ld, no_st, no_smsg, no_rmsg, no_fu[num_fu];
@@ -373,6 +394,8 @@ class ise_iss_inf extends ovm_object;
     if(cnt_dse_rd != 0) cnt_dse_rd--;
     if(cnt_srf_rd != 0) cnt_srf_rd--;
     if(cnt_pr_wr != 0) cnt_pr_wr--;
+    if(cnt_vec_proc != 0) cnt_vec_proc--;
+    
     foreach(cnt_srf_wr[i])
       if(cnt_srf_wr[i] != 0) cnt_srf_wr[i]--;
     foreach(cnt_vrf_wr[i])
@@ -405,10 +428,13 @@ class ise_iss_inf extends ovm_object;
 
   function bit can_iss(input ise_thread_inf tif, output bit vec);
     /// the vec value indicate 4 cyc issue style is needed
-    vec = tif.dse_vec;
+///    vec = tif.dse_vec;
     foreach(tif.en_fu[i])
       vec |= tif.en_fu[i];
     
+    if(vec && cnt_vec_proc >= tif.vec_mode)
+      return 0;
+      
     ///issue disable check
     if(tif.i_dse.dse_block(no_ld, no_st, no_smsg, no_rmsg))
       return 0;
@@ -481,7 +507,8 @@ class ise_iss_inf extends ovm_object;
     end
     ci_rfm[0].start = 1;
     ci_rfm[tif.cnt_vrf_rd].vec_end = 1;
-      
+    cnt_vec_proc = tif.vec_mode;
+    
     iss_scl(tif);
   endfunction : iss_vec
 
@@ -536,6 +563,9 @@ class ip4_tlm_ise extends ovm_component;
       vn.spu[i] = v.spu[i];
     end
     
+    foreach(tinf[i])
+      tinf[i].cyc_new();
+      
     if(v.fm_spu != null && v.fm_spu.br_rsp)
       void'(tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken));
       

@@ -46,8 +46,8 @@ class ip4_tlm_rfm extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
     
-  local word vrf[num_phy_vrf_grp][num_prf_per_grp/num_vrf_bks][num_vrf_bks][cyc_vec][num_sp];
-  local word srf[num_phy_srf_grp][num_prf_per_grp/num_vrf_bks][num_srf_bks];
+  local word vrf[num_phy_vrf_grp][num_prf_p_grp/num_vrf_bks][num_vrf_bks][cyc_vec][num_sp];
+  local word srf[num_phy_srf_grp][num_prf_p_grp/num_vrf_bks][num_srf_bks];
     
   local ip4_tlm_rfm_vars v, vn;
   local word csrf_l[num_srf_bks];

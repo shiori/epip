@@ -42,11 +42,11 @@ class tr_ise2rfm extends ovm_sequence_item;
 	constraint valid_var {
 		foreach(vrf_rd_grp[i]) {
 			vrf_rd_grp[i] inside {[0:num_phy_vrf_grp-1]};
-			vrf_rd_adr[i] inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+			vrf_rd_adr[i] inside {[0:num_prf_p_grp/num_vrf_bks-1]};
     }
 		foreach(srf_rd_grp[i]) {
 			srf_rd_grp[i] inside {[0:num_phy_srf_grp-1]};
-			srf_rd_adr[i] inside {[0:num_prf_per_grp/num_srf_bks-1]};
+			srf_rd_adr[i] inside {[0:num_prf_p_grp/num_srf_bks-1]};
     }
 ///	  cycv == cyc_vec - 1;
 ///	  cycs inside {[1:cyc_vec]};
@@ -166,7 +166,7 @@ class tr_spu2rfm extends ovm_sequence_item;
 ///		sel_vsbp dist {spu0:=20, mac0:=2, alu0:=2, dse0:=5, sfu0:=1};
 		srf_wr_bk inside {[0:num_vrf_bks-1]};
 		srf_wr_grp inside {[0:num_phy_vrf_grp-1]};
-		srf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		srf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		srf_wr_dsel < 2;
 	}
 		
@@ -255,7 +255,7 @@ class spa2rfm_fu extends ovm_object;
   
 	constraint valid_vars{
 		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
-		vrf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		vrf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		vrf_wr_bk inside {[0:num_vrf_bks-1]};
 		subv dist {0:=5, 1:=5};
 		foreach(wen[i])
@@ -319,7 +319,7 @@ class tr_dse2rfm extends ovm_sequence_item;
 		foreach(wen[i])
 			wen[i] dist {0:=1, 1:=9};
 		wr_grp inside {[0:num_phy_vrf_grp-1]};
-		wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		wr_bk inside {[0:num_vrf_bks-1]};
 		subv dist {0:=5, 1:=5};
 		srf_wr dist {0:=9, 1:=1};
@@ -403,7 +403,7 @@ class ise2spa_fu extends ovm_object;
   constraint valid_vars{
     en dist {0:=1, 1:=9};
 		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
-		vrf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		vrf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		vrf_wr_bk inside {[0:num_vrf_bks-1]};
   }
     
@@ -645,7 +645,7 @@ class tr_ise2spu extends ovm_sequence_item;
     pr_rd_adr_dse <= num_pr;
 		srf_wr_bk inside {[0:num_vrf_bks-1]};
 		srf_wr_grp inside {[0:num_phy_vrf_grp-1]};
-		srf_wr_adr inside {[0:num_prf_per_grp/num_vrf_bks-1]};
+		srf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		srf_wr_dsel < 2;
     solve pr_br_adr before pr_br_dep;
     solve op before sop, mop, bop;
