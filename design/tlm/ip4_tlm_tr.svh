@@ -875,3 +875,42 @@ class tr_dse2ise extends ovm_sequence_item;
 	endfunction : new
 	
 endclass : tr_dse2ise
+
+///---------------------------trsaction dse_spa spa_dse------------------------
+
+class tr_spu2tlb extends ovm_sequence_item;
+  rand word op0;
+  rand bit req;
+  rand opcode_e op;
+  rand uchar tid, sr_adr;
+  
+  constraint valid_var{
+    op inside {tlb_ops};
+  }
+  
+	`ovm_object_utils_begin(tr_spu2tlb)
+	  `ovm_field_int(op0, OVM_ALL_ON)
+	  `ovm_field_int(req, OVM_ALL_ON)
+	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(sr_adr, OVM_ALL_ON)
+	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+  `ovm_object_utils_end
+  
+	function new (string name = "tr_ise2tlb");
+		super.new(name);
+	endfunction : new
+	
+endclass : tr_spu2tlb
+
+class tr_tlb2spu extends ovm_sequence_item;
+  rand bit rsp;
+  rand word res;
+  rand uchar tid;
+  
+	`ovm_object_utils_begin(tr_tlb2spu)
+	  `ovm_field_int(rsp, OVM_ALL_ON)
+	  `ovm_field_int(res, OVM_ALL_ON)
+	  `ovm_field_int(tid, OVM_ALL_ON)
+  `ovm_object_utils_end
+  
+endclass : tr_tlb2spu

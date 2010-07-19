@@ -235,7 +235,7 @@ typedef enum uchar {
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr
+  op_tlbwr,   op_g2s,     op_s2g
 } opcode_e;
 
 parameter opcode_e bp_ops[] = '{
@@ -290,7 +290,7 @@ parameter opcode_e sfu_ops[] = '{
   op_clo,     op_clz,     op_ext,     op_ins,
   op_lid,     op_seb,     op_she,     op_wsbh,
   op_max,     op_min,     op_umin,    op_umax,
-  op_smsg
+  op_g2s,     op_s2g
 };
 
 parameter opcode_e dse_ops[] = '{
@@ -311,6 +311,11 @@ parameter opcode_e spu_ops[] = '{
   op_tlbwr
 };
 
+parameter opcode_e tlb_ops[] = '{
+  op_tlbp,    op_tlbr,    op_tlbwi,
+  op_tlbwr,   op_g2s,     op_s2g
+};
+
 parameter opcode_e spu_possible_ops[] = '{
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,
@@ -318,7 +323,8 @@ parameter opcode_e spu_possible_ops[] = '{
   op_add,     op_uadd,    op_sub,     op_usub,
   op_srl,     op_sra,     op_sll,     op_ror,
   op_clo,     op_clz,     op_ext,     op_ins,
-  op_seb,     op_she,     op_wsbh
+  op_seb,     op_she,     op_wsbh,
+  op_g2s,     op_s2g
 ///  op_lw,      op_sw,      op_lh,      op_sh,
 ///  op_lb,      op_sb,      op_ll,      op_sc,
 ///  op_cmpxchg, op_fetadd,  op_lhu,     op_lbu
