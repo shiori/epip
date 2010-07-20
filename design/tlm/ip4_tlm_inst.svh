@@ -257,10 +257,13 @@ typedef union packed{
   bit [3][8] b;
 } i_ap2_u;
 
-
+parameter iop_e iop_i26[] = '{
+        iop_lu,     iop_li
+        };
+        
 parameter iop_e iop_r1w1i[] = '{
-        iop_lu,     iop_li,     iop_addi,     iop_andi,     iop_ori,
-        iop_xori,   iop_addsi,  iop_andsi,    iop_orsi,     iop_xorsi
+        iop_addi,   iop_andi,   iop_ori,
+        iop_xori,   iop_addsi,  iop_andsi,  iop_orsi,   iop_xorsi
         };
 
 parameter iop_e iop_bs[] = '{
@@ -283,9 +286,25 @@ parameter iop_e iop_ls_dse[] = '{
 parameter iop_e iop_msg[] = '{
         iop_smsg,     iop_rmsg
         };                                
-        
+
+parameter iop_e iop_cmps[] = '{
+        iop_cmp,    iop_cmpu,   iop_cmpi,   iop_cmpiu
+        };
+
 class inst_c extends ovm_object;
   inst_u inst;
+  bit decoded, vec_rd;
+  opcode_e op;
+  rbk_sel_e rd_bk[num_fu_rp];
+  uchar rd[2], cnt_vrf_rd, cnt_srf_rd, pr_rd, pr_wr[2], fuid;
+  uint imm;
+  bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], 
+      rd_en[2], pr_rd_en, pr_wr_en[2], pr_br_dep;
+  cmp_opcode_e cmp_op;
+  pr_merge_e merge_op;
+  msc_opcode_e msc_op;
+  msk_opcode_e msk_op;
+  br_opcode_e br_op;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(inst, OVM_ALL_ON)
@@ -293,13 +312,142 @@ class inst_c extends ovm_object;
   
 	function new (string name = "inst_c");
 		super.new(name);
+		decoded = 0;
 	endfunction : new
 
-///	function bit is_sp_dse();
-///    if(inst.i.op inside {iop_sp_dse})
-///      return 1;
-///    return 0;  
-///	endfunction : is_sp_dse
+  function void set_rf_en(input uchar adr, inout rbk_sel_e sel, bit has_vec, 
+                          ref bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks],
+                          inout uchar vrf, srf);
+    uchar cyc, bk;
+    if(adr < 8) begin
+      cyc = adr >> bits_srf_bks;
+      bk = adr & ~{'1 << bits_srf_bks};
+      srf = (srf > cyc) ? vrf : cyc;
+     srf_en[cyc][bk] = 1;
+     sel = rbk_sel_e'(sels0 + cyc * num_srf_bks + bk);
+    end
+    else if(adr > 15) begin
+      cyc = adr >> (bits_srf_bks + 3);
+      bk = (adr >> 3) & ~{'1 << bits_srf_bks};
+      vrf = (vrf > cyc) ? vrf : cyc;
+      vrf_en[cyc][bk] = 1;
+      has_vec = 1;
+      sel = rbk_sel_e'(selv0 + cyc * num_vrf_bks + bk);
+    end
+    else if(adr == 15)
+      sel = selz;
+    else if(adr == 14)
+      sel = seldse;
+    else if(adr == 13)
+      sel = selspu;
+    else if(adr == 12) begin
+      if(fuid > 1)
+        sel = rbk_sel_e'(selfu0 + fuid - 1);
+      else
+        sel = selfu0;
+    end
+  endfunction : set_rf_en
+  
+	function void decode();
+    decoded = 1;
+    rd_bk = '{default : selnull};
+    pr_rd = inst.i.p;
+    pr_rd_en = pr_rd != 0;
+///    rfbp = '{default : fu_null};
+    
+    if(inst.i.op inside {iop_i26}) begin
+      imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
+      rd[0] = inst.i.b.i26.rd;
+      rd_en[0] = 1;
+      rd_bk[1] = selii;
+      case(inst.i.op)
+      iop_lu    : begin op = op_bp1; imm = imm << (word_width / 2); end
+      iop_li    : begin op = op_bp1; end
+      endcase
+    end
+    else if(inst.i.op inside {iop_r1w1i}) begin
+      uint imms = {{word_width{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
+      imm = {inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
+      rd[0] = inst.i.b.i26.rd;
+      rd_en[0] = 1;
+      set_rf_en(inst.i.b.ir1w1.rs, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      rd_bk[1] = selii;
+      case(inst.i.op)
+      iop_addi  : begin op = op_add; end
+      iop_andi  : begin op = op_and; end
+      iop_ori   : begin op = op_or; end
+      iop_xori  : begin op = op_xor; end
+      iop_addsi : begin op = op_add; imm = imms; end
+      iop_andsi : begin op = op_and; imm = imms; end
+      iop_orsi  : begin op = op_or; imm = imms; end
+      iop_xorsi : begin op = op_xor; imm = imms; end
+      endcase
+    end
+    else if(inst.i.op == iop_r3w1) begin
+      set_rf_en(inst.i.b.ir3w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.ir3w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.ir3w1.rs2, rd_bk[2], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+
+      if(inst.i.b.ir3w1.d) begin
+        rd_en = '{default : 1};
+        rd[0] = inst.i.b.ir3w1.rd & ('1 << 1);
+        rd[1] = rd[0] + 1;
+        rd_bk[3] = rbk_sel_e'(rd_bk[2] + 1);
+      end
+      else begin
+        rd_en[0] = 1;
+        rd[0] = inst.i.b.ir3w1.rd;
+      end
+      
+      case(inst.i.op)
+      iop31_mul   : begin op = inst.i.b.ir3w1.s ? op_smul : op_umul; end
+      iop31_mad   : begin op = inst.i.b.ir3w1.s ? op_smad : op_umad; end
+      iop31_msu   : begin op = inst.i.b.ir3w1.s ? op_smsu : op_umsu; end
+      iop31_add3  : begin op = inst.i.b.ir3w1.s ? op_add3 : op_uadd3; end
+      iop31_perm  : begin op = inst.i.b.ir3w1.s ? op_pera : op_perb; end
+      endcase
+    end
+    else if(inst.i.op == iop_r2w1) begin
+      set_rf_en(inst.i.b.ir2w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.ir2w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
+        rd_en = '{default : 1};
+        rd[0] = inst.i.b.ir2w1.rd & ('1 << 1);
+        rd[1] = rd[0] + 1;
+        rd_bk[3] = rbk_sel_e'(rd_bk[2] + 1);
+      end
+      else begin
+        rd_en[0] = 1;
+        rd[0] = inst.i.b.ir2w1.rd;
+      end
+
+      case(inst.i.b.ir2w1.fun)
+      iop21_div   : begin op = op_div; end
+      iop21_quo   : begin op = op_quo; end
+      iop21_res   : begin op = op_res; end
+      iop21_udiv  : begin op = op_udiv; end
+      iop21_uquo  : begin op = op_uquo; end
+      iop21_ures  : begin op = op_ures; end
+      endcase
+    end
+    else if(inst.i.op inside {iop_fcrs}) begin
+      imm = {inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
+      case(inst.i.op)
+      iop_fcr   : begin pr_br_dep = 0; br_op = bop_az; end
+      iop_fcrn  : begin pr_br_dep = 0; br_op = bop_naz; end
+      iop_fcrb  : begin pr_br_dep = 1; br_op = bop_az; end
+      iop_fcrbn : begin pr_br_dep = 1; br_op = bop_naz; end
+      endcase
+      
+    end
+    else if(inst.i.op inside {iop_bs}) begin
+    end
+    else if(inst.i.op inside {iop_cmps}) begin
+      
+    end
+    else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg}) begin
+    end
+	endfunction : decode
 ///	
 ///	function bit is_scl_dse(input bit vec);
 ///    if(inst.i.op inside {iop_ls_dse} && !vec)
@@ -315,49 +463,34 @@ class inst_c extends ovm_object;
 ///    return 0;
 ///	endfunction : is_scl_ma	
 	
-	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start);
+	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0);
+    fuid = id;
+    decoded = 0;
 	  foreach(inst.b[i])
 		  inst.b[i] = data[start+i];
 	endfunction : set_data
-
-  function void set_rf_en(input uchar adr, inout bit has_vec, ref bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], inout uchar vrf, srf);
-    uchar cyc, bk;
-    if(adr < 8) begin
-      cyc = adr >> bits_srf_bks;
-      bk = adr & ~{'1 << bits_srf_bks};
-      srf = (srf > cyc) ? vrf : cyc;
-     srf_en[cyc][bk] = 1;
-    end
-    else if(adr > 15) begin
-      cyc = adr >> (bits_srf_bks + 3);
-      bk = (adr >> 3) & ~{'1 << bits_srf_bks};
-      vrf = (vrf > cyc) ? vrf : cyc;
-      vrf_en[cyc][bk] = 1;
-      has_vec = 1;
-    end
-  endfunction : set_rf_en
-  
+	
   function void analyze_rs(input bit vec, ref bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], inout bit dsev, uchar vrf, srf, dse);
-    bit has_vec = 0;
-    if(inst.i.op inside {iop_r1w1i}) begin
-      set_rf_en(inst.i.b.ir1w1.rs, has_vec, vrf_en, srf_en, vrf, srf);
-      if(!vec && has_vec)
-        ovm_report_warning("ISE", "decode error, non vec inst access vrf");
-    end
-    else if(inst.i.op == iop_r2w1) begin
-      set_rf_en(inst.i.b.ir2w1.rs0, has_vec, vrf_en, srf_en, vrf, srf);
-      set_rf_en(inst.i.b.ir2w1.rs1, has_vec, vrf_en, srf_en, vrf, srf);
-      if(!vec && has_vec && inst.i.b.ir2w1.fun != iop21_mv2s)
-        ovm_report_warning("ISE", "decode error, non vec inst access vrf");      
-      return;
-    end
-    else if(inst.i.op == iop_r3w1) begin
-      set_rf_en(inst.i.b.ir3w1.rs0, has_vec, vrf_en, srf_en, vrf, srf);
-      set_rf_en(inst.i.b.ir3w1.rs1, has_vec, vrf_en, srf_en, vrf, srf);
-      set_rf_en(inst.i.b.ir3w1.rs2, has_vec, vrf_en, srf_en, vrf, srf);
-      if(!vec && has_vec)
-        ovm_report_warning("ISE", "decode error, non vec inst access vrf");       
-    end
+///    bit has_vec = 0;
+///    if(inst.i.op inside {iop_r1w1i}) begin
+///      set_rf_en(inst.i.b.ir1w1.rs, has_vec, vrf_en, srf_en, vrf, srf);
+///      if(!vec && has_vec)
+///        ovm_report_warning("ISE", "decode error, non vec inst access vrf");
+///    end
+///    else if(inst.i.op == iop_r2w1) begin
+///      set_rf_en(inst.i.b.ir2w1.rs0, has_vec, vrf_en, srf_en, vrf, srf);
+///      set_rf_en(inst.i.b.ir2w1.rs1, has_vec, vrf_en, srf_en, vrf, srf);
+///      if(!vec && has_vec && inst.i.b.ir2w1.fun != iop21_mv2s)
+///        ovm_report_warning("ISE", "decode error, non vec inst access vrf");      
+///      return;
+///    end
+///    else if(inst.i.op == iop_r3w1) begin
+///      set_rf_en(inst.i.b.ir3w1.rs0, has_vec, vrf_en, srf_en, vrf, srf);
+///      set_rf_en(inst.i.b.ir3w1.rs1, has_vec, vrf_en, srf_en, vrf, srf);
+///      set_rf_en(inst.i.b.ir3w1.rs2, has_vec, vrf_en, srf_en, vrf, srf);
+///      if(!vec && has_vec)
+///        ovm_report_warning("ISE", "decode error, non vec inst access vrf");       
+///    end
   endfunction : analyze_rs
 
   function void analyze_rd(input bit vec, ref uchar vrf[num_vrf_bks], srf[num_srf_bks], inout uchar pr);

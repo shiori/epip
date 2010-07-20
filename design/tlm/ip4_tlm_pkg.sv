@@ -162,7 +162,7 @@ class tlm_vif_object extends ovm_object;
 endclass : tlm_vif_object
   
 typedef enum uchar {
-  selv[0:127], sels[0:31], seli[0:7], selz, selspu, selii, selnull
+  selv[0:127], sels[0:31], seli[0:7], selz, selii, selspu, seldse, selfu[0:15], selnull
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + num_vrf_bks - 1),
@@ -174,7 +174,7 @@ typedef enum uchar {
 } unit_typ_e;
 
 typedef enum uchar {
-  mac0 = 0, alu0, sfu0, spu0, dse0
+  mac0 = 0, alu0, sfu0, spu0, dse0, fu_null
 } unit_inst_e;
 
 parameter unit_typ_e fu_cfg[num_fu] = '{

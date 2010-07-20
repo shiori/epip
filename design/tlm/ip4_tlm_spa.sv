@@ -174,13 +174,18 @@ class ip4_tlm_spa extends ovm_component;
             spu_res_l = spu.res;
           spu_res = spu_res_l;
           
+          foreach(fu_cfg[i])
+            foreach(op[rp])
+              if(i > fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
+                op[rp] = to_rfm.fu[i].res0;
+                
           if(dse != null)
             foreach(op[rp])
-              op[rp] = fu.dse_bp[rp] ? dse.res : rfm.fu[fid].rp[rp].op;
+              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
           
           if(spu != null)
             foreach(op[rp])
-              op[rp] = fu.spu_bp[rp] ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
+              op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
         end
         
         op0_vec[fid][ise.subv] = rfm.fu[fid].rp[0].op;        
@@ -245,7 +250,7 @@ class ip4_tlm_spa extends ovm_component;
       end
     end
     
-    if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse_en) begin
+    if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse inside {[selfu0:selfu0+num_fu]}) begin
       tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
       if(to_dse != null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
       if(to_rfm == null) begin
@@ -253,7 +258,7 @@ class ip4_tlm_spa extends ovm_component;
         to_dse.emsk = '{default:0};
       end
       else begin
-        uchar fu_sel = uchar'(ise.bp_rf_dse);
+        uchar fu_sel = uchar'(ise.bp_rf_dse) - uchar'(selfu0);
         assert(fu_sel < num_fu);
         if(ise.bp_rf_dse_wp == 0)
           to_dse.res = to_rfm.fu[fu_sel].res0;

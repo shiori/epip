@@ -182,7 +182,7 @@ class ise_thread_inf extends ovm_object;
       i_spu.set_data(ibuf, os);
       i_dse.set_data(ibuf, os);
       foreach(i_fu[i])
-        i_fu[i].set_data(ibuf, os);
+        i_fu[i].set_data(ibuf, os, i);
         
       os = 1 + num_inst_bytes;
       i_spu.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
@@ -223,7 +223,7 @@ class ise_thread_inf extends ovm_object;
       
       foreach(i_fu[i])
         if(en_fu[i]) begin
-          i_fu[i].set_data(ibuf, os);
+          i_fu[i].set_data(ibuf, os, i);
 ///          i_spu.analyze_fu(1, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
           i_fu[i].analyze_rs(1, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
           i_spu.analyze_rd(1, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);

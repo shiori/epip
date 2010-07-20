@@ -390,8 +390,9 @@ class ise2spa_fu extends ovm_object;
   rand opcode_e op;
   rand cmp_opcode_e cop;
   rand uchar vrf_wr_bk, vrf_wr_adr, vrf_wr_grp;
-  rand bit[num_fu_rp-1:0] dse_bp[num_fu_rp];
-  rand bit[num_fu_rp-1:0] spu_bp[num_fu_rp];
+///  rand bit[num_fu_rp-1:0] dse_bp[num_fu_rp];
+///  rand bit[num_fu_rp-1:0] spu_bp[num_fu_rp];
+  rand rbk_sel_e bp_sel[num_fu_rp];
   uchar fu_id;
   
   constraint valid_opcodes{
@@ -414,8 +415,9 @@ class ise2spa_fu extends ovm_object;
 	  `ovm_field_int(vrf_wr_bk, OVM_ALL_ON)
 	  `ovm_field_int(vrf_wr_adr, OVM_ALL_ON)
 	  `ovm_field_int(vrf_wr_grp, OVM_ALL_ON)
-	  `ovm_field_sarray_int(dse_bp, OVM_ALL_ON)
-	  `ovm_field_sarray_int(spu_bp, OVM_ALL_ON)
+	  `ovm_field_sarray_enum(rbk_sel_e, bp_sel, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(dse_bp, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(spu_bp, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "ise2spa_fu");
@@ -434,8 +436,8 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   rand uchar subv, tid, tid_cancel;
   rand bit cancel; /// cancel is sync to vwb0 stage to fu & sfu
   rand uchar bp_rf_dse_wp;
-  rand unit_inst_e bp_rf_dse;
-  rand bit bp_rf_dse_en;
+  rand rbk_sel_e bp_rf_dse;
+///  rand bit bp_rf_dse_en;
 ///  rand uchar cyc;
 ///  rand opcode_e op;
   
@@ -448,16 +450,16 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  `ovm_field_int(pr_br, OVM_ALL_ON)
 	  `ovm_field_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(bp_rf_dse_wp, OVM_ALL_ON)
-	  `ovm_field_int(bp_rf_dse_en, OVM_ALL_ON)
-	  `ovm_field_enum(unit_inst_e, bp_rf_dse, OVM_ALL_ON)
+///	  `ovm_field_int(bp_rf_dse_en, OVM_ALL_ON)
+	  `ovm_field_enum(rbk_sel_e, bp_rf_dse, OVM_ALL_ON)
   `ovm_object_utils_end
   
   constraint dist_vars{
     subv dist {0:=5, 1:=5};
-    bp_rf_dse_en dist {0:=9, 1:=1};
+///    bp_rf_dse_en dist {0:=9, 1:=1};
     cancel dist {0:=19, 1:=1};
     bp_rf_dse_wp < 2;
-    bp_rf_dse inside {mac0, alu0, sfu0};
+    bp_rf_dse dist {selnull:=9, [selfu0:selfu0+num_fu]:=1};
 ///    cyc dist {1:=1, 2:=2, 3:=3, 4:=14};
   }
   
