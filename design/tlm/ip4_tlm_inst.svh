@@ -432,20 +432,47 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_fcrs}) begin
       imm = {inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
+      set_rf_en(inst.i.b.fcr.ja, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
       case(inst.i.op)
       iop_fcr   : begin pr_br_dep = 0; br_op = bop_az; end
       iop_fcrn  : begin pr_br_dep = 0; br_op = bop_naz; end
       iop_fcrb  : begin pr_br_dep = 1; br_op = bop_az; end
       iop_fcrbn : begin pr_br_dep = 1; br_op = bop_naz; end
       endcase
-      
+      rd[0] = 0;
+      rd_en[0] = inst.i.b.fcr.l;
+      msk_op = inst.i.b.fcr.mu ? (inst.i.b.fcr.l ? mop_if : mop_rstor) : mop_nop;
+      msc_op = inst.i.b.fcr.su ? (inst.i.b.fcr.l ? sop_store : sop_pop2n) : sop_nop;
     end
     else if(inst.i.op inside {iop_bs}) begin
+      imm = {inst.i.b.b.sc, inst.i.b.b.os};
+      case(inst.i.op)
+      iop_b   : begin pr_br_dep = 0; br_op = bop_az; end
+      iop_bn  : begin pr_br_dep = 0; br_op = bop_naz; end
+      iop_bb  : begin pr_br_dep = 1; br_op = bop_az; end
+      iop_bbn : begin pr_br_dep = 1; br_op = bop_naz; end
+      endcase
+      case(inst.i.b.b.sop)
+      2'b00 : msc_op = sop_nop;
+      2'b01 : msc_op = sop_pop2n;
+      2'b10 : msc_op = sop_store;
+      endcase
+      case(inst.i.b.b.sop)
+      3'b000 : msk_op = mop_nop;
+      3'b001 : msk_op = mop_bc;
+      3'b010 : msk_op = mop_rstor;
+      3'b011 : msk_op = mop_loop;
+      3'b100 : msk_op = mop_else;
+      3'b101 : msk_op = mop_cont;
+      3'b110 : msk_op = mop_if;
+      3'b111 : msk_op = mop_brk;
+      endcase
     end
     else if(inst.i.op inside {iop_cmps}) begin
-      
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg}) begin
+    end
+    else if(inst.i.op == iop_cop) begin
     end
 	endfunction : decode
 ///	
