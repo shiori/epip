@@ -186,10 +186,12 @@ class ip4_tlm_rfm extends ovm_component;
       if(ise.dse_en) begin
         ovm_report_info("RFM_RD", $psprintf("Read for DSE cyc %0d ...", cyc), OVM_HIGH);
         if(to_dse == null) to_dse = tr_rfm2dse::type_id::create("to_dse", this);
-        foreach(to_dse.op[sp])
+        foreach(to_dse.op[sp]) begin
           to_dse.op[sp] = read_rf(ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+          to_dse.op1[sp] = read_rf(ise.dse_rd_bk[1], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+        end
         if(cyc == 0) begin
-          to_dse.op1 = read_rf(ise.dse_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+///          to_dse.op1 = read_rf(ise.dse_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
           to_dse.op2 = read_rf(ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
         end
       end

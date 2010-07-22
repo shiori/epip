@@ -360,7 +360,7 @@ class tr_dse2rfm extends ovm_sequence_item;
 endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
-	rand word op[num_sp], op1, op2;
+	rand word op[num_sp], op1[num_sp], op2;
 	rand uchar subv;
 	
 	constraint valid_vars{
@@ -369,7 +369,7 @@ class tr_rfm2dse extends ovm_sequence_item;
 	
 	`ovm_object_utils_begin(tr_rfm2dse)
 		`ovm_field_sarray_int(op, OVM_ALL_ON)
-		`ovm_field_int(op1, OVM_ALL_ON)
+		`ovm_field_sarray_int(op1, OVM_ALL_ON)
 		`ovm_field_int(op2, OVM_ALL_ON)
 		`ovm_field_int(subv, OVM_ALL_ON)
   `ovm_object_utils_end
@@ -831,7 +831,8 @@ endclass : tr_dse2spa
 ///---------------------------trsaction dse_ise ise_dse------------------------
 
 class tr_ise2dse extends ovm_sequence_item;
-  rand uchar wr_grp, wr_adr, wr_bk, tid;
+  rand uchar wr_grp, wr_adr, wr_bk,
+             br_wr_grp, br_wr_adr, br_wr_bk, tid;
   rand bit vec, en, bp_data;
   rand opcode_e op;
   
@@ -839,6 +840,9 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(wr_bk, OVM_ALL_ON)
 	  `ovm_field_int(wr_adr, OVM_ALL_ON)
 	  `ovm_field_int(wr_grp, OVM_ALL_ON)
+	  `ovm_field_int(br_wr_bk, OVM_ALL_ON)
+	  `ovm_field_int(br_wr_adr, OVM_ALL_ON)
+	  `ovm_field_int(br_wr_grp, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(bp_data, OVM_ALL_ON)
