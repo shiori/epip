@@ -96,48 +96,54 @@ typedef struct packed{
 }i_fcr;
 
 typedef struct packed{
-  bit[6] sc;
+  bit[8] sc;
   bit[18] os;
   bit[2] sop;
   bit[3] mop;
-  bit[2] bt;
+///  bit[2] bt;
 }i_b;
 
 typedef struct packed{
   irda_t rd;
-  bit os2;
-  isrsa_t rb;
+///  bit os2;
+  irsa_t rb;
   bit[14] os1;
-  bit[5] os0;
+  bit[4] os0;
   bit[2] ua;
+  bit b;
 }i_load;
 
 typedef struct packed{
-  bit[6] os2;
-  isrsa_t rb;
+  bit[5] os2;
+  irsa_t rb;
   irsa_t rs;
   bit[9] os1;
-  bit[5] os0;
+  bit[4] os0;
   bit[2] ua;
+  bit b;
 }i_store;
 
 typedef struct packed{
-  bit[6] os1;
-  isrsa_t rb;
+  bit[5] os1;
+  irsa_t rb;
   irsa_t rs0, rs1;
-  bit[4] os0;
-  bit[5] os2;
+  bit[3] os0;
+  bit[4] os2;
   bit[2] ua;
+  bit b;
 }i_cmpexchg;
 
 typedef struct packed{
-  bit[6] dummy0;
+  irda_t rd;
+  bit dummy0;
   isrsa_t rss;
   bit[2] dummy1;
   bit[3] rt;
   irsa_t rvs;
-  bit[6] dummy2;
-  bit t, pb, b;
+  bit dummy2;
+  bit[5] s;
+  bit[2] t;
+  bit b;
   bit[2] mid;
 }i_smsg;
 

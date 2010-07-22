@@ -80,12 +80,12 @@ class ip4_tlm_spa extends ovm_component;
   
   extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, 
                                       const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
-                                      ref bit pres0[num_sp], pres1[num_sp], pres2[num_sp], 
-                                      pres3[num_sp], word res0[num_sp], r1[num_sp]);
+                                      ref bit pres0[num_sp], pres1[num_sp], /// pres2[num_sp], pres3[num_sp],
+                                      word res0[num_sp], r1[num_sp]);
   // endfunction
 
-  extern function void proc_data_vec(input uchar, tr_ise2spa, tr_rfm2spa, tr_spu2spa, tr_spa2rfm, tr_spa2spu);
-  // endfunction
+///  extern function void proc_data_vec(input uchar, tr_ise2spa, tr_rfm2spa, tr_spu2spa, tr_spa2rfm, tr_spa2spu);
+///  // endfunction
     
   function void comb_proc();
     ovm_report_info("SPA", "comb_proc procing...", OVM_HIGH); 
@@ -131,7 +131,7 @@ class ip4_tlm_spa extends ovm_component;
     tr_spa2ise to_ise;
     tr_spa2spu to_spu;
     tr_spa2dse to_dse;
-    bit pr2dse[num_sp];
+///    bit pr2dse[num_sp];
     uchar tmp[cyc_vec][num_sp];
     
     ovm_report_info("SPA", "req_proc procing...", OVM_HIGH); 
@@ -200,10 +200,10 @@ class ip4_tlm_spa extends ovm_component;
             end
         end
         proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.fu[fid].emsk, op,
-                  to_spu.pres_cmp0, to_spu.pres_cmp1, to_spu.pres_update,
-                  pr2dse, to_rfm.fu[fid].res0, to_rfm.fu[fid].res1);
+                  to_spu.pres_cmp0, to_spu.pres_cmp1,/// to_spu.pres_update, pr2dse, 
+                  to_rfm.fu[fid].res0, to_rfm.fu[fid].res1);
         
-        proc_data_vec(fid, ise, rfm, spu, to_rfm, to_spu);
+///        proc_data_vec(fid, ise, rfm, spu, to_rfm, to_spu);
         
       end
     end
@@ -229,7 +229,7 @@ class ip4_tlm_spa extends ovm_component;
           op[i] = rfm.fu[fid].rp[i].op;
           
         proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.fu[fid].emsk, op,
-                  pres, pres, pres, pres, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid]);
+                  pres, pres, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid]);
       end
     end
    
@@ -255,7 +255,7 @@ class ip4_tlm_spa extends ovm_component;
       if(to_dse != null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
       if(to_rfm == null) begin
         to_dse.res = '{default:0};
-        to_dse.emsk = '{default:0};
+///        to_dse.emsk = '{default:0};
       end
       else begin
         uchar fu_sel = uchar'(ise.bp_rf_dse) - uchar'(selfu0);
@@ -264,7 +264,7 @@ class ip4_tlm_spa extends ovm_component;
           to_dse.res = to_rfm.fu[fu_sel].res0;
         else
           to_dse.res = to_rfm.fu[fu_sel].res1;
-        to_dse.emsk = pr2dse;
+///        to_dse.emsk = pr2dse;
       end
     end
     
@@ -393,7 +393,7 @@ endclass : ip4_tlm_spa
   
 function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_merge_e fmerge, 
                                     uchar subv, const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
-                                    ref bit pres0[num_sp], pres1[num_sp], pres2[num_sp], pres3[num_sp],
+                                    ref bit pres0[num_sp], pres1[num_sp], ///pres2[num_sp], pres3[num_sp],
                                     word res0[num_sp], r1[num_sp]);
   bit pres[num_sp];
   bit[word_width:0] op0[num_sp], op1[num_sp], op2[num_sp], op3[num_sp], r0[num_sp] = '{default:0};
@@ -467,52 +467,52 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   
   op_cmp,
   op_ucmp,  
-  op_ggsw,
-  op_ggsh,
-  op_ggsb,
-  op_pera,
-  op_perb:  begin end /// those are not processed by this case statement
-  op_vsl,
-  op_vslu,
-  op_vror,
-  op_vroru,
-  op_vsr,
-  op_vsru:
-    begin
-    end  /// those are not processed by this case statement
-  op_gglw:
-    begin
-      word base = grag_base >> 7;
-      pres2 = emsk;
-      foreach(op0[sp])
-        if(base == (o[0][sp] >> 7)) begin
-          r0[sp] = (o[0][sp] >> 2) & 'b011111;
-          pres2[sp] = 0;
-          pres0[sp] = 1;
-        end
-    end
-  op_gglb:
-    begin
-      word base = grag_base >> 6;
-      pres2 = emsk;
-      foreach(op0[sp])
-        if(base == (o[0][sp] >> 6)) begin
-          r0[sp] = (o[0][sp] >> 1) & 'b011111;
-          pres2[sp] = 0;
-          pres0[sp] = 1;
-        end
-    end
-  op_gglh:
-    begin
-      word base = grag_base >> 5;
-      pres2 = emsk;
-      foreach(op0[sp])
-        if(base == (o[0][sp] >> 5)) begin
-          r0[sp] = o[0][sp] & 'b011111;
-          pres2[sp] = 0;
-          pres0[sp] = 1;
-        end
-    end
+///  op_ggsw,
+///  op_ggsh,
+///  op_ggsb,
+///  op_pera,
+///  op_perb:  begin end /// those are not processed by this case statement
+///  op_vsl,
+///  op_vslu,
+///  op_vror,
+///  op_vroru,
+///  op_vsr,
+///  op_vsru:
+///    begin
+///    end  /// those are not processed by this case statement
+///  op_gglw:
+///    begin
+///      word base = grag_base >> 7;
+///      pres2 = emsk;
+///      foreach(op0[sp])
+///        if(base == (o[0][sp] >> 7)) begin
+///          r0[sp] = (o[0][sp] >> 2) & 'b011111;
+///          pres2[sp] = 0;
+///          pres0[sp] = 1;
+///        end
+///    end
+///  op_gglb:
+///    begin
+///      word base = grag_base >> 6;
+///      pres2 = emsk;
+///      foreach(op0[sp])
+///        if(base == (o[0][sp] >> 6)) begin
+///          r0[sp] = (o[0][sp] >> 1) & 'b011111;
+///          pres2[sp] = 0;
+///          pres0[sp] = 1;
+///        end
+///    end
+///  op_gglh:
+///    begin
+///      word base = grag_base >> 5;
+///      pres2 = emsk;
+///      foreach(op0[sp])
+///        if(base == (o[0][sp] >> 5)) begin
+///          r0[sp] = o[0][sp] & 'b011111;
+///          pres2[sp] = 0;
+///          pres0[sp] = 1;
+///        end
+///    end
   op_div:   foreach(r0[i]) begin r0[i] = op0[i] / op1[i]; r1[i] = op0[i] % op1[i]; end
   op_udiv:  foreach(r0[i]) begin r0[i] = o[0][i] / o[1][i]; r1[i] = o[0][i] % o[1][i]; end
   op_quo:   foreach(r0[i]) r0[i] = op0[i] / op1[i];
@@ -601,94 +601,94 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   endcase
 endfunction : proc_data
         
-function void ip4_tlm_spa::proc_data_vec(input uchar fid, tr_ise2spa ise, tr_rfm2spa rfm, tr_spu2spa spu,
-                                         tr_spa2rfm to_rfm, tr_spa2spu to_spu);
-  uchar tmp[cyc_vec][num_sp];
-  ise2spa_fu fu = ise.fu[fid];
-  
-  case(fu.op)
-  op_ggsw:
-    begin
-      to_spu.pres_update = spu.fu[fid].emsk;
-      foreach(to_rfm.fu[0].res0[k])
-        foreach(tmp[i,j]) begin
-          uchar vid = (op0_vec[fid][i][j] >> 2) & 'b011111;
-          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
-              && ((grag_base >> 7) == (op0_vec[fid][i][j] >> 7))) begin
-            to_spu.pres_cmp0[k] = 1;
-            to_spu.pres_update[k] = 0;
-            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
-          end
-        end
-    end
-  op_ggsh:
-    begin
-      to_spu.pres_update = spu.fu[fid].emsk;
-      foreach(to_rfm.fu[0].res0[k])
-        foreach(tmp[i,j]) begin
-          uchar vid = (op0_vec[fid][i][j] >> 1) & 'b011111;
-          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
-              && ((grag_base >> 6) == (op0_vec[fid][i][j] >> 6))) begin
-            to_spu.pres_cmp0[k] = 1;
-            to_spu.pres_update[k] = 0;
-            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
-          end
-        end
-    end
-  op_ggsb:
-    begin
-      to_spu.pres_update = spu.fu[fid].emsk;
-      foreach(to_rfm.fu[0].res0[k])
-        foreach(tmp[i,j]) begin
-          uchar vid = op0_vec[fid][i][j] & 'b011111;
-          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
-              && ((grag_base >> 5) == (op0_vec[fid][i][j] >> 5))) begin
-            to_spu.pres_cmp0[k] = 1;
-            to_spu.pres_update[k] = 0;
-            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
-          end
-        end
-    end              
-    op_pera:
-    ///wen is emsk after permute
-      begin
-        foreach(rfm.fu[0].rp[2].op[sp]) begin
-          uchar subv = rfm.fu[fid].rp[2].op[sp] >> 3,
-                sel = rfm.fu[fid].rp[2].op[sp] & 'b0111;
-          if(rfm.fu[fid].rp[2].op[sp] < 32) begin
-            to_rfm.fu[fid].res0[sp] = op0_vec[fid][subv][sel];
-            to_rfm.fu[fid].wen[sp] = emsk_vec[fid][subv][sel];
-          end
-          else if(rfm.fu[fid].rp[2].op[sp] < 64) begin
-            to_rfm.fu[fid].res0[sp] = op1_vec[fid][subv][sel];
-            to_rfm.fu[fid].wen[sp] = emsk_vec[fid][subv][sel];
-          end
-          else
-            to_rfm.fu[fid].wen[sp] = 0;
-        end
-      end
-    op_perb:
-    ///wen is emsk before permute
-      begin
-        to_rfm.fu[fid].wen = spu.fu[fid].emsk;
-        foreach(rfm.fu[0].rp[2].op[sp]) begin
-          uchar subv = rfm.fu[fid].rp[2].op[sp] >> 3,
-                sel = rfm.fu[fid].rp[2].op[sp] & 'b0111;
-          if(rfm.fu[fid].rp[2].op[sp] < 32)
-            to_rfm.fu[fid].res0[sp] = op0_vec[fid][subv][sel];
-          else if(rfm.fu[fid].rp[2].op[sp] < 64)
-            to_rfm.fu[fid].res0[sp] = op1_vec[fid][subv][sel];
-          else
-            to_rfm.fu[fid].wen[sp] = 0;
-        end
-      end
-  op_vsl,
-  op_vslu,
-  op_vror,
-  op_vroru,
-  op_vsr,
-  op_vsru:
-    begin
-    end  /// those are not processed by this case statement            
-  endcase
-endfunction : proc_data_vec
+///function void ip4_tlm_spa::proc_data_vec(input uchar fid, tr_ise2spa ise, tr_rfm2spa rfm, tr_spu2spa spu,
+///                                         tr_spa2rfm to_rfm, tr_spa2spu to_spu);
+///  uchar tmp[cyc_vec][num_sp];
+///  ise2spa_fu fu = ise.fu[fid];
+///  
+///  case(fu.op)
+///  op_ggsw:
+///    begin
+///      to_spu.pres_update = spu.fu[fid].emsk;
+///      foreach(to_rfm.fu[0].res0[k])
+///        foreach(tmp[i,j]) begin
+///          uchar vid = (op0_vec[fid][i][j] >> 2) & 'b011111;
+///          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
+///              && ((grag_base >> 7) == (op0_vec[fid][i][j] >> 7))) begin
+///            to_spu.pres_cmp0[k] = 1;
+///            to_spu.pres_update[k] = 0;
+///            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
+///          end
+///        end
+///    end
+///  op_ggsh:
+///    begin
+///      to_spu.pres_update = spu.fu[fid].emsk;
+///      foreach(to_rfm.fu[0].res0[k])
+///        foreach(tmp[i,j]) begin
+///          uchar vid = (op0_vec[fid][i][j] >> 1) & 'b011111;
+///          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
+///              && ((grag_base >> 6) == (op0_vec[fid][i][j] >> 6))) begin
+///            to_spu.pres_cmp0[k] = 1;
+///            to_spu.pres_update[k] = 0;
+///            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
+///          end
+///        end
+///    end
+///  op_ggsb:
+///    begin
+///      to_spu.pres_update = spu.fu[fid].emsk;
+///      foreach(to_rfm.fu[0].res0[k])
+///        foreach(tmp[i,j]) begin
+///          uchar vid = op0_vec[fid][i][j] & 'b011111;
+///          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
+///              && ((grag_base >> 5) == (op0_vec[fid][i][j] >> 5))) begin
+///            to_spu.pres_cmp0[k] = 1;
+///            to_spu.pres_update[k] = 0;
+///            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
+///          end
+///        end
+///    end              
+///    op_pera:
+///    ///wen is emsk after permute
+///      begin
+///        foreach(rfm.fu[0].rp[2].op[sp]) begin
+///          uchar subv = rfm.fu[fid].rp[2].op[sp] >> 3,
+///                sel = rfm.fu[fid].rp[2].op[sp] & 'b0111;
+///          if(rfm.fu[fid].rp[2].op[sp] < 32) begin
+///            to_rfm.fu[fid].res0[sp] = op0_vec[fid][subv][sel];
+///            to_rfm.fu[fid].wen[sp] = emsk_vec[fid][subv][sel];
+///          end
+///          else if(rfm.fu[fid].rp[2].op[sp] < 64) begin
+///            to_rfm.fu[fid].res0[sp] = op1_vec[fid][subv][sel];
+///            to_rfm.fu[fid].wen[sp] = emsk_vec[fid][subv][sel];
+///          end
+///          else
+///            to_rfm.fu[fid].wen[sp] = 0;
+///        end
+///      end
+///    op_perb:
+///    ///wen is emsk before permute
+///      begin
+///        to_rfm.fu[fid].wen = spu.fu[fid].emsk;
+///        foreach(rfm.fu[0].rp[2].op[sp]) begin
+///          uchar subv = rfm.fu[fid].rp[2].op[sp] >> 3,
+///                sel = rfm.fu[fid].rp[2].op[sp] & 'b0111;
+///          if(rfm.fu[fid].rp[2].op[sp] < 32)
+///            to_rfm.fu[fid].res0[sp] = op0_vec[fid][subv][sel];
+///          else if(rfm.fu[fid].rp[2].op[sp] < 64)
+///            to_rfm.fu[fid].res0[sp] = op1_vec[fid][subv][sel];
+///          else
+///            to_rfm.fu[fid].wen[sp] = 0;
+///        end
+///      end
+///  op_vsl,
+///  op_vslu,
+///  op_vror,
+///  op_vroru,
+///  op_vsr,
+///  op_vsru:
+///    begin
+///    end  /// those are not processed by this case statement            
+///  endcase
+///endfunction : proc_data_vec

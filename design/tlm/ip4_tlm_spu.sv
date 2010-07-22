@@ -49,12 +49,12 @@ class ip4_tlm_spu extends ovm_component;
   
   ///buffer for branch infos
   local bit b_pd[num_thread], b_nmsk[num_thread], b_inv[num_thread];
-  local uchar b_rdy[num_thread], b_adr[num_thread], b_rot_adr[num_thread];
+  local uchar b_rdy[num_thread], b_adr[num_thread];///, b_rot_adr[num_thread];
   local br_opcode_e bop[num_thread];
   local msc_opcode_e sop[num_thread];
   local msk_opcode_e mop[num_thread];
   local ushort popcnt[num_thread];
-  local bit b_rot_up[num_thread], b_rot_val[num_thread], b_ec_nzo[num_thread];
+///  local bit b_rot_up[num_thread], b_rot_val[num_thread], b_ec_nzo[num_thread];
   
   `ovm_component_utils_begin(ip4_tlm_spu)
   `ovm_component_utils_end
@@ -103,14 +103,17 @@ class ip4_tlm_spu extends ovm_component;
     to_rfm = v.rfm[stage_rrf_swbp];
     
     ///----------process data---------------------
+    ///write back predication register results
     if(v.fm_spa != null && v.fm_ise[stage_rrf_vwb0] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_vwb0];
       tr_spa2spu spa = v.fm_spa;
       ovm_report_info("SPU", "write back SPA pres", OVM_HIGH);
       pr[ise.tid][ise.pr_wr_adr0][ise.subv] = spa.pres_cmp0;
       pr[ise.tid][ise.pr_wr_adr1][ise.subv] = spa.pres_cmp1;
+      if(v.fm_dse != null)
+        pr[ise.tid][ise.pr_wr_adr2][ise.subv] = v.fm_dse.pres;
       /// used for op_grag, op_vroru, op_vsru, op_vslu
-      pr[ise.tid][ise.pr_up_adr][ise.subv] = spa.pres_update;
+///      pr[ise.tid][ise.pr_up_adr][ise.subv] = spa.pres_update;
       if(ise.op inside {op_br, op_fcr} && b_pd[ise.tid] && b_rdy[ise.tid] > 0)
         b_rdy[ise.tid]--;
     end
@@ -208,12 +211,12 @@ class ip4_tlm_spu extends ovm_component;
         sop[ise.tid] = ise.sop;
         bop[ise.tid] = ise.bop;
         popcnt[ise.tid] = v.fm_rfm[stage_rrf_rrc1] == null ? 0 : v.fm_rfm[stage_rrf_rrc1].op0;
-        b_rot_up[ise.tid] = ise.pr_up_en_rot;
-        b_rot_val[ise.tid] = ise.pr_up_val_rot;
-        b_ec_nzo[ise.tid] = ise.pr_up_fnaz_rot;
+///        b_rot_up[ise.tid] = ise.pr_up_en_rot;
+///        b_rot_val[ise.tid] = ise.pr_up_val_rot;
+///        b_ec_nzo[ise.tid] = ise.pr_up_fnaz_rot;
         b_pd[ise.tid] = 1;
         b_adr[ise.tid] = ise.pr_br_adr;
-        b_rot_adr[ise.tid] = ise.pr_up_adr_rot;
+///        b_rot_adr[ise.tid] = ise.pr_up_adr_rot;
         b_nmsk[ise.tid] = ise.pr_nmsk_spu;
         b_inv[ise.tid] = ise.pr_inv_spu;
         if(ise.pr_br_dep) begin
@@ -229,7 +232,7 @@ class ip4_tlm_spu extends ovm_component;
     foreach(b_pd[tid])
       if(b_pd[tid] && b_rdy[tid] == 0) begin
         uchar adr = b_adr[tid];
-        bit is_nop = mop[adr] == mop_nop, ec_nzo = b_ec_nzo[tid], emsk_az = 1, update_msc = 0;
+        bit is_nop = mop[adr] == mop_nop, emsk_az = 1, update_msc = 0;///ec_nzo = b_ec_nzo[tid], 
         bit emsk[cyc_vec][num_sp] = adr == 0 ? '{default:1} : pr[tid][adr];
         
         
@@ -263,11 +266,11 @@ class ip4_tlm_spu extends ovm_component;
              break;
           end
         
-        foreach(emsk[j,k]) 
-          if(!emsk[j][k] && b_rot_up[tid])
-            pr[tid][b_rot_adr[tid]][j][k] = b_rot_val[tid];
+///        foreach(emsk[j,k]) 
+///          if(!emsk[j][k] && b_rot_up[tid])
+///            pr[tid][b_rot_adr[tid]][j][k] = b_rot_val[tid];
         
-        if(is_nop || ec_nzo)
+        if(is_nop)/// || ec_nzo)
           to_ise.br_taken = 0;
         else
           case(bop[adr])
@@ -297,8 +300,8 @@ class ip4_tlm_spu extends ovm_component;
             ilm[tid] = emsk;
             cm[tid] = emsk;
           end
-          else if(ec_nzo)
-            cm[tid] = ilm[tid];
+///          else if(ec_nzo)
+///            cm[tid] = ilm[tid];
         mop_cont  :
           if(!emsk_az)
             cm[tid] = emsk;
