@@ -17,9 +17,9 @@ typedef enum bit[5:0] {
   iop_lw = 'b110000,        iop_sw = 'b110001,      iop_lh = 'b110010,        iop_sh = 'b110011,
   iop_lb = 'b110100,        iop_sb = 'b110101,      iop_ll = 'b110110,        iop_sc = 'b110111,
   iop_cmpxchg = 'b111000,   iop_fetadd = 'b111001,  iop_lhu = 'b111010,       iop_lbu = 'b111011,
-  iop_pref = 'b111100,      iop_cache = 'b111101,   iop_smsg = 'b001100,      iop_rmsg = 'b001101,
+  iop_mctl = 'b111100,      iop_smsg = 'b001100,    iop_rmsg = 'b001101,
   iop_cmp = 'b001110,       iop_cmpu = 'b001111,    iop_cmpi = 'b010000,      iop_cmpiu = 'b010001,
-  iop_cop = 'b010010,       iop_grag = 'b010011,    iop_shuf4 = 'b010100
+  iop_cop = 'b010010,       iop_vxchg = 'b010100    ///iop_grag = 'b010011,    
 } iop_e;
 
 typedef struct packed{
@@ -37,7 +37,7 @@ typedef struct packed{
 
 typedef enum bit[4:0] {
   iop31_mul,    iop31_mad,    iop31_msu,
-  iop31_add3,   iop31_perm
+  iop31_add3
 } iop_r3w1_e;
 
 typedef struct packed{
@@ -128,13 +128,23 @@ typedef struct packed{
 
 typedef struct packed{
   bit[5] os1;
+  isrsa_t rb;
+  bit dummy;
+  bit[13] os0;
+  bit[5] fun;
+  bit c;
+  bit b;
+}i_mctl;
+
+typedef struct packed{
+  bit[5] os1;
   irsa_t rb;
   irsa_t rs0, rs1;
   bit[3] os0;
   bit[4] os2;
   bit[2] ua;
   bit b;
-}i_cmpexchg;
+}i_cmpxchg;
 
 typedef struct packed{
   irda_t rd;
@@ -179,6 +189,14 @@ typedef struct packed{
   bit[4] mtyp;
 }i_cmpi;
 
+typedef struct packed{
+  irda_t rd;
+  irsa_t rs0, rs1;
+  bit[12] fun;
+  bit dummy;
+  bit s, up, t;
+}i_vxchg;
+
 typedef enum bit[4:0] {
   icop_sysc,    icop_eret,      icop_wait,      icop_exit,
   icop_brk,     icop_tsync,     icop_msync,     icop_alloc,
@@ -201,12 +219,14 @@ typedef union packed{
   i_b b;
   i_load ld;
   i_store st;
-  i_cmpexchg cmpexchg;
+  i_mctl mctl;
+  i_cmpxchg cmpxchg;
   i_smsg smsg;
   i_rmsg rmsg;
   i_cmp cmp;
   i_cmpi cmpi;
   i_cop cop;
+  i_vxchg vxchg;
 } i_body;
 
 typedef struct packed{
@@ -284,7 +304,7 @@ parameter iop_e iop_fcrs[] = '{
         };
         
 parameter iop_e iop_sp_dse[] = '{
-        iop_cmpxchg,    iop_fetadd,   iop_pref
+        iop_cmpxchg,    iop_fetadd,   iop_mctl
         };
 
 parameter iop_e iop_ls_dse[] = '{
@@ -314,6 +334,7 @@ class inst_c extends ovm_object;
   msc_opcode_e msc_op;
   msk_opcode_e msk_op;
   br_opcode_e br_op;
+  uchar m_b, m_ua, m_fun;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(inst, OVM_ALL_ON)
@@ -413,7 +434,6 @@ class inst_c extends ovm_object;
       iop31_mad   : begin op = inst.i.b.ir3w1.s ? op_smad : op_umad; end
       iop31_msu   : begin op = inst.i.b.ir3w1.s ? op_smsu : op_umsu; end
       iop31_add3  : begin op = inst.i.b.ir3w1.s ? op_add3 : op_uadd3; end
-      iop31_perm  : begin op = inst.i.b.ir3w1.s ? op_pera : op_perb; end
       endcase
     end
     else if(inst.i.op == iop_r2w1) begin
@@ -520,30 +540,55 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg}) begin
       rd_bk[2] = selii;
+      m_b = inst.i.b.ld.b;
+      m_ua = inst.i.b.ld.ua;
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
         set_rf_en(inst.i.b.ld.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      case(inst.i.op)
+      iop_lw    : op = op_lw;
+      iop_lh    : op = op_lh;
+      iop_lb    : op = op_lb;
+      iop_ll    : op = op_ll;
+      iop_lhu   : op = op_lhu;
+      iop_lbu   : op = op_lbu;
+      endcase
       end
       else if(inst.i.op inside {iop_sw, iop_sh, iop_sb, iop_sc}) begin
         imm = {inst.i.b.st.os2, inst.i.b.st.os1, inst.i.b.st.os0};
         set_rf_en(inst.i.b.st.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
         set_rf_en(inst.i.b.st.rs, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
-      end
-      
       case(inst.i.op)
-      iop_lw    : op = op_lw;
       iop_sw    : op = op_sw;
-      iop_lh    : op = op_lh;
       iop_sh    : op = op_sh;
-      iop_lb    : op = op_lb;
       iop_sb    : op = op_sb;
-      iop_ll    : op = op_ll;
       iop_sc    : op = op_sc;
-      iop_lhu   : op = op_lhu;
-      iop_lbu   : op = op_lbu;
-      iop_smsg  : op = op_smsg;
-      iop_rmsg  : op = op_rmsg;
       endcase
+      end
+      else if(inst.i.op == iop_cmpxchg) begin
+        op = op_cmpxchg;
+        imm = {inst.i.b.cmpxchg.os2, inst.i.b.cmpxchg.os1, inst.i.b.cmpxchg.os0};
+        set_rf_en(inst.i.b.cmpxchg.rs0, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.cmpxchg.rs1, rd_bk[2], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      end
+      else if(inst.i.op == iop_mctl) begin
+        m_fun = inst.i.b.mctl.fun;
+        imm = {inst.i.b.mctl.os1, inst.i.b.mctl.os0};
+        if(inst.i.b.mctl.c)
+          op = op_cache;
+        if(m_fun < 7)
+          op = op_pref;
+        else if(m_fun < 13)
+          op = op_sync;
+        else if(m_fun == 13)
+          op = op_synci;
+      end
+      else if(inst.i.op == iop_smsg) begin
+        op = op_smsg;
+      end
+      else if(inst.i.op == iop_rmsg) begin
+        op = op_rmsg;
+      end
     end
     else if(inst.i.op == iop_cop) begin
     end
