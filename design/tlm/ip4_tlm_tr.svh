@@ -360,7 +360,7 @@ class tr_dse2rfm extends ovm_sequence_item;
 endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
-	rand word op[num_sp], op1[num_sp], op2;
+	rand word base[num_sp], op1[num_sp], op2;
 	rand uchar subv;
 	
 	constraint valid_vars{
@@ -368,7 +368,7 @@ class tr_rfm2dse extends ovm_sequence_item;
 	}
 	
 	`ovm_object_utils_begin(tr_rfm2dse)
-		`ovm_field_sarray_int(op, OVM_ALL_ON)
+		`ovm_field_sarray_int(base, OVM_ALL_ON)
 		`ovm_field_sarray_int(op1, OVM_ALL_ON)
 		`ovm_field_int(op2, OVM_ALL_ON)
 		`ovm_field_int(subv, OVM_ALL_ON)
@@ -616,7 +616,8 @@ class tr_ise2spu extends ovm_sequence_item;
   rand pr_merge_e fmerge;  
   rand opcode_e op;
   
-  rand uchar tid, cycs, subs, subv;;  
+  rand uchar tid, subv, vec_mode;
+  rand bit spu_start;
   rand bit pr_br_dep;
   rand uchar pr_br_adr;
   
@@ -638,8 +639,9 @@ class tr_ise2spu extends ovm_sequence_item;
     pr_br_dep dist {0:=6, 1:=4};
     pr_br_adr <= num_pr;
     subv dist {0:=5, 1:=5};
-    subs dist {0:=5, 1:=5};
-    cycs inside {[1:cyc_vec]};
+    vec_mode < 4;
+///    subs dist {0:=5, 1:=5};
+///    cycs inside {[1:cyc_vec]};
     pr_br_adr == 0 -> pr_br_dep == 0;
     op inside {spu_ops, spu_possible_ops};
     op != op_br -> sop == sop_nop && mop == mop_nop && bop == bop_az;
@@ -663,18 +665,18 @@ class tr_ise2spu extends ovm_sequence_item;
   
   function void post_randomize();
     static uchar last_cycs = 0, last_subs=0, last_subv = 0;
-    static opcode_e last_op;
-    if(last_subs == 0 || last_subs == (last_cycs-1)) begin
-      last_cycs = cycs;
-      last_subs = subs;
-      last_op = op;
-    end
-    else begin
-      last_subs++;
-      cycs = last_cycs;
-      subs = last_subs;
-      op = last_op;
-    end
+///    static opcode_e last_op;
+///    if(last_subs == 0 || last_subs == (last_cycs-1)) begin
+///      last_cycs = cycs;
+///      last_subs = subs;
+///      last_op = op;
+///    end
+///    else begin
+///      last_subs++;
+///      cycs = last_cycs;
+///      subs = last_subs;
+///      op = last_op;
+///    end
 		if(last_subv == 0 || last_subv == (cyc_vec - 1)) begin
 			last_subv = subv;
 		end
@@ -688,9 +690,10 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pr_br_dep, OVM_ALL_ON)
 	  `ovm_field_int(pr_br_adr, OVM_ALL_ON)
-	  `ovm_field_int(cycs, OVM_ALL_ON)
-	  `ovm_field_int(subs, OVM_ALL_ON)
+///	  `ovm_field_int(cycs, OVM_ALL_ON)
+///	  `ovm_field_int(subs, OVM_ALL_ON)
     `ovm_field_int(subv, OVM_ALL_ON)
+    `ovm_field_int(vec_mode, OVM_ALL_ON)
 	  `ovm_field_int(pr_wr_adr0, OVM_ALL_ON)
 	  `ovm_field_int(pr_wr_adr1, OVM_ALL_ON)
 	  `ovm_field_int(pr_wr_adr2, OVM_ALL_ON)
@@ -866,7 +869,7 @@ endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
   rand bit no_ld, no_st, no_smsg, no_rmsg,
-           cancel, exp;   /// sync to dc stage
+           cancel, exp, msg_wait;   /// sync to dc stage
   rand uchar tid;
   
   constraint dist_var {
@@ -884,6 +887,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(no_rmsg, OVM_ALL_ON)
 	  `ovm_field_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
+	  `ovm_field_int(msg_wait, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   

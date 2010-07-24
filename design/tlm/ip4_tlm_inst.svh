@@ -53,14 +53,17 @@ typedef enum bit[6:0] {
   iop21_or,     iop21_div,    iop21_quo,    iop21_res,
   iop21_clo,    iop21_ext,    iop21_sll,    iop21_rot,
   iop21_and,    iop21_seb,    iop21_wsbh,   iop21_max,
-  iop21_min,    iop21_vror,   iop21_vsr,    iop21_vsl,
+  iop21_min,
   iop21_add = 'b1000000,  
                 iop21_sub,    iop21_sra,    iop21_srav,
   iop21_nor,    iop21_udiv,   iop21_uquo,   iop21_ures,
   iop21_clz,    iop21_ins,    iop21_sllv,   iop21_rotv,
   iop21_xor,    iop21_she,    iop21_mv2s,   iop21_umax,
-  iop21_umin,   iop21_vroru,  iop21_vsru,   iop21_vslu
+  iop21_umin
 } iop_r2w1_e;
+
+/// iop21_vror,   iop21_vsr,    iop21_vsl,
+///,   iop21_vroru,  iop21_vsru,   iop21_vslu
 
 iop_r2w1_e iop21_spu_ops[] = {
   iop21_uadd,   iop21_usub,   iop21_srl,    iop21_srlv,
@@ -170,7 +173,7 @@ typedef struct packed{
 typedef struct packed{
   bit[5] imm0;
   irsa_t rs;
-  bit[8] imm;
+  bit[8] imm1;
   ipra_t pr0, pr1;
   bit[3] ctyp;
   bit[4] mtyp;
@@ -292,14 +295,14 @@ parameter iop_e iop_ls_dse[] = '{
 parameter iop_e iop_msg[] = '{
         iop_smsg,     iop_rmsg
         };                                
-
+        
 parameter iop_e iop_cmps[] = '{
         iop_cmp,    iop_cmpu,   iop_cmpi,   iop_cmpiu
         };
-
+        
 class inst_c extends ovm_object;
   inst_u inst;
-  bit decoded, vec_rd;
+  bit decoded, vec_rd, priv;
   opcode_e op;
   rbk_sel_e rd_bk[num_fu_rp];
   uchar rd[2], cnt_vrf_rd, cnt_srf_rd, pr_rd, pr_wr[2], fuid;
@@ -405,7 +408,7 @@ class inst_c extends ovm_object;
         rd[0] = inst.i.b.ir3w1.rd;
       end
       
-      case(inst.i.op)
+      case(inst.i.b.ir3w1.fun)
       iop31_mul   : begin op = inst.i.b.ir3w1.s ? op_smul : op_umul; end
       iop31_mad   : begin op = inst.i.b.ir3w1.s ? op_smad : op_umad; end
       iop31_msu   : begin op = inst.i.b.ir3w1.s ? op_smsu : op_umsu; end
@@ -439,6 +442,7 @@ class inst_c extends ovm_object;
     else if(inst.i.op inside {iop_fcrs}) begin
       imm = {inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       set_rf_en(inst.i.b.fcr.ja, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      op = op_fcr;
       case(inst.i.op)
       iop_fcr   : begin pr_br_dep = 0; br_op = bop_az; end
       iop_fcrn  : begin pr_br_dep = 0; br_op = bop_naz; end
@@ -452,6 +456,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_bs}) begin
       imm = {inst.i.b.b.sc, inst.i.b.b.os};
+      op = op_br;
       case(inst.i.op)
       iop_b   : begin pr_br_dep = 0; br_op = bop_az; end
       iop_bn  : begin pr_br_dep = 0; br_op = bop_naz; end
@@ -475,27 +480,90 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_cmps}) begin
+      imm = {inst.i.b.cmpi.imm1, inst.i.b.cmpi.imm0};
+      set_rf_en(inst.i.b.cmpi.rs, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      case(inst.i.op)
+      iop_cmp   :
+      begin
+        op = op_cmp;
+        set_rf_en(inst.i.b.cmp.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      end
+      iop_cmpu  :
+      begin
+        op = op_ucmp;
+        set_rf_en(inst.i.b.cmp.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      end
+      iop_cmpi  : begin op = op_cmp; rd_bk[1] = selii; end
+      iop_cmpiu : begin op = op_ucmp; rd_bk[1] = selii; end
+      endcase
+      case(inst.i.b.cmp.ctyp)
+      3'b000 : cmp_op = cop_e;
+      3'b001 : cmp_op = cop_g;
+      3'b010 : cmp_op = cop_ge;
+      3'b011 : cmp_op = cop_l;
+      3'b100 : cmp_op = cop_le;
+      endcase
+      case(inst.i.b.cmp.mtyp)
+      4'b0000 : merge_op = pm_nop;
+      4'b0001 : merge_op = pm_unc;
+      4'b0010 : merge_op = pm_and;
+      4'b0011 : merge_op = pm_andcm;
+      4'b0100 : merge_op = pm_or;
+      4'b0101 : merge_op = pm_orcm;
+      4'b0111 : merge_op = pm_or_andcm;
+      4'b0111 : merge_op = pm_and_orcm;
+      endcase
+      pr_wr[0] = inst.i.b.cmp.pr0;
+      pr_wr[1] = inst.i.b.cmp.pr1;
+      pr_wr_en[0] = pr_wr[0] == 0;
+      pr_wr_en[1] = pr_wr[1] == 0;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg}) begin
+      rd_bk[2] = selii;
+      if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
+        imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
+        set_rf_en(inst.i.b.ld.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      end
+      else if(inst.i.op inside {iop_sw, iop_sh, iop_sb, iop_sc}) begin
+        imm = {inst.i.b.st.os2, inst.i.b.st.os1, inst.i.b.st.os0};
+        set_rf_en(inst.i.b.st.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.st.rs, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      end
+      
+      case(inst.i.op)
+      iop_lw    : op = op_lw;
+      iop_sw    : op = op_sw;
+      iop_lh    : op = op_lh;
+      iop_sh    : op = op_sh;
+      iop_lb    : op = op_lb;
+      iop_sb    : op = op_sb;
+      iop_ll    : op = op_ll;
+      iop_sc    : op = op_sc;
+      iop_lhu   : op = op_lhu;
+      iop_lbu   : op = op_lbu;
+      iop_smsg  : op = op_smsg;
+      iop_rmsg  : op = op_rmsg;
+      endcase
     end
     else if(inst.i.op == iop_cop) begin
     end
 	endfunction : decode
-///	
-///	function bit is_scl_dse(input bit vec);
-///    if(inst.i.op inside {iop_ls_dse} && !vec)
-///      return 1;
-///    if(is_sp_dse())
-///      return 1;
-///    return 0;
-///	endfunction : is_scl_dse
-///
-///	function bit is_scl_ma(input bit vec);
-///    if(inst.i.op == iop_r3w1 && inst.i.b.ir3w1.fun == iop31_mul && !vec)
-///      return 1;
-///    return 0;
-///	endfunction : is_scl_ma	
 	
+	function bit is_pd_br();
+    return 0;
+	endfunction : is_pd_br
+
+	function bit is_priv();
+    return 0;
+	endfunction : is_priv
+
+	function bit is_ise_inst();
+    return 0;
+	endfunction : is_ise_inst
+		
+	function void set_wcnt(inout uchar wcnt);
+	endfunction : set_wcnt
+		
 	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0);
     fuid = id;
     decoded = 0;

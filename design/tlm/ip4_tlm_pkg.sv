@@ -60,8 +60,12 @@ parameter uchar lat_mac           = 4,
 
 parameter uint cfg_start_adr      = 'hf000_0000;
 
-parameter uchar cyc_vec           = num_vec/num_sp,     ///4
-                cyc_sfu_busy      = num_vec/num_sfu;    ///16 
+parameter uchar cyc_vec       = num_vec/num_sp,     ///4
+                cyc_sfu_busy  = num_vec/num_sfu,    ///16 
+                cyc_iss_sfu   = lat_rf + lat_rbp + cyc_vec -1 + lat_sfu + cyc_sfu_busy + lat_vwbp,
+                cyc_iss_spu   = lat_rf + lat_rbp + lat_dse + lat_dwbp,
+                cyc_iss_dse   = cyc_iss_spu,
+                cyc_iss_vec   = lat_rf + lat_rbp + cyc_vec -1 + lat_mac + lat_dwbp;
 
 /*
                                            pipeline stages:
@@ -207,6 +211,11 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
+  ts_disabled,    ts_rdy,     ts_w_ls,    ts_w_msg,
+  ts_w_b,         ts_w_pip
+}ise_thread_state;
+
+typedef enum uchar {
   ///bypass opcodes
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,      
@@ -222,15 +231,15 @@ typedef enum uchar {
   op_min,     op_umin,    op_umax,
   op_ext,     op_ins,     op_seb,     op_she,
   op_wsbh,
-  op_pera,    op_perb,    op_shf4,
-  op_gglw,    op_gglb,    op_gglh,    op_ggsw,
-  op_ggsh,    op_ggsb,
-  op_vror,    op_vroru,   op_vsr,     op_vsru,
-  op_vsl,     op_vslu,
+///  op_gglw,    op_gglb,    op_gglh,    op_ggsw,
+///  op_ggsh,    op_ggsb,
+///  op_vror,    op_vroru,   op_vsr,     op_vsru,
+///  op_vsl,     op_vslu,
   ///sfu opcodes
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
   ///dse opcodes
+  op_pera,    op_perb,    op_shf4,
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
@@ -279,12 +288,11 @@ parameter opcode_e alu_ops[] = '{
   op_clo,     op_clz,     op_max,     op_min,     
   op_umin,    op_umax,    op_lid,
   op_ext,     op_ins,     op_seb,     op_she,
-  op_wsbh,
-  op_pera,    op_perb,    op_shf4,    
-  op_gglw,    op_gglb,    op_gglh,    op_ggsw,
-  op_ggsh,    op_ggsb,
-  op_vror,    op_vroru,   op_vsr,     op_vsru,
-  op_vsl,     op_vslu  
+  op_wsbh
+///  op_gglw,    op_gglb,    op_gglh,    op_ggsw,
+///  op_ggsh,    op_ggsb,
+///  op_vror,    op_vroru,   op_vsr,     op_vsru,
+///  op_vsl,     op_vslu  
 };
 
 parameter opcode_e sfu_ops[] = '{
@@ -299,8 +307,8 @@ parameter opcode_e sfu_ops[] = '{
 };
 
 parameter opcode_e dse_ops[] = '{
-///  op_nop,     op_cmp,     op_ucmp,    op_bp0,
-///  op_bp1,     op_bp2,     op_bp3,      
+///op_nop,   op_bp0,  op_bp1,     op_bp2,     op_bp3,      
+  op_pera,    op_perb,    op_shf4, 
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
@@ -329,9 +337,6 @@ parameter opcode_e spu_possible_ops[] = '{
   op_srl,     op_sra,     op_sll,     op_ror,
   op_clo,     op_clz,     op_ext,     op_ins,
   op_seb,     op_she,     op_wsbh
-///  op_lw,      op_sw,      op_lh,      op_sh,
-///  op_lb,      op_sb,      op_ll,      op_sc,
-///  op_cmpxchg, op_fetadd,  op_lhu,     op_lbu
 };
 
 `include "ip4_tlm_tr.svh"  

@@ -107,7 +107,7 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fm_spa != null && v.fm_ise[stage_rrf_vwb0] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_vwb0];
       tr_spa2spu spa = v.fm_spa;
-      ovm_report_info("SPU", "write back SPA pres", OVM_HIGH);
+///      ovm_report_info("SPU", "write back SPA pres", OVM_HIGH);
       pr[ise.tid][ise.pr_wr_adr0][ise.subv] = spa.pres_cmp0;
       pr[ise.tid][ise.pr_wr_adr1][ise.subv] = spa.pres_cmp1;
       if(v.fm_dse != null)
@@ -117,7 +117,8 @@ class ip4_tlm_spu extends ovm_component;
       if(ise.op inside {op_br, op_fcr} && b_pd[ise.tid] && b_rdy[ise.tid] > 0)
         b_rdy[ise.tid]--;
     end
-
+    
+    ///predication register read
     if(v.fm_ise[stage_rrf_rrc] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_rrc];
       to_spa = tr_spu2spa::type_id::create("to_spa", this);
@@ -141,14 +142,15 @@ class ip4_tlm_spu extends ovm_component;
       end
     end
     
+    ///processing normal spu instructions
     if(v.fm_ise[stage_rrf_rrc1] != null && v.fm_rfm[stage_rrf_rrc1] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_rrc1];
       tr_rfm2spu rfm = v.fm_rfm[stage_rrf_rrc1];
       bit[word_width:0] op0, op1, r0;
       bit pr_spu = 0, pr_tmp[cyc_vec][num_sp];
       
-      if(ise.cycs == ise.subs) begin
-        ovm_report_info("SPU", "process SPU inst", OVM_HIGH);
+      if(ise.spu_start) begin
+///        ovm_report_info("SPU", "process SPU inst", OVM_HIGH);
         foreach(pr_tmp[i,j]) begin
           pr_tmp[i][j] = ise.pr_rd_adr_spu == 0 ? 1 : pr[ise.tid][ise.pr_rd_adr_spu][i][j];
           if(ise.pr_inv_spu)
@@ -198,6 +200,7 @@ class ip4_tlm_spu extends ovm_component;
       end
     end
     
+    ///bypass to spa
     if(to_rfm != null) begin
       if(to_spa == null) to_spa = tr_spu2spa::type_id::create("to_spa", this);
       to_spa.res = to_rfm.res;
@@ -220,7 +223,7 @@ class ip4_tlm_spu extends ovm_component;
         b_nmsk[ise.tid] = ise.pr_nmsk_spu;
         b_inv[ise.tid] = ise.pr_inv_spu;
         if(ise.pr_br_dep) begin
-          b_rdy[ise.tid] = cyc_vec - 1;
+          b_rdy[ise.tid] = ise.vec_mode;
         end
         else begin
           b_rdy[ise.tid] = 0;

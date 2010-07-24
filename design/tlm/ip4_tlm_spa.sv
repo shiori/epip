@@ -59,10 +59,10 @@ class ip4_tlm_spa extends ovm_component;
   local time stamp;
     
   local ip4_tlm_spa_vars v, vn;
-  local word grag_base;
-  local word op0_vec[num_fu][cyc_vec][num_sp];
-  local word op1_vec[num_fu][cyc_vec][num_sp];
-  local bit emsk_vec[num_fu][cyc_vec][num_sp];
+///  local word grag_base;
+///  local word op0_vec[num_fu][cyc_vec][num_sp];
+///  local word op1_vec[num_fu][cyc_vec][num_sp];
+///  local bit emsk_vec[num_fu][cyc_vec][num_sp];
   local word spu_res_l;
   
   `ovm_component_utils_begin(ip4_tlm_spa)
@@ -188,17 +188,17 @@ class ip4_tlm_spa extends ovm_component;
               op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
         end
         
-        op0_vec[fid][ise.subv] = rfm.fu[fid].rp[0].op;        
-        op1_vec[fid][ise.subv] = rfm.fu[fid].rp[1].op;        
-        emsk_vec[fid][ise.subv] = spu.fu[fid].emsk;
-        
-        if(fu.op inside {op_gglw, op_gglb, op_gglh, op_ggsw, op_ggsh, op_ggsb}) begin
-          foreach(tmp[i,j])
-            if(emsk_vec[fid][i][j]) begin
-              grag_base = op0_vec[fid][i][j];
-              break;
-            end
-        end
+///        op0_vec[fid][ise.subv] = rfm.fu[fid].rp[0].op;        
+///        op1_vec[fid][ise.subv] = rfm.fu[fid].rp[1].op;        
+///        emsk_vec[fid][ise.subv] = spu.fu[fid].emsk;
+///        
+///        if(fu.op inside {op_gglw, op_gglb, op_gglh, op_ggsw, op_ggsh, op_ggsb}) begin
+///          foreach(tmp[i,j])
+///            if(emsk_vec[fid][i][j]) begin
+///              grag_base = op0_vec[fid][i][j];
+///              break;
+///            end
+///        end
         proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.fu[fid].emsk, op,
                   to_spu.pres_cmp0, to_spu.pres_cmp1,/// to_spu.pres_update, pr2dse, 
                   to_rfm.fu[fid].res0, to_rfm.fu[fid].res1);
@@ -252,7 +252,7 @@ class ip4_tlm_spa extends ovm_component;
     
     if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse inside {[selfu0:selfu0+num_fu]}) begin
       tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
-      if(to_dse != null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
+      if(to_dse == null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
       if(to_rfm == null) begin
         to_dse.res = '{default:0};
 ///        to_dse.emsk = '{default:0};

@@ -10,11 +10,6 @@
 ///Log:
 ///Created by Andy Chen on Mar 16 2010
 
-typedef enum uchar {
-  ts_disabled,    ts_rdy,     ts_w_sfu,     ts_w_ls,
-  ts_w_msg,       ts_w_spu,   ts_w_b,       ts_w_pip
-}ise_thread_state;
-
 class ip4_tlm_ise_vars extends ovm_object;
   tr_spu2ise fm_spu;
   tr_rfm2ise fm_rfm;
@@ -57,7 +52,7 @@ endclass : ip4_tlm_ise_vars
 class ise_thread_inf extends ovm_object;
   ise_thread_state ts;
   uchar ibuf[num_ibuf_bytes];
-  bit nck, dse_vec, no_sp_rot;
+  bit nck, dse_vec;
   uchar ibuf_level, igrp_bytes, ap_bytes, num_imms,
         cnt_srf_rd, cnt_vrf_rd, cnt_dse_rd;
   word imms[num_bp_imm];
@@ -67,8 +62,7 @@ class ise_thread_inf extends ovm_object;
   uchar cnt_pr_wr, cnt_vrf_wr[num_vrf_bks], cnt_srf_wr[num_srf_bks];
   
   bit en_spu, en_dse, en_fu[num_fu];
-///  bit sgl_mode;
-  bit pri_state;  ///privilege running status
+  bit priv_mode;  ///privilege running status
   uchar wcnt, vec_mode;
   
   uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
@@ -82,12 +76,10 @@ class ise_thread_inf extends ovm_object;
     
   `ovm_object_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, ts, OVM_ALL_ON)
-    `ovm_field_int(pri_state, OVM_ALL_ON)
+    `ovm_field_int(priv_mode, OVM_ALL_ON)
     `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nck, OVM_ALL_ON)
-    `ovm_field_int(no_sp_rot, OVM_ALL_ON)
     `ovm_field_int(ibuf_level, OVM_ALL_ON)
-///    `ovm_field_int(sgl_mode, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(pc_l, OVM_ALL_ON)
     `ovm_field_int(br_pred, OVM_ALL_ON)
@@ -97,7 +89,7 @@ class ise_thread_inf extends ovm_object;
   function new (string name = "ise_thread_inf");
     super.new(name);
     ts = ts_disabled;
-    pri_state = 0;
+    priv_mode = 0;
     pc = cfg_start_adr;
     pc_l = cfg_start_adr;
   endfunction : new
@@ -118,9 +110,12 @@ class ise_thread_inf extends ovm_object;
   
   function void cyc_new();
     if(wcnt != 0) wcnt--;
-    if(ts == ts_w_pip)
+    if(ts == ts_w_pip && wcnt == 0)
       ts = ts_rdy;
-  endfunction
+  endfunction : cyc_new
+
+  function void exe_priv();
+  endfunction : exe_priv
   
   function void decode_igs();
     i_gs1_t gs1 = ibuf[0];
@@ -129,7 +124,6 @@ class ise_thread_inf extends ovm_object;
     en_fu = '{default : 0};
     
     if(gs1.t) begin
-///      sgl_mode = 1;
       nck = gs1.nc;
       ap_bytes = gs1.apb;
       num_imms = gs1.ipw;
@@ -139,10 +133,8 @@ class ise_thread_inf extends ovm_object;
     else begin
       i_gs0_u gs;
       uchar tmp = 0;
-///      sgl_mode = 0;
       foreach(gs.b[i])
         gs.b[i] = ibuf[i];
-///      sgl_mode = 0;
       foreach(gs.i.fua[i])
         tmp += gs.i.fua[i];
       if(tmp == 0)
@@ -298,6 +290,12 @@ class ise_thread_inf extends ovm_object;
     pc = pc_l;
   endfunction : dse_cancel
 
+  function void enter_exp();
+  endfunction : enter_exp
+  
+  function void msg_wait();
+  endfunction : msg_wait
+  
   function bit br_pre_miss(input bit br);
     if(ts == ts_w_b)
       ts = ts_rdy;
@@ -408,6 +406,9 @@ class ise_iss_inf extends ovm_object;
     no_rmsg = 0;
   endfunction : cyc_new
 
+  function void exe_priv(input inst_c i);
+  endfunction : exe_priv
+  
   function void update_block(input tr_spa2ise spa, tr_dse2ise dse);
     if(spa != null)
       no_fu = spa.no_fu;
@@ -471,11 +472,22 @@ class ise_iss_inf extends ovm_object;
   /// spu or scalar dse issue
     if(tif.en_spu) begin
       for(int i = 0; i < tif.cnt_srf_rd; i++) begin
-        tif.i_dse.fill_rfm(ci_rfm[i]);
-        tif.i_dse.fill_spa(ci_spa[i]);
+        tif.i_spu.fill_rfm(ci_rfm[i]);
+        tif.i_spu.fill_spa(ci_spa[i]);
       end
       ci_rfm[0].start = 1;
       ci_rfm[tif.cnt_srf_rd].scl_end = 1;
+      tif.i_spu.set_wcnt(tif.wcnt);
+      if(tif.i_spu.is_pd_br())
+        tif.ts = ts_w_b;
+      if(tif.i_spu.is_priv()) begin
+        if(tif.priv_mode) begin
+          exe_priv(tif.i_spu);
+          tif.exe_priv();
+        end
+        else
+          tif.enter_exp();
+      end
     end
     
     if(tif.en_dse) begin
@@ -483,6 +495,7 @@ class ise_iss_inf extends ovm_object;
       for(int i = 0; i < tif.cnt_dse_rd; i++)
         tif.i_dse.fill_rfm(ci_rfm[i]);
       cnt_dse_rd = tif.cnt_dse_rd;
+      tif.i_dse.set_wcnt(tif.wcnt);
     end
     
     cnt_srf_rd = tif.cnt_srf_rd;
@@ -495,21 +508,25 @@ class ise_iss_inf extends ovm_object;
 
     foreach(cnt_srf_wr[i])
       cnt_srf_wr[i] += tif.cnt_srf_wr[i];
+    
   endfunction : iss_scl
       
   function void iss_vec(input ise_thread_inf tif);
+    iss_scl(tif);
     for(int i = 0; i < tif.cnt_vrf_rd; i++) begin
       foreach(tif.i_fu[fid]) begin
         tif.i_fu[fid].fill_rfm(ci_rfm[i]);
         tif.i_fu[fid].fill_spa(ci_spa[i]);
       end
+      tif.i_fu[i].set_wcnt(tif.wcnt);
+      if(tif.wcnt > 0)
+        tif.ts = ts_w_pip;
       ci_spa[i].subv = i;
     end
     ci_rfm[0].start = 1;
     ci_rfm[tif.cnt_vrf_rd].vec_end = 1;
     cnt_vec_proc = tif.vec_mode;
     
-    iss_scl(tif);
   endfunction : iss_vec
 
 endclass : ise_iss_inf
@@ -576,9 +593,18 @@ class ip4_tlm_ise extends ovm_component;
     
     if(v.fm_ife != null && v.fm_ife.inst_en)
       tinf[v.fm_ife.tid].update_inst(v.fm_ife.fg);
-    if(v.fm_dse[stage_exe_dwb] != null && v.fm_dse[stage_exe_dwb].cancel)
-      tinf[v.fm_dse[stage_exe_dwb].tid].dse_cancel();
-            
+    if(v.fm_dse[stage_exe_dwb] != null) begin
+      tr_dse2ise dse = v.fm_dse[stage_exe_dwb];
+      if(dse.cancel) begin
+        tinf[dse.tid].dse_cancel();
+        if(dse.exp)
+          tinf[dse.tid].enter_exp();
+      end
+      if(dse.msg_wait) begin
+        tinf[dse.tid].msg_wait();
+      end
+    end
+    
     for(int i = 1; i <= num_thread; i++) begin
         uchar tid = i + v.tid_iss_l;
         bit vec;
@@ -749,7 +775,7 @@ class ip4_tlm_ise extends ovm_component;
     foreach(tinf[i])
       tinf[i] = new();
     tinf[0].ts = ts_rdy;
-    tinf[0].pri_state = 1;
+    tinf[0].priv_mode = 1;
     
     iinf = new(, this);
   endfunction : build
