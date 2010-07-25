@@ -161,10 +161,11 @@ typedef struct packed{
 }i_smsg;
 
 typedef struct packed{
-  irda_t rdv;
+  irda_t rvd;
+  irsa_t rsv;
   bit dummy0;
-  isrda_t rds;
-  bit[6] dummy1;
+  isrda_t rd;
+  bit dummy1;
   bit[8] fifos;
   bit[4] dummy2;
   bit b;
@@ -326,7 +327,8 @@ class inst_c extends ovm_object;
   opcode_e op;
   rbk_sel_e rd_bk[num_fu_rp];
   uchar cnt_vrf_wr, cnt_srf_wr, pr_adr_rd, pr_adr_wr[2], fuid,
-        grp_wr[2], adr_wr[2], bk_wr[2];
+        grp_wr[2], adr_wr[2], bk_wr[2],
+        grp_rmsg[2], adr_rmsg[2], bk_rmsg[2];
   uint imm;
   bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], 
       wr_en[2], pr_rd_en, pr_wr_en[2], pr_br_dep;
@@ -335,7 +337,7 @@ class inst_c extends ovm_object;
   msc_opcode_e msc_op;
   msk_opcode_e msk_op;
   br_opcode_e br_op;
-  uchar m_b, m_ua, m_fun;
+  uchar m_b, m_ua, m_fun, m_s, m_rt, m_t, m_mid, m_fifos;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(inst, OVM_ALL_ON)
@@ -539,7 +541,7 @@ class inst_c extends ovm_object;
       pr_wr_en[0] = pr_adr_wr[0] == 0;
       pr_wr_en[1] = pr_adr_wr[1] == 0;
     end
-    else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg}) begin
+    else if(inst.i.op inside {iop_sp_dse, iop_ls_dse}) begin
       rd_bk[2] = selii;
       m_b = inst.i.b.ld.b;
       m_ua = inst.i.b.ld.ua;
@@ -589,14 +591,75 @@ class inst_c extends ovm_object;
         else if(m_fun == 13)
           op = op_synci;
       end
-      else if(inst.i.op == iop_smsg) begin
-        op = op_smsg;
-      end
-      else if(inst.i.op == iop_rmsg) begin
-        op = op_rmsg;
-      end
     end
+    else if(inst.i.op == iop_smsg) begin
+      op = op_smsg;
+      adr_wr[0] = inst.i.b.smsg.rd;
+      wr_en[0] = 1;
+      set_rf_en(inst.i.b.smsg.rss, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      set_rf_en(inst.i.b.smsg.rvs, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      m_s = inst.i.b.smsg.s;
+      m_t = inst.i.b.smsg.t;
+      m_b = inst.i.b.smsg.b;
+      m_mid = inst.i.b.smsg.mid;
+    end
+    else if(inst.i.op == iop_rmsg) begin
+      op = op_rmsg;
+      m_mid = inst.i.b.rmsg.mid;
+      m_b = inst.i.b.rmsg.b;
+      m_fifos = inst.i.b.rmsg.fifos;
+      adr_wr[0] = inst.i.b.rmsg.rvd;
+      wr_en[0] = 1;
+      adr_rmsg[0] = inst.i.b.rmsg.rd & ('1 << 1);
+      adr_rmsg[1] = adr_rmsg[0] + 1;
+      pr_adr_wr[0] = inst.i.p;
+      pr_wr_en[0] = pr_adr_wr[0] == 0;
+    end    
     else if(inst.i.op == iop_cop) begin
+      case(inst.i.b.cop.fun)
+      icop_sysc  : op = op_sys;
+      icop_wait  : op = op_wait;
+      icop_exit  : op = op_exit;
+      icop_brk   : op = op_brk;
+      icop_tsync : op = op_tsync;
+      icop_msync : op = op_msync;
+      icop_alloc : op = op_alloc;
+      icop_pint  : op = op_pint;
+      icop_tlbp  :
+      begin
+        op = op_tlbp;
+        priv = 1;
+      end
+      icop_tlbr  :
+      begin
+        op = op_tlbr;
+        priv = 1;
+      end
+      icop_tlbwi  :
+      begin
+        op = op_tlbwi;
+        priv = 1;
+      end
+      icop_tlbwr  :
+      begin
+        op = op_tlbwr;
+        priv = 1;
+      end
+      icop_sra  :
+      begin
+        op = inst.i.b.cop.code[0] ? op_s2gp : op_gp2s;
+        adr_wr[0] = inst.i.b.ir2w1.rd;
+        wr_en[0] = inst.i.b.cop.code[0];
+        if(!wr_en[0])
+          set_rf_en(inst.i.b.ir2w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+        imm = (inst.i.b.cop.code >> 2) & 9'b111111111;
+      end
+      icop_eret :
+      begin
+        op = op_eret;
+        priv = 1;
+      end      
+      endcase
     end
     
 	  if(is_scl)
@@ -611,6 +674,11 @@ class inst_c extends ovm_object;
 		    grp_wr[i] = adr_wr[i] >> bits_prf_p_grp;
 		    adr_wr[i] = (adr_wr[i] >> bits_vrf_bks) & ~{'1 << (bits_prf_p_grp - bits_vrf_bks)};
 		  end
+   foreach(adr_rmsg[i]) begin
+      bk_rmsg[i] = adr_rmsg[i] & ~{'1 << bits_srf_bks};
+      grp_rmsg[i] = adr_rmsg[i] >> bits_prf_p_grp;
+      adr_rmsg[i] = (adr_rmsg[i] >> bits_srf_bks) & ~{'1 << (bits_prf_p_grp - bits_srf_bks)};
+    end
 	endfunction : decode
 	
 	function bit is_pd_br();
