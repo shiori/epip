@@ -322,13 +322,14 @@ parameter iop_e iop_cmps[] = '{
         
 class inst_c extends ovm_object;
   inst_u inst;
-  bit decoded, vec_rd, priv;
+  bit decoded, vec_rd, priv, is_scl;
   opcode_e op;
   rbk_sel_e rd_bk[num_fu_rp];
-  uchar rd[2], cnt_vrf_rd, cnt_srf_rd, pr_rd, pr_wr[2], fuid;
+  uchar cnt_vrf_wr, cnt_srf_wr, pr_adr_rd, pr_adr_wr[2], fuid,
+        grp_wr[2], adr_wr[2], bk_wr[2];
   uint imm;
   bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], 
-      rd_en[2], pr_rd_en, pr_wr_en[2], pr_br_dep;
+      wr_en[2], pr_rd_en, pr_wr_en[2], pr_br_dep;
   cmp_opcode_e cmp_op;
   pr_merge_e merge_op;
   msc_opcode_e msc_op;
@@ -381,14 +382,14 @@ class inst_c extends ovm_object;
 	function void decode();
     decoded = 1;
     rd_bk = '{default : selnull};
-    pr_rd = inst.i.p;
-    pr_rd_en = pr_rd != 0;
+    pr_adr_rd = inst.i.p;
+    pr_rd_en = pr_adr_rd != 0;
 ///    rfbp = '{default : fu_null};
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
-      rd[0] = inst.i.b.i26.rd;
-      rd_en[0] = 1;
+      adr_wr[0] = inst.i.b.i26.rd;
+      wr_en[0] = 1;
       rd_bk[1] = selii;
       case(inst.i.op)
       iop_lu    : begin op = op_bp1; imm = imm << (word_width / 2); end
@@ -398,9 +399,9 @@ class inst_c extends ovm_object;
     else if(inst.i.op inside {iop_r1w1i}) begin
       uint imms = {{word_width{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
       imm = {inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
-      rd[0] = inst.i.b.i26.rd;
-      rd_en[0] = 1;
-      set_rf_en(inst.i.b.ir1w1.rs, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      adr_wr[0] = inst.i.b.i26.rd;
+      wr_en[0] = 1;
+      set_rf_en(inst.i.b.ir1w1.rs, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       rd_bk[1] = selii;
       case(inst.i.op)
       iop_addi  : begin op = op_add; end
@@ -414,19 +415,19 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op == iop_r3w1) begin
-      set_rf_en(inst.i.b.ir3w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
-      set_rf_en(inst.i.b.ir3w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
-      set_rf_en(inst.i.b.ir3w1.rs2, rd_bk[2], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.ir3w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      set_rf_en(inst.i.b.ir3w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      set_rf_en(inst.i.b.ir3w1.rs2, rd_bk[2], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
 
       if(inst.i.b.ir3w1.d) begin
-        rd_en = '{default : 1};
-        rd[0] = inst.i.b.ir3w1.rd & ('1 << 1);
-        rd[1] = rd[0] + 1;
+        wr_en = '{default : 1};
+        adr_wr[0] = inst.i.b.ir3w1.rd & ('1 << 1);
+        adr_wr[1] = adr_wr[0] + 1;
         rd_bk[3] = rbk_sel_e'(rd_bk[2] + 1);
       end
       else begin
-        rd_en[0] = 1;
-        rd[0] = inst.i.b.ir3w1.rd;
+        wr_en[0] = 1;
+        adr_wr[0] = inst.i.b.ir3w1.rd;
       end
       
       case(inst.i.b.ir3w1.fun)
@@ -437,17 +438,17 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op == iop_r2w1) begin
-      set_rf_en(inst.i.b.ir2w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
-      set_rf_en(inst.i.b.ir2w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.ir2w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      set_rf_en(inst.i.b.ir2w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
-        rd_en = '{default : 1};
-        rd[0] = inst.i.b.ir2w1.rd & ('1 << 1);
-        rd[1] = rd[0] + 1;
+        wr_en = '{default : 1};
+        adr_wr[0] = inst.i.b.ir2w1.rd & ('1 << 1);
+        adr_wr[1] = adr_wr[0] + 1;
         rd_bk[3] = rbk_sel_e'(rd_bk[2] + 1);
       end
       else begin
-        rd_en[0] = 1;
-        rd[0] = inst.i.b.ir2w1.rd;
+        wr_en[0] = 1;
+        adr_wr[0] = inst.i.b.ir2w1.rd;
       end
 
       case(inst.i.b.ir2w1.fun)
@@ -461,7 +462,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_fcrs}) begin
       imm = {inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
-      set_rf_en(inst.i.b.fcr.ja, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.fcr.ja, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       op = op_fcr;
       case(inst.i.op)
       iop_fcr   : begin pr_br_dep = 0; br_op = bop_az; end
@@ -469,8 +470,8 @@ class inst_c extends ovm_object;
       iop_fcrb  : begin pr_br_dep = 1; br_op = bop_az; end
       iop_fcrbn : begin pr_br_dep = 1; br_op = bop_naz; end
       endcase
-      rd[0] = 0;
-      rd_en[0] = inst.i.b.fcr.l;
+      adr_wr[0] = 0;
+      wr_en[0] = inst.i.b.fcr.l;
       msk_op = inst.i.b.fcr.mu ? (inst.i.b.fcr.l ? mop_if : mop_rstor) : mop_nop;
       msc_op = inst.i.b.fcr.su ? (inst.i.b.fcr.l ? sop_store : sop_pop2n) : sop_nop;
     end
@@ -501,17 +502,17 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_cmps}) begin
       imm = {inst.i.b.cmpi.imm1, inst.i.b.cmpi.imm0};
-      set_rf_en(inst.i.b.cmpi.rs, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+      set_rf_en(inst.i.b.cmpi.rs, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       case(inst.i.op)
       iop_cmp   :
       begin
         op = op_cmp;
-        set_rf_en(inst.i.b.cmp.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.cmp.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       end
       iop_cmpu  :
       begin
         op = op_ucmp;
-        set_rf_en(inst.i.b.cmp.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.cmp.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       end
       iop_cmpi  : begin op = op_cmp; rd_bk[1] = selii; end
       iop_cmpiu : begin op = op_ucmp; rd_bk[1] = selii; end
@@ -533,18 +534,19 @@ class inst_c extends ovm_object;
       4'b0111 : merge_op = pm_or_andcm;
       4'b0111 : merge_op = pm_and_orcm;
       endcase
-      pr_wr[0] = inst.i.b.cmp.pr0;
-      pr_wr[1] = inst.i.b.cmp.pr1;
-      pr_wr_en[0] = pr_wr[0] == 0;
-      pr_wr_en[1] = pr_wr[1] == 0;
+      pr_adr_wr[0] = inst.i.b.cmp.pr0;
+      pr_adr_wr[1] = inst.i.b.cmp.pr1;
+      pr_wr_en[0] = pr_adr_wr[0] == 0;
+      pr_wr_en[1] = pr_adr_wr[1] == 0;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg}) begin
       rd_bk[2] = selii;
       m_b = inst.i.b.ld.b;
       m_ua = inst.i.b.ld.ua;
+      adr_wr[0] = inst.i.b.ld.rd;
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
-        set_rf_en(inst.i.b.ld.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.ld.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       case(inst.i.op)
       iop_lw    : op = op_lw;
       iop_lh    : op = op_lh;
@@ -556,8 +558,8 @@ class inst_c extends ovm_object;
       end
       else if(inst.i.op inside {iop_sw, iop_sh, iop_sb, iop_sc}) begin
         imm = {inst.i.b.st.os2, inst.i.b.st.os1, inst.i.b.st.os0};
-        set_rf_en(inst.i.b.st.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
-        set_rf_en(inst.i.b.st.rs, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.st.rb, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+        set_rf_en(inst.i.b.st.rs, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       case(inst.i.op)
       iop_sw    : op = op_sw;
       iop_sh    : op = op_sh;
@@ -568,8 +570,12 @@ class inst_c extends ovm_object;
       else if(inst.i.op == iop_cmpxchg) begin
         op = op_cmpxchg;
         imm = {inst.i.b.cmpxchg.os2, inst.i.b.cmpxchg.os1, inst.i.b.cmpxchg.os0};
-        set_rf_en(inst.i.b.cmpxchg.rs0, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
-        set_rf_en(inst.i.b.cmpxchg.rs1, rd_bk[2], vec_rd, vrf_en, srf_en, cnt_vrf_rd, cnt_srf_rd);
+        set_rf_en(inst.i.b.cmpxchg.rs0, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+        set_rf_en(inst.i.b.cmpxchg.rs1, rd_bk[2], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      end
+      else if(inst.i.op == iop_fetadd) begin
+        op = op_fetadd;
+        imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
       end
       else if(inst.i.op == iop_mctl) begin
         m_fun = inst.i.b.mctl.fun;
@@ -592,6 +598,19 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op == iop_cop) begin
     end
+    
+	  if(is_scl)
+	    foreach(adr_wr[i]) begin
+	      bk_wr[i] = adr_wr[i] & ~{'1 << bits_srf_bks};
+		    grp_wr[i] = adr_wr[i] >> bits_prf_p_grp;
+		    adr_wr[i] = (adr_wr[i] >> bits_srf_bks) & ~{'1 << (bits_prf_p_grp - bits_srf_bks)};
+		  end
+		else
+	    foreach(adr_wr[i]) begin
+	      bk_wr[i] = adr_wr[i] & ~{'1 << bits_vrf_bks};
+		    grp_wr[i] = adr_wr[i] >> bits_prf_p_grp;
+		    adr_wr[i] = (adr_wr[i] >> bits_vrf_bks) & ~{'1 << (bits_prf_p_grp - bits_vrf_bks)};
+		  end
 	endfunction : decode
 	
 	function bit is_pd_br();
@@ -609,11 +628,13 @@ class inst_c extends ovm_object;
 	function void set_wcnt(inout uchar wcnt);
 	endfunction : set_wcnt
 		
-	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0);
+	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0, bit scl = 0);
     fuid = id;
+    is_scl = scl;
     decoded = 0;
-	  foreach(inst.b[i])
-		  inst.b[i] = data[start+i];
+
+    foreach(inst.b[i])
+      inst.b[i] = data[start+i];
 	endfunction : set_data
 	
   function void analyze_rs(input bit vec, ref bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], inout bit dsev, uchar vrf, srf, dse);

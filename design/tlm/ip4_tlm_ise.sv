@@ -171,8 +171,8 @@ class ise_thread_inf extends ovm_object;
     if(gs1.t) begin
       tmp = 1;
       if(ap_bytes != 0) ap_bytes --;
-      i_spu.set_data(ibuf, os);
-      i_dse.set_data(ibuf, os);
+      i_spu.set_data(ibuf, os, 0, 1);
+      i_dse.set_data(ibuf, os, 0, dse_vec);
       foreach(i_fu[i])
         i_fu[i].set_data(ibuf, os, i);
         
@@ -198,7 +198,7 @@ class ise_thread_inf extends ovm_object;
       if(ap_bytes != 0) ap_bytes --;
       
       if(en_spu) begin
-        i_spu.set_data(ibuf, os);
+        i_spu.set_data(ibuf, os, 0, 1);
 ///        i_spu.analyze_fu(0, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_spu.analyze_rs(0, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_spu.analyze_rd(0, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
@@ -206,7 +206,7 @@ class ise_thread_inf extends ovm_object;
       end
       
       if(en_dse) begin
-        i_dse.set_data(ibuf, os);
+        i_dse.set_data(ibuf, os, 0, dse_vec);
 ///        i_dse.analyze_fu(dse_vec, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_dse.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_dse.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
@@ -277,7 +277,7 @@ class ise_thread_inf extends ovm_object;
 
       for(int j = 0; j < num_srf_bks; j++)
         if(srf_rd_en[i][j]) begin
-          map_sreg(a[tmp], vrf_grp[i][j], vrf_adr[i][j]);
+          map_sreg(a[tmp], srf_grp[i][j], srf_adr[i][j]);
           tmp++;
         end
     end
