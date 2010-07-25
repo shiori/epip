@@ -339,6 +339,12 @@ parameter opcode_e spu_possible_ops[] = '{
   op_seb,     op_she,     op_wsbh
 };
 
+parameter opcode_e ise_ops[] = '{
+  op_sys,     op_eret,    op_wait,    op_exit,
+  op_brk,     op_tsync,   op_msync,   op_alloc,
+  op_pint
+};
+
 `include "ip4_tlm_tr.svh"  
 `include "ip4_tlm_inst.svh"
 `include "ip4_tlm_rfm.sv"
