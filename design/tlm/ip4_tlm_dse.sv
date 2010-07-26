@@ -55,8 +55,7 @@ class ip4_tlm_dse extends ovm_component;
   
   virtual tlm_sys_if.mods sysif;
   local time stamp;
-  local ip4_tlm_dse_vars v, vn;
-  
+  local ip4_tlm_dse_vars v, vn;  
       
   `ovm_component_utils_begin(ip4_tlm_dse)
     
@@ -99,7 +98,8 @@ class ip4_tlm_dse extends ovm_component;
     /// calculating the virtual address  ag stage
     if(v.fm_rfm ! = null)begin
       if(v.fm_ise[stage_rrf_ag].en)begin
-        vn.tlb.v_addr = v.fm_rfm.op1 + v.fm_rfm.op2;
+        
+        vn.tlb.v_addr = v.fm_rfm.base + v.fm_rfm.op2;
       end
     end
     

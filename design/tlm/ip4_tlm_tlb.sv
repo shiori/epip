@@ -10,7 +10,7 @@
 ///Log:
 ///Created by yajing yuan on July 20 2010
 
-parameter Index_EBit  = 7 , /// entry bits
+parameter uchar Index_EBit  = 7 , /// entry bits
           Entry_NUM  = 2<<Index_EBit,  ///128
           VPN2_width = 18,
           MASK_width = 15,
@@ -25,18 +25,15 @@ parameter pagemask0 = 15'b000000000000000,   /// 8K
           pagemask5 = 15'b0011xxxxxxxxxxx,   /// 64M
           pagemask6 = 15'b11xxxxxxxxxxxxx;   /// 256M 
 
-parameter PFN_width = 23;
+parameter uchar PFN_width = 23;
 
-parameter RContent_NO = 6,
+parameter uchar RContent_NO = 6,
           RIndex_NO = 7,
           RRandom_NO = 8,
           REntryLo0_NO = 9,
           REntryLo1_NO = 10,
           REntryHi_NO = 11,
           RPageMask_NO = 12;
-          
-///parameter sstage_max = 2;    /// spu signals pipeline stage in TLB
-           
           
 
 class ip4_tlm_tlb_vars extends ovm_object;
@@ -46,7 +43,6 @@ class ip4_tlm_tlb_vars extends ovm_object;
   tr_ife2tlb fm_ife;
   
   tr_tlb2dse dse;
-///  tr_tlb2spu spu[sstage_max-1:0];
   tr_tlb2spu spu;
   tr_tlb2ife ife;
   
