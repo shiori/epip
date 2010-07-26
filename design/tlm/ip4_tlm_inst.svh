@@ -323,7 +323,7 @@ parameter iop_e iop_cmps[] = '{
         
 class inst_c extends ovm_object;
   inst_u inst;
-  bit decoded, vec_rd, priv, is_scl;
+  bit decoded, vec_rd, priv, is_vec;
   opcode_e op;
   rbk_sel_e rd_bk[num_fu_rp];
   uchar cnt_vrf_wr, cnt_srf_wr, pr_adr_rd, pr_adr_wr[2], fuid,
@@ -662,18 +662,19 @@ class inst_c extends ovm_object;
       endcase
     end
     
-	  if(is_scl)
-	    foreach(adr_wr[i]) begin
-	      bk_wr[i] = adr_wr[i] & ~{'1 << bits_srf_bks};
-		    grp_wr[i] = adr_wr[i] >> bits_prf_p_grp;
-		    adr_wr[i] = (adr_wr[i] >> bits_srf_bks) & ~{'1 << (bits_prf_p_grp - bits_srf_bks)};
-		  end
-		else
+	  if(is_vec)
 	    foreach(adr_wr[i]) begin
 	      bk_wr[i] = adr_wr[i] & ~{'1 << bits_vrf_bks};
 		    grp_wr[i] = adr_wr[i] >> bits_prf_p_grp;
 		    adr_wr[i] = (adr_wr[i] >> bits_vrf_bks) & ~{'1 << (bits_prf_p_grp - bits_vrf_bks)};
 		  end
+		else
+	    foreach(adr_wr[i]) begin
+	      bk_wr[i] = adr_wr[i] & ~{'1 << bits_srf_bks};
+		    grp_wr[i] = adr_wr[i] >> bits_prf_p_grp;
+		    adr_wr[i] = (adr_wr[i] >> bits_srf_bks) & ~{'1 << (bits_prf_p_grp - bits_srf_bks)};
+		  end
+
    foreach(adr_rmsg[i]) begin
       bk_rmsg[i] = adr_rmsg[i] & ~{'1 << bits_srf_bks};
       grp_rmsg[i] = adr_rmsg[i] >> bits_prf_p_grp;
@@ -699,9 +700,9 @@ class inst_c extends ovm_object;
 	function void set_wcnt(inout uchar wcnt);
 	endfunction : set_wcnt
 		
-	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0, bit scl = 0);
+	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0, bit vec = 0);
     fuid = id;
-    is_scl = scl;
+    is_vec = vec;
     decoded = 0;
     pr_br_dep = 0;
     priv = 0;
@@ -709,88 +710,58 @@ class inst_c extends ovm_object;
       inst.b[i] = data[start+i];
 	endfunction : set_data
 	
-  function void analyze_rs(input bit vec, ref bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], inout bit dsev, uchar vrf, srf, dse);
+  function void analyze_rs(input uchar vmode, ref bit v_en[cyc_vec][num_vrf_bks], s_en[cyc_vec][num_srf_bks], inout uchar vrf, srf, dse);
+    uchar cnt_v = 0, cnt_s = 0;
     if(!decoded) decode();
-///    bit has_vec = 0;
-///    if(inst.i.op inside {iop_r1w1i}) begin
-///      set_rf_en(inst.i.b.ir1w1.rs, has_vec, vrf_en, srf_en, vrf, srf);
-///      if(!vec && has_vec)
-///        ovm_report_warning("ISE", "decode error, non vec inst access vrf");
-///    end
-///    else if(inst.i.op == iop_r2w1) begin
-///      set_rf_en(inst.i.b.ir2w1.rs0, has_vec, vrf_en, srf_en, vrf, srf);
-///      set_rf_en(inst.i.b.ir2w1.rs1, has_vec, vrf_en, srf_en, vrf, srf);
-///      if(!vec && has_vec && inst.i.b.ir2w1.fun != iop21_mv2s)
-///        ovm_report_warning("ISE", "decode error, non vec inst access vrf");      
-///      return;
-///    end
-///    else if(inst.i.op == iop_r3w1) begin
-///      set_rf_en(inst.i.b.ir3w1.rs0, has_vec, vrf_en, srf_en, vrf, srf);
-///      set_rf_en(inst.i.b.ir3w1.rs1, has_vec, vrf_en, srf_en, vrf, srf);
-///      set_rf_en(inst.i.b.ir3w1.rs2, has_vec, vrf_en, srf_en, vrf, srf);
-///      if(!vec && has_vec)
-///        ovm_report_warning("ISE", "decode error, non vec inst access vrf");       
-///    end
+    foreach(vrf_en[i,j]) begin
+      v_en[i][j] = v_en[i][j] | vrf_en[i][j];
+      cnt_v += v_en[i][j];
+    end
+    foreach(srf_en[i,j]) begin
+      s_en[i][j] = s_en[i][j] | srf_en[i][j];
+      cnt_s += s_en[i][j];
+    end
+    if(cnt_s > srf)
+      srf = cnt_s;
+    if(cnt_v > vrf)
+      vrf = cnt_v;
+    if(vmode > vrf)
+      vrf = vmode;
+    if(is_vec)
+      dse = vmode;
+    else
+      dse = 1;
   endfunction : analyze_rs
 
-  function void analyze_rd(input bit vec, ref uchar vrf[num_vrf_bks], srf[num_srf_bks], inout uchar pr);
+  function void analyze_rd(ref uchar vrf[num_vrf_bks], srf[num_srf_bks], inout uchar pr);
     if(!decoded) decode();
+    foreach(wr_en[i])
+      if(wr_en[i]) begin
+        if(is_vec)
+          vrf[bk_wr[i]]++;
+        else
+          srf[bk_wr[i]]++;
+      end
+      
+    foreach(pr_wr_en[i])
+      pr++;
+      
+    if(op == op_rmsg)
+      foreach(bk_rmsg[i])
+        srf[bk_rmsg[i]]++;
   endfunction : analyze_rd
   
   function void analyze_fu(input bit vec, inout bit en_spu, en_dse, ref bit en_fu[num_fu]);
     if(!decoded) decode();
-///    if(inst.i.op inside {iop_r1w1i}) begin
-///      if(vec) begin
-///        foreach(fu_cfg[i])
-///          if(fu_cfg[i] == mac || fu_cfg[i] == alu) begin
-///            en_fu[i] = 1;
-///            break;
-///          end
-///      end
-///      else
-///        en_spu = 1;
-///      return;
-///    end
-///    
-///    if(inst.i.op == iop_r3w1) begin
-///      if(inst.i.b.ir3w1.fun == iop31_mul && !vec)
-///        en_spu = 1;
-///      else begin
-///        foreach(fu_cfg[i])
-///          if(fu_cfg[i] == mac || fu_cfg[i] == alu) begin
-///            en_fu[i] = 1;
-///            break;
-///          end
-///      end
-///      return;
-///    end
-///
-///    if(inst.i.op == iop_r2w1) begin
-///      if(inst.i.b.ir2w1.fun inside {iop21_spu_ops})
-///        if(vec) begin
-///          foreach(fu_cfg[i])
-///            if(fu_cfg[i] == mac || fu_cfg[i] == alu) begin
-///              en_fu[i] = 1;
-///              break;
-///            end
-///        end
-///        else
-///          en_spu = 1;
-///                
-///      if(inst.i.b.ir2w1.fun inside {iop21_sfu_ops})
-///        foreach(fu_cfg[i])
-///          if(fu_cfg[i] == sfu) begin
-///            en_fu[i] = 1;
-///            break;
-///          end
-///      return;
-///    end
-///    
-///    if(inst.i.op inside {iop_fcrs, iop_bs})
-///      en_spu = 1;
-///    else if(inst.i.op inside {iop_sp_dse, iop_ls_dse, iop_msg})
-///      en_dse = 1;
-///        
+    if(is_vec) begin
+      if(op inside {spu_only_ops})
+        foreach(fu_cfg[i])
+          if(fu_cfg[i] == sfu) begin
+            en_fu[i] = 1;
+            break;
+          end
+    end
+         
   endfunction : analyze_fu
 
   function void fill_rfm(input tr_ise2rfm rfm);

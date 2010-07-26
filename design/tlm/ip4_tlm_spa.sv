@@ -216,7 +216,7 @@ class ip4_tlm_spa extends ovm_component;
       word op[num_fu_rp][num_sp];
       foreach(ise.fu[fid]) begin
         ise2spa_fu fu = ise.fu[fid];
-        if(!(fu.op inside {mc_ops})) continue;
+        if(!(fu.op inside {spu_only_ops})) continue;
         if (vn.sfu[1] != null) vn.sfu[1] = new();
         vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
         vn.sfu[1].en[fid] = fu.en;
@@ -245,7 +245,7 @@ class ip4_tlm_spa extends ovm_component;
         to_rfm.fu[fid].res1 = v.sfu[stage_eex].res1[fid];
         to_rfm.fu[fid].wen = v.sfu[stage_eex].emsk[fid];
         if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
-          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {mc_ops}))
+          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
           ovm_report_warning("SPA", "sfu writeback conflict");
       end
     end

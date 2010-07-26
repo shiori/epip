@@ -311,10 +311,10 @@ endclass : tr_spa2rfm
 ///---------------------------trsaction dse_rfm rfm_dse------------------------
 
 class tr_dse2rfm extends ovm_sequence_item;
-	rand word res[num_sp], br_res[num_sp];
-	rand bit wen[num_sp], srf_wr, br_wr;
+	rand word res[num_sp], ua_res[num_sp];
+	rand bit wen[num_sp], srf_wr, ua_wr;
 	rand uchar wr_grp, wr_adr, wr_bk, 
-	           br_wr_grp, br_wr_adr, br_wr_bk, 
+	           ua_wr_grp, ua_wr_adr, ua_wr_bk, 
 	           subv;
 	
 	constraint valid_dse{
@@ -341,16 +341,16 @@ class tr_dse2rfm extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_dse2rfm)
 		`ovm_field_sarray_int(res, OVM_ALL_ON)
 		`ovm_field_sarray_int(wen, OVM_ALL_ON)
-		`ovm_field_sarray_int(br_res, OVM_ALL_ON)
+		`ovm_field_sarray_int(ua_res, OVM_ALL_ON)
 		`ovm_field_int(wr_grp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(wr_adr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(wr_bk, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(br_wr_grp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(br_wr_adr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(br_wr_bk, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(ua_wr_grp, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(ua_wr_adr, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(ua_wr_bk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(subv, OVM_ALL_ON)
 		`ovm_field_int(srf_wr, OVM_ALL_ON)
-		`ovm_field_int(br_wr, OVM_ALL_ON)
+		`ovm_field_int(ua_wr, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2rfm");
@@ -836,8 +836,9 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wr_grp, wr_adr, wr_bk,
              br_wr_grp, br_wr_adr, br_wr_bk, tid;
-  rand bit vec, en, bp_data;
+  rand bit vec, en, bp_data, ua_wr;
   rand opcode_e op;
+  rand uchar vec_mode;
   
 	`ovm_object_utils_begin(tr_ise2dse)
 	  `ovm_field_int(wr_bk, OVM_ALL_ON)
@@ -847,7 +848,9 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(br_wr_adr, OVM_ALL_ON)
 	  `ovm_field_int(br_wr_grp, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
+	  `ovm_field_int(vec_mode, OVM_ALL_ON)
 	  `ovm_field_int(bp_data, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
@@ -858,6 +861,7 @@ class tr_ise2dse extends ovm_sequence_item;
     bp_data dist {0:=4, 1:=6};
     op inside {dse_ops};
     bp_data -> vec;
+    vec_mode < cyc_vec;
     solve vec before bp_data;
   }
   

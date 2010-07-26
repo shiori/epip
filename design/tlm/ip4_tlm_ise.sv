@@ -160,7 +160,6 @@ class ise_thread_inf extends ovm_object;
     
     vrf_rd_en = '{default : 0};
     srf_rd_en = '{default : 0};
-    dse_vec = 0;
     cnt_vrf_rd = 0;
     cnt_srf_rd = 0;
     cnt_dse_rd = 0;
@@ -171,14 +170,14 @@ class ise_thread_inf extends ovm_object;
     if(gs1.t) begin
       tmp = 1;
       if(ap_bytes != 0) ap_bytes --;
-      i_spu.set_data(ibuf, os, 0, 1);
+      i_spu.set_data(ibuf, os, 0, 0);
       i_dse.set_data(ibuf, os, 0, dse_vec);
       foreach(i_fu[i])
-        i_fu[i].set_data(ibuf, os, i);
+        i_fu[i].set_data(ibuf, os, i, 1);
         
       os = 1 + num_inst_bytes;
-      i_spu.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
-      i_spu.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
+      i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+      i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
       i_spu.analyze_fu(dse_vec, en_spu, en_dse, en_fu);
       a[0] = gs1.a;
       if(ap_bytes) begin
@@ -198,27 +197,27 @@ class ise_thread_inf extends ovm_object;
       if(ap_bytes != 0) ap_bytes --;
       
       if(en_spu) begin
-        i_spu.set_data(ibuf, os, 0, 1);
+        i_spu.set_data(ibuf, os, 0, 0);
 ///        i_spu.analyze_fu(0, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
-        i_spu.analyze_rs(0, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
-        i_spu.analyze_rd(0, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
+        i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+        i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
       end
       
       if(en_dse) begin
         i_dse.set_data(ibuf, os, 0, dse_vec);
 ///        i_dse.analyze_fu(dse_vec, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
-        i_dse.analyze_rs(dse_vec, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
-        i_dse.analyze_rd(dse_vec, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
+        i_dse.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+        i_dse.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
       end
       
       foreach(i_fu[i])
         if(en_fu[i]) begin
-          i_fu[i].set_data(ibuf, os, i);
+          i_fu[i].set_data(ibuf, os, i, 1);
 ///          i_spu.analyze_fu(1, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
-          i_fu[i].analyze_rs(1, vrf_rd_en, srf_rd_en, dse_vec, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
-          i_spu.analyze_rd(1, cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
+          i_fu[i].analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
+          i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
           os += num_inst_bytes;          
         end
       

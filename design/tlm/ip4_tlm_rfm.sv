@@ -137,10 +137,10 @@ class ip4_tlm_rfm extends ovm_component;
       else foreach(dse.wen[sp])
         if(dse.wen[sp])
           vrf[dse.wr_grp][dse.wr_adr][dse.wr_bk][dse.subv][sp] = dse.res[sp];
-      if(!dse.srf_wr && dse.br_wr)
+      if(!dse.srf_wr && dse.ua_wr)
         foreach(dse.wen[sp])
           if(dse.wen[sp])
-            vrf[dse.br_wr_grp][dse.br_wr_adr][dse.br_wr_bk][dse.subv][sp] = dse.br_res[sp];
+            vrf[dse.ua_wr_grp][dse.ua_wr_adr][dse.ua_wr_bk][dse.subv][sp] = dse.ua_res[sp];
     end
     
     if(v.fm_spu != null && v.fm_spu.wen) begin
