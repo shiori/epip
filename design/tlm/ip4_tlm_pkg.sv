@@ -78,6 +78,7 @@ exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | vsbp | vswb |
 exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
         0     1      2      3      4      5      6      7      8      9      10     11     12     13     14
                                           0      1      2      3      4      5      6      7      8      9
+                     0      1      2      3      4      5      6    
   */  
   
 parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
@@ -100,7 +101,12 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_rrf_dwbp    = stage_rrf_rrc + stage_exe_dwbp + 1,    ///6
                 stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
-                stage_ise_rrf     = stage_ise + 1;                  ///2
+                stage_ise_rrf     = stage_ise + 1,                  ///2
+                stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
+                stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
+                stage_rrf_tag     = stage_rrf_ag + 1,               ///3
+                stage_rrf_sel     = stage_rrf_tag + 1;              ///4
+                                
 
 parameter uchar ck_stage_sfu1     = stage_eex - stage_rrf_exe,      ///19
                 ck_stage_sfu0     = ck_stage_sfu1 - cyc_vec + 1;    ///16
