@@ -338,6 +338,7 @@ class inst_c extends ovm_object;
   msk_opcode_e msk_op;
   br_opcode_e br_op;
   uchar m_b, m_ua, m_fun, m_s, m_rt, m_t, m_mid, m_fifos;
+  bit en_spu, en_dse, en_fu[num_fu];
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(inst, OVM_ALL_ON)
@@ -680,6 +681,7 @@ class inst_c extends ovm_object;
       grp_rmsg[i] = adr_rmsg[i] >> bits_prf_p_grp;
       adr_rmsg[i] = (adr_rmsg[i] >> bits_srf_bks) & ~{'1 << (bits_prf_p_grp - bits_srf_bks)};
     end
+    
 	endfunction : decode
 	
 	function bit is_pd_br();
@@ -706,8 +708,19 @@ class inst_c extends ovm_object;
     decoded = 0;
     pr_br_dep = 0;
     priv = 0;
+    en_dse = 0;
+    en_spu = 0;
+    en_fu = '{default : 0};
     foreach(inst.b[i])
       inst.b[i] = data[start+i];
+      
+    decode();
+    if(op inside {dse_ops})
+      en_dse = 1;
+    else if(vec)  
+      en_fu[fuid] = 1;
+    else if(op inside {spu_only_ops, spu_com_ops})
+      en_spu = 1;    
 	endfunction : set_data
 	
   function void analyze_rs(input uchar vmode, ref bit v_en[cyc_vec][num_vrf_bks], s_en[cyc_vec][num_srf_bks], inout uchar vrf, srf, dse);
@@ -751,26 +764,72 @@ class inst_c extends ovm_object;
         srf[bk_rmsg[i]]++;
   endfunction : analyze_rd
   
-  function void analyze_fu(input bit vec, inout bit en_spu, en_dse, ref bit en_fu[num_fu]);
+  ///reallocate en set by set_data
+  function void analyze_fu(inout bit spu, dse, ref bit fu[num_fu]);
+    en_dse = 0;
+    en_spu = 0;
+    en_fu = '{default : 0};
     if(!decoded) decode();
-    if(is_vec) begin
-      if(op inside {spu_only_ops})
+    if(op inside {dse_ops})
+      en_dse = 1;
+    else if(op inside {spu_ops})
+      en_spu = 1;
+    else if(is_vec) begin
+      if(op inside {spu_only_ops}) begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == sfu) begin
             en_fu[i] = 1;
             break;
           end
+      end
+      else begin
+        foreach(fu_cfg[i])
+          if(fu_cfg[i] != sfu) begin
+            en_fu[i] = 1;
+            break;
+          end
+      end
     end
-         
+    else if(op inside {spu_com_ops})
+      en_spu = 1;
+      
+    spu = en_spu;
+    dse = en_dse;
+    fu = en_fu;
   endfunction : analyze_fu
 
   function void fill_rfm(input tr_ise2rfm rfm);
     if(!decoded) decode();
-    
+    if(en_spu) begin
+      rfm.spu_en = 1;
+      rfm.spu_imm = imm;
+      foreach(rfm.spu_rd_bk[i])
+        rfm.spu_rd_bk[i] = rd_bk[i];
+    end
+    else if(en_dse) begin
+      rfm.dse_en = 1;
+      rfm.dse_imm = imm;
+      foreach(rfm.dse_rd_bk[i])
+        rfm.dse_rd_bk[i] = rd_bk[i];      
+    end
+    else begin
+      rfm.en[fuid] = 1;
+      rfm.fu[fuid].imm = imm;
+      foreach(rfm.fu[0].rd_bk[i])
+        rfm.fu[fuid].rd_bk[i] = rd_bk[i];       
+    end
   endfunction : fill_rfm
 
   function void fill_spu(input tr_ise2spu spu);
     if(!decoded) decode();
+    spu.sop = msc_op;
+    spu.mop = msk_op;
+    spu.bop = br_op;
+    spu.cop = cmp_op;
+    spu.fmerge = merge_op;
+    spu.op = op;
+    spu.pr_br_dep = pr_br_dep;
+    spu.pr_br_adr = pr_adr_rd;
     
   endfunction : fill_spu
 

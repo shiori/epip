@@ -335,7 +335,7 @@ parameter opcode_e tlb_ops[] = '{
   op_tlbwr,   op_gp2s,    op_s2gp
 };
 
-parameter opcode_e spu_possible_ops[] = '{
+parameter opcode_e spu_com_ops[] = '{
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,
   op_and,     op_or,      op_xor,     op_nor,

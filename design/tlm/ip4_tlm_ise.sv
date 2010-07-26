@@ -178,7 +178,7 @@ class ise_thread_inf extends ovm_object;
       os = 1 + num_inst_bytes;
       i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
       i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
-      i_spu.analyze_fu(dse_vec, en_spu, en_dse, en_fu);
+      i_spu.analyze_fu(en_spu, en_dse, en_fu);
       a[0] = gs1.a;
       if(ap_bytes) begin
         i_ap0_t ap = ibuf[os];
@@ -198,7 +198,7 @@ class ise_thread_inf extends ovm_object;
       
       if(en_spu) begin
         i_spu.set_data(ibuf, os, 0, 0);
-///        i_spu.analyze_fu(0, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
+///        i_spu.analyze_fu(tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
@@ -206,7 +206,7 @@ class ise_thread_inf extends ovm_object;
       
       if(en_dse) begin
         i_dse.set_data(ibuf, os, 0, dse_vec);
-///        i_dse.analyze_fu(dse_vec, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
+///        i_dse.analyze_fu(tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_dse.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_dse.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
@@ -215,7 +215,7 @@ class ise_thread_inf extends ovm_object;
       foreach(i_fu[i])
         if(en_fu[i]) begin
           i_fu[i].set_data(ibuf, os, i, 1);
-///          i_spu.analyze_fu(1, 0, tmp_en_spu, tmp_en_dse, tmp_en_fu);
+///          i_spu.analyze_fu(tmp_en_spu, tmp_en_dse, tmp_en_fu);
           i_fu[i].analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
           i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
           os += num_inst_bytes;          
@@ -312,12 +312,6 @@ class ise_thread_inf extends ovm_object;
     return 0;
   endfunction : can_req_ifet
       
-  function void fill_ife_req(input tr_ise2ife ife);
-    ife.fetch_req = 1;
-    pd_ifet++;
-    ife.pc = (pc + num_ifet_bytes * pd_ifet) & {'1 << bits_ifet};
-  endfunction : fill_ife_req
-
   function void update_inst(input inst_fg_c fg);
     uchar os = 0;
     if(ibuf_level  >= num_max_igrp_bytes)
@@ -333,6 +327,53 @@ class ise_thread_inf extends ovm_object;
     if(pd_ifet > 0)
       pd_ifet--;
   endfunction : update_inst
+
+  function void fill_ife(input tr_ise2ife ife);
+    ife.fetch_req = 1;
+    pd_ifet++;
+    ife.pc = (pc + num_ifet_bytes * pd_ifet) & {'1 << bits_ifet};
+  endfunction : fill_ife
+  
+  function void fill_iss(input tr_ise2rfm ci_rfm[cyc_vec], tr_ise2spa ci_spa[cyc_vec], 
+                               tr_ise2spu ci_spu[cyc_vec], tr_ise2dse ci_dse[cyc_vec]);
+
+    for(int i = 0; i < cnt_srf_rd; i++) begin
+      i_spu.fill_rfm(ci_rfm[i]);
+      i_spu.fill_spa(ci_spa[i]);
+    end
+    i_dse.fill_dse(ci_dse[0]);
+    for(int i = 0; i < cnt_vrf_rd; i++)
+      foreach(i_fu[fid]) begin
+        i_fu[fid].fill_rfm(ci_rfm[i]);
+        i_fu[fid].fill_spa(ci_spa[i]);
+      end
+          
+    /// spu or scalar dse issue
+    if(en_spu) begin
+      ci_rfm[0].start = 1;
+      ci_rfm[cnt_srf_rd].scl_end = 1;
+      i_spu.set_wcnt(wcnt);
+      if(i_spu.is_pd_br())
+        ts = ts_w_b;
+    end
+    
+    if(en_dse) begin
+      for(int i = 0; i < cnt_dse_rd; i++)
+        i_dse.fill_rfm(ci_rfm[i]);
+      i_dse.set_wcnt(wcnt);
+    end
+ 
+    for(int i = 0; i < cnt_vrf_rd; i++) begin
+      i_fu[i].set_wcnt(wcnt);
+      if(wcnt > 0)
+        ts = ts_w_pip;
+      ci_spa[i].subv = i;
+    end
+    
+    ci_rfm[0].start = 1;
+    ci_rfm[cnt_vrf_rd].vec_end = 1;
+  endfunction : fill_iss
+
 endclass : ise_thread_inf
 
 class ise_iss_inf extends ovm_object;
@@ -468,17 +509,10 @@ class ise_iss_inf extends ovm_object;
   endfunction : can_iss
 
   function void iss_scl(input ise_thread_inf tif);
-  /// spu or scalar dse issue
+    tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
+    
+    /// spu or scalar dse issue
     if(tif.en_spu) begin
-      for(int i = 0; i < tif.cnt_srf_rd; i++) begin
-        tif.i_spu.fill_rfm(ci_rfm[i]);
-        tif.i_spu.fill_spa(ci_spa[i]);
-      end
-      ci_rfm[0].start = 1;
-      ci_rfm[tif.cnt_srf_rd].scl_end = 1;
-      tif.i_spu.set_wcnt(tif.wcnt);
-      if(tif.i_spu.is_pd_br())
-        tif.ts = ts_w_b;
       if(tif.i_spu.is_priv()) begin
         if(tif.priv_mode) begin
           exe_priv(tif.i_spu);
@@ -490,11 +524,7 @@ class ise_iss_inf extends ovm_object;
     end
     
     if(tif.en_dse) begin
-      tif.i_dse.fill_dse(ci_dse[0]);
-      for(int i = 0; i < tif.cnt_dse_rd; i++)
-        tif.i_dse.fill_rfm(ci_rfm[i]);
       cnt_dse_rd = tif.cnt_dse_rd;
-      tif.i_dse.set_wcnt(tif.wcnt);
     end
     
     cnt_srf_rd = tif.cnt_srf_rd;
@@ -512,20 +542,7 @@ class ise_iss_inf extends ovm_object;
       
   function void iss_vec(input ise_thread_inf tif);
     iss_scl(tif);
-    for(int i = 0; i < tif.cnt_vrf_rd; i++) begin
-      foreach(tif.i_fu[fid]) begin
-        tif.i_fu[fid].fill_rfm(ci_rfm[i]);
-        tif.i_fu[fid].fill_spa(ci_spa[i]);
-      end
-      tif.i_fu[i].set_wcnt(tif.wcnt);
-      if(tif.wcnt > 0)
-        tif.ts = ts_w_pip;
-      ci_spa[i].subv = i;
-    end
-    ci_rfm[0].start = 1;
-    ci_rfm[tif.cnt_vrf_rd].vec_end = 1;
     cnt_vec_proc = tif.vec_mode;
-    
   endfunction : iss_vec
 
 endclass : ise_iss_inf
@@ -605,19 +622,18 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     for(int i = 1; i <= num_thread; i++) begin
-        uchar tid = i + v.tid_iss_l;
-        bit vec;
-        if(iinf.can_iss(tinf[tid], vec)) begin
-          if(vec)
-            iinf.iss_vec(tinf[tid]);
-          else
-            iinf.iss_scl(tinf[tid]);
-            
-          vn.tid_iss_l = tid;
-          break;
-        end
+      uchar tid = i + v.tid_iss_l;
+      bit vec;
+      if(iinf.can_iss(tinf[tid], vec)) begin
+        if(vec)
+          iinf.iss_vec(tinf[tid]);
+        else
+          iinf.iss_scl(tinf[tid]);
+          
+        vn.tid_iss_l = tid;
+        break;
       end
-    
+    end
     
   endfunction
   
@@ -641,7 +657,7 @@ class ip4_tlm_ise extends ovm_component;
       uchar tid = i + v.tid_fet_l;
       if(tinf[tid].can_req_ifet()) begin
         to_ife = tr_ise2ife::type_id::create("to_ife", this);
-        tinf[tid].fill_ife_req(to_ife);
+        tinf[tid].fill_ife(to_ife);
         to_ife.tid = tid;
         vn.tid_fet_l = tid;
         break;

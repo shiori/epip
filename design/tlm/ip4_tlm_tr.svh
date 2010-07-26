@@ -643,7 +643,7 @@ class tr_ise2spu extends ovm_sequence_item;
 ///    subs dist {0:=5, 1:=5};
 ///    cycs inside {[1:cyc_vec]};
     pr_br_adr == 0 -> pr_br_dep == 0;
-    op inside {spu_ops, spu_possible_ops};
+    op inside {spu_ops, spu_com_ops};
     op != op_br -> sop == sop_nop && mop == mop_nop && bop == bop_az;
     foreach(pr_rd_adr[i])
       pr_rd_adr[i] <= num_pr;
