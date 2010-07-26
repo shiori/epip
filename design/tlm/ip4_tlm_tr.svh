@@ -964,16 +964,16 @@ class tr_ife2tlb extends ovm_sequence_item;
  
   
   `ovm_object_utils_begin(tr_ife2tlb)
-    `ovm_field_int(, OVM_ALL_ON);
+///    `ovm_field_int(, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_ife2tlb  
 
-class tr_tlb2ife extends ovn_sequence_item;
+class tr_tlb2ife extends ovm_sequence_item;
 
   
   `ovm_object_utils_begin(tr_tlb2ife)
-    `ovm_field_int(, OVM_ALL_ON);
+///    `ovm_field_int(, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_tlb2ife  
