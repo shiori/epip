@@ -56,8 +56,8 @@ class ise_thread_inf extends ovm_object;
   uchar ibuf_level, igrp_bytes, ap_bytes, num_imms,
         cnt_srf_rd, cnt_vrf_rd, cnt_dse_rd;
   word imms[num_bp_imm];
-  uchar vrf_adr[cyc_vec][num_vrf_bks], vrf_grp[cyc_vec][num_srf_bks],
-        srf_adr[cyc_vec][num_vrf_bks], srf_grp[cyc_vec][num_srf_bks];
+  uchar vrf_adr[cyc_vec][num_vrf_bks], vrf_grp[cyc_vec][num_vrf_bks],
+        srf_adr[cyc_vec][num_srf_bks], srf_grp[cyc_vec][num_srf_bks];
   bit vrf_rd_en[cyc_vec][num_vrf_bks], srf_rd_en[cyc_vec][num_srf_bks];
   uchar cnt_pr_wr, cnt_vrf_wr[num_vrf_bks], cnt_srf_wr[num_srf_bks];
   
@@ -94,20 +94,13 @@ class ise_thread_inf extends ovm_object;
     pc_l = cfg_start_adr;
   endfunction : new
  
-  function void map_vreg(input uchar oadr, output uchar grp, adr);
-    uchar adr_bits =  bits_prf_p_grp - bits_vrf_bks;
+  function void map_iaddr(input bit v, uchar oadr, output uchar grp, adr);
+    uchar adr_bits =  v ? (bits_prf_p_grp - bits_vrf_bks) : (bits_prf_p_grp - bits_srf_bks);
     adr = oadr & ('1 << adr_bits);
     grp = oadr >> adr_bits;
-    adr = vrf_map[adr];
-  endfunction : map_vreg
+    grp = v ? vrf_map[grp] : srf_map[grp];
+  endfunction : map_iaddr
 
-  function void map_sreg(input uchar oadr, output uchar grp, adr);
-    uchar adr_bits =  bits_prf_p_grp - bits_srf_bks;
-    adr = oadr & ('1 << adr_bits);
-    grp = oadr >> adr_bits;
-    adr = srf_map[adr];    
-  endfunction : map_sreg
-  
   function void cyc_new();
     if(wcnt != 0) wcnt--;
     if(ts == ts_w_pip && wcnt == 0)
@@ -270,13 +263,13 @@ class ise_thread_inf extends ovm_object;
     for(int i = 0; i < cyc_vec; i++) begin
       for(int j = 0; j < num_vrf_bks; j++)
         if(vrf_rd_en[i][j]) begin
-          map_vreg(a[tmp], vrf_grp[i][j], vrf_adr[i][j]);
+          map_iaddr(1, a[tmp], vrf_grp[i][j], vrf_adr[i][j]);
           tmp++;
         end
 
       for(int j = 0; j < num_srf_bks; j++)
         if(srf_rd_en[i][j]) begin
-          map_sreg(a[tmp], srf_grp[i][j], srf_adr[i][j]);
+          map_iaddr(0, a[tmp], srf_grp[i][j], srf_adr[i][j]);
           tmp++;
         end
     end
@@ -336,7 +329,20 @@ class ise_thread_inf extends ovm_object;
   
   function void fill_iss(input tr_ise2rfm ci_rfm[cyc_vec], tr_ise2spa ci_spa[cyc_vec], 
                                tr_ise2spu ci_spu[cyc_vec], tr_ise2dse ci_dse[cyc_vec]);
-
+    
+    i_dse.map_wr_grp(vrf_map, srf_map);
+    i_spu.map_wr_grp(vrf_map, srf_map);
+    foreach(i_fu[i])
+      i_fu[i].map_wr_grp(vrf_map, srf_map);
+      
+    for(int i = 0; i < cnt_srf_rd && i < cnt_vrf_rd; i++) begin
+      ci_rfm[i].bp_imm = imms;
+      ci_rfm[i].vrf_rd_grp = vrf_grp[i];
+      ci_rfm[i].vrf_rd_adr = vrf_adr[i];
+      ci_rfm[i].srf_rd_grp = srf_grp[i];
+      ci_rfm[i].srf_rd_adr = srf_adr[i];
+    end
+    
     for(int i = 0; i < cnt_srf_rd; i++) begin
       i_spu.fill_rfm(ci_rfm[i]);
       i_spu.fill_spa(ci_spa[i]);
@@ -349,6 +355,7 @@ class ise_thread_inf extends ovm_object;
         i_fu[fid].fill_spa(ci_spa[i]);
       end
     end
+    
     
     /// spu or scalar dse issue
     if(en_spu) begin

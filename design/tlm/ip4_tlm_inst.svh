@@ -700,6 +700,21 @@ class inst_c extends ovm_object;
 	endfunction : is_ise_inst
 		
 	function void set_wcnt(inout uchar wcnt);
+	  uchar t;
+	  if(is_vec) begin
+	    if(op inside {spu_only_ops}) begin
+	      t = stage_rrf_rrc + stage_eex_vwbp + lat_ise;
+	    end
+	    else begin
+	      t = stage_rrf_vwbp + lat_ise;
+	    end
+	  end
+	  else if(op inside {ise_ops})
+	    t = 0;
+	  else
+	    t = stage_rrf_swb + lat_ise;
+	  if(wcnt < t)
+	    wcnt = t;
 	endfunction : set_wcnt
 		
 	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0, bit vec = 0);
@@ -712,6 +727,7 @@ class inst_c extends ovm_object;
     en_spu = 0;
     en_fu = '{default : 0};
     pr_adr_wr = '{default : 0};
+    op = op_nop;
     foreach(inst.b[i])
       inst.b[i] = data[start+i];
       
@@ -894,9 +910,34 @@ class inst_c extends ovm_object;
 
   function bit dse_block(input bit no_ld, no_st, no_smsg, no_rmsg);
     if(!decoded) decode();
+    if(en_spu) begin
+      if(no_ld && op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu})
+        return 1;
+      if(no_st && op inside {iop_sw, iop_sh, iop_sb, iop_sc})
+        return 1;
+      if(no_smsg && op == op_smsg)
+        return 1;
+      if(no_rmsg && op == op_rmsg)
+        return 1;
+    end
     return 0;
   endfunction : dse_block
-                
+
+  function void map_wr_grp(const ref uchar
+        vrf_map[num_inst_vrf/num_prf_p_grp], 
+        srf_map[num_inst_srf/num_prf_p_grp]);
+    if(!decoded) decode();
+    if(is_vec) begin
+      grp_wr[0] = vrf_map[grp_wr[0]];
+      grp_wr[1] = grp_wr[0];
+    end
+    else begin
+      grp_wr[0] = srf_map[grp_wr[0]];
+      grp_wr[1] = grp_wr[0];
+      grp_rmsg[0] = srf_map[grp_rmsg[0]];
+      grp_rmsg[1] = grp_rmsg[0];
+    end
+  endfunction : map_wr_grp
 endclass
 
 class inst_fg_c extends ovm_object;
