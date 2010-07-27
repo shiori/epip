@@ -218,7 +218,7 @@ class ip4_tlm_spu extends ovm_component;
 ///        b_rot_val[ise.tid] = ise.pr_up_val_rot;
 ///        b_ec_nzo[ise.tid] = ise.pr_up_fnaz_rot;
         b_pd[ise.tid] = 1;
-        b_adr[ise.tid] = ise.pr_br_adr;
+        b_adr[ise.tid] = ise.pr_rd_adr_spu;
 ///        b_rot_adr[ise.tid] = ise.pr_up_adr_rot;
         b_nmsk[ise.tid] = ise.pr_nmsk_spu;
         b_inv[ise.tid] = ise.pr_inv_spu;

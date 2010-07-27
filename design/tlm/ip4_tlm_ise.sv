@@ -342,12 +342,14 @@ class ise_thread_inf extends ovm_object;
       i_spu.fill_spa(ci_spa[i]);
     end
     i_dse.fill_dse(ci_dse[0]);
-    for(int i = 0; i < cnt_vrf_rd; i++)
+    for(int i = 0; i < cnt_vrf_rd; i++) begin
+      i_dse.fill_spa(ci_spa[i]);
       foreach(i_fu[fid]) begin
         i_fu[fid].fill_rfm(ci_rfm[i]);
         i_fu[fid].fill_spa(ci_spa[i]);
       end
-          
+    end
+    
     /// spu or scalar dse issue
     if(en_spu) begin
       ci_rfm[0].start = 1;
