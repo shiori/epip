@@ -944,7 +944,7 @@ class tr_dse2tlb extends ovm_sequence_item;
   rand opcode_e op;
   
   `ovm_object_utils_begin(tr_dse2tlb)
-    `ovm_field_int(v_addr, OVM_ALL_ON);
+    `ovm_field_sarray_int(v_addr, OVM_ALL_ON);
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end  
   
@@ -955,7 +955,7 @@ class tr_tlb2dse extends ovm_sequence_item;
   rand uchar vadr_cnt;
   
   `ovm_object_utils_begin(tr_tlb2dse)
-    `ovm_field_int(phy_addr, OVM_ALL_ON);
+    `ovm_field_sarray_int(phy_addr, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_tlb2dse  
