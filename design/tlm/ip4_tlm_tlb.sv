@@ -138,6 +138,11 @@ class ip4_tlm_tlb extends ovm_component;
   local bit find; 
   
   bit Miss_exp;  
+  
+  rand bit var_emsk[num_sp];
+  rand word valva_addr[num_sp]
+  rand uchar var_cnt;
+  
     
   `ovm_component_utils_begin(ip4_tlm_tlb)
   `ovm_component_utils_end
@@ -157,10 +162,27 @@ class ip4_tlm_tlb extends ovm_component;
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_ife != null) end_tr(v.fm_ife);
     
-    ///tlb basic function
+    
+    /// virtual address select
     find = 0;
-    for (int i = 0; i < Entry_NUM; i++)begin
-      if(((v.tlb_vpn2[i] && (!v.tlb_mask[i])) == (v.fm_dse.v_addr[31:VADD_START] && (!v.tlb_mask[i]))) 
+    var_emsk = v.fm_dse.emsk;
+    int k = 0;
+    for (int j = 0; (j < num_sp)&&(v.fm_dse.emsk[j]==1); j++) begin
+        if(k == 0)begin   
+          valva_addr[k] = v.fm_dse.v_addr[j];   /// valid virtual address to send into tlb for translation
+          k++;
+        end
+        else if(v.fm_dse.v_addr[j][31:VADD_START] == valva_addr[0][31:VADD_START])begin
+                valva_addr[k] = v.fm_dse.v_addr[j];
+                k++;
+             end
+             else var_emsk[j] = 0;
+   end  
+    var_cnt = k-1;
+    
+    ///tlb basic function
+      for (int i = 0; i < Entry_NUM; i++)begin
+        if(((v.tlb_vpn2[i] && (!v.tlb_mask[i])) == (valva_addr[0][31:VADD_START] && (!v.tlb_mask[i]))) 
           && (v.tlb_G[i] || (v.tlb_asid[i] == v.REntryHi[ASID_width-1:0])))begin
             case(v.tlb_mask[i])
               pagemask0: EvenOddBit = 13;   
@@ -172,7 +194,7 @@ class ip4_tlm_tlb extends ovm_component;
               pagemask6: EvenOddBit = 28;
               default:  ovm_report_warning("TLBPSize_ILLEGAL", "No this type page size!!!");              
             endcase
-            if(v.fm_dse.v_addr[EvenOddBit] == 0)begin
+            if(valva_addr[0][EvenOddBit] == 0)begin
               var_pfn = v.tlb_pfn20[i];
               var_v   = v.tlb_V0[i];
               var_c   = v.tlb_C0[i];
@@ -195,13 +217,16 @@ class ip4_tlm_tlb extends ovm_component;
               vn.RContent[4:0] = 0;
               vn.RContent[22:5] = v.tlb_vpn2[i];
             end
-            vn.dse.phy_addr[EvenOddBit-1:0] = v.tlb_vpn2[i][EvenOddBit-1:0];   /// 13
-            vn.dse.phy_addr[PFN_width+EvenOddBit-1:EvenOddBit] = var_pfn;      /// 23
+            for (int j = 0; j < var_cnt; j++)begin
+              vn.dse.phy_addr[j][EvenOddBit-1:0] = valva_addr[j][EvenOddBit-1:0];   /// 13
+              vn.dse.phy_addr[PFN_width+EvenOddBit-1:EvenOddBit] = var_pfn;      /// 23
+            end
+            vn.dse.vaddr_cnt = var_cnt;    /// the number of the physical addresses translated 
             find = 1;
             break;
       end  
     end
-    
+       
      local word i0, i1, i2;
      tr_tlb2spu t;
     /// tlb support instruction  spu -> tlb
@@ -210,8 +235,7 @@ class ip4_tlm_tlb extends ovm_component;
     ///                             |      |
     ///                          request  respond
     /// delay one pipelinestage
-    
-    
+        
     
     if(v.fm_spu.req)begin
       case(v.fm_spu.op)

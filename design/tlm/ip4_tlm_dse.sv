@@ -98,8 +98,11 @@ class ip4_tlm_dse extends ovm_component;
     /// calculating the virtual address  ag stage
     if(v.fm_rfm ! = null)begin
       if(v.fm_ise[stage_rrf_ag].en)begin
-        
-        vn.tlb.v_addr = v.fm_rfm.base + v.fm_rfm.op2;
+        for (int i = 0; i < num_sp; i++)begin
+          if(v.spu.emsk[i] == 1)
+            vn.tlb.v_addr[i] = v.fm_rfm.base[i] + v.fm_rfm.op2[i];   
+        end
+        vn.tlb.emsk = v.spu.emsk;
       end
     end
     
@@ -127,6 +130,8 @@ class ip4_tlm_dse extends ovm_component;
         res.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
       end
     end
+    
+    
     
     if(v.fm_ise != null)begin
       if(v.fm_ise[stage_rrf_ag].en)begin
