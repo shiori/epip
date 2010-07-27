@@ -338,6 +338,7 @@ class inst_c extends ovm_object;
   msk_opcode_e msk_op;
   br_opcode_e br_op;
   uchar m_b, m_ua, m_fun, m_s, m_rt, m_t, m_mid, m_fifos;
+  bit en_spu, en_dse, en_fu[num_fu];
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(inst, OVM_ALL_ON)
@@ -680,6 +681,7 @@ class inst_c extends ovm_object;
       grp_rmsg[i] = adr_rmsg[i] >> bits_prf_p_grp;
       adr_rmsg[i] = (adr_rmsg[i] >> bits_srf_bks) & ~{'1 << (bits_prf_p_grp - bits_srf_bks)};
     end
+    
 	endfunction : decode
 	
 	function bit is_pd_br();
@@ -706,8 +708,20 @@ class inst_c extends ovm_object;
     decoded = 0;
     pr_br_dep = 0;
     priv = 0;
+    en_dse = 0;
+    en_spu = 0;
+    en_fu = '{default : 0};
+    pr_adr_wr = '{default : 0};
     foreach(inst.b[i])
       inst.b[i] = data[start+i];
+      
+    decode();
+    if(op inside {dse_ops})
+      en_dse = 1;
+    else if(vec)  
+      en_fu[fuid] = 1;
+    else if(op inside {spu_only_ops, spu_com_ops})
+      en_spu = 1;    
 	endfunction : set_data
 	
   function void analyze_rs(input uchar vmode, ref bit v_en[cyc_vec][num_vrf_bks], s_en[cyc_vec][num_srf_bks], inout uchar vrf, srf, dse);
@@ -751,27 +765,97 @@ class inst_c extends ovm_object;
         srf[bk_rmsg[i]]++;
   endfunction : analyze_rd
   
-  function void analyze_fu(input bit vec, inout bit en_spu, en_dse, ref bit en_fu[num_fu]);
+  ///reallocate en set by set_data
+  function void analyze_fu(inout bit spu, dse, ref bit fu[num_fu]);
+    en_dse = 0;
+    en_spu = 0;
+    en_fu = '{default : 0};
     if(!decoded) decode();
-    if(is_vec) begin
-      if(op inside {spu_only_ops})
+    if(op inside {dse_ops})
+      en_dse = 1;
+    else if(op inside {spu_ops})
+      en_spu = 1;
+    else if(is_vec) begin
+      if(op inside {spu_only_ops}) begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == sfu) begin
             en_fu[i] = 1;
             break;
           end
+      end
+      else begin
+        foreach(fu_cfg[i])
+          if(fu_cfg[i] != sfu) begin
+            en_fu[i] = 1;
+            break;
+          end
+      end
     end
-         
+    else if(op inside {spu_com_ops})
+      en_spu = 1;
+      
+    spu = en_spu;
+    dse = en_dse;
+    fu = en_fu;
   endfunction : analyze_fu
 
   function void fill_rfm(input tr_ise2rfm rfm);
     if(!decoded) decode();
-    
+    if(en_spu) begin
+      rfm.spu_en = 1;
+      rfm.spu_imm = imm;
+      foreach(rfm.spu_rd_bk[i])
+        rfm.spu_rd_bk[i] = rd_bk[i];
+    end
+    else if(en_dse) begin
+      rfm.dse_en = 1;
+      rfm.dse_imm = imm;
+      foreach(rfm.dse_rd_bk[i])
+        rfm.dse_rd_bk[i] = rd_bk[i];      
+    end
+    else begin
+      rfm.en[fuid] = 1;
+      rfm.fu[fuid].imm = imm;
+      foreach(rfm.fu[0].rd_bk[i])
+        rfm.fu[fuid].rd_bk[i] = rd_bk[i];       
+    end
   endfunction : fill_rfm
 
   function void fill_spu(input tr_ise2spu spu);
     if(!decoded) decode();
     
+    spu.pr_nmsk = '{default : 0};
+    if(en_spu) begin
+      spu.sop = msc_op;
+      spu.mop = msk_op;
+      spu.bop = br_op;
+      spu.cop = cmp_op;
+      spu.op = op;
+      spu.srf_wr_adr = adr_wr[0];
+      spu.srf_wr_bk = bk_wr[0];
+      spu.pr_rd_adr_spu = pr_adr_rd;
+      spu.pr_inv_spu = 0;
+      spu.pr_nmsk_spu = 0;
+      spu.pr_br_dep = pr_br_dep;
+      spu.srf_wr_dsel = 0;
+      spu.srf_wr_adr = adr_wr[0];
+      spu.srf_wr_bk = bk_wr[0];
+    end
+    else if(en_dse) begin
+      spu.pr_rd_adr_dse = pr_adr_rd;
+      spu.pr_nmsk_dse = 0;
+      spu.pr_inv_dse = 0;
+      spu.pr_wr_adr2 = pr_adr_wr[0];
+    end
+    else begin
+      spu.pr_inv[fuid] = 0;
+      spu.pr_nmsk[fuid] = 0;
+      spu.pr_rd_adr[fuid] = pr_adr_rd;
+      if(op inside {op_cmp, op_ucmp}) begin
+        spu.pr_wr_adr0 = pr_adr_wr[0];
+        spu.pr_wr_adr1 = pr_adr_wr[1];
+      end
+    end
   endfunction : fill_spu
 
   function void fill_dse(input tr_ise2dse dse);
@@ -781,7 +865,24 @@ class inst_c extends ovm_object;
 
   function void fill_spa(input tr_ise2spa spa);
     if(!decoded) decode();
+    if(!is_vec) return;
+    if(op inside {op_cmp, op_ucmp}) begin
+      spa.fmerge = merge_op;
+    end
     
+    if(op inside {dse_ops}) begin
+      spa.bp_rf_dse = rd_bk[1];
+      spa.bp_rf_dse_wp = 0;
+    end
+    else begin
+      spa.fu[fuid].en = 1;
+      spa.fu[fuid].op = op;
+      spa.fu[fuid].cop = cmp_op;
+      foreach(spa.fu[0].bp_sel[i])
+        spa.fu[fuid].bp_sel[i] = rd_bk[i];
+      spa.fu[fuid].vrf_wr_bk = bk_wr[0];
+      spa.fu[fuid].vrf_wr_adr = adr_wr[0];
+    end
   endfunction : fill_spa
 
   function bit dse_block(input bit no_ld, no_st, no_smsg, no_rmsg);

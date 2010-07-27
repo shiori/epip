@@ -438,7 +438,7 @@ endclass : ise2spa_fu
 
 class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   ise2spa_fu fu[num_fu];
-  rand bit pr_br;
+///  rand bit pr_br;
   rand pr_merge_e fmerge;
   rand uchar subv, tid, tid_cancel;
   rand bit cancel; /// cancel is sync to vwb0 stage to fu & sfu
@@ -454,7 +454,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  `ovm_field_int(subv, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(tid_cancel, OVM_ALL_ON)
-	  `ovm_field_int(pr_br, OVM_ALL_ON)
+///	  `ovm_field_int(pr_br, OVM_ALL_ON)
 	  `ovm_field_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(bp_rf_dse_wp, OVM_ALL_ON)
 ///	  `ovm_field_int(bp_rf_dse_en, OVM_ALL_ON)
@@ -613,19 +613,17 @@ class tr_ise2spu extends ovm_sequence_item;
   rand msk_opcode_e mop;
   rand br_opcode_e bop;
   rand cmp_opcode_e cop;
-  rand pr_merge_e fmerge;  
+///  rand pr_merge_e fmerge;  
   rand opcode_e op;
   
   rand uchar tid, subv, vec_mode;
   rand bit spu_start;
   rand bit pr_br_dep;
-  rand uchar pr_br_adr;
+///  rand uchar pr_br_adr;
   
   rand uchar srf_wr_bk, srf_wr_grp, srf_wr_adr, srf_wr_dsel;
   rand uchar pr_wr_adr0, pr_wr_adr1, ///fu pr write adr
              pr_wr_adr2; ///dse pr write adr
-///             pr_up_adr,
-///             pr_up_adr_rot,
   rand uchar pr_rd_adr[num_fu],   ///fu pr read adr
              pr_rd_adr_spu,  ///spu pr read adr
              pr_rd_adr_dse;  ///dse pr read adr
@@ -637,13 +635,13 @@ class tr_ise2spu extends ovm_sequence_item;
   constraint valid_data{
     tid < num_thread;
     pr_br_dep dist {0:=6, 1:=4};
-    pr_br_adr <= num_pr;
+///    pr_br_adr <= num_pr;
     subv dist {0:=5, 1:=5};
-    vec_mode < 4;
+    vec_mode < cyc_vec;
 ///    subs dist {0:=5, 1:=5};
 ///    cycs inside {[1:cyc_vec]};
-    pr_br_adr == 0 -> pr_br_dep == 0;
-    op inside {spu_ops, spu_possible_ops};
+    pr_rd_adr_spu == 0 -> pr_br_dep == 0;
+    op inside {spu_ops, spu_com_ops};
     op != op_br -> sop == sop_nop && mop == mop_nop && bop == bop_az;
     foreach(pr_rd_adr[i])
       pr_rd_adr[i] <= num_pr;
@@ -659,7 +657,7 @@ class tr_ise2spu extends ovm_sequence_item;
 		srf_wr_grp inside {[0:num_phy_vrf_grp-1]};
 		srf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		srf_wr_dsel < 2;
-    solve pr_br_adr before pr_br_dep;
+    solve pr_rd_adr_spu before pr_br_dep;
     solve op before sop, mop, bop;
   }
   
@@ -689,7 +687,7 @@ class tr_ise2spu extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_ise2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pr_br_dep, OVM_ALL_ON)
-	  `ovm_field_int(pr_br_adr, OVM_ALL_ON)
+///	  `ovm_field_int(pr_br_adr, OVM_ALL_ON)
 ///	  `ovm_field_int(cycs, OVM_ALL_ON)
 ///	  `ovm_field_int(subs, OVM_ALL_ON)
     `ovm_field_int(subv, OVM_ALL_ON)
@@ -714,7 +712,7 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_enum(msk_opcode_e, mop, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
 	  `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
-	  `ovm_field_enum(pr_merge_e, fmerge, OVM_ALL_ON)
+///	  `ovm_field_enum(pr_merge_e, fmerge, OVM_ALL_ON)
 	  `ovm_field_enum(br_opcode_e, bop, OVM_ALL_ON)
 		`ovm_field_int(srf_wr_dsel, OVM_ALL_ON)
 		`ovm_field_int(srf_wr_bk, OVM_ALL_ON + OVM_DEC)
@@ -835,7 +833,7 @@ endclass : tr_dse2spa
 
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wr_grp, wr_adr, wr_bk,
-             br_wr_grp, br_wr_adr, br_wr_bk, tid;
+             ua_wr_grp, ua_wr_adr, ua_wr_bk, tid;
   rand bit vec, en, bp_data, ua_wr;
   rand opcode_e op;
   rand uchar vec_mode;
@@ -844,9 +842,9 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(wr_bk, OVM_ALL_ON)
 	  `ovm_field_int(wr_adr, OVM_ALL_ON)
 	  `ovm_field_int(wr_grp, OVM_ALL_ON)
-	  `ovm_field_int(br_wr_bk, OVM_ALL_ON)
-	  `ovm_field_int(br_wr_adr, OVM_ALL_ON)
-	  `ovm_field_int(br_wr_grp, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr_bk, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr_adr, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr_grp, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(ua_wr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
