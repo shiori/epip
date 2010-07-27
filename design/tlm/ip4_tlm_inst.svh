@@ -882,7 +882,6 @@ class inst_c extends ovm_object;
         spa.fu[fuid].bp_sel[i] = rd_bk[i];
       spa.fu[fuid].vrf_wr_bk = bk_wr[0];
       spa.fu[fuid].vrf_wr_adr = adr_wr[0];
-      
     end
   endfunction : fill_spa
 

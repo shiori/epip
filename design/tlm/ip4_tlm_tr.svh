@@ -637,7 +637,7 @@ class tr_ise2spu extends ovm_sequence_item;
     pr_br_dep dist {0:=6, 1:=4};
 ///    pr_br_adr <= num_pr;
     subv dist {0:=5, 1:=5};
-    vec_mode < 4;
+    vec_mode < cyc_vec;
 ///    subs dist {0:=5, 1:=5};
 ///    cycs inside {[1:cyc_vec]};
     pr_rd_adr_spu == 0 -> pr_br_dep == 0;
@@ -833,7 +833,7 @@ endclass : tr_dse2spa
 
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wr_grp, wr_adr, wr_bk,
-             br_wr_grp, br_wr_adr, br_wr_bk, tid;
+             ua_wr_grp, ua_wr_adr, ua_wr_bk, tid;
   rand bit vec, en, bp_data, ua_wr;
   rand opcode_e op;
   rand uchar vec_mode;
@@ -842,9 +842,9 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(wr_bk, OVM_ALL_ON)
 	  `ovm_field_int(wr_adr, OVM_ALL_ON)
 	  `ovm_field_int(wr_grp, OVM_ALL_ON)
-	  `ovm_field_int(br_wr_bk, OVM_ALL_ON)
-	  `ovm_field_int(br_wr_adr, OVM_ALL_ON)
-	  `ovm_field_int(br_wr_grp, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr_bk, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr_adr, OVM_ALL_ON)
+	  `ovm_field_int(ua_wr_grp, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(ua_wr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
