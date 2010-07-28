@@ -133,6 +133,7 @@ class ip4_tlm_ife extends ovm_component;
     stamp = 0ns;
     
     im = new[im_size];
+    $readmemh(im_file_path, im);	
   endfunction : build
 endclass : ip4_tlm_ife
 
