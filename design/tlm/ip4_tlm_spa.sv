@@ -124,6 +124,7 @@ class ip4_tlm_spa extends ovm_component;
     
     for(int sg = stage_eex; sg > 1; sg--)
       vn.sfu[sg] = v.sfu[sg-1];
+    vn.sfu[1] = null;
   endfunction
   
   function void req_proc();
@@ -217,7 +218,7 @@ class ip4_tlm_spa extends ovm_component;
       foreach(ise.fu[fid]) begin
         ise2spa_fu fu = ise.fu[fid];
         if(!(fu.op inside {spu_only_ops})) continue;
-        if (vn.sfu[1] != null) vn.sfu[1] = new();
+        if (vn.sfu[1] == null) vn.sfu[1] = new();
         vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
         vn.sfu[1].en[fid] = fu.en;
         vn.sfu[1].vrf_wr_bk[fid] = fu.vrf_wr_bk;

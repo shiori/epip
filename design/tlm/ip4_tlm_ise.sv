@@ -603,8 +603,13 @@ class ip4_tlm_ise extends ovm_component;
       vn.rfm[i] = v.rfm[i];  
       vn.spa[i] = v.spa[i];
       vn.spu[i] = v.spu[i];
+      vn.dse[i] = v.dse[i];
     end
-    
+    vn.rfm[1] = null; 
+    vn.spa[1] = null;
+    vn.spu[1] = null;
+    vn.dse[1] = null;
+          
     foreach(tinf[i])
       tinf[i].cyc_new();
       

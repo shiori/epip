@@ -939,44 +939,44 @@ class tr_tlb2spu extends ovm_sequence_item;
 endclass : tr_tlb2spu
 
 class tr_dse2tlb extends ovm_sequence_item;
-  rand word v_addr[num_sp];
+  rand word v_adr[num_sp];
   rand bit emsk[num_sp];
   rand opcode_e op;
   
   `ovm_object_utils_begin(tr_dse2tlb)
-    `ovm_field_sarray_int(v_addr, OVM_ALL_ON);
+    `ovm_field_sarray_int(v_adr, OVM_ALL_ON);
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end  
   
 endclass : tr_dse2tlb
 
 class tr_tlb2dse extends ovm_sequence_item;
-  rand word phy_addr[num_sp];
+  rand word phy_adr[num_sp];
   rand uchar vadr_cnt;
   
   `ovm_object_utils_begin(tr_tlb2dse)
-    `ovm_field_sarray_int(phy_addr, OVM_ALL_ON);
+    `ovm_field_sarray_int(phy_adr, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_tlb2dse  
 
 class tr_ife2tlb extends ovm_sequence_item;
-  rand word v_addr;
+  rand word v_adr;
   rand bit req;
   
   `ovm_object_utils_begin(tr_ife2tlb)
-    `ovm_field_int(v_addr, OVM_ALL_ON);
+    `ovm_field_int(v_adr, OVM_ALL_ON);
     `ovm_field_int(req, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_ife2tlb  
 
 class tr_tlb2ife extends ovm_sequence_item;
-  rand word p_addr;
+  rand word p_adr;
   rand bit rsp, hit;
   
   `ovm_object_utils_begin(tr_tlb2ife)
-    `ovm_field_int(p_addr, OVM_ALL_ON);
+    `ovm_field_int(p_adr, OVM_ALL_ON);
     `ovm_field_int(rsp, OVM_ALL_ON);
     `ovm_field_int(hit, OVM_ALL_ON);
   `ovm_object_utils_end  

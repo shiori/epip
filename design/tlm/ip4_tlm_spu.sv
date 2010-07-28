@@ -71,15 +71,16 @@ class ip4_tlm_spu extends ovm_component;
   
   function void comb_proc();
     ovm_report_info("SPU", "comb_proc procing...", OVM_HIGH); 
-    for(int i=stage_rrf_vwb0; i > 0; i--)
+    for(int i = stage_rrf_vwb0; i > 0; i--)
       vn.fm_ise[i] = v.fm_ise[i-1];
       
-    for(int i=stage_rrf_vwb0; i > stage_rrf_rrc1; i--)
+    for(int i = stage_rrf_vwb0; i > stage_rrf_rrc1; i--)
       vn.fm_rfm[i] = v.fm_rfm[i-1];
 
-    for(int i=stage_rrf_swbp; i > stage_rrf_rrc1; i--)
+    for(int i = stage_rrf_swbp; i > stage_rrf_rrc1; i--)
       vn.rfm[i] = v.rfm[i-1];
-          
+    vn.rfm[stage_rrf_swbp] = null;
+    
     if(v.fm_ise[stage_rrf_rrc1] != null) end_tr(v.fm_ise[stage_rrf_rrc1]);
     if(v.fm_rfm[stage_rrf_rrc1] != null) end_tr(v.fm_rfm[stage_rrf_rrc1]);
     if(v.fm_spa != null) end_tr(v.fm_spa);
