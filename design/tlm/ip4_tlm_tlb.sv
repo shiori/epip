@@ -34,7 +34,9 @@ parameter uchar RContent_NO = 6,
           REntryLo1_NO = 10,
           REntryHi_NO = 11,
           RPageMask_NO = 12;
-          
+
+parameter uchar num_sstage = 2,
+                sstage_max = num_sstage - 1; /// spu pipeline in the tlb
 
 class ip4_tlm_tlb_vars extends ovm_object;
   
@@ -43,7 +45,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
   tr_ife2tlb fm_ife;
   
   tr_tlb2dse dse;
-  tr_tlb2spu spu;
+  tr_tlb2spu spu[sstage_max:1];
   tr_tlb2ife ife;
   
   rand bit[VPN2_width-1:0] tlb_vpn2[Entry_NUM-1:0];
@@ -72,7 +74,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_ife, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(ife, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_int(tlb_vpn2, OVM_ALL_ON)
     `ovm_field_sarray_int(tlb_mask, OVM_ALL_ON)
@@ -152,7 +154,7 @@ class ip4_tlm_tlb extends ovm_component;
   ovm_nonblocking_transport_imp_ife #(tr_ife2tlb, tr_ife2tlb, ip4_tlm_tlb) ife_tr_imp;
   
   ovm_nonblocking_transport_port #(tr_tlb2spu, tr_tlb2spu) spu_tr_port;
-  ovm_nonblocking_transport_port #(tr_tlb2dse, tr_tlb2dse) tlb_tr_port;
+  ovm_nonblocking_transport_port #(tr_tlb2dse, tr_tlb2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_tlb2ife, tr_tlb2ife) ife_tr_port;  
     
   function void comb_proc();
@@ -228,14 +230,15 @@ class ip4_tlm_tlb extends ovm_component;
     end
        
      local word i0, i1, i2;
-     tr_tlb2spu t;
     /// tlb support instruction  spu -> tlb
     /// dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
     /// spu:    | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
     ///                             |      |
     ///                          request  respond
+   
     /// delay one pipelinestage
-        
+    for (int i = sstage_max; i > 1; i--)
+      vn.spu[i] = v.spu[i-1];   
     
     if(v.fm_spu.req)begin
       case(v.fm_spu.op)
@@ -258,7 +261,7 @@ class ip4_tlm_tlb extends ovm_component;
                            v.tlb_V1[i0], v.tlb_G1[i0]};
           vn.REntryLo0 = {(v.tlb_pfn20[i0] && (!v.tlb_mask[i0]), v.tlb_EX0[i0], 
                            v.tlb_C0[i0], v.tlb_K0[i0], v.tlb_E0[i0], v.tlb_D0[i0],
-                           v.tlb_V0[i0], v.tlb_G0[i0],}; 
+                           v.tlb_V0[i0], v.tlb_G0[i0]}; 
         end
         
      /// TLBWI
@@ -325,6 +328,7 @@ class ip4_tlm_tlb extends ovm_component;
     tr_tlb2dse to_dse;
     tr_tlb2spu to_spu;
     
+    /// send to dse
     if(find == 1)
       to_dse = v.dse;
     else begin
@@ -332,22 +336,36 @@ class ip4_tlm_tlb extends ovm_component;
       ovm_report_warning("TLB_Missed", "TLB Missed exception!!!"); 
     end
     
-    to_spu = v.spu;     ///    
-
-///    if(to_dse != null) void'(dse_tr_port.nb_transport(to_dse, to_dse));
+    /// send to spu
+    
+    to_spu = v.spu;     ///
+   
+    /// req to other module
+    if(to_dse != null) void'(dse_tr_port.nb_transport(to_dse, to_dse));
+    if(to_spu != null) void'(spu_tr_port.nb_transport(to_spu, to_spu));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
  
-///  function bit nb_transport_dse(input tr_dse2spa req, output tr_dse2spa rsp);
-///    ovm_report_info("SPA_TR", "Get DSE Transaction...", OVM_HIGH);
-///    sync();
-///    assert(req != null);
-///    void'(begin_tr(req));
-///    rsp = req;
-///    vn.fm_dse[stage_exe_dwb] = req;
-///    return 1;
-///  endfunction : nb_transport_dse
+  function bit nb_transport_dse(input tr_dse2tlb req, output tr_dse2tlb rsp);
+    ovm_report_info("DSE2TLB_TR", "Get DSE Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_dse = req;
+    return 1;
+  endfunction : nb_transport_dse
+  
+  function bit nb_transport_spu(input tr_spu2tlb req, output tr_spu2tlb rsp);
+    ovm_report_info("SPU2TLB_TR", "Get SPU Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_spu = req;
+    return 1;
+  endfunction : nb_transport_spu
   
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
@@ -383,9 +401,14 @@ class ip4_tlm_tlb extends ovm_component;
     tlm_vif_object vif_cfg;
     
     super.build();
-///    ise_tr_imp = new("ise_tr_imp", this);
-///    dse_tr_port = new("dse_tr_port", this);
+    dse_tr_imp = new("dse_tr_imp", this);
+    ise_tr_imp = new("ise_tr_imp", this);
+    spu_tr_imp = new("spu_tr_imp", this);
     
+    dse_tr_port = new("dse_tr_port", this);
+    ise_tr_port = new("ise_tr_port", this);
+    spu_tr_port = new("spu_tr_port", this);
+   
     v = new();
     vn = new();
     
