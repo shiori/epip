@@ -479,6 +479,9 @@ class ise_iss_inf extends ovm_object;
   function bit can_iss(input ise_thread_inf tif, output bit vec);
     /// the vec value indicate 4 cyc issue style is needed
 ///    vec = tif.dse_vec;
+    if((tif.ts != ts_rdy) && (tif.ts != ts_w_pip || tif.nck))
+      return 0;
+      
     foreach(tif.en_fu[i])
       vec |= tif.en_fu[i];
     

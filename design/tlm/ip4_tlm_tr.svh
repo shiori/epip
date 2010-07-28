@@ -942,10 +942,14 @@ class tr_dse2tlb extends ovm_sequence_item;
   rand word v_adr[num_sp];
   rand bit emsk[num_sp];
   rand opcode_e op;
+  rand uchar tid;
+  rand bit req;
   
   `ovm_object_utils_begin(tr_dse2tlb)
     `ovm_field_sarray_int(v_adr, OVM_ALL_ON);
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON);
+    `ovm_field_int(req, OVM_ALL_ON);
   `ovm_object_utils_end  
   
 endclass : tr_dse2tlb
@@ -963,10 +967,12 @@ endclass : tr_tlb2dse
 class tr_ife2tlb extends ovm_sequence_item;
   rand word v_adr;
   rand bit req;
+  rand uchar tid;
   
   `ovm_object_utils_begin(tr_ife2tlb)
     `ovm_field_int(v_adr, OVM_ALL_ON);
     `ovm_field_int(req, OVM_ALL_ON);
+    `ovm_field_int(tid, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_ife2tlb  
@@ -974,11 +980,13 @@ endclass : tr_ife2tlb
 class tr_tlb2ife extends ovm_sequence_item;
   rand word p_adr;
   rand bit rsp, hit;
+  rand uchar tid;
   
   `ovm_object_utils_begin(tr_tlb2ife)
     `ovm_field_int(p_adr, OVM_ALL_ON);
     `ovm_field_int(rsp, OVM_ALL_ON);
     `ovm_field_int(hit, OVM_ALL_ON);
+    `ovm_field_int(tid, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_tlb2ife

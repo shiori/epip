@@ -25,8 +25,9 @@ parameter word  pagemask0 = 15'b000000000000000,   /// 8K
                 pagemask5 = 15'b001111111111111,   /// 64M
                 pagemask6 = 15'b111111111111111;   /// 256M 
 
-parameter uchar PFN_width = 23;
-
+parameter uchar PFN_width = 23,
+                IFE_REQ_BUF = 2;
+                
 parameter uchar RContent_NO = 6,
                 RIndex_NO = 7,
                 RRandom_NO = 8,
@@ -42,7 +43,8 @@ class ip4_tlm_tlb_vars extends ovm_object;
   
   tr_dse2tlb fm_dse;
   tr_spu2tlb fm_spu;
-  tr_ife2tlb fm_ife;
+  tr_ife2tlb fm_ife[IFE_REQ_BUF];
+  uchar ife_buf_ptr;
   
   tr_tlb2dse dse;
   tr_tlb2spu spu[sstage_max:1];
@@ -50,7 +52,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
   
   bit[VPN2_width-1:0] tlb_vpn2[Entry_NUM-1:0];
   bit[MASK_width-1:0] tlb_mask[Entry_NUM-1:0];
-  bit[ASID_width-1:0] tlb_asid[Entry_NUM-1:0];
+  bit[num_thread-1:0][ASID_width-1:0] tlb_asid[Entry_NUM-1:0];
   bit                 tlb_G[Entry_NUM-1:0]; 
   
   bit[PFN_width-1:0]  tlb_pfn20[Entry_NUM-1:0];
@@ -74,7 +76,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
   `ovm_object_utils_begin(ip4_tlm_tlb_vars)
     `ovm_field_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(fm_ife, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(fm_ife, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(ife, OVM_ALL_ON + OVM_REFERENCE)
@@ -105,6 +107,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
     `ovm_field_int(REntryHi, OVM_ALL_ON)
     `ovm_field_int(RPageMask, OVM_ALL_ON)
     `ovm_field_int(RContent, OVM_ALL_ON)
+    `ovm_field_int(ife_buf_ptr, OVM_ALL_ON)
   `ovm_object_utils_end
   
   function new (string name = "tlb_vars");
@@ -132,6 +135,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
     REntryHi = 0;
     RPageMask = 0;
     RContent = 0;
+    ife_buf_ptr = 0;
   endfunction : new
   
   function void gen(input ip4_tlm_tlb_vars o);
@@ -175,10 +179,20 @@ class ip4_tlm_tlb extends ovm_component;
      
     if(v.fm_dse != null) end_tr(v.fm_dse);
     if(v.fm_spu != null) end_tr(v.fm_spu);
-    if(v.fm_ife != null) end_tr(v.fm_ife);
     vn.fm_dse = null;
     vn.fm_spu = null;
-    vn.fm_ife = null;
+    
+    if(v.fm_dse != null && !v.fm_dse.req) begin
+      if(v.fm_ife[0] != null) end_tr(v.fm_ife[0]);
+      for(int i = 1; i < v.ife_buf_ptr; i++)
+        vn.fm_ife[i-1] = v.fm_ife[i];
+      if(v.ife_buf_ptr > 0) begin
+        vn.fm_ife[v.ife_buf_ptr-1] = null;
+        vn.ife_buf_ptr = v.ife_buf_ptr - 1;
+      end
+      else
+       vn.fm_ife[0] = null;
+    end
     
     for (int i = sstage_max; i > 1; i--)
       vn.spu[i] = v.spu[i-1];
@@ -203,7 +217,7 @@ class ip4_tlm_tlb extends ovm_component;
     ///tlb basic function
       for (int i = 0; i < Entry_NUM; i++)begin
         if(((v.tlb_vpn2[i] && (!v.tlb_mask[i])) == (valva_adr[0][31:VADD_START] && (!v.tlb_mask[i]))) 
-          && (v.tlb_G[i] || (v.tlb_asid[i] == v.REntryHi[ASID_width-1:0])))begin
+          && (v.tlb_G[i] || (v.tlb_asid[i][v.fm_dse.tid] == v.REntryHi[ASID_width-1:0])))begin
             case(v.tlb_mask[i])
               pagemask0: EvenOddBit = 13;   
               pagemask1: EvenOddBit = 16;
@@ -227,13 +241,12 @@ class ip4_tlm_tlb extends ovm_component;
               var_d   = v.tlb_D1[i];
             end
             if(var_v == 0)begin
-              ovm_report_warning("TLB_Invalid", "TLB Invalid exception!!!"); 
+              ovm_report_info("TLB_Invalid", "TLB Invalid exception!!!", OVM_HIGH); 
               vn.RContent[4:0] = 0;
               vn.RContent[22:5] = v.tlb_vpn2[i];
-        ///    vn.RContent[31:23] = ;
             end
             if((var_d == 0) && ((v.fm_dse.op == op_sw) || (v.fm_dse.op == op_sh) || (v.fm_dse.op == op_sb)))begin
-              ovm_report_warning("TLB_Modified", "TLB Modified exception!!!"); 
+              ovm_report_info("TLB_Modified", "TLB Modified exception!!!", OVM_HIGH); 
               vn.RContent[4:0] = 0;
               vn.RContent[22:5] = v.tlb_vpn2[i];
             end
@@ -261,7 +274,7 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbp:
         for (int i = 0; i < Entry_NUM; i++)begin
           if((v.tlb_vpn2[i] && (!v.tlb_mask[i])) == (v.REntryHi[word_width-1:word_width-VPN2_width] && (!v.tlb_mask[i]))
-              && ((v.tlb_G[i] == 1) || (v.tlb_asid[i] == v.REntryHi[ASID_width-1:0])))
+              && ((v.tlb_G[i] == 1) || (v.tlb_asid[i][v.fm_dse.tid] == v.REntryHi[ASID_width-1:0])))
               vn.RIndex = i;
         end
       
@@ -271,7 +284,7 @@ class ip4_tlm_tlb extends ovm_component;
         i0 = v.RIndex;
         if(i0 < Entry_NUM) begin
           vn.RPageMask[MASK_width-1:0] = v.tlb_mask[i0];
-          vn.REntryHi = {(v.tlb_vpn2[i0] && (!v.tlb_mask[i0])), 6'b0, v.tlb_asid[i0]};
+          vn.REntryHi = {(v.tlb_vpn2[i0] && (!v.tlb_mask[i0])), 6'b0, v.tlb_asid[i0][v.fm_dse.tid]};
           vn.REntryLo1 = {(v.tlb_pfn21[i0] && (!v.tlb_mask[i0])), v.tlb_EX1[i0], 
                            v.tlb_C1[i0], v.tlb_K1[i0], v.tlb_E1[i0], v.tlb_D1[i0],
                            v.tlb_V1[i0], v.tlb_G1[i0]};
@@ -286,7 +299,7 @@ class ip4_tlm_tlb extends ovm_component;
         i1 = v.RIndex;
         vn.tlb_mask[i1] = v.RPageMask[MASK_width-1:0];
         vn.tlb_vpn2[i1] = v.REntryHi[word_width-1:word_width-VPN2_width] && (!v.RPageMask[MASK_width-1:0]);
-        vn.tlb_asid[i1] = v.REntryHi[ASID_width-1:0];
+        vn.tlb_asid[i1][v.fm_dse.tid] = v.REntryHi[ASID_width-1:0];
         vn.tlb_G[i1] = v.REntryLo1[0] && v.REntryLo0[0];
         vn.tlb_pfn21[i1] = v.REntryLo1[word_width-1:9] && (!v.RPageMask[MASK_width-1:0]);
         vn.tlb_EX1[i1] = v.REntryLo1[8]; vn.tlb_C1[i1] = v.REntryLo1[7:5]; vn.tlb_K1[i1] = v.REntryLo1[4];
@@ -301,7 +314,7 @@ class ip4_tlm_tlb extends ovm_component;
         i1 = v.RIndex;
         vn.tlb_mask[i2] = v.RPageMask[MASK_width-1:0];
         vn.tlb_vpn2[i2] = v.REntryHi[word_width-1:word_width-VPN2_width] && (!v.RPageMask[MASK_width-1:0]);
-        vn.tlb_asid[i2] = v.REntryHi[ASID_width-1:0];
+        vn.tlb_asid[i2][v.fm_dse.tid] = v.REntryHi[ASID_width-1:0];
         vn.tlb_G[i2] = v.REntryLo1[0] && v.REntryLo0[0];
         vn.tlb_pfn21[i2] = v.REntryLo1[word_width-1:9] && (!v.RPageMask[MASK_width-1:0]);
         vn.tlb_EX1[i2] = v.REntryLo1[8]; vn.tlb_C1[i2] = v.REntryLo1[7:5]; vn.tlb_K1[i2] = v.REntryLo1[4];
@@ -390,7 +403,17 @@ class ip4_tlm_tlb extends ovm_component;
     vn.fm_spu = req;
     return 1;
   endfunction : nb_transport_spu
-  
+
+  function bit nb_transport_ife(input tr_ife2tlb req, output tr_ife2tlb rsp);
+    ovm_report_info("IFE2TLB_TR", "Get IFE Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_ife[v.ife_buf_ptr] = req;
+    vn.ife_buf_ptr = v.ife_buf_ptr + 1;
+    return 1;
+  endfunction : nb_transport_ife  
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     ip4_tlm_tlb_vars t;
