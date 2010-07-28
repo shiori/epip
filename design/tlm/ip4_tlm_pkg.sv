@@ -144,6 +144,7 @@ parameter uchar bits_vrf_bks    = clogb2(num_vrf_bks),
 `ovm_nonblocking_transport_imp_decl(_spa)
 `ovm_nonblocking_transport_imp_decl(_dse)
 `ovm_nonblocking_transport_imp_decl(_ife)
+`ovm_nonblocking_transport_imp_decl(_tlb)
   
 class tlm_vif_object extends ovm_object;
   `ovm_object_utils(tlm_vif_object)
@@ -359,6 +360,7 @@ parameter opcode_e ise_ops[] = '{
 `include "ip4_tlm_ise.sv"
 `include "ip4_tlm_tlb.sv"
 ///`include "ip4_tlm_dse.sv"
+`include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
 
 endpackage : ip4_tlm_pkg

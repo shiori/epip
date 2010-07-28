@@ -63,11 +63,13 @@ class ip4_tlm_spu extends ovm_component;
   ovm_nonblocking_transport_imp_spa #(tr_spa2spu, tr_spa2spu, ip4_tlm_spu) spa_tr_imp;
   ovm_nonblocking_transport_imp_rfm #(tr_rfm2spu, tr_rfm2spu, ip4_tlm_spu) rfm_tr_imp;
   ovm_nonblocking_transport_imp_dse #(tr_dse2spu, tr_dse2spu, ip4_tlm_spu) dse_tr_imp;
+  ovm_nonblocking_transport_imp_tlb #(tr_tlb2spu, tr_tlb2spu, ip4_tlm_spu) tlb_tr_imp;
   
   ovm_nonblocking_transport_port #(tr_spu2rfm, tr_spu2rfm) rfm_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2ise, tr_spu2ise) ise_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2spa, tr_spu2spa) spa_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2dse, tr_spu2dse) dse_tr_port;
+  ovm_nonblocking_transport_port #(tr_spu2tlb, tr_spu2tlb) tlb_tr_port;
   
   function void comb_proc();
     ovm_report_info("SPU", "comb_proc procing...", OVM_HIGH); 
@@ -384,7 +386,17 @@ class ip4_tlm_spu extends ovm_component;
     vn.fm_dse = req;
     return 1;
   endfunction : nb_transport_dse
-  
+
+  function bit nb_transport_tlb(input tr_tlb2spu req, output tr_tlb2spu rsp);
+    ovm_report_info("SPU_TR", "Get TLB Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+///    vn.fm_dse = req;
+    return 1;
+  endfunction : nb_transport_tlb
+    
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     ip4_tlm_spu_vars t;
@@ -423,11 +435,13 @@ class ip4_tlm_spu extends ovm_component;
     rfm_tr_imp = new("rfm_tr_imp", this);
     spa_tr_imp = new("spa_tr_imp", this);
     dse_tr_imp = new("dse_tr_imp", this);
+    tlb_tr_imp = new("tlb_tr_imp", this);
     
     rfm_tr_port = new("rfm_tr_port", this);
     ise_tr_port = new("ise_tr_port", this);
     spa_tr_port = new("spa_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
+    tlb_tr_port = new("tlb_tr_port", this);
     
     v = new();
     vn = new();
