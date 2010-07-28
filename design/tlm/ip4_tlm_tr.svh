@@ -961,19 +961,24 @@ class tr_tlb2dse extends ovm_sequence_item;
 endclass : tr_tlb2dse  
 
 class tr_ife2tlb extends ovm_sequence_item;
- 
+  rand word v_addr;
+  rand bit req;
   
   `ovm_object_utils_begin(tr_ife2tlb)
-///    `ovm_field_int(, OVM_ALL_ON);
+    `ovm_field_int(v_addr, OVM_ALL_ON);
+    `ovm_field_int(req, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_ife2tlb  
 
 class tr_tlb2ife extends ovm_sequence_item;
-
+  rand word p_addr;
+  rand bit rsp, hit;
   
   `ovm_object_utils_begin(tr_tlb2ife)
-///    `ovm_field_int(, OVM_ALL_ON);
+    `ovm_field_int(p_addr, OVM_ALL_ON);
+    `ovm_field_int(rsp, OVM_ALL_ON);
+    `ovm_field_int(hit, OVM_ALL_ON);
   `ovm_object_utils_end  
 
-endclass : tr_tlb2ife  
+endclass : tr_tlb2ife
