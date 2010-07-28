@@ -108,6 +108,7 @@ class ip4_tlm_dse extends ovm_component;
     
     /// check the physical address in sel stage
     if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw))begin
+      
       if((v.fm_tlb.phy_addr[1:0] && Cbyte_offset) == 2'b00)begin
         
       end
