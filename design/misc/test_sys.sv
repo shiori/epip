@@ -130,7 +130,6 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "run_delay", 6ns);
     set_config_int("*.sequencer", "count", 200);
     set_config_int("*", "recording_detail", 1);
-    set_report_verbosity_level_hier(OVM_HIGH);
     set_config_int("*", "im_base", cfg_start_adr);
     set_config_int("*", "im_size", 1024);
     set_config_string("*", "im_file_path", "code.txt");
@@ -144,6 +143,7 @@ class ip4_sys_test extends ovm_test;
 ///  endfunction
   
   virtual task run();
+    set_report_verbosity_level_hier(OVM_HIGH);
   endtask
     
   function new(string name = "test_sys", ovm_component parent);

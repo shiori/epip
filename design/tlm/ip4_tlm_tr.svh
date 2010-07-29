@@ -789,8 +789,8 @@ class tr_ise2ife extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_ise2ife)
 	  `ovm_field_int(fetch_req, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(pc, OVM_ALL_ON)
+	  `ovm_field_int(tid, OVM_ALL_ON + OVM_DEC)
+	  `ovm_field_int(pc, OVM_ALL_ON + OVM_HEX)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2ife");

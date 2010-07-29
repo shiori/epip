@@ -80,7 +80,7 @@ class ip4_tlm_dse extends ovm_component;
     word valva_adr[num_sp];
     bit var_emsk[num_sp];
     
-    ovm_report_info("DSE", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("DSE", "comb_proc procing...", OVM_FULL); 
     
     if(v.fm_ise[stage_rrf_ag] != null) end_tr(v.fm_ise[stage_rrf_ag]);
     if(v.fm_rfm != null) end_tr(v.fm_rfm); 
@@ -138,7 +138,7 @@ class ip4_tlm_dse extends ovm_component;
   function void req_proc();
     tr_dse2rfm res;
     
-    ovm_report_info("DSE", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("DSE", "req_proc procing...", OVM_FULL); 
     
     ///send write back control signal to rfm
     if(v.fm_ise[stage_rrf_dwb] != null)begin
@@ -216,11 +216,11 @@ class ip4_tlm_dse extends ovm_component;
   function void sync();
     ip4_tlm_dse_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     t = v;
     v = vn;

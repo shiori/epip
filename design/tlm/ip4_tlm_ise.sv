@@ -329,8 +329,8 @@ class ise_thread_inf extends ovm_object;
 
   function void fill_ife(input tr_ise2ife ife);
     ife.fetch_req = 1;
+    ife.pc = (pc + num_ifet_bytes * pd_ifet) & ~{'1 << bits_ifet};
     pd_ifet++;
-    ife.pc = (pc + num_ifet_bytes * pd_ifet) & {'1 << bits_ifet};
   endfunction : fill_ife
   
   function void fill_iss(input tr_ise2rfm ci_rfm[cyc_vec], tr_ise2spa ci_spa[cyc_vec], 
@@ -594,7 +594,7 @@ class ip4_tlm_ise extends ovm_component;
   function void comb_proc();
 ///    bit spu_from_vec = 0;
     
-    ovm_report_info("ISE", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("ISE", "comb_proc procing...", OVM_FULL); 
     
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_spa != null) end_tr(v.fm_spa);
@@ -669,7 +669,7 @@ class ip4_tlm_ise extends ovm_component;
     tr_ise2ife to_ife;
     tr_ise2dse to_dse;
     
-    ovm_report_info("ISE", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("ISE", "req_proc procing...", OVM_FULL); 
     
     iinf.get_tr(vn.rfm[1], vn.spa[1], vn.spu[1], vn.dse[1]);
     
@@ -709,7 +709,7 @@ class ip4_tlm_ise extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ife(input tr_ife2ise req, output tr_ife2ise rsp);
-    ovm_report_info("ISE_TR", "Get IFE Transaction...", OVM_HIGH);
+    ovm_report_info("ISE_TR", $psprintf("Get IFE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -720,7 +720,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_ife
 
   function bit nb_transport_spu(input tr_spu2ise req, output tr_spu2ise rsp);
-    ovm_report_info("ISE_TR", "Get SPU Transaction...", OVM_HIGH);
+    ovm_report_info("ISE_TR", $psprintf("Get SPU Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -730,7 +730,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_spa(input tr_spa2ise req, output tr_spa2ise rsp);
-    ovm_report_info("ISE_TR", "Get SPA Transaction...", OVM_HIGH);
+    ovm_report_info("ISE_TR", $psprintf("Get SPA Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -740,7 +740,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_spa
   
   function bit nb_transport_rfm(input tr_rfm2ise req, output tr_rfm2ise rsp);
-    ovm_report_info("ISE_TR", "Get RFM Transaction...", OVM_HIGH);
+    ovm_report_info("ISE_TR", $psprintf("Get RFM Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -750,7 +750,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_dse(input tr_dse2ise req, output tr_dse2ise rsp);
-    ovm_report_info("ISE_TR", "Get DSE Transaction...", OVM_HIGH);
+    ovm_report_info("ISE_TR", $psprintf("Get DSE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -763,11 +763,11 @@ class ip4_tlm_ise extends ovm_component;
   function void sync();
     ip4_tlm_ise_vars t;
     if($time==stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     t = v;
     v = vn;

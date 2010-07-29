@@ -54,7 +54,7 @@ class ip4_tlm_ife extends ovm_component;
   ovm_nonblocking_transport_port #(tr_ife2tlb, tr_ife2tlb) tlb_tr_port;
         
   function void comb_proc();
-    ovm_report_info("IFE", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("IFE", "comb_proc procing...", OVM_FULL); 
     for(int i = stage_ife; i > 1; i--)
       vn.ise[i] = v.ise[i-1];
     vn.ise[1] = null;
@@ -79,7 +79,7 @@ class ip4_tlm_ife extends ovm_component;
   
   function void req_proc();
     tr_ife2ise to_ise;
-    ovm_report_info("IFE", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("IFE", "req_proc procing...", OVM_FULL); 
     
     to_ise = v.ise[stage_ife];
     if(to_ise != null) void'(ise_tr_port.nb_transport(to_ise, to_ise));
@@ -88,7 +88,7 @@ class ip4_tlm_ife extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_ise(input tr_ise2ife req, output tr_ise2ife rsp);
-    ovm_report_info("IFE_TR", "Get ISE Transaction...", OVM_HIGH);
+    ovm_report_info("IFE_TR", $psprintf("Get ISE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -98,7 +98,7 @@ class ip4_tlm_ife extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_tlb(input tr_tlb2ife req, output tr_tlb2ife rsp);
-    ovm_report_info("IFE_TR", "Get TLB Transaction...", OVM_HIGH);
+    ovm_report_info("IFE_TR", $psprintf("Get TLB Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -111,11 +111,11 @@ class ip4_tlm_ife extends ovm_component;
   function void sync();
     ip4_tlm_ife_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     t = v;
     v = vn;
@@ -155,7 +155,7 @@ class ip4_tlm_ife extends ovm_component;
     stamp = 0ns;
     
     im = new[im_size];
-    $readmemh(im_file_path, im);
+    $readmemb(im_file_path, im);
   endfunction : build
 endclass : ip4_tlm_ife
 

@@ -88,7 +88,7 @@ class ip4_tlm_spa extends ovm_component;
 ///  // endfunction
     
   function void comb_proc();
-    ovm_report_info("SPA", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("SPA", "comb_proc procing...", OVM_FULL); 
     if(v.fm_ise[0] != null) end_tr(v.fm_ise[0]);
     if(v.fm_spu[0] != null) end_tr(v.fm_spu[0]);
     if(v.fm_rfm[0] != null) end_tr(v.fm_rfm[0]);
@@ -135,7 +135,7 @@ class ip4_tlm_spa extends ovm_component;
 ///    bit pr2dse[num_sp];
     uchar tmp[cyc_vec][num_sp];
     
-    ovm_report_info("SPA", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("SPA", "req_proc procing...", OVM_FULL); 
     
     ///--------------prepare---------------------------------
 ///    to_rfm = tr_spa2rfm::type_id::create("to_spa", this);
@@ -340,11 +340,11 @@ class ip4_tlm_spa extends ovm_component;
   function void sync();
     ip4_tlm_spa_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     t = v;
     v = vn;

@@ -944,7 +944,7 @@ class inst_fg_c extends ovm_object;
   uchar data[num_ifet_bytes];
   
   `ovm_object_utils_begin(inst_fg_c)
-    `ovm_field_sarray_int(data, OVM_ALL_ON)
+    `ovm_field_sarray_int(data, OVM_ALL_ON + OVM_BIN)
   `ovm_object_utils_end
   
 	function new(string name = "inst_fg_c");

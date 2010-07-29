@@ -72,7 +72,7 @@ class ip4_tlm_spu extends ovm_component;
   ovm_nonblocking_transport_port #(tr_spu2tlb, tr_spu2tlb) tlb_tr_port;
   
   function void comb_proc();
-    ovm_report_info("SPU", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("SPU", "comb_proc procing...", OVM_FULL); 
     for(int i = stage_rrf_vwb0; i > 0; i--)
       vn.fm_ise[i] = v.fm_ise[i-1];
       
@@ -100,7 +100,7 @@ class ip4_tlm_spu extends ovm_component;
     tr_spu2spa to_spa;
     tr_spu2dse to_dse;
     
-    ovm_report_info("SPU", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("SPU", "req_proc procing...", OVM_FULL); 
     
     ///--------------prepare---------------------------------
     to_rfm = v.rfm[stage_rrf_swbp];
@@ -401,11 +401,11 @@ class ip4_tlm_spu extends ovm_component;
   function void sync();
     ip4_tlm_spu_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     t = v;
     v = vn;

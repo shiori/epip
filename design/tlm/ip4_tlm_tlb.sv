@@ -187,7 +187,7 @@ class ip4_tlm_tlb extends ovm_component;
     uchar var_tid;
     bit rsp_dse = 0, rsp_ife = 0, exp = 0;
     
-    ovm_report_info("TLB", "comb_proc procing...", OVM_HIGH);
+    ovm_report_info("TLB", "comb_proc procing...", OVM_FULL);
      
     if(v.fm_dse != null) end_tr(v.fm_dse);
     if(v.fm_spu != null) end_tr(v.fm_spu);
@@ -411,7 +411,7 @@ class ip4_tlm_tlb extends ovm_component;
     tr_tlb2spu to_spu;
     tr_tlb2ife to_ife;
     
-    ovm_report_info("TLB", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("TLB", "req_proc procing...", OVM_FULL); 
    
     /// send to dse
     to_dse = v.dse;
@@ -471,11 +471,11 @@ class ip4_tlm_tlb extends ovm_component;
   function void sync();
     ip4_tlm_tlb_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     t = v;
     v = vn;
