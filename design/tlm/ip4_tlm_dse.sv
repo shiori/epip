@@ -65,7 +65,7 @@ class ip4_tlm_dse extends ovm_component;
   ovm_nonblocking_transport_imp_rfm #(tr_rfm2dse, tr_rfm2dse, ip4_tlm_dse) rfm_tr_imp;
   ovm_nonblocking_transport_imp_spu #(tr_spu2dse, tr_spu2dse, ip4_tlm_dse) spu_tr_imp;
   ovm_nonblocking_transport_imp_spa #(tr_spa2dse, tr_spa2dse, ip4_tlm_dse) spa_tr_imp;
-  ovm_nonblocking_transport_imp_tlb #(tr_tlb2dse, tr_tlb2dse, ip4_tlm_dse) tlb_tr_imp;
+///  ovm_nonblocking_transport_imp_tlb #(tr_tlb2dse, tr_tlb2dse, ip4_tlm_dse) tlb_tr_imp;
     
   ovm_nonblocking_transport_port #(tr_dse2ise, tr_dse2ise) ise_tr_port;
   ovm_nonblocking_transport_port #(tr_dse2rfm, tr_dse2rfm) rfm_tr_port;
@@ -74,6 +74,9 @@ class ip4_tlm_dse extends ovm_component;
   ovm_nonblocking_transport_port #(tr_dse2tlb, tr_dse2tlb) tlb_tr_port;
         
   function void comb_proc();
+    int k = 0;
+    uchar var_cnt;
+    word var_vadr[num_sp];
     ovm_report_info("DSE", "comb_proc procing...", OVM_HIGH); 
     
     if(v.fm_ise[stage_rrf_ag] != null) end_tr(v.fm_ise[stage_rrf_ag]);
@@ -96,15 +99,27 @@ class ip4_tlm_dse extends ovm_component;
       vn.
     
     /// calculating the virtual address  ag stage
+    if(v.fm_spu != null)
+      var_emsk = v.fm_spu.emsk;
+    
     if(v.fm_rfm ! = null)begin
       if(v.fm_ise[stage_rrf_ag].en)begin
-        for (int i = 0; i < num_sp; i++)begin
-          if(v.spu.emsk[i] == 1)
-            vn.tlb.v_addr[i] = v.fm_rfm.base[i] + v.fm_rfm.op2[i];   
-        end
-        vn.tlb.emsk = v.spu.emsk;
-      end
-    end
+        /// virtual address select
+        for (int i = 0; (i < num_sp)&&(v.fm_dse.emsk[i]==1); i++) begin
+          var_vadr[i] = v.fm_rfm.base[i] + v.fm_rfm.op2[i];
+          if(k == 0)begin   
+            valva_adr[k] = var_vadr[i];   /// valid virtual address to send into tlb for translation
+            k++;
+          end
+          else 
+            if(var_vadr[i][31:VADD_START] == valva_adr[0][31:VADD_START])begin
+              valva_adr[k] = var_vadr[i];
+              k++;
+            end
+            else var_emsk[i] = 0;                  /// the first step emask modification
+    end  
+    var_cnt = k-1;
+    vn.tlb.v_adrh[31:VADD_START-1]= valva_adr[0][31:VADD_START-1];  /// only the high phase sent to tlb for translation + evenoddbit
     
     /// check the physical address in sel stage
     if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw))begin

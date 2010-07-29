@@ -68,6 +68,8 @@ parameter uchar cyc_vec       = num_vec/num_sp,     ///4
                 cyc_iss_dse   = cyc_iss_spu,
                 cyc_iss_vec   = lat_rf + lat_rbp + cyc_vec -1 + lat_mac + lat_dwbp;
 
+parameter uchar VADD_START = 14;  /// 8K 14BIT START for tlb and dse
+
 /*
                                            pipeline stages:
 ise,ife:      | if0 | if1 | ii0 | ii1 | rrf |

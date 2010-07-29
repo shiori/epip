@@ -939,14 +939,13 @@ class tr_tlb2spu extends ovm_sequence_item;
 endclass : tr_tlb2spu
 
 class tr_dse2tlb extends ovm_sequence_item;
-  rand word v_adr[num_sp];
-  rand bit emsk[num_sp];
+  rand word v_adrh;      /// vitrual address high phase
   rand opcode_e op;
   rand uchar tid;
   rand bit req;
   
   `ovm_object_utils_begin(tr_dse2tlb)
-    `ovm_field_sarray_int(v_adr, OVM_ALL_ON);
+    `ovm_field_int(v_adrh, OVM_ALL_ON);
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON);
     `ovm_field_int(req, OVM_ALL_ON);
@@ -955,11 +954,10 @@ class tr_dse2tlb extends ovm_sequence_item;
 endclass : tr_dse2tlb
 
 class tr_tlb2dse extends ovm_sequence_item;
-  rand word phy_adr[num_sp];
-  rand uchar vadr_cnt;
+  rand word phy_adr;
   
   `ovm_object_utils_begin(tr_tlb2dse)
-    `ovm_field_sarray_int(phy_adr, OVM_ALL_ON);
+    `ovm_field_int(phy_adr, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_tlb2dse  
