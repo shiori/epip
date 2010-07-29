@@ -364,7 +364,7 @@ parameter opcode_e ise_ops[] = '{
 `include "ip4_tlm_spu.sv"
 `include "ip4_tlm_ise.sv"
 `include "ip4_tlm_tlb.sv"
-///`include "ip4_tlm_dse.sv"
+`include "ip4_tlm_dse.sv"
 `include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
 

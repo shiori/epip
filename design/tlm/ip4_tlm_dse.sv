@@ -21,9 +21,9 @@ class ip4_tlm_dse_vars extends ovm_object;
   tr_tlb2dse fm_tlb;
   
   tr_dse2ise ise;
-  tr_dse2spu spu[];
+  tr_dse2spu spu;
   tr_dse2rfm rfm[stage_ag_dwb:1];
-  tr_dse2spa spa[];
+  tr_dse2spa spa;
   tr_dse2tlb tlb;
     
   `ovm_object_utils_begin(ip4_tlm_dse_vars)
@@ -34,9 +34,9 @@ class ip4_tlm_dse_vars extends ovm_object;
      `ovm_field_object(fm_tlb, OVM_ALL_ON + OVM_REFERENCE)  
      
      `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
-     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
+     `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
-     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
+     `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE)        
   `ovm_object_utils_end
   
@@ -77,6 +77,9 @@ class ip4_tlm_dse extends ovm_component;
     int k = 0;
     uchar var_cnt;
     word var_vadr[num_sp];
+    word valva_adr[num_sp];
+    bit var_emsk[num_sp];
+    
     ovm_report_info("DSE", "comb_proc procing...", OVM_HIGH); 
     
     if(v.fm_ise[stage_rrf_ag] != null) end_tr(v.fm_ise[stage_rrf_ag]);
@@ -84,7 +87,6 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_spa != null) end_tr(v.fm_spa);
     if(v.fm_tlb != null) end_tr(v.fm_tlb);
-    
     
     vn.fm_ise[stage_rrf_dwb] = null;
     vn.fm_rfm = null;
@@ -95,17 +97,17 @@ class ip4_tlm_dse extends ovm_component;
     for (int i = stage_rrf_dwb; i > 1; i--)
       vn.fm_ise[i] = v.fm_ise[i-1];
     
-    for (int i = stage_ag_dwb; i > 1; i--)
-      vn.
+///    for (int i = stage_ag_dwb; i > 1; i--)
+///      vn.
     
     /// calculating the virtual address  ag stage
     if(v.fm_spu != null)
       var_emsk = v.fm_spu.emsk;
     
-    if(v.fm_rfm ! = null)begin
+    if(v.fm_rfm != null)begin
       if(v.fm_ise[stage_rrf_ag].en)begin
         /// virtual address select
-        for (int i = 0; (i < num_sp)&&(v.fm_dse.emsk[i]==1); i++) begin
+        for (int i = 0; (i < num_sp)&&(v.fm_spu.emsk[i]==1); i++)begin
           var_vadr[i] = v.fm_rfm.base[i] + v.fm_rfm.op2[i];
           if(k == 0)begin   
             valva_adr[k] = var_vadr[i];   /// valid virtual address to send into tlb for translation
@@ -117,26 +119,25 @@ class ip4_tlm_dse extends ovm_component;
               k++;
             end
             else var_emsk[i] = 0;                  /// the first step emask modification
+        end
+      end
     end  
+    
     var_cnt = k-1;
     vn.tlb.v_adrh[31:VADD_START-1]= valva_adr[0][31:VADD_START-1];  /// only the high phase sent to tlb for translation + evenoddbit
     
     /// check the physical address in sel stage
-    if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw))begin
-      
-      if((v.fm_tlb.phy_addr[1:0] && Cbyte_offset) == 2'b00)begin
-        
-      end
-        
-    end
-    
-     
+///    if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw))begin
+///      if((v.fm_tlb.phy_addr[1:0] && Cbyte_offset) == 2'b00)begin
+///      
+///      end
+///    end
   endfunction
   
   function void req_proc();
-    ovm_report_info("DSE", "req_proc procing...", OVM_HIGH); 
-    
     tr_dse2rfm res;
+    
+    ovm_report_info("DSE", "req_proc procing...", OVM_HIGH); 
     
     ///send write back control signal to rfm
     if(v.fm_ise != null)begin
@@ -147,15 +148,12 @@ class ip4_tlm_dse extends ovm_component;
       end
     end
     
-    
-    
-    if(v.fm_ise != null)begin
-      if(v.fm_ise[stage_rrf_ag].en)begin
-        if(v.fm_ise[stage_rrf_ag].op == op_)begin
-          vn.rfm.
-        end
-      end
-    end
+///    if(v.fm_ise != null)begin
+///      if(v.fm_ise[stage_rrf_ag].en)begin
+///        if(v.fm_ise[stage_rrf_ag].op == op_)begin
+///        end
+///      end
+///    end
     
     
 ///    if(to_dse != null) void'(dse_tr_port.nb_transport(to_dse, to_dse));

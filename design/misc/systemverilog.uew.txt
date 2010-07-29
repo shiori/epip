@@ -1,4 +1,8 @@
 /L20"SystemVerilog" Line Comment = /// Block Comment On = /* Block Comment Off = */ String Chars = " File Extensions = V VL SV SVH VH VMD
+/Colors = 0,8421376,8421376,8421504,255,
+/Colors Back = 13625548,13625548,13625548,13625548,13625548,
+/Colors Auto Back = 1,1,1,1,1,
+/Font Style = 0,0,0,0,0,
 /Delimiters = ~!@%^&*()-+=|\/{}[]:;"<> ,	.?#
 /Function String = "%[a-z0-9]+[ ^t]+[a-z_0-9]+[ ^t]+("
 /Function String = "%[ ^t]++^(config[ ^t^p]+[a-zA-Z0-9_]+^)" 
@@ -13,7 +17,7 @@
 /Close Fold Strings = "endpackage" "endclass" "endmodule" "endtask" "endfunction" "endgenerate" "endprimitive" "end" "endcase" "join" "endspecify" "endtable" "endconfig" "`endif" 
 /Open Brace Strings = "{" "(" "["
 /Close Brace Strings = "}" ")" "]"
-/C1"Keywords"
+/C1"Keywords" Colors = 16711680 Colors Back = 13625548 Colors Auto Back = 1 Font Style = 0
 alias always always_comb always_ff always_latch and assert assign assume automatic 
 before begin bind bins binsof bit break buf bufif0 bufif1 byte
 case casex casez cell chandle class clocking cmos config const constraint context continue cover covergroup coverpoint cross
@@ -37,7 +41,7 @@ union unique unsigned use uwire
 var vectored virtual void
 wait wait_order wand weak0 weak1 while wildcard with within wire wor 
 xnor xor 
-/C2"System"
+/C2"System" Colors = 255 Colors Back = 13625548 Colors Auto Back = 1 Font Style = 0
 . 
 ** # ##
 ** 'b 'B 'o 'O 'd 'D 'h 'H 'sb 'sB 'so 'sO 'sd 'sD 'sh 'sH 'Sb 'SB 'So 'SO 'Sd 'SD 'Sh 'SH 
@@ -65,7 +69,7 @@ $test$plusargs $time $timeformat $timeskew $typename
 $ungetc $unit $unsigned $urandom $urandom_range
 $value$plusargs 
 $warning $width $writeb $writeh $write $writememb $writememh $writeo 
-/C3"Operators"
+/C3"Operators" Colors = 33023 Colors Back = 13625548 Colors Auto Back = 1 Font Style = 0
 ->
 +:
 -:
@@ -108,7 +112,7 @@ $warning $width $writeb $writeh $write $writememb $writememh $writeo
 ~|
 ?
 :
-/C4"Directives"
+/C4"Directives" Colors = 32768 Colors Back = 13625548 Colors Auto Back = 1 Font Style = 0
 ** ` 
 `accelerate `autoexepand_vectornets 
 `begin_keywords 
@@ -123,7 +127,7 @@ $warning $width $writeb $writeh $write $writememb $writememh $writeo
 `remove_gatenames `remove_netnames `resetall 
 `timescale 
 `unconnected_drive `undef `uselib 
-/C5"DelaysAndParameters"
+/C5"DelaysAndParameters" Colors = 4210816 Colors Back = 13625548 Colors Auto Back = 1 Font Style = 0
 [
 ]
 ** \

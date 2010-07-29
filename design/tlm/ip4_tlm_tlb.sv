@@ -161,6 +161,7 @@ class ip4_tlm_tlb extends ovm_component;
   local time stamp;
   local ip4_tlm_tlb_vars v, vn;
   
+  
   local bit find;
   word vir_adr; 
   word var_padr;
@@ -228,6 +229,16 @@ class ip4_tlm_tlb extends ovm_component;
       
     find = 0;
     ///tlb basic function
+    if(rsp_dse || rsp_ife)begin
+      if(rsp_ife) begin
+        vir_adr = v.fm_ife[0].v_adr;
+        var_tid = v.fm_ife[0].tid;
+      end
+      else begin
+        vir_adr = v.fm_dse.v_adrh;
+        var_tid = v.fm_dse.tid;
+      end
+      
       for (int i = 0; i < Entry_NUM; i++)begin
             case(v.tlb_ptype[i])
               pagetype0: EvenOddBit = 13;
@@ -239,16 +250,6 @@ class ip4_tlm_tlb extends ovm_component;
               pagetype6: EvenOddBit = 28;
               default:  ovm_report_warning("TLBPSize1_ILLEGAL", "No this type page size, and no evenoddbit!!!");              
             endcase
-            
-            if(rsp_ife) begin
-              vir_adr = v.fm_ife[0].v_adr;
-              var_tid = v.fm_ife[0].tid;
-            end
-            else begin
-              vir_adr = v.fm_dse.v_adrh;
-              var_tid = v.fm_dse.tid;
-            end
-            
             if(((v.tlb_vpn2[i] && (!var_mask[i])) == (vir_adr[31:VADD_START] && (!var_mask[i]))) 
                   && (v.tlb_G[i] || (v.tlb_asid[i][var_tid] == v.REntryHi[ASID_width-1:0])))begin
                 if(vir_adr[EvenOddBit] == 0)begin
@@ -294,22 +295,21 @@ class ip4_tlm_tlb extends ovm_component;
                 find = 1;
                 break;
             end  
-      end
-    
-    if(rsp_ife) begin
-      if(vn.ife == null) vn.ife = tr_tlb2ife::type_id::create("to_ife", this);
-      vn.ife.p_adr = var_padr;
-      vn.ife.tid = v.fm_ife[0].tid;
-      vn.ife.rsp = 1;
-      vn.ife.hit = find;
-      vn.ife.exp = exp;
-    end
-    
-    if(rsp_dse) begin
-      if(vn.dse == null) vn.dse = tr_tlb2dse::type_id::create("to_dse", this);
-      vn.dse.phy_adr = var_padr;
-      vn.dse.hit = find;
-      vn.dse.exp = exp;
+      end    
+      if(rsp_ife) begin
+        if(vn.ife == null) vn.ife = tr_tlb2ife::type_id::create("to_ife", this);
+        vn.ife.p_adr = var_padr;
+        vn.ife.tid = v.fm_ife[0].tid;
+        vn.ife.rsp = 1;
+        vn.ife.hit = find;
+        vn.ife.exp = exp;
+      end    
+      if(rsp_dse) begin
+        if(vn.dse == null) vn.dse = tr_tlb2dse::type_id::create("to_dse", this);
+        vn.dse.phy_adr = var_padr;
+        vn.dse.hit = find;
+        vn.dse.exp = exp;
+      end   
     end   
     /// tlb support instruction  spu -> tlb
     /// dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
