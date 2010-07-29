@@ -955,9 +955,12 @@ endclass : tr_dse2tlb
 
 class tr_tlb2dse extends ovm_sequence_item;
   rand word phy_adr;
+  rand bit hit, exp;
   
   `ovm_object_utils_begin(tr_tlb2dse)
     `ovm_field_int(phy_adr, OVM_ALL_ON);
+    `ovm_field_int(hit, OVM_ALL_ON);
+    `ovm_field_int(exp, OVM_ALL_ON);
   `ovm_object_utils_end  
 
 endclass : tr_tlb2dse  
@@ -977,13 +980,14 @@ endclass : tr_ife2tlb
 
 class tr_tlb2ife extends ovm_sequence_item;
   rand word p_adr;
-  rand bit rsp, hit;
+  rand bit rsp, hit, exp;
   rand uchar tid;
   
   `ovm_object_utils_begin(tr_tlb2ife)
     `ovm_field_int(p_adr, OVM_ALL_ON);
     `ovm_field_int(rsp, OVM_ALL_ON);
     `ovm_field_int(hit, OVM_ALL_ON);
+    `ovm_field_int(exp, OVM_ALL_ON);
     `ovm_field_int(tid, OVM_ALL_ON);
   `ovm_object_utils_end  
 
