@@ -65,7 +65,7 @@ class ip4_tlm_dse extends ovm_component;
   ovm_nonblocking_transport_imp_rfm #(tr_rfm2dse, tr_rfm2dse, ip4_tlm_dse) rfm_tr_imp;
   ovm_nonblocking_transport_imp_spu #(tr_spu2dse, tr_spu2dse, ip4_tlm_dse) spu_tr_imp;
   ovm_nonblocking_transport_imp_spa #(tr_spa2dse, tr_spa2dse, ip4_tlm_dse) spa_tr_imp;
-///  ovm_nonblocking_transport_imp_tlb #(tr_tlb2dse, tr_tlb2dse, ip4_tlm_dse) tlb_tr_imp;
+  ovm_nonblocking_transport_imp_tlb #(tr_tlb2dse, tr_tlb2dse, ip4_tlm_dse) tlb_tr_imp;
     
   ovm_nonblocking_transport_port #(tr_dse2ise, tr_dse2ise) ise_tr_port;
   ovm_nonblocking_transport_port #(tr_dse2rfm, tr_dse2rfm) rfm_tr_port;
@@ -88,7 +88,7 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fm_spa != null) end_tr(v.fm_spa);
     if(v.fm_tlb != null) end_tr(v.fm_tlb);
     
-    vn.fm_ise[stage_rrf_dwb] = null;
+    vn.fm_ise[stage_rrf_rrc0] = null;
     vn.fm_rfm = null;
     vn.fm_spu = null;
     vn.fm_spa = null;
@@ -97,14 +97,14 @@ class ip4_tlm_dse extends ovm_component;
     for (int i = stage_rrf_dwb; i > 1; i--)
       vn.fm_ise[i] = v.fm_ise[i-1];
     
-///    for (int i = stage_ag_dwb; i > 1; i--)
-///      vn.
+//////    for (int i = stage_ag_dwb; i > 1; i--)
+//////      vn.
     
     /// calculating the virtual address  ag stage
     if(v.fm_spu != null)
       var_emsk = v.fm_spu.emsk;
     
-    if(v.fm_rfm != null)begin
+    if(v.fm_rfm != null && v.fm_ise[stage_rrf_ag] != null && v.fm_spu != null)begin
       if(v.fm_ise[stage_rrf_ag].en)begin
         /// virtual address select
         for (int i = 0; (i < num_sp)&&(v.fm_spu.emsk[i]==1); i++)begin
@@ -123,15 +123,16 @@ class ip4_tlm_dse extends ovm_component;
       end
     end  
     
-    var_cnt = k-1;
-    vn.tlb.v_adrh[31:VADD_START-1]= valva_adr[0][31:VADD_START-1];  /// only the high phase sent to tlb for translation + evenoddbit
+///    var_cnt = k-1;
+///    vn.tlb.v_adrh[31:VADD_START-1]= valva_adr[0][31:VADD_START-1];  /// only the high phase sent to tlb for translation + evenoddbit
     
     /// check the physical address in sel stage
-///    if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw))begin
-///      if((v.fm_tlb.phy_addr[1:0] && Cbyte_offset) == 2'b00)begin
-///      
-///      end
-///    end
+    if(v.fm_ise[stage_rrf_sel] != null && v.fm_tlb != null && v.fm_ise[stage_rrf_sel] != null &&
+      ((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw)))begin
+      if((v.fm_tlb.phy_adr[1:0] && Cbyte_offset) == 2'b00)begin
+      
+      end
+    end
   endfunction
   
   function void req_proc();
@@ -140,8 +141,8 @@ class ip4_tlm_dse extends ovm_component;
     ovm_report_info("DSE", "req_proc procing...", OVM_HIGH); 
     
     ///send write back control signal to rfm
-    if(v.fm_ise != null)begin
-      if(v.fm_ise[stage_rrf_ag].en)begin
+    if(v.fm_ise[stage_rrf_dwb] != null)begin
+      if(v.fm_ise[stage_rrf_dwb].en)begin
         res.wr_grp = v.fm_ise[stage_rrf_dwb].wr_grp;
         res.wr_adr = v.fm_ise[stage_rrf_dwb].wr_adr;
         res.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
@@ -161,16 +162,56 @@ class ip4_tlm_dse extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
  
-///  function bit nb_transport_dse(input tr_dse2spa req, output tr_dse2spa rsp);
-///    ovm_report_info("SPA_TR", "Get DSE Transaction...", OVM_HIGH);
-///    sync();
-///    assert(req != null);
-///    void'(begin_tr(req));
-///    rsp = req;
-///    vn.fm_dse[stage_exe_dwb] = req;
-///    return 1;
-///  endfunction : nb_transport_dse
-  
+  function bit nb_transport_ise(input tr_ise2dse req, output tr_ise2dse rsp);
+    ovm_report_info("DSE_TR", "Get ISE Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_ise[stage_rrf_rrc0] = req;
+    return 1;
+  endfunction : nb_transport_ise
+
+  function bit nb_transport_rfm(input tr_rfm2dse req, output tr_rfm2dse rsp);
+    ovm_report_info("DSE_TR", "Get RFM Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_rfm = req;
+    return 1;
+  endfunction : nb_transport_rfm
+
+  function bit nb_transport_spu(input tr_spu2dse req, output tr_spu2dse rsp);
+    ovm_report_info("DSE_TR", "Get SPU Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_spu = req;
+    return 1;
+  endfunction : nb_transport_spu
+
+  function bit nb_transport_spa(input tr_spa2dse req, output tr_spa2dse rsp);
+    ovm_report_info("DSE_TR", "Get SPA Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_spa = req;
+    return 1;
+  endfunction : nb_transport_spa
+
+  function bit nb_transport_tlb(input tr_tlb2dse req, output tr_tlb2dse rsp);
+    ovm_report_info("DSE_TR", "Get TLB Transaction...", OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fm_tlb = req;
+    return 1;
+  endfunction : nb_transport_tlb
+        
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     ip4_tlm_dse_vars t;
@@ -205,8 +246,17 @@ class ip4_tlm_dse extends ovm_component;
     tlm_vif_object vif_cfg;
     
     super.build();
-///    ise_tr_imp = new("ise_tr_imp", this);
-///    dse_tr_port = new("dse_tr_port", this);
+    ise_tr_imp = new("ise_tr_imp", this);
+    rfm_tr_imp = new("rfm_tr_imp", this);
+    spu_tr_imp = new("spu_tr_imp", this);
+    spa_tr_imp = new("spa_tr_imp", this);
+    tlb_tr_imp = new("tlb_tr_imp", this);
+    
+    rfm_tr_port = new("rfm_tr_port", this);
+    ise_tr_port = new("ise_tr_port", this);
+    spu_tr_port = new("spu_tr_port", this);
+    spa_tr_port = new("spa_tr_port", this);
+    tlb_tr_port = new("tlb_tr_port", this);
     
     v = new();
     vn = new();

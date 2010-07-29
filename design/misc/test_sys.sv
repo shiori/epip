@@ -11,22 +11,25 @@ class test_sys_env extends ovm_env;
 ///  ip4_tlm_agent#(tr_ise2spa, tr_spa2ise) spa_ise_agent;
 ///  ip4_tlm_agent#(tr_spu2spa, tr_spa2spu) spa_spu_agent;
 ///  ip4_tlm_agent#(tr_rfm2spa, tr_spa2rfm) spa_rfm_agent;
-  ip4_tlm_agent#(tr_dse2spa, tr_spa2dse) spa_dse_agent;
+///  ip4_tlm_agent#(tr_dse2spa, tr_spa2dse) spa_dse_agent;
 
   ip4_tlm_spu spu;
-  ip4_tlm_agent#(tr_tlb2spu, tr_spu2tlb) spu_tlb_agent; 
+///  ip4_tlm_agent#(tr_tlb2spu, tr_spu2tlb) spu_tlb_agent; 
 ///  ip4_tlm_agent#(tr_rfm2spu, tr_spu2rfm) spu_rfm_agent;
-  ip4_tlm_agent#(tr_dse2spu, tr_spu2dse) spu_dse_agent;
+///  ip4_tlm_agent#(tr_dse2spu, tr_spu2dse) spu_dse_agent;
 ///  ip4_tlm_agent#(tr_ise2spu, tr_spu2ise) spu_ise_agent;
 ///  ip4_tlm_agent#(tr_spa2spu, tr_spu2spa) spu_spa_agent; 
 ///  ip4_tlm_s0 s;
   
   ip4_tlm_ise ise;
-  ip4_tlm_agent#(tr_dse2ise, tr_ise2dse) ise_dse_agent;
+///  ip4_tlm_agent#(tr_dse2ise, tr_ise2dse) ise_dse_agent;
   
   ip4_tlm_ife ife;
-  ip4_tlm_agent#(tr_tlb2ife, tr_ife2tlb) ife_tlb_agent;
+///  ip4_tlm_agent#(tr_tlb2ife, tr_ife2tlb) ife_tlb_agent;
 
+  ip4_tlm_tlb tlb;
+  ip4_tlm_dse dse;
+  
   virtual tlm_sys_if.mods sysif;
 
   `ovm_component_utils_begin(test_sys_env)
@@ -37,7 +40,7 @@ class test_sys_env extends ovm_env;
      
     rfm = ip4_tlm_rfm::type_id::create("rfm", this);
 ///    rfm_spa_agent = ip4_tlm_agent#(tr_spa2rfm, tr_rfm2spa)::type_id::create("rfm_spa_agent", this);
-    rfm_dse_agent = ip4_tlm_agent#(tr_dse2rfm, tr_rfm2dse)::type_id::create("rfm_dse_agent", this);
+///    rfm_dse_agent = ip4_tlm_agent#(tr_dse2rfm, tr_rfm2dse)::type_id::create("rfm_dse_agent", this);
 ///    rfm_spu_agent = ip4_tlm_agent#(tr_spu2rfm, tr_rfm2spu)::type_id::create("rfm_spu_agent", this);
 ///    rfm_ise_agent = ip4_tlm_agent#(tr_ise2rfm, tr_rfm2ise)::type_id::create("rfm_ise_agent", this);
     
@@ -45,20 +48,23 @@ class test_sys_env extends ovm_env;
 ///    spa_rfm_agent = ip4_tlm_agent#(tr_rfm2spa, tr_spa2rfm)::type_id::create("spa_rfm_agent", this);
 ///    spa_spu_agent = ip4_tlm_agent#(tr_spu2spa, tr_spa2spu)::type_id::create("spa_spu_agent", this);
 ///    spa_ise_agent = ip4_tlm_agent#(tr_ise2spa, tr_spa2ise)::type_id::create("spa_ise_agent", this); 
-    spa_dse_agent = ip4_tlm_agent#(tr_dse2spa, tr_spa2dse)::type_id::create("spa_dse_agent", this); 
+///    spa_dse_agent = ip4_tlm_agent#(tr_dse2spa, tr_spa2dse)::type_id::create("spa_dse_agent", this); 
     
     spu = ip4_tlm_spu::type_id::create("spu", this);
-    spu_tlb_agent = ip4_tlm_agent#(tr_tlb2spu, tr_spu2tlb)::type_id::create("spu_tlb_agent", this); 
+///    spu_tlb_agent = ip4_tlm_agent#(tr_tlb2spu, tr_spu2tlb)::type_id::create("spu_tlb_agent", this); 
 ///    spu_rfm_agent = ip4_tlm_agent#(tr_rfm2spu, tr_spu2rfm)::type_id::create("spu_rfm_agent", this); 
-    spu_dse_agent = ip4_tlm_agent#(tr_dse2spu, tr_spu2dse)::type_id::create("spu_dse_agent", this); 
+///    spu_dse_agent = ip4_tlm_agent#(tr_dse2spu, tr_spu2dse)::type_id::create("spu_dse_agent", this); 
 ///    spu_ise_agent = ip4_tlm_agent#(tr_ise2spu, tr_spu2ise)::type_id::create("spu_ise_agent", this); 
 ///    spu_spa_agent = ip4_tlm_agent#(tr_spa2spu, tr_spu2spa)::type_id::create("spu_spa_agent", this);   
 
     ise = ip4_tlm_ise::type_id::create("ise", this);
-    ise_dse_agent = ip4_tlm_agent#(tr_dse2ise, tr_ise2dse)::type_id::create("ise_dse_agent", this); 
+///    ise_dse_agent = ip4_tlm_agent#(tr_dse2ise, tr_ise2dse)::type_id::create("ise_dse_agent", this); 
     
     ife = ip4_tlm_ife::type_id::create("ife", this);
-    ife_tlb_agent = ip4_tlm_agent#(tr_tlb2ife, tr_ife2tlb)::type_id::create("ife_tlb_agent", this);
+///    ife_tlb_agent = ip4_tlm_agent#(tr_tlb2ife, tr_ife2tlb)::type_id::create("ife_tlb_agent", this);
+    
+    tlb = ip4_tlm_tlb::type_id::create("tlb", this);
+    dse = ip4_tlm_dse::type_id::create("dse", this);
   endfunction
 
   virtual function void connect();
@@ -72,8 +78,8 @@ class test_sys_env extends ovm_env;
 ///    rfm.ise_tr_port.connect(ise.rfm_tr_imp);
     ise.rfm_tr_port.connect(rfm.ise_tr_imp);
     
-    rfm.dse_tr_port.connect(rfm_dse_agent.monitor.tr_imp);
-    rfm_dse_agent.driver.tr_port.connect(rfm.dse_tr_imp);
+    rfm.dse_tr_port.connect(dse.rfm_tr_imp);
+    dse.rfm_tr_port.connect(rfm.dse_tr_imp);
     
     ise.spa_tr_port.connect(spa.ise_tr_imp);
     spa.ise_tr_port.connect(ise.spa_tr_imp);
@@ -81,26 +87,29 @@ class test_sys_env extends ovm_env;
     spu.spa_tr_port.connect(spa.spu_tr_imp);
     spa.spu_tr_port.connect(spu.spa_tr_imp);    
 
-    spa_dse_agent.driver.tr_port.connect(spa.dse_tr_imp);
-    spa.dse_tr_port.connect(spa_dse_agent.monitor.tr_imp); 
+    dse.spa_tr_port.connect(spa.dse_tr_imp);
+    spa.dse_tr_port.connect(dse.spa_tr_imp); 
     
     ise.spu_tr_port.connect(spu.ise_tr_imp);
     spu.ise_tr_port.connect(ise.spu_tr_imp);
 
-    spu_dse_agent.driver.tr_port.connect(spu.dse_tr_imp);
-    spu.dse_tr_port.connect(spu_dse_agent.monitor.tr_imp);
+    dse.spu_tr_port.connect(spu.dse_tr_imp);
+    spu.dse_tr_port.connect(dse.spu_tr_imp);
 
     ise.ife_tr_port.connect(ife.ise_tr_imp);
     ife.ise_tr_port.connect(ise.ife_tr_imp);
 
-    ife_tlb_agent.driver.tr_port.connect(ife.tlb_tr_imp);
-    ife.tlb_tr_port.connect(ife_tlb_agent.monitor.tr_imp);
+    tlb.ife_tr_port.connect(ife.tlb_tr_imp);
+    ife.tlb_tr_port.connect(tlb.ife_tr_imp);
 
-    spu_tlb_agent.driver.tr_port.connect(spu.tlb_tr_imp);
-    spu.tlb_tr_port.connect(spu_tlb_agent.monitor.tr_imp);
+    tlb.spu_tr_port.connect(spu.tlb_tr_imp);
+    spu.tlb_tr_port.connect(tlb.spu_tr_imp);
     
-    ise_dse_agent.driver.tr_port.connect(ise.dse_tr_imp);
-    ise.dse_tr_port.connect(ise_dse_agent.monitor.tr_imp);
+    dse.ise_tr_port.connect(ise.dse_tr_imp);
+    ise.dse_tr_port.connect(dse.ise_tr_imp);
+
+    dse.tlb_tr_port.connect(tlb.dse_tr_imp);
+    tlb.dse_tr_port.connect(dse.tlb_tr_imp);
   endfunction
 
   virtual task run();

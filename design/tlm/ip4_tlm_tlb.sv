@@ -206,7 +206,7 @@ class ip4_tlm_tlb extends ovm_component;
       else
        vn.fm_ife[0] = null;
     end
-    else
+    else if(v.fm_dse != null)
       rsp_dse = 1;
       
     for (int i = sstage_max; i > 1; i--)
@@ -230,11 +230,11 @@ class ip4_tlm_tlb extends ovm_component;
     find = 0;
     ///tlb basic function
     if(rsp_dse || rsp_ife)begin
-      if(rsp_ife) begin
+      if(rsp_ife && v.fm_ife[0] != null) begin
         vir_adr = v.fm_ife[0].v_adr;
         var_tid = v.fm_ife[0].tid;
       end
-      else begin
+      else if(v.fm_dse != null) begin
         vir_adr = v.fm_dse.v_adrh;
         var_tid = v.fm_dse.tid;
       end
@@ -317,7 +317,7 @@ class ip4_tlm_tlb extends ovm_component;
     ///                             |      |
     ///                          request  respond 
     
-    if(v.fm_spu.req)begin
+    if(v.fm_spu != null && v.fm_spu.req)begin
       case(v.fm_spu.op)
       /// TLBP
       op_tlbp:

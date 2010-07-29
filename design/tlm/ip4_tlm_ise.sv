@@ -88,6 +88,10 @@ class ise_thread_inf extends ovm_object;
   
   function new (string name = "ise_thread_inf");
     super.new(name);
+    i_spu = new();
+    i_dse = new();
+    foreach(i_fu[i])
+      i_fu[i] = new();
     ts = ts_disabled;
     priv_mode = 0;
     pc = cfg_start_adr;
@@ -643,6 +647,8 @@ class ip4_tlm_ise extends ovm_component;
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_iss_l;
       bit vec;
+      tid = tid & ~('1 << bits_tid);
+      
       if(iinf.can_iss(tinf[tid], vec)) begin
         if(vec)
           iinf.iss_vec(tinf[tid]);
@@ -674,6 +680,7 @@ class ip4_tlm_ise extends ovm_component;
     
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_fet_l;
+      tid = tid & ~('1 << bits_tid);
       if(tinf[tid].can_req_ifet()) begin
         to_ife = tr_ise2ife::type_id::create("to_ife", this);
         tinf[tid].fill_ife(to_ife);

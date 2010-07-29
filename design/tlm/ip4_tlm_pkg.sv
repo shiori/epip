@@ -128,6 +128,14 @@ function automatic ulong clogb2(
   for (v = value; v > 0; clogb2 = clogb2 + 1)
     v = v >> 1;
 endfunction
+
+function automatic ulong n2w(
+  input ulong value
+);
+  n2w = clogb2(value);
+  if(n2w > 0)
+    n2w--;
+endfunction
   
 function automatic ulong max2(
   input ulong a0, a1
@@ -137,11 +145,11 @@ function automatic ulong max2(
     max2 = a1;
 endfunction
 
-parameter uchar bits_vrf_bks    = clogb2(num_vrf_bks),
-                bits_srf_bks    = clogb2(num_srf_bks),
-                bits_tid        = clogb2(num_thread),
-                bits_ifet       = clogb2(num_ifet_bytes),
-                bits_prf_p_grp  = clogb2(num_prf_p_grp);
+parameter uchar bits_vrf_bks    = n2w(num_vrf_bks),
+                bits_srf_bks    = n2w(num_srf_bks),
+                bits_tid        = n2w(num_thread),
+                bits_ifet       = n2w(num_ifet_bytes),
+                bits_prf_p_grp  = n2w(num_prf_p_grp);
 
 `ovm_nonblocking_transport_imp_decl(_rfm)
 `ovm_nonblocking_transport_imp_decl(_ise)
