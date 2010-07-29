@@ -55,6 +55,7 @@ parameter uchar lat_mac           = 4,
                 lat_vwbp          = 1,    ///vector writeback bypass time
                 lat_wb            = 4,
                 lat_ise           = 2,
+                lat_ife           = 2,
                 lat_dse           = 4,
                 lat_dwbp          = 1;    ///dse writeback bypass time
 
@@ -102,6 +103,8 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
                 stage_ise_rrf     = stage_ise + 1,                  ///2
+                stage_ife         = lat_ife - 1,                    ///1
+                stage_ife_ii0     = stage_ife + 1,                  ///2
                 stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
                 stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
                 stage_rrf_tag     = stage_rrf_ag + 1,               ///3

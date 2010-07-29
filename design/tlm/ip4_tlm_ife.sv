@@ -14,6 +14,8 @@ class ip4_tlm_ife_vars extends ovm_object;
   tr_ise2ife fm_ise;
   tr_tlb2ife fm_tlb;
   
+  tr_ife2ise ise[stage_ife:1];
+  
   `ovm_object_utils_begin(ip4_tlm_ife_vars)
     `ovm_field_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_tlb, OVM_ALL_ON + OVM_REFERENCE)
@@ -35,7 +37,7 @@ class ip4_tlm_ife extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
   local ip4_tlm_ife_vars v, vn;  
-  local uint im[];
+  local uchar im[];
   local string im_file_path;
   local uint im_base, im_size;
   
@@ -53,14 +55,34 @@ class ip4_tlm_ife extends ovm_component;
         
   function void comb_proc();
     ovm_report_info("IFE", "comb_proc procing...", OVM_HIGH); 
+    for(int i = stage_ife; i > 1; i--)
+      vn.ise[i] = v.ise[i-1];
+    vn.ise[1] = null;
+    if(v.fm_ise != null) end_tr(v.fm_ise);
+    vn.fm_ise = null;
     
+    if(v.fm_ise != null && v.fm_ise.fetch_req) begin
+      tr_ise2ife ise = v.fm_ise;
+      uchar data[num_ifet_bytes];
+      if(ise.pc inside {[im_base:im_base+im_size]}) begin
+        uint adr = ise.pc - im_base;
+        foreach(data[i])
+          data[i] = im[adr+i];
+      end
+        
+      if(vn.ise[1] == null) vn.ise[1] = tr_ife2ise::type_id::create("to_ise", this);
+      vn.ise[1].inst_en = 1;
+      vn.ise[1].tid = ise.tid;
+      vn.ise[1].fg.fill(data);
+    end
   endfunction
   
   function void req_proc();
+    tr_ife2ise to_ise;
     ovm_report_info("IFE", "req_proc procing...", OVM_HIGH); 
     
-    
-///    if(to_dse != null) void'(dse_tr_port.nb_transport(to_dse, to_dse));
+    to_ise = v.ise[stage_ife];
+    if(to_ise != null) void'(ise_tr_port.nb_transport(to_ise, to_ise));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
@@ -133,7 +155,7 @@ class ip4_tlm_ife extends ovm_component;
     stamp = 0ns;
     
     im = new[im_size];
-    $readmemh(im_file_path, im);	
+    $readmemh(im_file_path, im);
   endfunction : build
 endclass : ip4_tlm_ife
 

@@ -947,9 +947,13 @@ class inst_fg_c extends ovm_object;
     `ovm_field_sarray_int(data, OVM_ALL_ON)
   `ovm_object_utils_end
   
-	function new (string name = "inst_fg_c");
+	function new(string name = "inst_fg_c");
 		super.new(name);
 	endfunction : new
+
+	function void fill(const ref uchar i[num_ifet_bytes]);
+	  data = i;
+	endfunction : fill
 endclass
 
 parameter uchar num_inst_bytes = $bits(inst_u) / 8;

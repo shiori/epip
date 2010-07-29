@@ -298,7 +298,9 @@ class ise_thread_inf extends ovm_object;
   endfunction : br_pre_miss
 
   function bit can_req_ifet();
-    if(igrp_bytes == 0 && ts != ts_disabled)
+    if(ts == ts_disabled)
+      return 0;
+    if(igrp_bytes == 0)
       return 1;
     if(ibuf_level < igrp_bytes)
       return 1;
