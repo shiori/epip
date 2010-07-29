@@ -14,16 +14,25 @@ parameter uchar Index_EBit  = 7 , /// entry bits
                 Entry_NUM  = 2 << Index_EBit,  ///128
                 VPN2_width = 18,
                 MASK_width = 15,
-                ASID_width = 8,
-                VADD_START = 14;  /// 8K 14BIT START
+                TYPE_width = 3,  /// Page Size Type bit width
+                ASID_width = 8;
+                
 
+parameter uchar   pagetype0 = 0,   /// 8K
+                  pagetype1 = 1,   /// 64K
+                  pagetype2 = 2,   /// 512k
+                  pagetype3 = 3,   /// 4M
+                  pagetype4 = 4,   /// 16M
+                  pagetype5 = 5,   /// 64M
+                  pagetype6 = 6;   /// 256M 
+                  
 parameter word  pagemask0 = 15'b000000000000000,   /// 8K
                 pagemask1 = 15'b000000000000111,   /// 64K
                 pagemask2 = 15'b000000000111111,   /// 512k
                 pagemask3 = 15'b000000111111111,   /// 4M
                 pagemask4 = 15'b000011111111111,   /// 16M
                 pagemask5 = 15'b001111111111111,   /// 64M
-                pagemask6 = 15'b111111111111111;   /// 256M 
+                pagemask6 = 15'b111111111111111;   /// 256M
 
 parameter uchar PFN_width = 23,
                 IFE_REQ_BUF = 2;
@@ -34,7 +43,7 @@ parameter uchar RContent_NO = 6,
                 REntryLo0_NO = 9,
                 REntryLo1_NO = 10,
                 REntryHi_NO = 11,
-                RPageMask_NO = 12;
+                RPageType_NO = 12;
 
 parameter uchar num_sstage = 2,
                 sstage_max = num_sstage - 1; /// spu pipeline in the tlb
@@ -51,7 +60,8 @@ class ip4_tlm_tlb_vars extends ovm_object;
   tr_tlb2ife ife;
   
   bit[VPN2_width-1:0] tlb_vpn2[Entry_NUM-1:0];
-  bit[MASK_width-1:0] tlb_mask[Entry_NUM-1:0];
+///  bit[MASK_width-1:0] tlb_mask[Entry_NUM-1:0];
+  bit[TYPE_width-1:0] tlb_ptype[Entry_NUM-1:0];
   bit[num_thread-1:0][ASID_width-1:0] tlb_asid[Entry_NUM-1:0];
   bit                 tlb_G[Entry_NUM-1:0]; 
   
@@ -70,7 +80,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
   word REntryLo0;
   word REntryLo1;
   word REntryHi;
-  word RPageMask;
+  word RPageType;
   word RContent;  
     
   `ovm_object_utils_begin(ip4_tlm_tlb_vars)
@@ -81,7 +91,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(ife, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_int(tlb_vpn2, OVM_ALL_ON)
-    `ovm_field_sarray_int(tlb_mask, OVM_ALL_ON)
+    `ovm_field_sarray_int(tlb_ptype, OVM_ALL_ON)
     `ovm_field_sarray_int(tlb_asid, OVM_ALL_ON)
     `ovm_field_sarray_int(tlb_G, OVM_ALL_ON)
     `ovm_field_sarray_int(tlb_pfn20, OVM_ALL_ON)
@@ -105,7 +115,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
     `ovm_field_int(REntryLo0, OVM_ALL_ON)
     `ovm_field_int(REntryLo1, OVM_ALL_ON)
     `ovm_field_int(REntryHi, OVM_ALL_ON)
-    `ovm_field_int(RPageMask, OVM_ALL_ON)
+    `ovm_field_int(RPageType, OVM_ALL_ON)
     `ovm_field_int(RContent, OVM_ALL_ON)
     `ovm_field_int(ife_buf_ptr, OVM_ALL_ON)
   `ovm_object_utils_end
@@ -113,7 +123,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
   function new (string name = "tlb_vars");
     super.new(name);
     tlb_vpn2 = '{default : 0};
-    tlb_mask = '{default : 0};
+    tlb_ptype = '{default : 0};
     tlb_asid = '{default : 0};
     tlb_G    = '{default : 0};
     tlb_EX0 = '{default : 0};
@@ -133,7 +143,7 @@ class ip4_tlm_tlb_vars extends ovm_object;
     REntryLo0 = 0;
     REntryLo1 = 0;
     REntryHi = 0;
-    RPageMask = 0;
+    RPageType = 0;
     RContent = 0;
     ife_buf_ptr = 0;
   endfunction : new
@@ -151,7 +161,9 @@ class ip4_tlm_tlb extends ovm_component;
   local time stamp;
   local ip4_tlm_tlb_vars v, vn;
   
-  local bit find; 
+  local bit find;
+  word vir_adr; 
+  word var_padr;
   
   `ovm_component_utils_begin(ip4_tlm_tlb)
   `ovm_component_utils_end
@@ -162,18 +174,16 @@ class ip4_tlm_tlb extends ovm_component;
   
   ovm_nonblocking_transport_port #(tr_tlb2spu, tr_tlb2spu) spu_tr_port;
   ovm_nonblocking_transport_port #(tr_tlb2dse, tr_tlb2dse) dse_tr_port;
-  ovm_nonblocking_transport_port #(tr_tlb2ife, tr_tlb2ife) ife_tr_port;  
+  ovm_nonblocking_transport_port #(tr_tlb2ife, tr_tlb2ife) ife_tr_port;
     
   function void comb_proc();
     uchar EvenOddBit; 
-    bit var_emsk[num_sp];
-    word valva_adr[num_sp];
-    uchar var_cnt;
+    bit[MASK_width-1:0] var_mask;
     bit[PFN_width-1:0] var_pfn;
     bit var_ex, var_c, var_k;
     bit var_e,  var_d, var_v, var_g;  
-    int k = 0;
     word i0, i1, i2;
+    uchar var_tid;
     
     ovm_report_info("TLB", "comb_proc procing...", OVM_HIGH);
      
@@ -198,69 +208,76 @@ class ip4_tlm_tlb extends ovm_component;
       vn.spu[i] = v.spu[i-1];
     vn.spu[1] = null;
     
-    /// virtual address select
-    find = 0;
-    var_emsk = v.fm_dse.emsk;
-    for (int j = 0; (j < num_sp)&&(v.fm_dse.emsk[j]==1); j++) begin
-        if(k == 0)begin   
-          valva_adr[k] = v.fm_dse.v_adr[j];   /// valid virtual address to send into tlb for translation
-          k++;
-        end
-        else if(v.fm_dse.v_adr[j][31:VADD_START] == valva_adr[0][31:VADD_START])begin
-                valva_adr[k] = v.fm_dse.v_adr[j];
-                k++;
-             end
-             else var_emsk[j] = 0;
-   end  
-    var_cnt = k-1;
+    /// the page type ---> mask
+    for (int i = 0; i < Entry_NUM; i++)begin
+      case(v.tlb_ptype[i])
+        pagetype0: var_mask = pagemask0;
+        pagetype1: var_mask = pagemask1;
+        pagetype2: var_mask = pagemask2;
+        pagetype3: var_mask = pagemask3;
+        pagetype4: var_mask = pagemask4;
+        pagetype5: var_mask = pagemask5;
+        pagetype6: var_mask = pagemask6;
+        default: ovm_report_warning("TLBPSize0_ILLEGAL", "No this type page size, and no mask!!!");
+      endcase    
+    end
     
+    find = 0;
     ///tlb basic function
       for (int i = 0; i < Entry_NUM; i++)begin
-        if(((v.tlb_vpn2[i] && (!v.tlb_mask[i])) == (valva_adr[0][31:VADD_START] && (!v.tlb_mask[i]))) 
-          && (v.tlb_G[i] || (v.tlb_asid[i][v.fm_dse.tid] == v.REntryHi[ASID_width-1:0])))begin
-            case(v.tlb_mask[i])
-              pagemask0: EvenOddBit = 13;   
-              pagemask1: EvenOddBit = 16;
-              pagemask2: EvenOddBit = 19;
-              pagemask3: EvenOddBit = 22;
-              pagemask4: EvenOddBit = 24;
-              pagemask5: EvenOddBit = 26;
-              pagemask6: EvenOddBit = 28;
-              default:  ovm_report_warning("TLBPSize_ILLEGAL", "No this type page size!!!");              
+            case(v.tlb_ptype[i])
+              pagetype0: EvenOddBit = 13;
+              pagetype1: EvenOddBit = 16;
+              pagetype2: EvenOddBit = 19;
+              pagetype3: EvenOddBit = 22;
+              pagetype4: EvenOddBit = 24;
+              pagetype5: EvenOddBit = 26;
+              pagetype6: EvenOddBit = 28;
+              default:  ovm_report_warning("TLBPSize1_ILLEGAL", "No this type page size, and no evenoddbit!!!");              
             endcase
-            if(valva_adr[0][EvenOddBit] == 0)begin
-              var_pfn = v.tlb_pfn20[i];
-              var_v   = v.tlb_V0[i];
-              var_c   = v.tlb_C0[i];
-              var_d   = v.tlb_D0[i];
+            
+            if(!v.fm_dse.req && v.fm_ife.req) begin
+              vir_adr = v.fm_ife.v_adr;
+              var_tid = v.fm_ife.tid;
             end
             else begin
-              var_pfn = v.tlb_pfn21[i];
-              var_v   = v.tlb_V1[i];
-              var_c   = v.tlb_C1[i];
-              var_d   = v.tlb_D1[i];
+              vir_adr = v.fm_dse.v_adrh;
+              var_tid = v.fm_dse.tid;
             end
-            if(var_v == 0)begin
-              ovm_report_info("TLB_Invalid", "TLB Invalid exception!!!", OVM_HIGH); 
-              vn.RContent[4:0] = 0;
-              vn.RContent[22:5] = v.tlb_vpn2[i];
-            end
-            if((var_d == 0) && ((v.fm_dse.op == op_sw) || (v.fm_dse.op == op_sh) || (v.fm_dse.op == op_sb)))begin
-              ovm_report_info("TLB_Modified", "TLB Modified exception!!!", OVM_HIGH); 
-              vn.RContent[4:0] = 0;
-              vn.RContent[22:5] = v.tlb_vpn2[i];
-            end
-            for (int j = 0; j < var_cnt; j++)begin
-              for (int n = 0; n < EvenOddBit; n++)
-                vn.dse.phy_adr[j][n] = valva_adr[j][n];   /// 13
-              for (int n = EvenOddBit; n < PFN_width+EvenOddBit; n++)
-                vn.dse.phy_adr[n] = var_pfn[n-EvenOddBit];      /// 23
-            end
-            vn.dse.vadr_cnt = var_cnt;    /// the number of the physical addresses translated 
-            find = 1;
-            break;
-      end  
-    end
+            
+            if(((v.tlb_vpn2[i] && (!var_mask)) == (vir_adr[31:VADD_START] && (!var_mask))) 
+                  && (v.tlb_G[i] || (v.tlb_asid[i][var_tid] == v.REntryHi[ASID_width-1:0])))begin
+                if(vir_adr[EvenOddBit] == 0)begin
+                  var_pfn = v.tlb_pfn20[i];
+                  var_v   = v.tlb_V0[i];
+                  var_c   = v.tlb_C0[i];
+                  var_d   = v.tlb_D0[i];
+                end
+                else begin
+                  var_pfn = v.tlb_pfn21[i];
+                  var_v   = v.tlb_V1[i];
+                  var_c   = v.tlb_C1[i];
+                  var_d   = v.tlb_D1[i];
+                end
+                if(var_v == 0)begin
+                  ovm_report_info("TLB_Invalid", "TLB Invalid exception!!!", OVM_HIGH); 
+                  vn.RContent[4:0] = 0;
+                  vn.RContent[22:5] = v.tlb_vpn2[i];
+                  break;
+                end
+                
+                if((var_d == 0) && ((v.fm_dse.op == op_sw) || (v.fm_dse.op == op_sh) || (v.fm_dse.op == op_sb)))begin
+                  ovm_report_info("TLB_Modified", "TLB Modified exception!!!", OVM_HIGH); 
+                  vn.RContent[4:0] = 0;
+                  vn.RContent[22:5] = v.tlb_vpn2[i];
+                  break;
+                end
+                for (int n = EvenOddBit; n < PFN_width+EvenOddBit; n++)
+                 var_padr[n] = var_pfn[n-EvenOddBit];      /// 23 
+                find = 1;
+                break;
+            end  
+      end
        
     /// tlb support instruction  spu -> tlb
     /// dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
@@ -273,7 +290,7 @@ class ip4_tlm_tlb extends ovm_component;
       /// TLBP
       op_tlbp:
         for (int i = 0; i < Entry_NUM; i++)begin
-          if((v.tlb_vpn2[i] && (!v.tlb_mask[i])) == (v.REntryHi[word_width-1:word_width-VPN2_width] && (!v.tlb_mask[i]))
+          if((v.tlb_vpn2[i] && (!var_mask)) == (v.REntryHi[word_width-1:word_width-VPN2_width] && (!var_mask[i]))
               && ((v.tlb_G[i] == 1) || (v.tlb_asid[i][v.fm_dse.tid] == v.REntryHi[ASID_width-1:0])))
               vn.RIndex = i;
         end
@@ -283,12 +300,12 @@ class ip4_tlm_tlb extends ovm_component;
       begin
         i0 = v.RIndex;
         if(i0 < Entry_NUM) begin
-          vn.RPageMask[MASK_width-1:0] = v.tlb_mask[i0];
-          vn.REntryHi = {(v.tlb_vpn2[i0] && (!v.tlb_mask[i0])), 6'b0, v.tlb_asid[i0][v.fm_dse.tid]};
-          vn.REntryLo1 = {(v.tlb_pfn21[i0] && (!v.tlb_mask[i0])), v.tlb_EX1[i0], 
+          vn.RPageType[TYPE_width-1:0] = v.tlb_ptype[i0];
+          vn.REntryHi = {(v.tlb_vpn2[i0] && (!var_mask[i0])), 6'b0, v.tlb_asid[i0][v.fm_dse.tid]};
+          vn.REntryLo1 = {(v.tlb_pfn21[i0] && (!var_mask[i0])), v.tlb_EX1[i0], 
                            v.tlb_C1[i0], v.tlb_K1[i0], v.tlb_E1[i0], v.tlb_D1[i0],
                            v.tlb_V1[i0], v.tlb_G1[i0]};
-          vn.REntryLo0 = {(v.tlb_pfn20[i0] && (!v.tlb_mask[i0])), v.tlb_EX0[i0], 
+          vn.REntryLo0 = {(v.tlb_pfn20[i0] && (!var_mask[i0])), v.tlb_EX0[i0], 
                            v.tlb_C0[i0], v.tlb_K0[i0], v.tlb_E0[i0], v.tlb_D0[i0],
                            v.tlb_V0[i0], v.tlb_G0[i0]}; 
         end
@@ -297,14 +314,14 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbwi:
       begin
         i1 = v.RIndex;
-        vn.tlb_mask[i1] = v.RPageMask[MASK_width-1:0];
-        vn.tlb_vpn2[i1] = v.REntryHi[word_width-1:word_width-VPN2_width] && (!v.RPageMask[MASK_width-1:0]);
+        vn.tlb_ptype[i1] = v.RPageType[TYPE_width-1:0];
+        vn.tlb_vpn2[i1] = v.REntryHi[word_width-1:word_width-VPN2_width] && (!var_mask);
         vn.tlb_asid[i1][v.fm_dse.tid] = v.REntryHi[ASID_width-1:0];
         vn.tlb_G[i1] = v.REntryLo1[0] && v.REntryLo0[0];
-        vn.tlb_pfn21[i1] = v.REntryLo1[word_width-1:9] && (!v.RPageMask[MASK_width-1:0]);
+        vn.tlb_pfn21[i1] = v.REntryLo1[word_width-1:9] && (!var_mask);
         vn.tlb_EX1[i1] = v.REntryLo1[8]; vn.tlb_C1[i1] = v.REntryLo1[7:5]; vn.tlb_K1[i1] = v.REntryLo1[4];
         vn.tlb_E1[i1] = v.REntryLo1[3]; vn.tlb_D1[i1] = v.REntryLo1[2]; vn.tlb_V1[i1] = v.REntryLo1[1];
-        vn.tlb_pfn20[i1] = v.REntryLo0[word_width-1:9] && (!v.RPageMask[MASK_width-1:0]);
+        vn.tlb_pfn20[i1] = v.REntryLo0[word_width-1:9] && (!var_mask);
         vn.tlb_EX0[i1] = v.REntryLo0[8]; vn.tlb_C0[i1] = v.REntryLo0[7:5]; vn.tlb_K0[i1] = v.REntryLo0[4];
         vn.tlb_E0[i1] = v.REntryLo0[3]; vn.tlb_D0[i1] = v.REntryLo0[2]; vn.tlb_V0[i1] = v.REntryLo0[1];
       end
@@ -312,14 +329,14 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbwr:
       begin
         i1 = v.RIndex;
-        vn.tlb_mask[i2] = v.RPageMask[MASK_width-1:0];
-        vn.tlb_vpn2[i2] = v.REntryHi[word_width-1:word_width-VPN2_width] && (!v.RPageMask[MASK_width-1:0]);
+        vn.tlb_ptype[i2] = v.RPageType[TYPE_width-1:0];
+        vn.tlb_vpn2[i2] = v.REntryHi[word_width-1:word_width-VPN2_width] && (!var_mask);
         vn.tlb_asid[i2][v.fm_dse.tid] = v.REntryHi[ASID_width-1:0];
         vn.tlb_G[i2] = v.REntryLo1[0] && v.REntryLo0[0];
-        vn.tlb_pfn21[i2] = v.REntryLo1[word_width-1:9] && (!v.RPageMask[MASK_width-1:0]);
+        vn.tlb_pfn21[i2] = v.REntryLo1[word_width-1:9] && (!var_mask);
         vn.tlb_EX1[i2] = v.REntryLo1[8]; vn.tlb_C1[i2] = v.REntryLo1[7:5]; vn.tlb_K1[i2] = v.REntryLo1[4];
         vn.tlb_E1[i2] = v.REntryLo1[3]; vn.tlb_D1[i2] = v.REntryLo1[2]; vn.tlb_V1[i2] = v.REntryLo1[1];
-        vn.tlb_pfn20[i2] = v.REntryLo0[word_width-1:9] && (!v.RPageMask[MASK_width-1:0]);
+        vn.tlb_pfn20[i2] = v.REntryLo0[word_width-1:9] && (!var_mask);
         vn.tlb_EX0[i2] = v.REntryLo0[8]; vn.tlb_C0[i2] = v.REntryLo0[7:5]; vn.tlb_K0[i2] = v.REntryLo0[4];
         vn.tlb_E0[i2] = v.REntryLo0[3]; vn.tlb_D0[i2] = v.REntryLo0[2]; vn.tlb_V0[i2] = v.REntryLo0[1];
       end
@@ -332,7 +349,7 @@ class ip4_tlm_tlb extends ovm_component;
         REntryLo0_NO: vn.REntryLo0 = v.fm_spu.op0;
         REntryLo1_NO: vn.REntryLo1 = v.fm_spu.op0;
         REntryHi_NO: vn.REntryHi = v.fm_spu.op0;
-        RPageMask_NO: vn.RPageMask = v.fm_spu.op0;
+        RPageType_NO: vn.RPageType = v.fm_spu.op0;
         default: ovm_report_warning("SPU_SRAD", "SPU WRITE SR_ADDR IS ERROR!!!");
         endcase 
         
@@ -348,7 +365,7 @@ class ip4_tlm_tlb extends ovm_component;
         REntryLo0_NO: vn.spu[1].res = v.REntryLo0;
         REntryLo1_NO: vn.spu[1].res = v.REntryLo1;
         REntryHi_NO: vn.spu[1].res = v.REntryHi;
-        RPageMask_NO: vn.spu[1].res = v.RPageMask;
+        RPageType_NO: vn.spu[1].res = v.RPageType;
         default: ovm_report_warning("SPU_SRAD", "SPU READ SR_ADDR IS ERROR!!!");
         endcase 
       end
@@ -361,9 +378,9 @@ class ip4_tlm_tlb extends ovm_component;
     bit Miss_exp;
     tr_tlb2dse to_dse;
     tr_tlb2spu to_spu;
+    tr_tlb2ife to_ife;
     
     ovm_report_info("TLB", "req_proc procing...", OVM_HIGH); 
-    
    
     /// send to dse
     if(find == 1)
@@ -374,12 +391,16 @@ class ip4_tlm_tlb extends ovm_component;
     end
     
     /// send to spu
-    
     to_spu = v.spu[sstage_max];     ///
    
+    /// send to ife
+    
+    
     /// req to other module
     if(to_dse != null) void'(dse_tr_port.nb_transport(to_dse, to_dse));
     if(to_spu != null) void'(spu_tr_port.nb_transport(to_spu, to_spu));
+    if(to_ife != null) void'(spu_tr_port.nb_transport(to_ife, to_ife));
+    
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
