@@ -65,7 +65,7 @@ class ise_thread_inf extends ovm_component;
   uchar cnt_pr_wr, cnt_vrf_wr[num_vrf_bks], cnt_srf_wr[num_srf_bks];
   
   bit en_spu, en_dse, en_fu[num_fu];
-  bit priv_mode;  ///privilege running status
+  bit priv_mode, decoded;  ///privilege running status
   uchar wcnt, vec_mode;
   
   uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
@@ -78,6 +78,7 @@ class ise_thread_inf extends ovm_component;
     
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, ts, OVM_ALL_ON)
+    `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
     `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nc, OVM_ALL_ON)
@@ -137,6 +138,7 @@ class ise_thread_inf extends ovm_component;
     pc = cfg_start_adr;
     pc_l = cfg_start_adr;
     vec_mode = cyc_vec;
+    decoded = 0;
   endfunction : new
  
   function void map_iaddr(input bit v, uchar oadr, output uchar grp, adr);
@@ -188,7 +190,7 @@ class ise_thread_inf extends ovm_component;
         en_fu[i] = gs.i.fua[2+i];
     end
     
-    begin
+    if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [num_fu-1:0] en_fu_t;
       foreach(en_fu_t[i])
         en_fu_t[i] = en_fu[i];
@@ -327,36 +329,7 @@ class ise_thread_inf extends ovm_component;
           tmp++;
         end
     end
-    
-///    begin
-///      bit [num_fu-1:0] en_fu_t;
-///      string msg;
-///      msg = $psprintf("inst grp includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b, apb:%0d, ipw:%0d"
-///                        en_spu, en_dse, en_fu_t, dse_vec, nc, ap_bytes, num_imms);
-///
-///      msg = {msg, "\nvrf_adr:"};
-///      foreach(vrf_adr[i,j])
-///        msg = $psprintf("%s %0d", msg, vrf_adr[i][j]);
-///                                
-///      msg = {msg, "\nvrf_adr:"};
-///      foreach(vrf_adr[i,j])
-///        msg = $psprintf("%s %0d", msg, vrf_adr[i][j]);
-///        
-///      msg = {msg, "\nvrf_grp:"};
-///      foreach(vrf_grp[i,j])
-///        msg = $psprintf("%s %0d", msg, vrf_grp[i][j]);
-///        
-///      msg = {msg, "\nsrf_adr:"};
-///      foreach(srf_adr[i,j])
-///        msg = $psprintf("%s %0d", msg, srf_adr[i][j]);
-///
-///      msg = {msg, "\nsrf_grp:"};
-///      foreach(srf_grp[i,j])
-///        msg = $psprintf("%s %0d", msg, srf_grp[i][j]);
-///              
-///      foreach(en_fu_t[i])
-///        en_fu_t[i] = en_fu[i];
-///    end
+    decoded = 1;
     ovm_report_info("decode_ig", {"\n", sprint()}, OVM_HIGH);
   endfunction : decode_ig
 
@@ -484,7 +457,7 @@ endclass : ise_thread_inf
 
 class ise_iss_inf extends ovm_component;
   uchar cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd, cnt_vec_proc,
-        cnt_pr_wr,  cnt_srf_wr[num_srf_bks], cnt_vrf_wr[num_vrf_bks];
+        cnt_pr_wr, cnt_srf_wr[num_srf_bks], cnt_vrf_wr[num_vrf_bks];
         
   bit no_ld, no_st, no_smsg, no_rmsg, no_fu[num_fu];
   
@@ -494,13 +467,22 @@ class ise_iss_inf extends ovm_component;
   tr_ise2dse ci_dse[cyc_vec];
     
   `ovm_component_utils_begin(ise_iss_inf)
+    `ovm_field_int(cnt_vec_proc, OVM_ALL_ON)
     `ovm_field_int(cnt_vrf_rd, OVM_ALL_ON)
     `ovm_field_int(cnt_srf_rd, OVM_ALL_ON)
     `ovm_field_int(cnt_dse_rd, OVM_ALL_ON)
-    `ovm_field_sarray_object(ci_rfm, OVM_ALL_ON)
-    `ovm_field_sarray_object(ci_spa, OVM_ALL_ON)
-    `ovm_field_sarray_object(ci_spu, OVM_ALL_ON)
-    `ovm_field_sarray_object(ci_dse, OVM_ALL_ON)
+    `ovm_field_int(no_ld, OVM_ALL_ON)
+    `ovm_field_int(no_st, OVM_ALL_ON)
+    `ovm_field_int(no_smsg, OVM_ALL_ON)
+    `ovm_field_int(no_rmsg, OVM_ALL_ON)
+    `ovm_field_sarray_int(no_fu, OVM_ALL_ON)
+    `ovm_field_int(cnt_pr_wr, OVM_ALL_ON)
+    `ovm_field_sarray_int(cnt_srf_wr, OVM_ALL_ON)
+    `ovm_field_sarray_int(cnt_vrf_wr, OVM_ALL_ON)
+    `ovm_field_sarray_object(ci_rfm, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_object(ci_spa, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_object(ci_spu, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_object(ci_dse, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
   
   function new(string name, ovm_component parent);
@@ -574,6 +556,17 @@ class ise_iss_inf extends ovm_component;
   function bit can_iss(input ise_thread_inf tif, output bit vec);
     /// the vec value indicate 4 cyc issue style is needed
 ///    vec = tif.dse_vec;
+    if(get_report_verbosity_level() >= OVM_HIGH) begin
+      bit [num_fu-1:0] en_fu_t;
+      foreach(en_fu_t[i])
+        en_fu_t[i] = tif.en_fu[i];
+        
+      ovm_report_info("can_iss",
+        $psprintf("ts:%s, decoded:%0d, wcnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b", 
+                   tif.ts.name, tif.decoded, tif.wcnt, tif.pc, tif.en_spu, tif.en_dse, en_fu_t, tif.dse_vec, tif.nc),
+        OVM_HIGH);
+    end
+
     if((tif.ts != ts_rdy) && (tif.ts != ts_w_pip || tif.nc))
       return 0;
       
@@ -612,13 +605,15 @@ class ise_iss_inf extends ovm_component;
     foreach(cnt_srf_wr[i])
       if(cnt_srf_wr[i] + tif.cnt_srf_wr[i] > cyc_vec)
         return 0;
-    return 1;
+    return tif.decoded;
   endfunction : can_iss
 
   function void iss_scl(input ise_thread_inf tif);
+///    ovm_report_info("iss_scl", $psprintf("pc:%0h\n%s", tif.pc, sprint()), OVM_HIGH);
     tif.pc += tif.igrp_bytes;
     tif.ibuf_level -= tif.igrp_bytes;
     tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
+    tif.decoded = 0;
     
     /// spu or scalar dse issue
     if(tif.en_spu) begin
@@ -742,6 +737,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
+    ovm_report_info("iinf", $psprintf("\n%s", iinf.sprint()), OVM_HIGH);
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_iss_l;
       bit vec;

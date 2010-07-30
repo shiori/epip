@@ -348,7 +348,7 @@ class ip4_tlm_spu extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2spu req, output tr_ise2spu rsp);
-    ovm_report_info("SPU_TR", "Get ISE Transaction...", OVM_HIGH);
+    ovm_report_info("SPU_TR", $psprintf("Get ISE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -358,7 +358,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2spu req, output tr_rfm2spu rsp);
-    ovm_report_info("SPU_TR", "Get RFM Transaction...", OVM_HIGH);
+    ovm_report_info("SPU_TR", $psprintf("Get RFM Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -368,7 +368,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spa(input tr_spa2spu req, output tr_spa2spu rsp);
-    ovm_report_info("SPU_TR", "Get SPA Transaction...", OVM_HIGH);
+    ovm_report_info("SPU_TR", $psprintf("Get SPA Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -378,7 +378,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_spa
 
   function bit nb_transport_dse(input tr_dse2spu req, output tr_dse2spu rsp);
-    ovm_report_info("SPU_TR", "Get DSE Transaction...", OVM_HIGH);
+    ovm_report_info("SPU_TR", $psprintf("Get DSE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -388,7 +388,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_tlb(input tr_tlb2spu req, output tr_tlb2spu rsp);
-    ovm_report_info("SPU_TR", "Get TLB Transaction...", OVM_HIGH);
+    ovm_report_info("SPU_TR", $psprintf("Get TLB Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));

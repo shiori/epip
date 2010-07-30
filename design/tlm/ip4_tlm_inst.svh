@@ -372,16 +372,30 @@ class inst_c extends ovm_object;
     `ovm_field_enum(msc_opcode_e, msc_op, OVM_ALL_ON)
     `ovm_field_enum(msk_opcode_e, msk_op, OVM_ALL_ON)
     `ovm_field_enum(br_opcode_e, br_op, OVM_ALL_ON)
-    `ovm_field_int(m_b, OVM_ALL_ON)
-    `ovm_field_int(m_ua, OVM_ALL_ON)
-    `ovm_field_int(m_fun, OVM_ALL_ON)
-    `ovm_field_int(m_s, OVM_ALL_ON)
-    `ovm_field_int(m_rt, OVM_ALL_ON)
-    `ovm_field_int(m_t, OVM_ALL_ON)
-    `ovm_field_int(m_mid, OVM_ALL_ON)
-    `ovm_field_int(m_fifos, OVM_ALL_ON)
+///    `ovm_field_int(m_b, OVM_ALL_ON)
+///    `ovm_field_int(m_ua, OVM_ALL_ON)
+///    `ovm_field_int(m_fun, OVM_ALL_ON)
+///    `ovm_field_int(m_s, OVM_ALL_ON)
+///    `ovm_field_int(m_rt, OVM_ALL_ON)
+///    `ovm_field_int(m_t, OVM_ALL_ON)
+///    `ovm_field_int(m_mid, OVM_ALL_ON)
+///    `ovm_field_int(m_fifos, OVM_ALL_ON)
   `ovm_object_utils_end
-	  
+
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+		if(en_dse) begin
+		  `PF(m_b, OVM_BIN)
+		  `PF(m_ua, OVM_BIN)
+		  `PF(m_fun, OVM_BIN)
+		  `PF(m_s, OVM_BIN)
+		  `PF(m_rt, OVM_BIN)
+		  `PF(m_t, OVM_BIN)
+		  `PF(m_mid, OVM_BIN)
+		  `PF(m_fifos, OVM_BIN)
+	  end
+	endfunction : do_print
+		  
 	function new (string name = "inst_c");
 		super.new(name);
 		decoded = 0;

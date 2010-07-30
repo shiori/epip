@@ -226,7 +226,7 @@ class ip4_tlm_rfm extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2rfm req, output tr_ise2rfm rsp);
-    ovm_report_info("RFM_TR", "Get ISE Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get ISE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -237,7 +237,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_spu(input tr_spu2rfm req, output tr_spu2rfm rsp);
-    ovm_report_info("RFM_TR", "Get SPU Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get SPU Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -247,7 +247,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_dse(input tr_dse2rfm req, output tr_dse2rfm rsp);
-    ovm_report_info("RFM_TR", "Get DSE Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get DSE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -257,7 +257,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_spa(input tr_spa2rfm req, output tr_spa2rfm rsp);
-    ovm_report_info("RFM_TR", "Get SPA Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get SPA Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
