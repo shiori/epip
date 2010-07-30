@@ -15,15 +15,16 @@ class ip4_tlm_ise_vars extends ovm_object;
   tr_rfm2ise fm_rfm;
   tr_ife2ise fm_ife;
   tr_spa2ise fm_spa;
-  tr_dse2ise fm_dse[stage_exe_vwbp:stage_exe_dwb];
+  tr_dse2ise fm_dse[stage_exe_vwbp:stage_exe_dwbp];
   
   tr_ise2rfm rfm[stage_ise_rrf:1];
   tr_ise2spa spa[stage_ise_rrf:1];
   tr_ise2spu spu[stage_ise_rrf:1];
   tr_ise2dse dse[stage_ise_rrf:1];
   
-  uchar tid_iss_l, tid_fet_l;
-    
+  uchar tid_iss_l, tid_fet_l, tid_ife_cancel;
+  bit ife_cancel;
+  
   `ovm_object_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE)
@@ -36,6 +37,8 @@ class ip4_tlm_ise_vars extends ovm_object;
     `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_int(tid_iss_l, OVM_ALL_ON)
     `ovm_field_int(tid_fet_l, OVM_ALL_ON)
+    `ovm_field_int(tid_ife_cancel, OVM_ALL_ON)
+    `ovm_field_int(ife_cancel, OVM_ALL_ON)
   `ovm_object_utils_end
   
   function new (string name = "ise_vars");
@@ -49,10 +52,10 @@ class ip4_tlm_ise_vars extends ovm_object;
   endfunction
 endclass : ip4_tlm_ise_vars
 
-class ise_thread_inf extends ovm_object;
+class ise_thread_inf extends ovm_component;
   ise_thread_state ts;
   uchar ibuf[num_ibuf_bytes];
-  bit nck, dse_vec;
+  bit nc, dse_vec;
   uchar ibuf_level, igrp_bytes, ap_bytes, num_imms,
         cnt_srf_rd, cnt_vrf_rd, cnt_dse_rd;
   word imms[num_bp_imm];
@@ -72,22 +75,51 @@ class ise_thread_inf extends ovm_object;
   inst_c i_spu, i_dse, i_fu[num_fu];
   uint pc, pc_l;  ///pc_br
   bit br_pred;
-  uchar ife_pend;
     
-  `ovm_object_utils_begin(ise_thread_inf)
+  `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, ts, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
-    `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
-    `ovm_field_int(nck, OVM_ALL_ON)
+///    `ovm_field_sarray_int(ibuf, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_int(nc, OVM_ALL_ON)
     `ovm_field_int(ibuf_level, OVM_ALL_ON)
+    `ovm_field_int(igrp_bytes, OVM_ALL_ON)
+    `ovm_field_int(ap_bytes, OVM_ALL_ON)
+    `ovm_field_int(num_imms, OVM_ALL_ON)
+    `ovm_field_int(cnt_srf_rd, OVM_ALL_ON)
+    `ovm_field_int(cnt_vrf_rd, OVM_ALL_ON)
+    `ovm_field_int(cnt_dse_rd, OVM_ALL_ON)
+    `ovm_field_sarray_int(imms, OVM_ALL_ON)
+    `ovm_field_int(cnt_pr_wr, OVM_ALL_ON)
+    `ovm_field_sarray_int(cnt_vrf_wr, OVM_ALL_ON)
+    `ovm_field_sarray_int(cnt_srf_wr, OVM_ALL_ON)
+    `ovm_field_int(en_spu, OVM_ALL_ON)
+    `ovm_field_int(en_dse, OVM_ALL_ON)
+    `ovm_field_sarray_int(en_fu, OVM_ALL_ON)
+    `ovm_field_int(wcnt, OVM_ALL_ON)
+    `ovm_field_int(vec_mode, OVM_ALL_ON)
+    `ovm_field_int(pd_ifet, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(pc_l, OVM_ALL_ON)
     `ovm_field_int(br_pred, OVM_ALL_ON)
-    `ovm_field_int(ife_pend, OVM_ALL_ON)
-  `ovm_object_utils_end
-  
-  function new (string name = "ise_thread_inf");
-    super.new(name);
+    `ovm_field_sarray_int(vrf_map, OVM_ALL_ON)
+    `ovm_field_sarray_int(srf_map, OVM_ALL_ON)
+    `ovm_field_object(i_spu, OVM_ALL_ON)
+    `ovm_field_object(i_dse, OVM_ALL_ON)
+    `ovm_field_sarray_object(i_fu, OVM_ALL_ON)
+  `ovm_component_utils_end
+
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+    `PAF2(vrf_adr, OVM_DEC)
+    `PAF2(srf_adr, OVM_DEC)
+    `PAF2(vrf_grp, OVM_DEC)
+    `PAF2(srf_grp, OVM_DEC)
+///	  if(get_report_verbosity_level() >= OVM_HIGH) begin
+///    end
+	endfunction : do_print
+	
+  function new(string name, ovm_component parent);
+    super.new(name, parent);
     i_spu = new();
     i_dse = new();
     foreach(i_fu[i])
@@ -96,6 +128,7 @@ class ise_thread_inf extends ovm_object;
     priv_mode = 0;
     pc = cfg_start_adr;
     pc_l = cfg_start_adr;
+    vec_mode = cyc_vec;
   endfunction : new
  
   function void map_iaddr(input bit v, uchar oadr, output uchar grp, adr);
@@ -121,11 +154,11 @@ class ise_thread_inf extends ovm_object;
     en_fu = '{default : 0};
     
     if(gs1.t) begin
-      nck = gs1.nc;
+      nc = gs1.nc;
       ap_bytes = gs1.apb;
       num_imms = gs1.ipw;
       dse_vec = gs1.fua;
-      igrp_bytes = 1 + ap_bytes + num_imms * num_word_bytes;
+      igrp_bytes = 1 + ap_bytes + num_imms * num_word_bytes + 5;
     end
     else begin
       i_gs0_u gs;
@@ -135,16 +168,27 @@ class ise_thread_inf extends ovm_object;
       foreach(gs.i.fua[i])
         tmp += gs.i.fua[i];
       if(tmp == 0)
-        ovm_report_warning("ISE", "igs decode error, fua not valid");
-      nck = gs1.nc;
+        ovm_report_warning("decode_igs", "igs decode error, fua not valid");
+      nc = gs1.nc;
       ap_bytes = gs.i.apb;
       num_imms = gs.i.ipw;
-      igrp_bytes = 2 + ap_bytes + num_imms * num_word_bytes;
+      igrp_bytes = 2 + ap_bytes + num_imms * num_word_bytes + tmp * 5;
       en_spu = gs.i.fua[0];
       en_dse = gs.i.fua[1];
       dse_vec = gs.i.dv;
       foreach(en_fu[i])
         en_fu[i] = gs.i.fua[2+i];
+    end
+    
+    begin
+      bit [num_fu-1:0] en_fu_t;
+      foreach(en_fu_t[i])
+        en_fu_t[i] = en_fu[i];
+        
+      ovm_report_info("decode_igs",
+        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b, apb:%0d, ipw:%0d", 
+                   igrp_bytes, en_spu, en_dse, en_fu_t, dse_vec, nc, ap_bytes, num_imms),
+        OVM_HIGH);
     end
   endfunction : decode_igs
     
@@ -167,7 +211,7 @@ class ise_thread_inf extends ovm_object;
     if(gs1.t) begin
       tmp = 1;
       if(ap_bytes != 0) ap_bytes --;
-      i_spu.set_data(ibuf, os, 0, 0);
+      i_spu.set_data(ibuf, os, 0, dse_vec);
       i_dse.set_data(ibuf, os, 0, dse_vec);
       foreach(i_fu[i])
         i_fu[i].set_data(ibuf, os, i, 1);
@@ -277,6 +321,37 @@ class ise_thread_inf extends ovm_object;
           tmp++;
         end
     end
+    
+///    begin
+///      bit [num_fu-1:0] en_fu_t;
+///      string msg;
+///      msg = $psprintf("inst grp includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b, apb:%0d, ipw:%0d"
+///                        en_spu, en_dse, en_fu_t, dse_vec, nc, ap_bytes, num_imms);
+///
+///      msg = {msg, "\nvrf_adr:"};
+///      foreach(vrf_adr[i,j])
+///        msg = $psprintf("%s %0d", msg, vrf_adr[i][j]);
+///                                
+///      msg = {msg, "\nvrf_adr:"};
+///      foreach(vrf_adr[i,j])
+///        msg = $psprintf("%s %0d", msg, vrf_adr[i][j]);
+///        
+///      msg = {msg, "\nvrf_grp:"};
+///      foreach(vrf_grp[i,j])
+///        msg = $psprintf("%s %0d", msg, vrf_grp[i][j]);
+///        
+///      msg = {msg, "\nsrf_adr:"};
+///      foreach(srf_adr[i,j])
+///        msg = $psprintf("%s %0d", msg, srf_adr[i][j]);
+///
+///      msg = {msg, "\nsrf_grp:"};
+///      foreach(srf_grp[i,j])
+///        msg = $psprintf("%s %0d", msg, srf_grp[i][j]);
+///              
+///      foreach(en_fu_t[i])
+///        en_fu_t[i] = en_fu[i];
+///    end
+    ovm_report_info("decode_ig", {"\n", sprint()}, OVM_HIGH);
   endfunction : decode_ig
 
   function void dse_cancel();
@@ -312,17 +387,22 @@ class ise_thread_inf extends ovm_object;
   endfunction : can_req_ifet
       
   function void update_inst(input inst_fg_c fg);
-    uchar os = 0;
+    uchar os = 0, level_l = ibuf_level;
     if(ibuf_level  >= num_max_igrp_bytes)
       ovm_report_warning("ISE", "ibuf overflow!");
     if(ibuf_level == 0)
       os = pc & ~{'1 << bits_ifet};
     foreach(fg.data[i])
-      if(i > os)
+      if(i >= os)
         ibuf[ibuf_level++] = fg.data[i];
-    decode_igs();
-    if(ibuf_level >= igrp_bytes)
-      decode_ig();
+    ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, ibuf lv %0d->%0d", pc, os, level_l, ibuf_level), OVM_HIGH);
+
+    if(ibuf_level > 1) begin
+      decode_igs();
+      if(ibuf_level >= igrp_bytes)
+        decode_ig();
+    end
+
     if(pd_ifet > 0)
       pd_ifet--;
   endfunction : update_inst
@@ -379,7 +459,8 @@ class ise_thread_inf extends ovm_object;
     end
  
     for(int i = 0; i < cnt_vrf_rd; i++) begin
-      i_fu[i].set_wcnt(wcnt);
+      foreach(i_fu[fid])
+        i_fu[fid].set_wcnt(wcnt);
       if(wcnt > 0)
         ts = ts_w_pip;
       ci_spa[i].subv = i;
@@ -391,8 +472,7 @@ class ise_thread_inf extends ovm_object;
 
 endclass : ise_thread_inf
 
-class ise_iss_inf extends ovm_object;
-  ovm_component pa;
+class ise_iss_inf extends ovm_component;
   uchar cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd, cnt_vec_proc,
         cnt_pr_wr,  cnt_srf_wr[num_srf_bks], cnt_vrf_wr[num_vrf_bks];
         
@@ -403,7 +483,7 @@ class ise_iss_inf extends ovm_object;
   tr_ise2spu ci_spu[cyc_vec];
   tr_ise2dse ci_dse[cyc_vec];
     
-  `ovm_object_utils_begin(ise_iss_inf)
+  `ovm_component_utils_begin(ise_iss_inf)
     `ovm_field_int(cnt_vrf_rd, OVM_ALL_ON)
     `ovm_field_int(cnt_srf_rd, OVM_ALL_ON)
     `ovm_field_int(cnt_dse_rd, OVM_ALL_ON)
@@ -411,16 +491,15 @@ class ise_iss_inf extends ovm_object;
     `ovm_field_sarray_object(ci_spa, OVM_ALL_ON)
     `ovm_field_sarray_object(ci_spu, OVM_ALL_ON)
     `ovm_field_sarray_object(ci_dse, OVM_ALL_ON)
-  `ovm_object_utils_end
+  `ovm_component_utils_end
   
-  function new (string name = "ise_iss_inf", ovm_component p = null);
-    super.new(name);
-    pa = p;
+  function new(string name, ovm_component parent);
+    super.new(name, parent);
     foreach(ci_spa[i]) begin
-      ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", pa);
-      ci_dse[i] = tr_ise2dse::type_id::create("to_dse", pa);
-      ci_spa[i] = tr_ise2spa::type_id::create("to_spa", pa);
-      ci_spu[i] = tr_ise2spu::type_id::create("to_spu", pa);
+      ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+      ci_dse[i] = tr_ise2dse::type_id::create("to_dse", get_parent());
+      ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
+      ci_spu[i] = tr_ise2spu::type_id::create("to_spu", get_parent());
     end
     cnt_vrf_rd = 0;
     cnt_srf_rd = 0;
@@ -438,10 +517,10 @@ class ise_iss_inf extends ovm_object;
       ci_dse[i] = ci_dse[i+1];
     end
     
-    ci_rfm[cyc_vec-1] = tr_ise2rfm::type_id::create("to_rfm", pa);
-    ci_spa[cyc_vec-1] = tr_ise2spa::type_id::create("to_spa", pa);
-    ci_spu[cyc_vec-1] = tr_ise2spu::type_id::create("to_spu", pa);
-    ci_dse[cyc_vec-1] = tr_ise2dse::type_id::create("to_dse", pa);
+    ci_rfm[cyc_vec-1] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+    ci_spa[cyc_vec-1] = tr_ise2spa::type_id::create("to_spa", get_parent());
+    ci_spu[cyc_vec-1] = tr_ise2spu::type_id::create("to_spu", get_parent());
+    ci_dse[cyc_vec-1] = tr_ise2dse::type_id::create("to_dse", get_parent());
     
     if(cnt_vrf_rd != 0) cnt_vrf_rd--;
     if(cnt_dse_rd != 0) cnt_dse_rd--;
@@ -485,7 +564,7 @@ class ise_iss_inf extends ovm_object;
   function bit can_iss(input ise_thread_inf tif, output bit vec);
     /// the vec value indicate 4 cyc issue style is needed
 ///    vec = tif.dse_vec;
-    if((tif.ts != ts_rdy) && (tif.ts != ts_w_pip || tif.nck))
+    if((tif.ts != ts_rdy) && (tif.ts != ts_w_pip || tif.nc))
       return 0;
       
     foreach(tif.en_fu[i])
@@ -527,6 +606,8 @@ class ise_iss_inf extends ovm_object;
   endfunction : can_iss
 
   function void iss_scl(input ise_thread_inf tif);
+    tif.pc += tif.igrp_bytes;
+    tif.ibuf_level -= tif.igrp_bytes;
     tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
     
     /// spu or scalar dse issue
@@ -600,13 +681,13 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fm_spa != null) end_tr(v.fm_spa);
     if(v.fm_rfm != null) end_tr(v.fm_rfm);
     if(v.fm_ife != null) end_tr(v.fm_ife);
-    if(v.fm_dse[stage_exe_dwb] != null) end_tr(v.fm_dse[stage_exe_dwb]);
+    if(v.fm_dse[stage_exe_dwbp] != null) end_tr(v.fm_dse[stage_exe_dwbp]);
     
     vn.fm_spu = null;
     vn.fm_spa = null;
     vn.fm_rfm = null;
     vn.fm_ife = null;
-    vn.fm_dse[stage_exe_dwb] = null;
+    vn.fm_dse[stage_exe_dwbp] = null;
     
     for(int i = stage_ise_rrf; i > 1; i--) begin
       vn.rfm[i] = v.rfm[i];  
@@ -623,17 +704,24 @@ class ip4_tlm_ise extends ovm_component;
       tinf[i].cyc_new();
       
     if(v.fm_spu != null && v.fm_spu.br_rsp)
-      void'(tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken));
+      if(tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken)) begin
+        vn.ife_cancel = 1;
+        vn.tid_ife_cancel = v.fm_spu.tid;
+        if(v.fm_ife != null && v.fm_ife.tid == v.fm_spu.tid)
+          v.fm_ife.inst_en = 0;
+        if(v.fm_ife != null && v.fm_ife.tid == v.tid_ife_cancel && v.ife_cancel)
+          v.fm_ife.inst_en = 0;
+      end
       
-    for(int i = stage_exe_dwb; i > stage_exe_vwbp; i--)
-      vn.fm_dse[i] = v.fm_dse[i];  
+    for(int i = stage_exe_vwbp; i > stage_exe_dwbp; i--)
+      vn.fm_dse[i] = v.fm_dse[i-1];  
     
-    iinf.update_block(v.fm_spa, v.fm_dse[stage_exe_dwb]);
+    iinf.update_block(v.fm_spa, v.fm_dse[stage_exe_dwbp]);
     
     if(v.fm_ife != null && v.fm_ife.inst_en)
       tinf[v.fm_ife.tid].update_inst(v.fm_ife.fg);
-    if(v.fm_dse[stage_exe_dwb] != null) begin
-      tr_dse2ise dse = v.fm_dse[stage_exe_dwb];
+    if(v.fm_dse[stage_exe_dwbp] != null) begin
+      tr_dse2ise dse = v.fm_dse[stage_exe_dwbp];
       if(dse.cancel) begin
         tinf[dse.tid].dse_cancel();
         if(dse.exp)
@@ -688,6 +776,12 @@ class ip4_tlm_ise extends ovm_component;
         vn.tid_fet_l = tid;
         break;
       end
+    end
+    
+    if(vn.ife_cancel) begin
+      if(to_ife == null) to_ife = tr_ise2ife::type_id::create("to_ife", this);
+      to_ife.cancel = 1;
+      to_ife.tid_cancel = vn.tid_ife_cancel;
     end
     
     if(v.fm_dse[stage_exe_vwbp] != null && v.fm_dse[stage_exe_vwbp].cancel) begin
@@ -755,7 +849,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_dse[stage_exe_dwb] = req;
+    vn.fm_dse[stage_exe_dwbp] = req;
     return 1;
   endfunction : nb_transport_dse
     
@@ -814,11 +908,11 @@ class ip4_tlm_ise extends ovm_component;
     stamp = 0ns;
     
     foreach(tinf[i])
-      tinf[i] = new();
+      tinf[i] = new($psprintf("tinf%0d", i), this);
     tinf[0].ts = ts_rdy;
     tinf[0].priv_mode = 1;
     
-    iinf = new(, this);
+    iinf = new("iinf", this);
   endfunction : build
 endclass : ip4_tlm_ise
 

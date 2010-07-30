@@ -450,7 +450,7 @@ class ip4_tlm_spu extends ovm_component;
     failed_convert_interface: assert($cast(vif_cfg, tmp));
     sysif = vif_cfg.get_vif();  
     stamp = 0ns;
-    b_rdy = '{default: cyc_vec - 1};
+    b_rdy = '{default: cyc_vec};
     b_pd = '{default: 0};
   endfunction : build
 endclass : ip4_tlm_spu

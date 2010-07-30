@@ -801,7 +801,7 @@ class inst_c extends ovm_object;
       end
       else begin
         foreach(fu_cfg[i])
-          if(fu_cfg[i] != sfu) begin
+          if(fu_cfg[i] == alu) begin
             en_fu[i] = 1;
             break;
           end

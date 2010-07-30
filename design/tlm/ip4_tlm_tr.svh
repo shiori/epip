@@ -637,7 +637,7 @@ class tr_ise2spu extends ovm_sequence_item;
     pr_br_dep dist {0:=6, 1:=4};
 ///    pr_br_adr <= num_pr;
     subv dist {0:=5, 1:=5};
-    vec_mode < cyc_vec;
+    vec_mode inside {[1:cyc_vec]};
 ///    subs dist {0:=5, 1:=5};
 ///    cycs inside {[1:cyc_vec]};
     pr_rd_adr_spu == 0 -> pr_br_dep == 0;
@@ -784,12 +784,15 @@ endclass : tr_ife2ise
 
 class tr_ise2ife extends ovm_sequence_item;
   rand bit fetch_req;
-  rand uchar tid;
+  rand uchar tid, tid_cancel;
   rand uint pc;
+  rand bit cancel;
   
 	`ovm_object_utils_begin(tr_ise2ife)
 	  `ovm_field_int(fetch_req, OVM_ALL_ON)
+	  `ovm_field_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON + OVM_DEC)
+	  `ovm_field_int(tid_cancel, OVM_ALL_ON + OVM_DEC)
 	  `ovm_field_int(pc, OVM_ALL_ON + OVM_HEX)
   `ovm_object_utils_end
   
@@ -859,7 +862,7 @@ class tr_ise2dse extends ovm_sequence_item;
     bp_data dist {0:=4, 1:=6};
     op inside {dse_ops};
     bp_data -> vec;
-    vec_mode < cyc_vec;
+    vec_mode inside {[1:cyc_vec]};
     solve vec before bp_data;
   }
   
