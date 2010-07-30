@@ -79,7 +79,7 @@ class ise_thread_inf extends ovm_component;
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, ts, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
-///    `ovm_field_sarray_int(ibuf, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nc, OVM_ALL_ON)
     `ovm_field_int(ibuf_level, OVM_ALL_ON)
     `ovm_field_int(igrp_bytes, OVM_ALL_ON)
@@ -103,19 +103,27 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(br_pred, OVM_ALL_ON)
     `ovm_field_sarray_int(vrf_map, OVM_ALL_ON)
     `ovm_field_sarray_int(srf_map, OVM_ALL_ON)
-    `ovm_field_object(i_spu, OVM_ALL_ON)
-    `ovm_field_object(i_dse, OVM_ALL_ON)
-    `ovm_field_sarray_object(i_fu, OVM_ALL_ON)
+    `ovm_field_object(i_spu, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_object(i_dse, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_object(i_fu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
+	  if(get_report_verbosity_level() >= OVM_HIGH) begin
+  		if(en_spu)
+  		  printer.print_object("spu", i_spu);
+  		if(en_dse)
+  		  printer.print_object("dse", i_dse);
+  		foreach(en_fu[i])
+  		  if(en_fu[i])
+  		    printer.print_object($psprintf("fu%0d", i), i_fu[i]);
+    end
+	    
     `PAF2(vrf_adr, OVM_DEC)
     `PAF2(srf_adr, OVM_DEC)
     `PAF2(vrf_grp, OVM_DEC)
     `PAF2(srf_grp, OVM_DEC)
-///	  if(get_report_verbosity_level() >= OVM_HIGH) begin
-///    end
 	endfunction : do_print
 	
   function new(string name, ovm_component parent);
@@ -158,7 +166,7 @@ class ise_thread_inf extends ovm_component;
       ap_bytes = gs1.apb;
       num_imms = gs1.ipw;
       dse_vec = gs1.fua;
-      igrp_bytes = 1 + ap_bytes + num_imms * num_word_bytes + 5;
+      igrp_bytes = 1 + ap_bytes + num_imms * num_word_bytes + num_inst_bytes;
     end
     else begin
       i_gs0_u gs;
@@ -172,7 +180,7 @@ class ise_thread_inf extends ovm_component;
       nc = gs1.nc;
       ap_bytes = gs.i.apb;
       num_imms = gs.i.ipw;
-      igrp_bytes = 2 + ap_bytes + num_imms * num_word_bytes + tmp * 5;
+      igrp_bytes = 2 + ap_bytes + num_imms * num_word_bytes + tmp * num_inst_bytes;
       en_spu = gs.i.fua[0];
       en_dse = gs.i.fua[1];
       dse_vec = gs.i.dv;
@@ -210,13 +218,14 @@ class ise_thread_inf extends ovm_component;
     
     if(gs1.t) begin
       tmp = 1;
+      os = 1;
       if(ap_bytes != 0) ap_bytes --;
       i_spu.set_data(ibuf, os, 0, dse_vec);
       i_dse.set_data(ibuf, os, 0, dse_vec);
       foreach(i_fu[i])
         i_fu[i].set_data(ibuf, os, i, 1);
         
-      os = 1 + num_inst_bytes;
+      os += num_inst_bytes;
       i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
       i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
       i_spu.analyze_fu(en_spu, en_dse, en_fu);
@@ -239,7 +248,6 @@ class ise_thread_inf extends ovm_component;
       
       if(en_spu) begin
         i_spu.set_data(ibuf, os, 0, 0);
-///        i_spu.analyze_fu(tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
@@ -247,7 +255,6 @@ class ise_thread_inf extends ovm_component;
       
       if(en_dse) begin
         i_dse.set_data(ibuf, os, 0, dse_vec);
-///        i_dse.analyze_fu(tmp_en_spu, tmp_en_dse, tmp_en_fu);
         i_dse.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
         i_dse.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
         os += num_inst_bytes;
@@ -256,7 +263,6 @@ class ise_thread_inf extends ovm_component;
       foreach(i_fu[i])
         if(en_fu[i]) begin
           i_fu[i].set_data(ibuf, os, i, 1);
-///          i_spu.analyze_fu(tmp_en_spu, tmp_en_dse, tmp_en_fu);
           i_fu[i].analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
           i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
           os += num_inst_bytes;          
@@ -377,6 +383,7 @@ class ise_thread_inf extends ovm_component;
   endfunction : br_pre_miss
 
   function bit can_req_ifet();
+    ovm_report_info("can_req_ifet", $psprintf("ts:%s, ibuf lv:%0d, pd:%0d", ts.name, ibuf_level, pd_ifet), OVM_HIGH);
     if(ts == ts_disabled)
       return 0;
     if(ibuf_level + pd_ifet * num_ifet_bytes >=  num_ibuf_bytes)
@@ -397,6 +404,10 @@ class ise_thread_inf extends ovm_component;
     foreach(fg.data[i])
       if(i >= os)
         ibuf[ibuf_level++] = fg.data[i];
+
+    if(pd_ifet > 0)
+      pd_ifet--;
+      
     ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, ibuf lv %0d->%0d", pc, os, level_l, ibuf_level), OVM_HIGH);
 
     if(ibuf_level > 1) begin
@@ -404,9 +415,6 @@ class ise_thread_inf extends ovm_component;
       if(ibuf_level >= igrp_bytes)
         decode_ig();
     end
-
-    if(pd_ifet > 0)
-      pd_ifet--;
   endfunction : update_inst
 
   function void fill_ife(input tr_ise2ife ife);
