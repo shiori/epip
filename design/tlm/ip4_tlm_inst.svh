@@ -826,7 +826,7 @@ class inst_c extends ovm_object;
       end
       
     foreach(pr_wr_en[i])
-      pr++;
+      pr += pr_wr_en[i];
       
     if(op == op_rmsg)
       foreach(bk_rmsg[i])

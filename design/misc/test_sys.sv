@@ -121,6 +121,8 @@ class test_sys_env extends ovm_env;
   endfunction : new
 endclass
 
+/// vsim +OVM_TESTNAME=ip4_sys_test work.top
+
 class ip4_sys_test extends ovm_test;
   test_sys_env env;
   `ovm_component_utils_begin(ip4_sys_test)

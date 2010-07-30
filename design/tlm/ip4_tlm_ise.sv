@@ -26,25 +26,25 @@ class ip4_tlm_ise_vars extends ovm_object;
   bit ife_cancel;
   
   `ovm_object_utils_begin(ip4_tlm_ise_vars)
-    `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(fm_ife, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_object(fm_ife, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_int(tid_iss_l, OVM_ALL_ON)
     `ovm_field_int(tid_fet_l, OVM_ALL_ON)
     `ovm_field_int(tid_ife_cancel, OVM_ALL_ON)
     `ovm_field_int(ife_cancel, OVM_ALL_ON)
   `ovm_object_utils_end
-  
-  function new (string name = "ise_vars");
+
+  function new(string name = "ise_vars");
     super.new(name);
     tid_fet_l = 0;
-    tid_iss_l = 0;    
+    tid_iss_l = 0;  
   endfunction : new
   
   function void gen(input ip4_tlm_ise_vars o);
@@ -329,6 +329,12 @@ class ise_thread_inf extends ovm_component;
           tmp++;
         end
     end
+    
+    foreach(i_fu[fid])
+      i_fu[fid].set_wcnt(wcnt);
+    i_spu.set_wcnt(wcnt);
+    i_dse.set_wcnt(wcnt);
+    
     decoded = 1;
     ovm_report_info("decode_ig", {"\n", sprint()}, OVM_HIGH);
   endfunction : decode_ig
@@ -383,7 +389,7 @@ class ise_thread_inf extends ovm_component;
       
     ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, ibuf lv %0d->%0d", pc, os, level_l, ibuf_level), OVM_HIGH);
 
-    if(ibuf_level > 1) begin
+    if(ibuf_level > 1 && !decoded) begin
       decode_igs();
       if(ibuf_level >= igrp_bytes)
         decode_ig();
@@ -396,15 +402,38 @@ class ise_thread_inf extends ovm_component;
     pd_ifet++;
   endfunction : fill_ife
   
-  function void fill_iss(input tr_ise2rfm ci_rfm[cyc_vec], tr_ise2spa ci_spa[cyc_vec], 
+  function void fill_iss(ref tr_ise2rfm ci_rfm[cyc_vec], tr_ise2spa ci_spa[cyc_vec], 
                                tr_ise2spu ci_spu[cyc_vec], tr_ise2dse ci_dse[cyc_vec]);
     
-    i_dse.map_wr_grp(vrf_map, srf_map);
-    i_spu.map_wr_grp(vrf_map, srf_map);
+    if(ci_rfm[0] == null) ci_rfm[0] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+    if(ci_rfm[cnt_vrf_rd] == null) ci_rfm[cnt_srf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+    ci_rfm[0].start = 1;
+    ci_rfm[cnt_vrf_rd].vec_end = 1;
+
     foreach(i_fu[i])
       i_fu[i].map_wr_grp(vrf_map, srf_map);
-      
+
+    /// spu or scalar dse issue
+    if(en_spu) begin
+      i_spu.map_wr_grp(vrf_map, srf_map);
+      if(ci_rfm[0] == null) ci_rfm[0] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+      if(ci_rfm[cnt_srf_rd] == null) ci_rfm[cnt_srf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+      ci_rfm[0].start = 1;
+      ci_rfm[cnt_srf_rd].scl_end = 1;
+    end
+    
+    if(en_dse) begin
+      i_dse.map_wr_grp(vrf_map, srf_map);
+      ci_dse[0] = tr_ise2dse::type_id::create("to_dse", get_parent());
+      i_dse.fill_dse(ci_dse[0]);      
+      for(int i = 0; i < cnt_dse_rd; i++) begin
+        if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+        i_dse.fill_rfm(ci_rfm[i]);
+      end
+    end
+          
     for(int i = 0; i < cnt_srf_rd && i < cnt_vrf_rd; i++) begin
+      if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       ci_rfm[i].bp_imm = imms;
       ci_rfm[i].vrf_rd_grp = vrf_grp[i];
       ci_rfm[i].vrf_rd_adr = vrf_adr[i];
@@ -413,44 +442,22 @@ class ise_thread_inf extends ovm_component;
     end
     
     for(int i = 0; i < cnt_srf_rd; i++) begin
+      if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+      if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
       i_spu.fill_rfm(ci_rfm[i]);
       i_spu.fill_spa(ci_spa[i]);
     end
-    i_dse.fill_dse(ci_dse[0]);
+    
     for(int i = 0; i < cnt_vrf_rd; i++) begin
+      if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
+      if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       i_dse.fill_spa(ci_spa[i]);
       foreach(i_fu[fid]) begin
         i_fu[fid].fill_rfm(ci_rfm[i]);
         i_fu[fid].fill_spa(ci_spa[i]);
       end
-    end
-    
-    
-    /// spu or scalar dse issue
-    if(en_spu) begin
-      ci_rfm[0].start = 1;
-      ci_rfm[cnt_srf_rd].scl_end = 1;
-      i_spu.set_wcnt(wcnt);
-      if(i_spu.is_pd_br())
-        ts = ts_w_b;
-    end
-    
-    if(en_dse) begin
-      for(int i = 0; i < cnt_dse_rd; i++)
-        i_dse.fill_rfm(ci_rfm[i]);
-      i_dse.set_wcnt(wcnt);
-    end
- 
-    for(int i = 0; i < cnt_vrf_rd; i++) begin
-      foreach(i_fu[fid])
-        i_fu[fid].set_wcnt(wcnt);
-      if(wcnt > 0)
-        ts = ts_w_pip;
       ci_spa[i].subv = i;
     end
-    
-    ci_rfm[0].start = 1;
-    ci_rfm[cnt_vrf_rd].vec_end = 1;
   endfunction : fill_iss
 
 endclass : ise_thread_inf
@@ -479,20 +486,20 @@ class ise_iss_inf extends ovm_component;
     `ovm_field_int(cnt_pr_wr, OVM_ALL_ON)
     `ovm_field_sarray_int(cnt_srf_wr, OVM_ALL_ON)
     `ovm_field_sarray_int(cnt_vrf_wr, OVM_ALL_ON)
-    `ovm_field_sarray_object(ci_rfm, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_sarray_object(ci_spa, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_sarray_object(ci_spu, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_sarray_object(ci_dse, OVM_ALL_ON + OVM_NOPRINT)
+///    `ovm_field_sarray_object(ci_rfm, OVM_ALL_ON + OVM_NOPRINT)
+///    `ovm_field_sarray_object(ci_spa, OVM_ALL_ON + OVM_NOPRINT)
+///    `ovm_field_sarray_object(ci_spu, OVM_ALL_ON + OVM_NOPRINT)
+///    `ovm_field_sarray_object(ci_dse, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
   
   function new(string name, ovm_component parent);
     super.new(name, parent);
-    foreach(ci_spa[i]) begin
-      ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-      ci_dse[i] = tr_ise2dse::type_id::create("to_dse", get_parent());
-      ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
-      ci_spu[i] = tr_ise2spu::type_id::create("to_spu", get_parent());
-    end
+///    foreach(ci_spa[i]) begin
+///      ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+///      ci_dse[i] = tr_ise2dse::type_id::create("to_dse", get_parent());
+///      ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
+///      ci_spu[i] = tr_ise2spu::type_id::create("to_spu", get_parent());
+///    end
     cnt_vrf_rd = 0;
     cnt_srf_rd = 0;
     cnt_dse_rd = 0;
@@ -508,11 +515,16 @@ class ise_iss_inf extends ovm_component;
       ci_spu[i] = ci_spu[i+1];
       ci_dse[i] = ci_dse[i+1];
     end
-    
-    ci_rfm[cyc_vec-1] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-    ci_spa[cyc_vec-1] = tr_ise2spa::type_id::create("to_spa", get_parent());
-    ci_spu[cyc_vec-1] = tr_ise2spu::type_id::create("to_spu", get_parent());
-    ci_dse[cyc_vec-1] = tr_ise2dse::type_id::create("to_dse", get_parent());
+
+    ci_rfm[cyc_vec-1] = null;
+    ci_spa[cyc_vec-1] = null;
+    ci_spu[cyc_vec-1] = null;
+    ci_dse[cyc_vec-1] = null;
+ 
+///    ci_rfm[cyc_vec-1] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+///    ci_spa[cyc_vec-1] = tr_ise2spa::type_id::create("to_spa", get_parent());
+///    ci_spu[cyc_vec-1] = tr_ise2spu::type_id::create("to_spu", get_parent());
+///    ci_dse[cyc_vec-1] = tr_ise2dse::type_id::create("to_dse", get_parent());
     
     if(cnt_vrf_rd != 0) cnt_vrf_rd--;
     if(cnt_dse_rd != 0) cnt_dse_rd--;
@@ -546,7 +558,7 @@ class ise_iss_inf extends ovm_component;
     no_rmsg = dse.no_rmsg;
   endfunction : update_block
   
-  function void get_tr(input tr_ise2rfm rfm, tr_ise2spa spa, tr_ise2spu spu, tr_ise2dse dse);
+  function void get_tr(ref tr_ise2rfm rfm, tr_ise2spa spa, tr_ise2spu spu, tr_ise2dse dse);
     rfm = ci_rfm[0];
     spa = ci_spa[0];
     spu = ci_spu[0];
@@ -566,10 +578,7 @@ class ise_iss_inf extends ovm_component;
                    tif.ts.name, tif.decoded, tif.wcnt, tif.pc, tif.en_spu, tif.en_dse, en_fu_t, tif.dse_vec, tif.nc),
         OVM_HIGH);
     end
-
-    if((tif.ts != ts_rdy) && (tif.ts != ts_w_pip || tif.nc))
-      return 0;
-      
+    
     foreach(tif.en_fu[i])
       vec |= tif.en_fu[i];
     
@@ -605,16 +614,19 @@ class ise_iss_inf extends ovm_component;
     foreach(cnt_srf_wr[i])
       if(cnt_srf_wr[i] + tif.cnt_srf_wr[i] > cyc_vec)
         return 0;
-    return tif.decoded;
+    return tif.decoded && ((tif.ts == ts_rdy) || (tif.ts == ts_w_pip && tif.nc));
   endfunction : can_iss
 
   function void iss_scl(input ise_thread_inf tif);
-///    ovm_report_info("iss_scl", $psprintf("pc:%0h\n%s", tif.pc, sprint()), OVM_HIGH);
     tif.pc += tif.igrp_bytes;
     tif.ibuf_level -= tif.igrp_bytes;
     tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
     tif.decoded = 0;
-    
+    if(tif.wcnt > 0)
+      tif.ts = ts_w_pip;
+    if(tif.en_spu && tif.i_spu.is_pd_br())
+      tif.ts = ts_w_b;
+              
     /// spu or scalar dse issue
     if(tif.en_spu) begin
       if(tif.i_spu.is_priv()) begin
@@ -695,10 +707,10 @@ class ip4_tlm_ise extends ovm_component;
     vn.fm_dse[stage_exe_dwbp] = null;
     
     for(int i = stage_ise_rrf; i > 1; i--) begin
-      vn.rfm[i] = v.rfm[i];  
-      vn.spa[i] = v.spa[i];
-      vn.spu[i] = v.spu[i];
-      vn.dse[i] = v.dse[i];
+      vn.rfm[i] = v.rfm[i-1];  
+      vn.spa[i] = v.spa[i-1];
+      vn.spu[i] = v.spu[i-1];
+      vn.dse[i] = v.dse[i-1];
     end
     vn.rfm[1] = null; 
     vn.spa[1] = null;
@@ -743,12 +755,13 @@ class ip4_tlm_ise extends ovm_component;
       bit vec;
       tid = tid & ~('1 << bits_tid);
       
+      ovm_report_info("iss", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(iinf.can_iss(tinf[tid], vec)) begin
+        ovm_report_info("iss", $psprintf("issuing thread %0d", tid), OVM_HIGH);
         if(vec)
           iinf.iss_vec(tinf[tid]);
         else
           iinf.iss_scl(tinf[tid]);
-          
         vn.tid_iss_l = tid;
         break;
       end
