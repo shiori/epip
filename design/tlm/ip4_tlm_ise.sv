@@ -379,6 +379,8 @@ class ise_thread_inf extends ovm_component;
   function bit can_req_ifet();
     if(ts == ts_disabled)
       return 0;
+    if(ibuf_level + pd_ifet * num_ifet_bytes >=  num_ibuf_bytes)
+      return 0;
     if(igrp_bytes == 0)
       return 1;
     if(ibuf_level < igrp_bytes)
