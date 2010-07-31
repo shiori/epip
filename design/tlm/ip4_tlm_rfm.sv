@@ -10,7 +10,7 @@
 ///Log:
 ///Created by Andy Chen on Mar 7 2010
 
-class ip4_tlm_rfm_vars extends ovm_object;
+class ip4_tlm_rfm_vars extends ovm_component;
   tr_spu2rfm fm_spu;
   tr_dse2rfm fm_dse;
   tr_spa2rfm fm_spa;
@@ -20,7 +20,7 @@ class ip4_tlm_rfm_vars extends ovm_object;
 ///  tr_rfm2dse dse[cyc_vec];
   tr_rfm2spu spu;
   
-  `ovm_object_utils_begin(ip4_tlm_rfm_vars)
+  `ovm_component_utils_begin(ip4_tlm_rfm_vars)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE)
@@ -28,15 +28,12 @@ class ip4_tlm_rfm_vars extends ovm_object;
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE)
 ///    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
-  `ovm_object_utils_end
+  `ovm_component_utils_end
   
-  function new (string name = "rfm_vars");
-    super.new(name);
+  function new (string name, ovm_component parent);
+    super.new(name, parent);
   endfunction : new
-  
-  function void gen(input ip4_tlm_rfm_vars o);
-    this.copy(o);
-  endfunction
+
 endclass : ip4_tlm_rfm_vars
 
 
@@ -70,7 +67,7 @@ class ip4_tlm_rfm extends ovm_component;
   //endfunction
   
   function void comb_proc();
-    ovm_report_info("RFM", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("RFM", "comb_proc procing...", OVM_FULL); 
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_dse != null) end_tr(v.fm_dse);
     if(v.fm_spa != null) end_tr(v.fm_spa);
@@ -92,7 +89,7 @@ class ip4_tlm_rfm extends ovm_component;
     word cvrf[num_vrf_bks][num_sp];
     word csrf[num_srf_bks];
       
-    ovm_report_info("RFM", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("RFM", "req_proc procing...", OVM_FULL); 
    
     ///--------------prepare---------------------------------
 
@@ -226,7 +223,7 @@ class ip4_tlm_rfm extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2rfm req, output tr_ise2rfm rsp);
-    ovm_report_info("RFM_TR", "Get ISE Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get ISE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -237,7 +234,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_spu(input tr_spu2rfm req, output tr_spu2rfm rsp);
-    ovm_report_info("RFM_TR", "Get SPU Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get SPU Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -247,7 +244,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_dse(input tr_dse2rfm req, output tr_dse2rfm rsp);
-    ovm_report_info("RFM_TR", "Get DSE Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get DSE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -257,7 +254,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_spa(input tr_spa2rfm req, output tr_spa2rfm rsp);
-    ovm_report_info("RFM_TR", "Get SPA Transaction...", OVM_HIGH);
+    ovm_report_info("RFM_TR", $psprintf("Get SPA Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -268,18 +265,14 @@ class ip4_tlm_rfm extends ovm_component;
   
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
-    ip4_tlm_rfm_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
-    t = v;
-    v = vn;
-    vn = t;
-    vn.gen(v);
+    v.copy(vn);
     comb_proc();
   endfunction : sync
 
@@ -307,8 +300,9 @@ class ip4_tlm_rfm extends ovm_component;
     spa_tr_port = new("spa_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
     spu_tr_port = new("spu_tr_port", this);
-    v = new();
-    vn = new();
+
+    v = new("v", this);
+    vn = new("vn", this);
     
     no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
     failed_convert_interface: assert($cast(vif_cfg, tmp));

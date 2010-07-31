@@ -12,8 +12,7 @@
 
 parameter uint SM_SIZE = 2^16;  /// shared memory size 64Kbyte
 
-
-class ip4_tlm_dse_vars extends ovm_object;
+class ip4_tlm_dse_vars extends ovm_component;
   
   tr_ise2dse fm_ise[stage_rrf_dwb:stage_rrf_rrc0];
   tr_spu2dse fm_spu;
@@ -29,7 +28,7 @@ class ip4_tlm_dse_vars extends ovm_object;
   tr_dse2tlb tlb;
   tr_dse2shm shm;
     
-  `ovm_object_utils_begin(ip4_tlm_dse_vars)
+  `ovm_component_utils_begin(ip4_tlm_dse_vars)
      `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
@@ -43,15 +42,11 @@ class ip4_tlm_dse_vars extends ovm_object;
      `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(shm, OVM_ALL_ON + OVM_REFERENCE)     
-  `ovm_object_utils_end
+  `ovm_component_utils_end
   
-  function new (string name = "dse_vars");
-    super.new(name);
+  function new (string name, ovm_component parent);
+    super.new(name, parent);
   endfunction : new
-  
-  function void gen(input ip4_tlm_dse_vars o);
-    this.copy(o);
-  endfunction  
 endclass : ip4_tlm_dse_vars
 
 
@@ -92,7 +87,7 @@ class ip4_tlm_dse extends ovm_component;
     uint smadr_start;   /// pb_id owns shared memory start address  
     uint smadr_end;     /// pb_id owns shared memory end address
     
-    ovm_report_info("DSE", "comb_proc procing...", OVM_HIGH); 
+    ovm_report_info("DSE", "comb_proc procing...", OVM_FULL); 
     
     if(v.fm_ise[stage_rrf_rrc0] != null) end_tr(v.fm_ise[stage_rrf_rrc0]);
     if(v.fm_rfm != null) end_tr(v.fm_rfm); 
@@ -167,10 +162,10 @@ class ip4_tlm_dse extends ovm_component;
           smadr_end = smadr_start + SM_SIZE - 1;
           /// if the address is pb_self shared memory
           if(smadr_start <= phy_adr[i] <= smadr_end)begin
-            vn.shm[].sm_adr = phy_adr[i];
+            vn.shm.sm_adr = phy_adr[i];
             if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb))begin
               if(v.fm_rfm != null)begin
-                vn.shm[].fm_dat = v.fm_rfm.op1[];
+                vn.shm.fm_dat = v.fm_rfm.op1[];
               end
             end
             if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb))begin  
@@ -209,7 +204,7 @@ class ip4_tlm_dse extends ovm_component;
   function void req_proc();
     tr_dse2rfm res;
     
-    ovm_report_info("DSE", "req_proc procing...", OVM_HIGH); 
+    ovm_report_info("DSE", "req_proc procing...", OVM_FULL); 
     
     ///send write back control signal to rfm
     if(v.fm_ise[stage_rrf_dwb] != null)begin
@@ -217,7 +212,6 @@ class ip4_tlm_dse extends ovm_component;
         res.wr_grp = v.fm_ise[stage_rrf_dwb].wr_grp;
         res.wr_adr = v.fm_ise[stage_rrf_dwb].wr_adr;
         res.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
-        res.
       end
     end
     
@@ -235,7 +229,7 @@ class ip4_tlm_dse extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_ise(input tr_ise2dse req, output tr_ise2dse rsp);
-    ovm_report_info("DSE_TR", "Get ISE Transaction...", OVM_HIGH);
+    ovm_report_info("DSE_TR", $psprintf("Get ISE Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -245,7 +239,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2dse req, output tr_rfm2dse rsp);
-    ovm_report_info("DSE_TR", "Get RFM Transaction...", OVM_HIGH);
+    ovm_report_info("DSE_TR", $psprintf("Get RFM Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -255,7 +249,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spu(input tr_spu2dse req, output tr_spu2dse rsp);
-    ovm_report_info("DSE_TR", "Get SPU Transaction...", OVM_HIGH);
+    ovm_report_info("DSE_TR", $psprintf("Get SPU Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -265,7 +259,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_spa(input tr_spa2dse req, output tr_spa2dse rsp);
-    ovm_report_info("DSE_TR", "Get SPA Transaction...", OVM_HIGH);
+    ovm_report_info("DSE_TR", $psprintf("Get SPA Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -275,7 +269,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_spa
 
   function bit nb_transport_tlb(input tr_tlb2dse req, output tr_tlb2dse rsp);
-    ovm_report_info("DSE_TR", "Get TLB Transaction...", OVM_HIGH);
+    ovm_report_info("DSE_TR", $psprintf("Get TLB Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -286,18 +280,14 @@ class ip4_tlm_dse extends ovm_component;
         
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
-    ip4_tlm_dse_vars t;
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_HIGH);
+       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_HIGH);
+    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
-    t = v;
-    v = vn;
-    vn = t;
-    vn.gen(v);
+    v.copy(vn);
     comb_proc();
   endfunction : sync
 
@@ -330,8 +320,8 @@ class ip4_tlm_dse extends ovm_component;
     spa_tr_port = new("spa_tr_port", this);
     tlb_tr_port = new("tlb_tr_port", this);
     
-    v = new();
-    vn = new();
+    v = new("v", this);
+    vn = new("vn", this);
     
     no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
     failed_convert_interface: assert($cast(vif_cfg, tmp));

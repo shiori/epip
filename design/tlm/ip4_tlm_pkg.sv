@@ -70,7 +70,7 @@ parameter uchar cyc_vec       = num_vec/num_sp,     ///4
                 cyc_iss_vec   = lat_rf + lat_rbp + cyc_vec -1 + lat_mac + lat_dwbp;
 
 parameter uchar VADD_START = 14;  /// 8K 14BIT START for tlb and dse
-parameter uchar PFN_width = 23,
+parameter uchar PFN_width = 23;
 parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
                 rf_bank1 = 1,      ///  unit : word 32bit
                 rf_bank2 = 2,      /// 
@@ -115,7 +115,6 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_rrf_dwbp    = stage_rrf_rrc + stage_exe_dwbp + 1,    ///6
                 stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
-                stage_ise_rrf     = stage_ise + 1,                  ///2
                 stage_ife         = lat_ife - 1,                    ///1
                 stage_ife_ii0     = stage_ife + 1,                  ///2
                 stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
@@ -243,7 +242,7 @@ typedef enum bit {
 
 typedef enum uchar {
   ts_disabled,    ts_rdy,     ts_w_ls,    ts_w_msg,
-  ts_w_b,         ts_w_pip
+  ts_w_b,         ts_w_pip,   ts_w_ife
 }ise_thread_state;
 
 typedef enum uchar {
@@ -375,6 +374,18 @@ parameter opcode_e ise_ops[] = '{
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint
 };
+
+class ip4_printer extends ovm_table_printer;
+  virtual function void print_object (string name, ovm_object value, byte scope_separator=".");
+    ovm_component comp; //only print components
+    ovm_port_component_base p;
+    if($cast(comp, value)) begin
+      if(!$cast(p, value)) begin
+        super.print_object(name, value, scope_separator);
+      end
+    end
+  endfunction
+endclass
 
 `include "ip4_tlm_tr.svh"  
 `include "ip4_tlm_inst.svh"

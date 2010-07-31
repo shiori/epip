@@ -239,7 +239,7 @@ typedef struct packed{
 
 typedef union packed{
   inst_t i;
-  bit [5][8] b;
+  bit [4:0][7:0] b;
 } inst_u;
 
 typedef bit[3] iga_t;
@@ -251,17 +251,17 @@ typedef struct packed{
   bit[2] ipw;
   bit dv;
   iga_t a;
-}i_gs0_t;
+}i_gs1_t;
 
 typedef union packed{
-  i_gs0_t i;
-  bit [2][8] b;
-} i_gs0_u;
+  i_gs1_t i;
+  bit [1:0][7:0] b;
+} i_gs1_u;
 
 typedef struct packed{
   bit t, nc, fua, apb, ipw;
   iga_t a;
-}i_gs1_t;
+}i_gs0_t;
 
 typedef struct packed{
   iga_t[2] a;
@@ -275,7 +275,7 @@ typedef struct packed{
 
 typedef union packed{
   i_ap1_t i;
-  bit [2][8] b;
+  bit [1:0][7:0] b;
 } i_ap1_u;
 
 typedef struct packed{
@@ -284,7 +284,7 @@ typedef struct packed{
 
 typedef union packed{
   i_ap2_t i;
-  bit [3][8] b;
+  bit [2:0][7:0] b;
 } i_ap2_u;
 
 parameter iop_e iop_i26[] = '{
@@ -323,7 +323,7 @@ parameter iop_e iop_cmps[] = '{
         
 class inst_c extends ovm_object;
   inst_u inst;
-  bit decoded, vec_rd, priv, is_vec;
+  bit decoded, decode_error, vec_rd, priv, is_vec;
   opcode_e op;
   rbk_sel_e rd_bk[num_fu_rp];
   uchar cnt_vrf_wr, cnt_srf_wr, pr_adr_rd, pr_adr_wr[2], fuid,
@@ -341,9 +341,62 @@ class inst_c extends ovm_object;
   bit en_spu, en_dse, en_fu[num_fu];
   
   `ovm_object_utils_begin(inst_c)
+    `ovm_field_int(decoded, OVM_ALL_ON)
+    `ovm_field_int(decode_error, OVM_ALL_ON)
+    `ovm_field_int(is_vec, OVM_ALL_ON)
+    `ovm_field_int(fuid, OVM_ALL_ON)
     `ovm_field_int(inst, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+    `ovm_field_int(en_spu, OVM_ALL_ON)
+    `ovm_field_int(en_dse, OVM_ALL_ON)
+    `ovm_field_sarray_int(en_fu, OVM_ALL_ON)
+    `ovm_field_int(priv, OVM_ALL_ON)
+    `ovm_field_sarray_enum(rbk_sel_e, rd_bk, OVM_ALL_ON)
+    `ovm_field_int(vec_rd, OVM_ALL_ON)
+    `ovm_field_int(cnt_vrf_wr, OVM_ALL_ON)
+    `ovm_field_int(cnt_srf_wr, OVM_ALL_ON)
+    `ovm_field_int(pr_adr_rd, OVM_ALL_ON)
+    `ovm_field_int(pr_rd_en, OVM_ALL_ON)
+    `ovm_field_sarray_int(pr_adr_wr, OVM_ALL_ON)
+    `ovm_field_sarray_int(pr_wr_en, OVM_ALL_ON)
+    `ovm_field_int(pr_br_dep, OVM_ALL_ON)
+///    `ovm_field_sarray_int(grp_wr, OVM_ALL_ON)
+///    `ovm_field_sarray_int(adr_wr, OVM_ALL_ON)
+///    `ovm_field_sarray_int(bk_wr, OVM_ALL_ON)
+///    `ovm_field_sarray_int(grp_rmsg, OVM_ALL_ON)
+///    `ovm_field_sarray_int(adr_rmsg, OVM_ALL_ON)
+///    `ovm_field_sarray_int(bk_rmsg, OVM_ALL_ON)
+    `ovm_field_int(imm, OVM_ALL_ON)
+    `ovm_field_sarray_int(wr_en, OVM_ALL_ON)
+    `ovm_field_enum(cmp_opcode_e, cmp_op, OVM_ALL_ON)
+    `ovm_field_enum(pr_merge_e, merge_op, OVM_ALL_ON)
+    `ovm_field_enum(msc_opcode_e, msc_op, OVM_ALL_ON)
+    `ovm_field_enum(msk_opcode_e, msk_op, OVM_ALL_ON)
+    `ovm_field_enum(br_opcode_e, br_op, OVM_ALL_ON)
+///    `ovm_field_int(m_b, OVM_ALL_ON)
+///    `ovm_field_int(m_ua, OVM_ALL_ON)
+///    `ovm_field_int(m_fun, OVM_ALL_ON)
+///    `ovm_field_int(m_s, OVM_ALL_ON)
+///    `ovm_field_int(m_rt, OVM_ALL_ON)
+///    `ovm_field_int(m_t, OVM_ALL_ON)
+///    `ovm_field_int(m_mid, OVM_ALL_ON)
+///    `ovm_field_int(m_fifos, OVM_ALL_ON)
   `ovm_object_utils_end
-  
+
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+		if(en_dse) begin
+		  `PF(m_b, OVM_BIN)
+		  `PF(m_ua, OVM_BIN)
+		  `PF(m_fun, OVM_BIN)
+		  `PF(m_s, OVM_BIN)
+		  `PF(m_rt, OVM_BIN)
+		  `PF(m_t, OVM_BIN)
+		  `PF(m_mid, OVM_BIN)
+		  `PF(m_fifos, OVM_BIN)
+	  end
+	endfunction : do_print
+		  
 	function new (string name = "inst_c");
 		super.new(name);
 		decoded = 0;
@@ -774,7 +827,7 @@ class inst_c extends ovm_object;
       end
       
     foreach(pr_wr_en[i])
-      pr++;
+      pr += pr_wr_en[i];
       
     if(op == op_rmsg)
       foreach(bk_rmsg[i])
@@ -801,7 +854,7 @@ class inst_c extends ovm_object;
       end
       else begin
         foreach(fu_cfg[i])
-          if(fu_cfg[i] != sfu) begin
+          if(fu_cfg[i] == alu) begin
             en_fu[i] = 1;
             break;
           end
@@ -944,7 +997,7 @@ class inst_fg_c extends ovm_object;
   uchar data[num_ifet_bytes];
   
   `ovm_object_utils_begin(inst_fg_c)
-    `ovm_field_sarray_int(data, OVM_ALL_ON)
+    `ovm_field_sarray_int(data, OVM_ALL_ON + OVM_BIN)
   `ovm_object_utils_end
   
 	function new(string name = "inst_fg_c");
