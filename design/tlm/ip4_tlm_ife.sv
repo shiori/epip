@@ -19,6 +19,7 @@ class ip4_tlm_ife_vars extends ovm_component;
   `ovm_component_utils_begin(ip4_tlm_ife_vars)
     `ovm_field_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_tlb, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(ise, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
   function new (string name, ovm_component parent);

@@ -134,7 +134,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "recording_detail", 1);
     set_config_int("*", "im_base", cfg_start_adr);
     set_config_int("*", "im_size", 1024);
-    set_config_string("*", "im_file_path", "code.txt");
+    set_config_string("*", "im_file_path", "../misc/code.txt");
     
     env = new("env", this);
     super.build();

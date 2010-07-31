@@ -66,6 +66,7 @@ class ip4_tlm_ise_vars extends ovm_component;
     tid_fet_l = 0;
     tid_iss_l = 0;
     sr = new(); 
+    print_enabled = 0;
   endfunction : new
 endclass : ip4_tlm_ise_vars
 
@@ -161,6 +162,7 @@ class ise_thread_inf extends ovm_component;
     vec_mode = cyc_vec;
     decoded = 0;
     decode_error = 0;
+    print_enabled = 0;
   endfunction : new
  
   function void map_iaddr(input bit v, uchar oadr, output uchar grp, adr);
@@ -373,12 +375,14 @@ class ise_thread_inf extends ovm_component;
     igrp_bytes = 0;
     decoded = 0;
     decode_error = 0;
+    if(pd_ifet != 0)
+      ts = ts_w_ife;
   endfunction : flush
   
-  function void dse_cancel();
+  function void retrieve_pc_l();
     flush();
     pc = pc_l;
-   endfunction : dse_cancel
+   endfunction : retrieve_pc_l
 
   function void msg_wait();
   endfunction : msg_wait
@@ -388,7 +392,6 @@ class ise_thread_inf extends ovm_component;
       ts = ts_rdy;
     if(br == br_pred)
       return 0;
-    dse_cancel();
     return 1;
   endfunction : br_pre_miss
 
@@ -411,15 +414,21 @@ class ise_thread_inf extends ovm_component;
       ovm_report_warning("ISE", "ibuf overflow!");
     if(ibuf_level == 0)
       os = pc & ~{'1 << bits_ifet};
-    foreach(fg.data[i])
-      if(i >= os)
-        ibuf[ibuf_level++] = fg.data[i];
 
     if(pd_ifet > 0)
       pd_ifet--;
+    
+    if(ts == ts_w_ife) begin
+      ovm_report_info("update_inst", $psprintf("ts_w_ife, pc:0x%0h, os:%0h, pd:%0d", pc, os, pd_ifet), OVM_HIGH);
+      if(pd_ifet == 0)  ts = ts_rdy;
+    end
+    else
+      ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, pd:%0d, ibuf lv %0d->%0d", pc, os, pd_ifet, level_l, ibuf_level), OVM_HIGH);
       
-    ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, ibuf lv %0d->%0d", pc, os, level_l, ibuf_level), OVM_HIGH);
-
+    foreach(fg.data[i])
+      if(i >= os)
+        ibuf[ibuf_level++] = fg.data[i];
+              
     if(ibuf_level > 1 && !decoded) begin
       decode_igs();
       if(ibuf_level >= igrp_bytes)
@@ -523,7 +532,8 @@ class ip4_tlm_ise extends ovm_component;
 
   local ip4_tlm_ise_vars v, vn;
   local ise_thread_inf tinf[num_thread];
-
+  local ip4_printer printer;
+  
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cnt_vec_proc, OVM_ALL_ON)
     `ovm_field_int(cnt_vrf_rd, OVM_ALL_ON)
@@ -544,7 +554,6 @@ class ip4_tlm_ise extends ovm_component;
   
   function void enter_exp(input uchar tid, ise_exp_t err);
     ise_thread_inf tif = tinf[tid];
-    tif.flush();
     tif.priv_mode = 1;
     tif.pc = v.sr.ebase;
     case(err)
@@ -552,6 +561,7 @@ class ip4_tlm_ise extends ovm_component;
     exp_dse_err     : begin end
     exp_priv_err    : begin end
     endcase
+    tif.flush();
   endfunction : enter_exp
   
   function void exe_priv(input inst_c i);
@@ -698,7 +708,9 @@ class ip4_tlm_ise extends ovm_component;
           
     foreach(tinf[i])
       tinf[i].cyc_new();
-
+    
+    vn.ife_cancel = 0;
+    
     for(int i = 0; i < (cyc_vec - 1); i++) begin
       ci_rfm[i] = ci_rfm[i+1];
       ci_spa[i] = ci_spa[i+1];
@@ -727,17 +739,16 @@ class ip4_tlm_ise extends ovm_component;
     no_st = 0;
     no_smsg = 0;
     no_rmsg = 0;
-          
-    if(v.fm_spu != null && v.fm_spu.br_rsp)
-      if(tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken)) begin
-        vn.ife_cancel = 1;
-        vn.tid_ife_cancel = v.fm_spu.tid;
-        if(v.fm_ife != null && v.fm_ife.tid == v.fm_spu.tid)
-          v.fm_ife.inst_en = 0;
-        if(v.fm_ife != null && v.fm_ife.tid == v.tid_ife_cancel && v.ife_cancel)
-          v.fm_ife.inst_en = 0;
-      end
-      
+    
+    if(v.fm_spu != null && v.fm_spu.br_rsp && tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken)) begin
+      tinf[v.fm_spu.tid].retrieve_pc_l();
+      if(v.fm_ife != null && v.fm_ife.tid == v.fm_spu.tid)
+        v.fm_ife.inst_en = 0;
+    end
+
+    if(v.fm_ife != null && v.fm_ife.tid == v.tid_ife_cancel && v.ife_cancel)
+      v.fm_ife.inst_en = 0;
+                
     for(int i = stage_exe_vwbp; i > stage_exe_dwbp; i--)
       vn.fm_dse[i] = v.fm_dse[i-1];  
     
@@ -748,7 +759,7 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fm_dse[stage_exe_dwbp] != null) begin
       tr_dse2ise dse = v.fm_dse[stage_exe_dwbp];
       if(dse.cancel) begin
-        tinf[dse.tid].dse_cancel();
+        tinf[dse.tid].retrieve_pc_l();
         if(dse.exp)
           enter_exp(dse.tid, exp_dse_err);
       end
@@ -757,7 +768,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
-    ovm_report_info("iinf", $psprintf("\n%s", sprint()), OVM_HIGH);
+    ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_iss_l;
       tid = tid & ~('1 << bits_tid);
@@ -804,11 +815,15 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
-    if(vn.ife_cancel) begin
-      if(to_ife == null) to_ife = tr_ise2ife::type_id::create("to_ife", this);
-      to_ife.cancel = 1;
-      to_ife.tid_cancel = vn.tid_ife_cancel;
-    end
+    foreach(tinf[i])
+      if(tinf[i].ts == ts_w_ife) begin
+        if(to_ife == null) to_ife = tr_ise2ife::type_id::create("to_ife", this);
+        to_ife.cancel = 1;
+        to_ife.tid_cancel = i;
+        vn.ife_cancel = 1;
+        vn.tid_ife_cancel = i;
+        tinf[i].ts = ts_rdy;
+      end
     
     if(v.fm_dse[stage_exe_vwbp] != null && v.fm_dse[stage_exe_vwbp].cancel) begin
       tr_dse2ise dse = v.fm_dse[stage_exe_vwbp];
@@ -925,7 +940,19 @@ class ip4_tlm_ise extends ovm_component;
     spu_tr_port = new("spu_tr_port", this);
     spa_tr_port = new("spa_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
-    
+
+///    ife_tr_imp.print_enabled = 0;
+///    spu_tr_imp.print_enabled = 0;
+///    spa_tr_imp.print_enabled = 0;
+///    rfm_tr_imp.print_enabled = 0;
+///    dse_tr_imp.print_enabled = 0;
+///        
+///    ife_tr_port.print_enabled = 0;
+///    rfm_tr_port.print_enabled = 0;
+///    spu_tr_port.print_enabled = 0;
+///    spa_tr_port.print_enabled = 0;
+///    dse_tr_port.print_enabled = 0;
+        
     v = new("v", this);
     vn = new("vn", this);
     
@@ -945,7 +972,9 @@ class ip4_tlm_ise extends ovm_component;
     cnt_pr_wr = 0;
     cnt_srf_wr[num_srf_bks] = '{default: 0};
     cnt_vrf_wr[num_vrf_bks] = '{default: 0};
-
+    
+    printer = new();
+    printer.knobs.depth = 1;
   endfunction : build
 endclass : ip4_tlm_ise
 

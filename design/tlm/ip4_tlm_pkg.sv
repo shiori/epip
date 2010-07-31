@@ -231,7 +231,7 @@ typedef enum bit {
 
 typedef enum uchar {
   ts_disabled,    ts_rdy,     ts_w_ls,    ts_w_msg,
-  ts_w_b,         ts_w_pip
+  ts_w_b,         ts_w_pip,   ts_w_ife
 }ise_thread_state;
 
 typedef enum uchar {
@@ -363,6 +363,18 @@ parameter opcode_e ise_ops[] = '{
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint
 };
+
+class ip4_printer extends ovm_table_printer;
+  virtual function void print_object (string name, ovm_object value, byte scope_separator=".");
+    ovm_component comp; //only print components
+    ovm_port_component_base p;
+    if($cast(comp, value)) begin
+      if(!$cast(p, value)) begin
+        super.print_object(name, value, scope_separator);
+      end
+    end
+  endfunction
+endclass
 
 `include "ip4_tlm_tr.svh"  
 `include "ip4_tlm_inst.svh"
