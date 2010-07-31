@@ -21,8 +21,8 @@ import ovm_pkg::*;
 parameter VERSION = 0.1;
 ovm_verbosity tr_verb = OVM_LOW;
 
-typedef byte unsigned       uchar;
-typedef shortint unsigned   ushort;
+typedef byte unsigned       uchar;  /// 8bits
+typedef shortint unsigned   ushort; /// 16bits
 typedef int unsigned        uint;
 typedef longint unsigned    ulong;
 
@@ -46,7 +46,8 @@ parameter uchar num_sp            = 8,
                 num_pr            = 7,
                 num_ifet_bytes    = 16,
                 num_inst_vrf      = 32,
-                num_inst_srf      = 16;
+                num_inst_srf      = 16,
+                num_rf_bank       = num_sp;   /// register file bank number, default equal to num_sp
                 
 parameter uchar lat_mac           = 4,
                 lat_sfu           = 16,
@@ -69,6 +70,16 @@ parameter uchar cyc_vec       = num_vec/num_sp,     ///4
                 cyc_iss_vec   = lat_rf + lat_rbp + cyc_vec -1 + lat_mac + lat_dwbp;
 
 parameter uchar VADD_START = 14;  /// 8K 14BIT START for tlb and dse
+parameter uchar PFN_width = 23,
+parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
+                rf_bank1 = 1,      ///  unit : word 32bit
+                rf_bank2 = 2,      /// 
+                rf_bank3 = 3,
+                rf_bank4 = 4,
+                rf_bank5 = 5,
+                rf_bank6 = 6,
+                rf_bank7 = 7;
+                
 
 /*
                                            pipeline stages:

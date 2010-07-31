@@ -837,6 +837,7 @@ class tr_ise2dse extends ovm_sequence_item;
   rand bit vec, en, bp_data, ua_wr;
   rand opcode_e op;
   rand uchar vec_mode;
+  rand uchar pb_id;
   
 	`ovm_object_utils_begin(tr_ise2dse)
 	  `ovm_field_int(wr_bk, OVM_ALL_ON)
@@ -851,6 +852,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(vec_mode, OVM_ALL_ON)
 	  `ovm_field_int(bp_data, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(pb_id, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -899,7 +901,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	
 endclass : tr_dse2ise
 
-///---------------------------trsaction dse_spa spa_dse------------------------
+///---------------------------trsaction spu_tlb tlb_spu------------------------
 
 class tr_spu2tlb extends ovm_sequence_item;
   rand word op0;
@@ -938,6 +940,8 @@ class tr_tlb2spu extends ovm_sequence_item;
   
 endclass : tr_tlb2spu
 
+///---------------------------trsaction dse_tlb tlb_dse------------------------
+
 class tr_dse2tlb extends ovm_sequence_item;
   rand word v_adrh;      /// vitrual address high phase
   rand opcode_e op;
@@ -956,6 +960,7 @@ endclass : tr_dse2tlb
 class tr_tlb2dse extends ovm_sequence_item;
   rand word phy_adr;
   rand bit hit, exp;
+  rand uchar eobit;  /// evenoddbit
   
   `ovm_object_utils_begin(tr_tlb2dse)
     `ovm_field_int(phy_adr, OVM_ALL_ON);
@@ -964,6 +969,8 @@ class tr_tlb2dse extends ovm_sequence_item;
   `ovm_object_utils_end  
 
 endclass : tr_tlb2dse  
+
+///---------------------------trsaction ife_tlb tlb_ife------------------------
 
 class tr_ife2tlb extends ovm_sequence_item;
   rand word v_adr;
@@ -992,3 +999,24 @@ class tr_tlb2ife extends ovm_sequence_item;
   `ovm_object_utils_end  
 
 endclass : tr_tlb2ife
+
+///---------------------------trsaction dse_sm sm_dse------------------------
+class tr_dse2shm extends ovm_sequence_item;
+  rand word sm_adr;
+  rand word fm_dat;
+  
+  `ovm_object_utils_begin(tr_tlb2ife)
+    `ovm_field_int(sm_adr, OVM_ALL_ON);
+    `ovm_field_int(fm_dat, OVM_ALL_ON);
+  `ovm_object_utils_end
+    
+endclass : tr_dse2shm
+
+class tr_shm2dse extends ovm_sequence_item;
+  rand word sm_dat;
+  
+  `ovm_object_utils_begin(tr_tlb2ife)
+    `ovm_field_int(sm_dat, OVM_ALL_ON);
+  `ovm_object_utils_end
+   
+endclass : tr_shm2dse

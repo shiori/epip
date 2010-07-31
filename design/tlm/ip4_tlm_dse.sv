@@ -10,7 +10,8 @@
 ///Log:
 ///Created by yajing yuan on July 19 2010
 
-parameter bit[1:0] Cbyte_offset = 2'b11;
+parameter uint SM_SIZE = 2^16;  /// shared memory size 64Kbyte
+
 
 class ip4_tlm_dse_vars extends ovm_object;
   
@@ -19,12 +20,14 @@ class ip4_tlm_dse_vars extends ovm_object;
   tr_rfm2dse fm_rfm;
   tr_spa2dse fm_spa;
   tr_tlb2dse fm_tlb;
+  tr_shm2dse fm_shm;   /// shared memory
   
   tr_dse2ise ise;
   tr_dse2spu spu;
-  tr_dse2rfm rfm[stage_ag_dwb:1];
+  tr_dse2rfm rfm;
   tr_dse2spa spa;
   tr_dse2tlb tlb;
+  tr_dse2shm shm;
     
   `ovm_object_utils_begin(ip4_tlm_dse_vars)
      `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
@@ -32,12 +35,14 @@ class ip4_tlm_dse_vars extends ovm_object;
      `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(fm_tlb, OVM_ALL_ON + OVM_REFERENCE)  
+     `ovm_field_object(fm_shm, OVM_ALL_ON + OVM_REFERENCE)  
      
      `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
-     `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
+     `ovm_field_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
-     `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE)        
+     `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
+     `ovm_field_object(shm, OVM_ALL_ON + OVM_REFERENCE)     
   `ovm_object_utils_end
   
   function new (string name = "dse_vars");
@@ -66,12 +71,14 @@ class ip4_tlm_dse extends ovm_component;
   ovm_nonblocking_transport_imp_spu #(tr_spu2dse, tr_spu2dse, ip4_tlm_dse) spu_tr_imp;
   ovm_nonblocking_transport_imp_spa #(tr_spa2dse, tr_spa2dse, ip4_tlm_dse) spa_tr_imp;
   ovm_nonblocking_transport_imp_tlb #(tr_tlb2dse, tr_tlb2dse, ip4_tlm_dse) tlb_tr_imp;
+  ovm_nonblocking_transport_imp_tlb #(tr_shm2dse, tr_shm2dse, ip4_tlm_dse) shm_tr_imp;
     
   ovm_nonblocking_transport_port #(tr_dse2ise, tr_dse2ise) ise_tr_port;
   ovm_nonblocking_transport_port #(tr_dse2rfm, tr_dse2rfm) rfm_tr_port;
   ovm_nonblocking_transport_port #(tr_dse2spu, tr_dse2spu) spu_tr_port;
   ovm_nonblocking_transport_port #(tr_dse2spa, tr_dse2spa) spa_tr_port;
   ovm_nonblocking_transport_port #(tr_dse2tlb, tr_dse2tlb) tlb_tr_port;
+  ovm_nonblocking_transport_port #(tr_dse2shm, tr_dse2shm) shm_tr_port;
         
   function void comb_proc();
     int k = 0;
@@ -79,10 +86,15 @@ class ip4_tlm_dse extends ovm_component;
     word var_vadr[num_sp];
     word valva_adr[num_sp];
     bit var_emsk[num_sp];
+    uchar pos_emsk[num_sp];   /// the index identifier of emsk is 1 
+    word phy_adr[num_sp];
+    bit [2:0] bank_chek;
+    uint smadr_start;   /// pb_id owns shared memory start address  
+    uint smadr_end;     /// pb_id owns shared memory end address
     
     ovm_report_info("DSE", "comb_proc procing...", OVM_HIGH); 
     
-    if(v.fm_ise[stage_rrf_ag] != null) end_tr(v.fm_ise[stage_rrf_ag]);
+    if(v.fm_ise[stage_rrf_rrc0] != null) end_tr(v.fm_ise[stage_rrf_rrc0]);
     if(v.fm_rfm != null) end_tr(v.fm_rfm); 
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_spa != null) end_tr(v.fm_spa);
@@ -94,8 +106,12 @@ class ip4_tlm_dse extends ovm_component;
     vn.fm_spa = null;
     vn.fm_tlb = null;
     
-    for (int i = stage_rrf_dwb; i > 1; i--)
+    for (int i = stage_rrf_dwb; i > stage_rrf_rrc0; i--)
       vn.fm_ise[i] = v.fm_ise[i-1];
+      
+    for (int i = stage_rrf_sel; i > stage_rrf_rrc0; i--)
+      vn.ise[i] = v.ise[i-1];  
+      
     
 //////    for (int i = stage_ag_dwb; i > 1; i--)
 //////      vn.
@@ -111,26 +127,81 @@ class ip4_tlm_dse extends ovm_component;
           var_vadr[i] = v.fm_rfm.base[i] + v.fm_rfm.op2[i];
           if(k == 0)begin   
             valva_adr[k] = var_vadr[i];   /// valid virtual address to send into tlb for translation
+            pos_emsk[k] = i;
             k++;
           end
           else 
             if(var_vadr[i][31:VADD_START] == valva_adr[0][31:VADD_START])begin
               valva_adr[k] = var_vadr[i];
+              pos_emsk[k] = i;
               k++;
             end
             else var_emsk[i] = 0;                  /// the first step emask modification
         end
       end
-    end  
-    
-///    var_cnt = k-1;
-///    vn.tlb.v_adrh[31:VADD_START-1]= valva_adr[0][31:VADD_START-1];  /// only the high phase sent to tlb for translation + evenoddbit
+    end    
+    var_cnt = k-1;
+    vn.tlb.v_adrh[31:VADD_START-1]= valva_adr[0][31:VADD_START-1];  /// only the high phase sent to tlb for translation + evenoddbit
     
     /// check the physical address in sel stage
-    if(v.fm_ise[stage_rrf_sel] != null && v.fm_tlb != null && v.fm_ise[stage_rrf_sel] != null &&
-      ((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw)))begin
-      if((v.fm_tlb.phy_adr[1:0] && Cbyte_offset) == 2'b00)begin
-      
+    if(v.fm_ise[stage_rrf_sel] != null && v.fm_tlb != null)begin
+      if(v.fm_tlb.hit)begin
+        /// gen the complete phy_adr
+        for(int i = 0; i < var_cnt; i++)begin
+          
+          for(int j = 0; j < v.fm_tlb.eobit; j++)
+            phy_adr[i][j] = valva_adr[i][j];
+          for(int m = v.fm_tlb.eobit; m < PFN_width+v.fm_tlb.eobit; m++)
+            phy_adr[i][m] = v.fm_tlb.phy_adr[m];
+            
+          /// check the physical address whether match the op_code or not
+          if((((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw)) && (phy_adr[i][1:0] != 2'b00)) 
+              ||(((v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_sh)) && (phy_adr[i][0] != 1'b0)))begin
+            vn.ise.exp = 1;
+            ovm_report_warning("DSE_ILLEGAL0", "Phy ADR does not match with the op_code type!!!");
+          end
+          
+          /// use the pb_id to compute the pb self shared memory address mapped to the address space 
+          /// the shared memory or other PB shared memory will be access, so must judge which memory
+          smadr_start = v.fm_ise.pb_id * SM_SIZE;
+          smadr_end = smadr_start + SM_SIZE - 1;
+          /// if the address is pb_self shared memory
+          if(smadr_start <= phy_adr[i] <= smadr_end)begin
+            vn.shm[].sm_adr = phy_adr[i];
+            if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb))begin
+              if(v.fm_rfm != null)begin
+                vn.shm[].fm_dat = v.fm_rfm.op1[];
+              end
+            end
+            if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb))begin  
+              /// 
+              /// the rf access will be execution, so must check if the rf bank conflict
+              if(i == 0) bank_chek = phy_adr[i][4:2];
+              else if(phy_adr[i][4:2] == bank_check)
+                var_emsk[pos_emsk[i]] = 0;             /// the second step emask modification
+            end
+          end
+          else           /// access other pb share memory
+          
+          
+          
+        end  /// end of for var_cnt 
+         
+      end   /// end of hit
+      else vn.ise.cancel = 1;  /// no find the match entry in tlb,  miss 
+    end
+    
+    
+    
+    /// send signals to rfm
+    if(v.fm_ise[stage_rrf_dwb] != null)begin
+      if(v.fm_ise[stage_rrf_dwb].en)begin
+        vn.rfm.wr_grp = v.fm_ise[stage_rrf_dwb].wr_grp;
+        vn.rfm.wr_adr = v.fm_ise[stage_rrf_dwb].wr_adr;
+        vn.rfm.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
+        vn.rfm.ua_wr_grp = v.fm_ise[stage_rrf_dwb].ua_wr_grp;
+        vn.rfm.ua_wr_adr = v.fm_ise[stage_rrf_dwb].ua_wr_adr;
+        vn.rfm.ua_wr_bk = v.fm_ise[stage_rrf_dwb].ua_wr_bk;
       end
     end
   endfunction
@@ -146,6 +217,7 @@ class ip4_tlm_dse extends ovm_component;
         res.wr_grp = v.fm_ise[stage_rrf_dwb].wr_grp;
         res.wr_adr = v.fm_ise[stage_rrf_dwb].wr_adr;
         res.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
+        res.
       end
     end
     

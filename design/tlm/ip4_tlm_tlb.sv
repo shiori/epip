@@ -34,8 +34,7 @@ parameter word  pagemask0 = 15'b000000000000000,   /// 8K
                 pagemask5 = 15'b001111111111111,   /// 64M
                 pagemask6 = 15'b111111111111111;   /// 256M
 
-parameter uchar PFN_width = 23,
-                IFE_REQ_BUF = 2;
+parameter uchar IFE_REQ_BUF = 2;
                 
 parameter uchar RContent_NO = 6,
                 RIndex_NO = 7,
@@ -307,6 +306,7 @@ class ip4_tlm_tlb extends ovm_component;
       if(rsp_dse) begin
         if(vn.dse == null) vn.dse = tr_tlb2dse::type_id::create("to_dse", this);
         vn.dse.phy_adr = var_padr;
+        vn.dse.eobit = EvenOddBit;
         vn.dse.hit = find;
         vn.dse.exp = exp;
       end   
