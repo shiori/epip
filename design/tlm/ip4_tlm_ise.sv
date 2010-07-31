@@ -10,6 +10,23 @@
 ///Log:
 ///Created by Andy Chen on Mar 16 2010
 
+typedef enum uchar {
+  exp_decode_err,   exp_dse_err,    exp_priv_err
+}ise_exp_t;
+
+class ip4_tlm_ise_sr extends ovm_object;
+  uint ebase;   ///SR[4]
+  
+  `ovm_object_utils_begin(ip4_tlm_ise_sr)
+    `ovm_field_int(ebase, OVM_ALL_ON)
+  `ovm_object_utils_end
+
+  function new(string name = "ise_sr");
+   super.new(name);
+  endfunction
+  
+endclass
+
 class ip4_tlm_ise_vars extends ovm_component;
   tr_spu2ise fm_spu;
   tr_rfm2ise fm_rfm;
@@ -24,7 +41,8 @@ class ip4_tlm_ise_vars extends ovm_component;
   
   uchar tid_iss_l, tid_fet_l, tid_ife_cancel;
   bit ife_cancel;
-  
+  ip4_tlm_ise_sr sr;
+    
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -39,19 +57,15 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_int(tid_fet_l, OVM_ALL_ON)
     `ovm_field_int(tid_ife_cancel, OVM_ALL_ON)
     `ovm_field_int(ife_cancel, OVM_ALL_ON)
+    `ovm_field_object(sr, OVM_ALL_ON)
   `ovm_component_utils_end
 
-///  function new(string name = "ise_vars");
-///   super.new(name);
   function new(string name, ovm_component parent);
     super.new(name, parent);
     tid_fet_l = 0;
-    tid_iss_l = 0;  
+    tid_iss_l = 0;
+    sr = new(); 
   endfunction : new
-  
-///  function void gen(input ip4_tlm_ise_vars o);
-///    this.copy(o);
-///  endfunction
 endclass : ip4_tlm_ise_vars
 
 class ise_thread_inf extends ovm_component;
@@ -66,8 +80,10 @@ class ise_thread_inf extends ovm_component;
   bit vrf_rd_en[cyc_vec][num_vrf_bks], srf_rd_en[cyc_vec][num_srf_bks];
   uchar cnt_pr_wr, cnt_vrf_wr[num_vrf_bks], cnt_srf_wr[num_srf_bks];
   
-  bit en_spu, en_dse, en_fu[num_fu];
-  bit priv_mode, decoded;  ///privilege running status
+  bit en_spu, en_dse, en_vec, en_fu[num_fu];
+  bit priv_mode,  ///privilege running status
+      decoded,
+      decode_error;
   uchar wcnt, vec_mode;
   
   uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
@@ -81,6 +97,7 @@ class ise_thread_inf extends ovm_component;
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, ts, OVM_ALL_ON)
     `ovm_field_int(decoded, OVM_ALL_ON)
+    `ovm_field_int(decode_error, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
     `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nc, OVM_ALL_ON)
@@ -98,6 +115,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(en_spu, OVM_ALL_ON)
     `ovm_field_int(en_dse, OVM_ALL_ON)
     `ovm_field_sarray_int(en_fu, OVM_ALL_ON)
+    `ovm_field_int(en_vec, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(wcnt, OVM_ALL_ON)
     `ovm_field_int(vec_mode, OVM_ALL_ON)
     `ovm_field_int(pd_ifet, OVM_ALL_ON)
@@ -141,6 +159,7 @@ class ise_thread_inf extends ovm_component;
     pc_l = cfg_start_adr;
     vec_mode = cyc_vec;
     decoded = 0;
+    decode_error = 0;
   endfunction : new
  
   function void map_iaddr(input bit v, uchar oadr, output uchar grp, adr);
@@ -160,28 +179,31 @@ class ise_thread_inf extends ovm_component;
   endfunction : exe_priv
   
   function void decode_igs();
-    i_gs1_t gs1 = ibuf[0];
+    i_gs0_t gs0 = ibuf[0];
     en_spu = 0;
     en_dse = 0;
+    en_vec = 0;
     en_fu = '{default : 0};
-    
-    if(gs1.t) begin
-      nc = gs1.nc;
-      ap_bytes = gs1.apb;
-      num_imms = gs1.ipw;
-      dse_vec = gs1.fua;
+
+    if(!gs0.t) begin
+      nc = gs0.nc;
+      ap_bytes = gs0.apb;
+      num_imms = gs0.ipw;
+      dse_vec = gs0.fua;
       igrp_bytes = 1 + ap_bytes + num_imms * num_word_bytes + num_inst_bytes;
     end
     else begin
-      i_gs0_u gs;
+      i_gs1_u gs;
       uchar tmp = 0;
       foreach(gs.b[i])
         gs.b[i] = ibuf[i];
       foreach(gs.i.fua[i])
         tmp += gs.i.fua[i];
-      if(tmp == 0)
+      if(tmp == 0) begin
         ovm_report_warning("decode_igs", "igs decode error, fua not valid");
-      nc = gs1.nc;
+        decode_error = 1;
+      end
+      nc = gs.i.nc;
       ap_bytes = gs.i.apb;
       num_imms = gs.i.ipw;
       igrp_bytes = 2 + ap_bytes + num_imms * num_word_bytes + tmp * num_inst_bytes;
@@ -191,7 +213,10 @@ class ise_thread_inf extends ovm_component;
       foreach(en_fu[i])
         en_fu[i] = gs.i.fua[2+i];
     end
-    
+        
+    foreach(en_fu[i])
+      en_vec |= en_fu[i];
+      
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [num_fu-1:0] en_fu_t;
       foreach(en_fu_t[i])
@@ -209,7 +234,7 @@ class ise_thread_inf extends ovm_component;
     uchar tmp = 0;
     iga_t a[12];
     uchar os;
-    i_gs1_t gs1 = ibuf[0];
+    i_gs0_t gs0 = ibuf[0];
     
     vrf_rd_en = '{default : 0};
     srf_rd_en = '{default : 0};
@@ -220,7 +245,7 @@ class ise_thread_inf extends ovm_component;
     cnt_srf_wr = '{default : 0};
     cnt_pr_wr = 0;
     
-    if(gs1.t) begin
+    if(!gs0.t) begin
       tmp = 1;
       os = 1;
       if(ap_bytes != 0) ap_bytes --;
@@ -233,7 +258,7 @@ class ise_thread_inf extends ovm_component;
       i_spu.analyze_rs(vec_mode, vrf_rd_en, srf_rd_en, cnt_vrf_rd, cnt_srf_rd, cnt_dse_rd);
       i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
       i_spu.analyze_fu(en_spu, en_dse, en_fu);
-      a[0] = gs1.a;
+      a[0] = gs0.a;
       if(ap_bytes) begin
         i_ap0_t ap = ibuf[os];
         foreach(a[i])
@@ -242,8 +267,7 @@ class ise_thread_inf extends ovm_component;
       end
     end
     else begin
-      bit tmp_en_spu = en_spu, tmp_en_dse = en_dse, tmp_en_fu[num_fu] = en_fu;
-      i_gs0_u gs;
+      i_gs1_u gs;
       gs.b[0] = ibuf[0];
       gs.b[1] = ibuf[1];
       os = 2;
@@ -271,10 +295,7 @@ class ise_thread_inf extends ovm_component;
           i_spu.analyze_rd(cnt_vrf_wr, cnt_srf_wr, cnt_pr_wr);
           os += num_inst_bytes;          
         end
-      
-      en_fu = tmp_en_fu;
-      en_dse = tmp_en_dse;
-      en_spu = tmp_en_spu;
+
       a[0] = gs.i.a;
     end
     
@@ -332,23 +353,34 @@ class ise_thread_inf extends ovm_component;
         end
     end
     
-    foreach(i_fu[fid])
+    foreach(i_fu[fid]) begin
       i_fu[fid].set_wcnt(wcnt);
+      decode_error |= i_fu[fid].decode_error;
+    end
     i_spu.set_wcnt(wcnt);
     i_dse.set_wcnt(wcnt);
+    decode_error |= i_spu.decode_error;
+    decode_error |= i_dse.decode_error;
     
     decoded = 1;
     ovm_report_info("decode_ig", {"\n", sprint()}, OVM_HIGH);
   endfunction : decode_ig
 
-  function void dse_cancel();
+  function void flush();
     ibuf_level = 0;
     pd_ifet = 0;
     igrp_bytes = 0;
+    decoded = 0;
+    decode_error = 0;
+  endfunction : flush
+  
+  function void dse_cancel();
+    flush();
     pc = pc_l;
-  endfunction : dse_cancel
+   endfunction : dse_cancel
 
-  function void enter_exp();
+  function void enter_exp(input ip4_tlm_ise_sr sr, ise_exp_t err);
+    flush();
   endfunction : enter_exp
   
   function void msg_wait();
@@ -496,12 +528,6 @@ class ise_iss_inf extends ovm_component;
   
   function new(string name, ovm_component parent);
     super.new(name, parent);
-///    foreach(ci_spa[i]) begin
-///      ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-///      ci_dse[i] = tr_ise2dse::type_id::create("to_dse", get_parent());
-///      ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
-///      ci_spu[i] = tr_ise2spu::type_id::create("to_spu", get_parent());
-///    end
     cnt_vrf_rd = 0;
     cnt_srf_rd = 0;
     cnt_dse_rd = 0;
@@ -567,7 +593,7 @@ class ise_iss_inf extends ovm_component;
     dse = ci_dse[0];  
   endfunction : get_tr
 
-  function bit can_iss(input ise_thread_inf tif, output bit vec);
+  function bit can_iss(input ise_thread_inf tif);
     /// the vec value indicate 4 cyc issue style is needed
 ///    vec = tif.dse_vec;
     if(get_report_verbosity_level() >= OVM_HIGH) begin
@@ -576,15 +602,13 @@ class ise_iss_inf extends ovm_component;
         en_fu_t[i] = tif.en_fu[i];
         
       ovm_report_info("can_iss",
-        $psprintf("ts:%s, decoded:%0d, wcnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b", 
-                   tif.ts.name, tif.decoded, tif.wcnt, tif.pc, tif.en_spu, tif.en_dse, en_fu_t, tif.dse_vec, tif.nc),
+        $psprintf("ts:%s, decoded:%0d, err:%0d, wcnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b", 
+                   tif.ts.name, tif.decoded, tif.decode_error, tif.wcnt, tif.pc, tif.en_spu, tif.en_dse,
+                   en_fu_t, tif.dse_vec, tif.nc),
         OVM_HIGH);
     end
     
-    foreach(tif.en_fu[i])
-      vec |= tif.en_fu[i];
-    
-    if(vec && cnt_vec_proc >= tif.vec_mode)
+    if(tif.en_vec && cnt_vec_proc >= tif.vec_mode)
       return 0;
       
     ///issue disable check
@@ -619,11 +643,17 @@ class ise_iss_inf extends ovm_component;
     return tif.decoded && ((tif.ts == ts_rdy) || (tif.ts == ts_w_pip && tif.nc));
   endfunction : can_iss
 
-  function void iss_scl(input ise_thread_inf tif);
+  function void iss(input ise_thread_inf tif, ip4_tlm_ise_sr sr);
+    if(tif.decode_error) begin
+      
+    end
+    
     tif.pc += tif.igrp_bytes;
     tif.ibuf_level -= tif.igrp_bytes;
     tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
     tif.decoded = 0;
+    tif.decode_error = 0;
+    
     if(tif.wcnt > 0)
       tif.ts = ts_w_pip;
     if(tif.en_spu && tif.i_spu.is_pd_br())
@@ -637,7 +667,7 @@ class ise_iss_inf extends ovm_component;
           tif.exe_priv();
         end
         else
-          tif.enter_exp();
+          tif.enter_exp(sr, exp_priv_err);
       end
     end
     
@@ -656,12 +686,9 @@ class ise_iss_inf extends ovm_component;
     foreach(cnt_srf_wr[i])
       cnt_srf_wr[i] += tif.cnt_srf_wr[i];
     
-  endfunction : iss_scl
-      
-  function void iss_vec(input ise_thread_inf tif);
-    iss_scl(tif);
-    cnt_vec_proc = tif.vec_mode;
-  endfunction : iss_vec
+    if(tif.en_vec)
+      cnt_vec_proc = tif.vec_mode;
+  endfunction : iss
 
 endclass : ise_iss_inf
 
@@ -744,7 +771,7 @@ class ip4_tlm_ise extends ovm_component;
       if(dse.cancel) begin
         tinf[dse.tid].dse_cancel();
         if(dse.exp)
-          tinf[dse.tid].enter_exp();
+          tinf[dse.tid].enter_exp(vn.sr, exp_dse_err);
       end
       if(dse.msg_wait) begin
         tinf[dse.tid].msg_wait();
@@ -754,16 +781,12 @@ class ip4_tlm_ise extends ovm_component;
     ovm_report_info("iinf", $psprintf("\n%s", iinf.sprint()), OVM_HIGH);
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_iss_l;
-      bit vec;
       tid = tid & ~('1 << bits_tid);
       
       ovm_report_info("iss", $psprintf("checking thread %0d", tid), OVM_HIGH);
-      if(iinf.can_iss(tinf[tid], vec)) begin
+      if(iinf.can_iss(tinf[tid])) begin
         ovm_report_info("iss", $psprintf("issuing thread %0d", tid), OVM_HIGH);
-        if(vec)
-          iinf.iss_vec(tinf[tid]);
-        else
-          iinf.iss_scl(tinf[tid]);
+        iinf.iss(tinf[tid], vn.sr);
         vn.tid_iss_l = tid;
         break;
       end

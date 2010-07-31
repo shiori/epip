@@ -251,17 +251,17 @@ typedef struct packed{
   bit[2] ipw;
   bit dv;
   iga_t a;
-}i_gs0_t;
+}i_gs1_t;
 
 typedef union packed{
-  i_gs0_t i;
+  i_gs1_t i;
   bit [1:0][7:0] b;
-} i_gs0_u;
+} i_gs1_u;
 
 typedef struct packed{
   bit t, nc, fua, apb, ipw;
   iga_t a;
-}i_gs1_t;
+}i_gs0_t;
 
 typedef struct packed{
   iga_t[2] a;
@@ -323,7 +323,7 @@ parameter iop_e iop_cmps[] = '{
         
 class inst_c extends ovm_object;
   inst_u inst;
-  bit decoded, vec_rd, priv, is_vec;
+  bit decoded, decode_error, vec_rd, priv, is_vec;
   opcode_e op;
   rbk_sel_e rd_bk[num_fu_rp];
   uchar cnt_vrf_wr, cnt_srf_wr, pr_adr_rd, pr_adr_wr[2], fuid,
@@ -342,6 +342,7 @@ class inst_c extends ovm_object;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(decoded, OVM_ALL_ON)
+    `ovm_field_int(decode_error, OVM_ALL_ON)
     `ovm_field_int(is_vec, OVM_ALL_ON)
     `ovm_field_int(fuid, OVM_ALL_ON)
     `ovm_field_int(inst, OVM_ALL_ON)
