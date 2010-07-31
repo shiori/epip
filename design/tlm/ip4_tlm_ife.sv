@@ -10,24 +10,20 @@
 ///Log:
 ///Created by Newton Chen on July 28 2010
 
-class ip4_tlm_ife_vars extends ovm_object;
+class ip4_tlm_ife_vars extends ovm_component;
   tr_ise2ife fm_ise;
   tr_tlb2ife fm_tlb;
   
   tr_ife2ise ise[stage_ife:1];
   
-  `ovm_object_utils_begin(ip4_tlm_ife_vars)
+  `ovm_component_utils_begin(ip4_tlm_ife_vars)
     `ovm_field_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_tlb, OVM_ALL_ON + OVM_REFERENCE)
-  `ovm_object_utils_end
+  `ovm_component_utils_end
   
-  function new (string name = "ife_vars");
-    super.new(name);
+  function new (string name, ovm_component parent);
+    super.new(name, parent);
   endfunction : new
-  
-  function void gen(input ip4_tlm_ife_vars o);
-    this.copy(o);
-  endfunction  
 endclass : ip4_tlm_ife_vars
 
 
@@ -113,7 +109,6 @@ class ip4_tlm_ife extends ovm_component;
   
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
-    ip4_tlm_ife_vars t;
     if($time == stamp) begin
        ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
@@ -121,10 +116,7 @@ class ip4_tlm_ife extends ovm_component;
     stamp = $time;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
-    t = v;
-    v = vn;
-    vn = t;
-    vn.gen(v);
+    v.copy(vn);
     comb_proc();
   endfunction : sync
 
@@ -150,8 +142,8 @@ class ip4_tlm_ife extends ovm_component;
     ise_tr_port = new("ise_tr_port", this);
     tlb_tr_port = new("tlb_tr_port", this);
     
-    v = new();
-    vn = new();
+    v = new("v", this);
+    vn = new("vn", this);
     
     no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
     failed_convert_interface: assert($cast(vif_cfg, tmp));

@@ -18,7 +18,7 @@ class ip4_tlm_sfu_stages extends ovm_object;
   
   `ovm_object_utils(ip4_tlm_sfu_stages)
   
-  function new (string name = "sfu_stages");
+  function new (string name = "sfu_vars");
     super.new(name);
     subv = 0;
     en = '{default:0};
@@ -26,7 +26,7 @@ class ip4_tlm_sfu_stages extends ovm_object;
  
 endclass
 
-class ip4_tlm_spa_vars extends ovm_object;
+class ip4_tlm_spa_vars extends ovm_component;
   tr_ise2spa fm_ise[stage_exe_vwbp:0];
   tr_rfm2spa fm_rfm[stage_exe_vwbp:0];
   tr_spu2spa fm_spu[stage_exe_vwbp:0];
@@ -34,21 +34,17 @@ class ip4_tlm_spa_vars extends ovm_object;
   
   ip4_tlm_sfu_stages sfu[stage_eex_vwbp:1];
   
-  `ovm_object_utils_begin(ip4_tlm_spa_vars)
+  `ovm_component_utils_begin(ip4_tlm_spa_vars)
     `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(sfu, OVM_ALL_ON + OVM_REFERENCE)
-  `ovm_object_utils_end
+  `ovm_component_utils_end
   
-  function new (string name = "spa_vars");
-    super.new(name);
+  function new (string name, ovm_component parent);
+    super.new(name, parent);
   endfunction : new
-  
-  function void gen(input ip4_tlm_spa_vars o);
-    this.copy(o);
-  endfunction
 endclass : ip4_tlm_spa_vars
 
 
@@ -338,7 +334,6 @@ class ip4_tlm_spa extends ovm_component;
   
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
-    ip4_tlm_spa_vars t;
     if($time == stamp) begin
        ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
@@ -346,10 +341,7 @@ class ip4_tlm_spa extends ovm_component;
     stamp = $time;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
-    t = v;
-    v = vn;
-    vn = t;
-    vn.gen(v);
+    v.copy(vn);
     comb_proc();
   endfunction : sync
 
@@ -380,8 +372,8 @@ class ip4_tlm_spa extends ovm_component;
     spu_tr_port = new("spu_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
     
-    v = new();
-    vn = new();
+    v = new("v", this);
+    vn = new("vn", this);
     
     no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
     failed_convert_interface: assert($cast(vif_cfg, tmp));

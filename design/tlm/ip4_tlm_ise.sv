@@ -10,22 +10,22 @@
 ///Log:
 ///Created by Andy Chen on Mar 16 2010
 
-class ip4_tlm_ise_vars extends ovm_object;
+class ip4_tlm_ise_vars extends ovm_component;
   tr_spu2ise fm_spu;
   tr_rfm2ise fm_rfm;
   tr_ife2ise fm_ife;
   tr_spa2ise fm_spa;
   tr_dse2ise fm_dse[stage_exe_vwbp:stage_exe_dwbp];
   
-  tr_ise2rfm rfm[stage_ise_rrf:1];
-  tr_ise2spa spa[stage_ise_rrf:1];
-  tr_ise2spu spu[stage_ise_rrf:1];
-  tr_ise2dse dse[stage_ise_rrf:1];
+  tr_ise2rfm rfm[stage_ise:1];
+  tr_ise2spa spa[stage_ise:1];
+  tr_ise2spu spu[stage_ise:1];
+  tr_ise2dse dse[stage_ise:1];
   
   uchar tid_iss_l, tid_fet_l, tid_ife_cancel;
   bit ife_cancel;
   
-  `ovm_object_utils_begin(ip4_tlm_ise_vars)
+  `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fm_spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -39,17 +39,19 @@ class ip4_tlm_ise_vars extends ovm_object;
     `ovm_field_int(tid_fet_l, OVM_ALL_ON)
     `ovm_field_int(tid_ife_cancel, OVM_ALL_ON)
     `ovm_field_int(ife_cancel, OVM_ALL_ON)
-  `ovm_object_utils_end
+  `ovm_component_utils_end
 
-  function new(string name = "ise_vars");
-    super.new(name);
+///  function new(string name = "ise_vars");
+///   super.new(name);
+  function new(string name, ovm_component parent);
+    super.new(name, parent);
     tid_fet_l = 0;
     tid_iss_l = 0;  
   endfunction : new
   
-  function void gen(input ip4_tlm_ise_vars o);
-    this.copy(o);
-  endfunction
+///  function void gen(input ip4_tlm_ise_vars o);
+///    this.copy(o);
+///  endfunction
 endclass : ip4_tlm_ise_vars
 
 class ise_thread_inf extends ovm_component;
@@ -706,7 +708,7 @@ class ip4_tlm_ise extends ovm_component;
     vn.fm_ife = null;
     vn.fm_dse[stage_exe_dwbp] = null;
     
-    for(int i = stage_ise_rrf; i > 1; i--) begin
+    for(int i = stage_ise; i > 1; i--) begin
       vn.rfm[i] = v.rfm[i-1];  
       vn.spa[i] = v.spa[i-1];
       vn.spu[i] = v.spu[i-1];
@@ -780,10 +782,10 @@ class ip4_tlm_ise extends ovm_component;
     
     iinf.get_tr(vn.rfm[1], vn.spa[1], vn.spu[1], vn.dse[1]);
     
-    to_rfm = vn.rfm[stage_ise_rrf];
-    to_spa = vn.spa[stage_ise_rrf];
-    to_spu = vn.spu[stage_ise_rrf];
-    to_dse = vn.dse[stage_ise_rrf];
+    to_rfm = v.rfm[stage_ise];
+    to_spa = v.spa[stage_ise];
+    to_spu = v.spu[stage_ise];
+    to_dse = v.dse[stage_ise];
     
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_fet_l;
@@ -874,7 +876,7 @@ class ip4_tlm_ise extends ovm_component;
     
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
-    ip4_tlm_ise_vars t;
+///    ip4_tlm_ise_vars t;
     if($time==stamp) begin
        ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
@@ -882,10 +884,11 @@ class ip4_tlm_ise extends ovm_component;
     stamp = $time;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
-    t = v;
-    v = vn;
-    vn = t;
-    vn.gen(v);
+///    t = v;
+///    v = vn;
+///    vn = t;
+///    vn.gen(v);
+    v.copy(vn);
     comb_proc();
   endfunction : sync
 
@@ -918,8 +921,8 @@ class ip4_tlm_ise extends ovm_component;
     spa_tr_port = new("spa_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
     
-    v = new();
-    vn = new();
+    v = new("v", this);
+    vn = new("vn", this);
     
     no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
     failed_convert_interface: assert($cast(vif_cfg, tmp));

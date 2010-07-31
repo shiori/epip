@@ -12,7 +12,7 @@
 
 parameter bit[1:0] Cbyte_offset = 2'b11;
 
-class ip4_tlm_dse_vars extends ovm_object;
+class ip4_tlm_dse_vars extends ovm_component;
   
   tr_ise2dse fm_ise[stage_rrf_dwb:stage_rrf_rrc0];
   tr_spu2dse fm_spu;
@@ -26,7 +26,7 @@ class ip4_tlm_dse_vars extends ovm_object;
   tr_dse2spa spa;
   tr_dse2tlb tlb;
     
-  `ovm_object_utils_begin(ip4_tlm_dse_vars)
+  `ovm_component_utils_begin(ip4_tlm_dse_vars)
      `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
@@ -38,15 +38,11 @@ class ip4_tlm_dse_vars extends ovm_object;
      `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE)        
-  `ovm_object_utils_end
+  `ovm_component_utils_end
   
-  function new (string name = "dse_vars");
-    super.new(name);
+  function new (string name, ovm_component parent);
+    super.new(name, parent);
   endfunction : new
-  
-  function void gen(input ip4_tlm_dse_vars o);
-    this.copy(o);
-  endfunction  
 endclass : ip4_tlm_dse_vars
 
 
@@ -214,7 +210,6 @@ class ip4_tlm_dse extends ovm_component;
         
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
-    ip4_tlm_dse_vars t;
     if($time == stamp) begin
        ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
@@ -222,10 +217,7 @@ class ip4_tlm_dse extends ovm_component;
     stamp = $time;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
-    t = v;
-    v = vn;
-    vn = t;
-    vn.gen(v);
+    v.copy(vn);
     comb_proc();
   endfunction : sync
 
@@ -258,8 +250,8 @@ class ip4_tlm_dse extends ovm_component;
     spa_tr_port = new("spa_tr_port", this);
     tlb_tr_port = new("tlb_tr_port", this);
     
-    v = new();
-    vn = new();
+    v = new("v", this);
+    vn = new("vn", this);
     
     no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
     failed_convert_interface: assert($cast(vif_cfg, tmp));

@@ -104,7 +104,6 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_rrf_dwbp    = stage_rrf_rrc + stage_exe_dwbp + 1,    ///6
                 stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
-                stage_ise_rrf     = stage_ise + 1,                  ///2
                 stage_ife         = lat_ife - 1,                    ///1
                 stage_ife_ii0     = stage_ife + 1,                  ///2
                 stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
