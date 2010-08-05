@@ -168,6 +168,7 @@ parameter uchar bits_vrf_bks    = n2w(num_vrf_bks),
 `ovm_nonblocking_transport_imp_decl(_dse)
 `ovm_nonblocking_transport_imp_decl(_ife)
 `ovm_nonblocking_transport_imp_decl(_tlb)
+`ovm_nonblocking_transport_imp_decl(_shm)
   
 class tlm_vif_object extends ovm_object;
   `ovm_object_utils(tlm_vif_object)
@@ -395,6 +396,7 @@ endclass
 `include "ip4_tlm_ise.sv"
 `include "ip4_tlm_tlb.sv"
 `include "ip4_tlm_dse.sv"
+`include "ip4_tlm_shm.sv"
 `include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
 

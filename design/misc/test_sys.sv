@@ -29,6 +29,7 @@ class test_sys_env extends ovm_env;
 
   ip4_tlm_tlb tlb;
   ip4_tlm_dse dse;
+  ip4_tlm_shm shm;
   
   virtual tlm_sys_if.mods sysif;
 
@@ -65,6 +66,7 @@ class test_sys_env extends ovm_env;
     
     tlb = ip4_tlm_tlb::type_id::create("tlb", this);
     dse = ip4_tlm_dse::type_id::create("dse", this);
+    shm = ip4_tlm_shm::type_id::create("shm", this);
   endfunction
 
   virtual function void connect();
@@ -110,6 +112,9 @@ class test_sys_env extends ovm_env;
 
     dse.tlb_tr_port.connect(tlb.dse_tr_imp);
     tlb.dse_tr_port.connect(dse.tlb_tr_imp);
+
+    dse.shm_tr_port.connect(shm.dse_tr_imp);
+    shm.dse_tr_port.connect(dse.shm_tr_imp);
   endfunction
 
   virtual task run();

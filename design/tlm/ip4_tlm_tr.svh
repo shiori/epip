@@ -1005,21 +1005,25 @@ endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_sm sm_dse------------------------
 class tr_dse2shm extends ovm_sequence_item;
-  rand word sm_adr;
-  rand word fm_dat;
+  rand word ld_adr[num_sp];
+  rand word st_adr[num_sp];
+  rand word st_dat[num_sp];
+  rand bit st_emask[num_sp];
   
-  `ovm_object_utils_begin(tr_tlb2ife)
-    `ovm_field_int(sm_adr, OVM_ALL_ON);
-    `ovm_field_int(fm_dat, OVM_ALL_ON);
+  `ovm_object_utils_begin(tr_dse2shm)
+    `ovm_field_sarray_int(ld_adr, OVM_ALL_ON);
+    `ovm_field_sarray_int(st_adr, OVM_ALL_ON);
+    `ovm_field_sarray_int(st_dat, OVM_ALL_ON);
+    `ovm_field_sarray_int(st_emask, OVM_ALL_ON);
   `ovm_object_utils_end
     
 endclass : tr_dse2shm
 
 class tr_shm2dse extends ovm_sequence_item;
-  rand word sm_dat;
+  rand word ld_dat[num_sp];
   
-  `ovm_object_utils_begin(tr_tlb2ife)
-    `ovm_field_int(sm_dat, OVM_ALL_ON);
+  `ovm_object_utils_begin(tr_shm2dse)
+    `ovm_field_sarray_int(ld_dat, OVM_ALL_ON);
   `ovm_object_utils_end
    
 endclass : tr_shm2dse
