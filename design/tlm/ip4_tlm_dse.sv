@@ -83,7 +83,7 @@ class ip4_tlm_dse extends ovm_component;
     bit var_emsk[num_sp];
     uchar pos_emsk[num_sp];   /// the index identifier of emsk is 1 
     word phy_adr[num_sp];
-    bit [2:0] bank_chek;
+    bit [2:0] bank_check;
     uint smadr_start;   /// pb_id owns shared memory start address  
     uint smadr_end;     /// pb_id owns shared memory end address
     
@@ -165,7 +165,7 @@ class ip4_tlm_dse extends ovm_component;
             vn.shm.sm_adr = phy_adr[i];
             if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb))begin
               if(v.fm_rfm != null)begin
-                vn.shm.fm_dat = v.fm_rfm.op1[];
+                vn.shm.fm_dat = v.fm_rfm.op1;
               end
             end
             if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb))begin  
