@@ -93,7 +93,12 @@ class ip4_tlm_spa extends ovm_component;
     vn.fm_spu[0] = null;
     vn.fm_rfm[0] = null;
     vn.fm_dse[stage_exe_dwb] = null;
-     
+
+    to_rfm = null;
+    to_ise = null;
+    to_spu = null;
+    to_dse = null;
+       
     for(int i = stage_exe_vwbp; i > 0; i--) begin
       vn.fm_ise[i] = v.fm_ise[i-1];
       vn.fm_rfm[i] = v.fm_rfm[i-1];

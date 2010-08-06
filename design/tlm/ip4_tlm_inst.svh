@@ -798,12 +798,15 @@ class inst_c extends ovm_object;
     if(!decoded) decode();
     foreach(vrf_en[i,j]) begin
       v_en[i][j] = v_en[i][j] | vrf_en[i][j];
-      cnt_v += v_en[i][j];
+      if(v_en[i][j])
+        cnt_v = i;
     end
     foreach(srf_en[i,j]) begin
       s_en[i][j] = s_en[i][j] | srf_en[i][j];
-      cnt_s += s_en[i][j];
+      if(s_en[i][j])
+        cnt_s = i;
     end
+    
     if(cnt_s > srf)
       srf = cnt_s;
     if(cnt_v > vrf)

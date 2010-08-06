@@ -182,9 +182,11 @@ endclass : rfm2spa_rp
 
 class rfm2spa_fu extends ovm_object;
   rfm2spa_rp rp[num_fu_rp];
+  rand bit en;
   
   `ovm_object_utils_begin(rfm2spa_fu)
     `ovm_field_sarray_object(rp, OVM_ALL_ON)
+    `ovm_field_int(en, OVM_ALL_ON + OVM_NOPRINT + OVM_NOCOMPARE)
   `ovm_object_utils_end
   
 	function new (string name = "rfm2spa_fu");
@@ -198,9 +200,16 @@ class tr_rfm2spa extends ovm_sequence_item;
 	rfm2spa_fu fu[num_fu];
 	
 	`ovm_object_utils_begin(tr_rfm2spa)
-		`ovm_field_sarray_object(fu, OVM_ALL_ON)
+		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_object_utils_end
-  
+
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+		foreach(fu[i])
+		  if(fu[i].en)
+		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+	endfunction : do_print
+	  
 	function new (string name = "tr_rfm2spa");
 		super.new(name);
 	  foreach(fu[i])
@@ -425,7 +434,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  
   constraint dist_vars{
     subv dist {0:=5, 1:=5};
-    vec_mode inside {[1:cyc_vec]};
+    vec_mode < cyc_vec; ///inside {[1:cyc_vec]};
     foreach(cancel[i]) cancel[i] dist {0:=19, 1:=1};
     bp_rf_dse_wp < 2;
     bp_rf_dse dist {selnull:=9, [selfu0:selfu0+num_fu]:=1};
@@ -601,7 +610,7 @@ class tr_ise2spu extends ovm_sequence_item;
     pr_br_dep dist {0:=6, 1:=4};
 ///    pr_br_adr <= num_pr;
     subv dist {0:=5, 1:=5};
-    vec_mode inside {[1:cyc_vec]};
+    vec_mode < cyc_vec; ///inside {[1:cyc_vec]};
 ///    subs dist {0:=5, 1:=5};
 ///    cycs inside {[1:cyc_vec]};
     pr_rd_adr_spu == 0 -> pr_br_dep == 0;
@@ -827,7 +836,7 @@ class tr_ise2dse extends ovm_sequence_item;
     bp_data dist {0:=4, 1:=6};
     op inside {dse_ops};
     bp_data -> vec;
-    vec_mode inside {[1:cyc_vec]};
+    vec_mode < cyc_vec; ///inside {[1:cyc_vec]};
     solve vec before bp_data;
   }
   

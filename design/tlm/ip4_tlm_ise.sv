@@ -102,7 +102,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(decode_error, OVM_ALL_ON)
     `ovm_field_int(cancel, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
-    `ovm_field_array_int(ibuf, OVM_ALL_ON)
+    `ovm_field_queue_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nc, OVM_ALL_ON)
     `ovm_field_int(igrp_bytes, OVM_ALL_ON)
     `ovm_field_int(ap_bytes, OVM_ALL_ON)
@@ -160,7 +160,7 @@ class ise_thread_inf extends ovm_component;
     priv_mode = 0;
     pc = cfg_start_adr;
     pc_l = cfg_start_adr;
-    vec_mode = cyc_vec;
+    vec_mode = cyc_vec - 1;
     decoded = 0;
     decode_error = 0;
     print_enabled = 0;
@@ -450,7 +450,7 @@ class ise_thread_inf extends ovm_component;
                                tr_ise2spu ci_spu[cyc_vec], tr_ise2dse ci_dse[cyc_vec]);
     
     if(ci_rfm[0] == null) ci_rfm[0] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-    if(ci_rfm[cnt_vrf_rd] == null) ci_rfm[cnt_srf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+    if(ci_rfm[cnt_vrf_rd] == null) ci_rfm[cnt_vrf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
     ci_rfm[0].start = 1;
     ci_rfm[cnt_vrf_rd].vec_end = 1;
 
@@ -464,7 +464,7 @@ class ise_thread_inf extends ovm_component;
       if(ci_rfm[cnt_srf_rd] == null) ci_rfm[cnt_srf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       ci_rfm[0].start = 1;
       ci_rfm[cnt_srf_rd].scl_end = 1;
-      for(int i = 0; i < cnt_srf_rd; i++) begin
+      for(int i = 0; i <= cnt_srf_rd; i++) begin
         if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
         if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
         i_spu.fill_rfm(ci_rfm[i]);
@@ -476,13 +476,13 @@ class ise_thread_inf extends ovm_component;
       i_dse.map_wr_grp(vrf_map, srf_map);
       ci_dse[0] = tr_ise2dse::type_id::create("to_dse", get_parent());
       i_dse.fill_dse(ci_dse[0]);      
-      for(int i = 0; i < cnt_dse_rd; i++) begin
+      for(int i = 0; i <= cnt_dse_rd; i++) begin
         if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
         i_dse.fill_rfm(ci_rfm[i]);
       end
     end
           
-    for(int i = 0; i < cnt_srf_rd && i < cnt_vrf_rd; i++) begin
+    for(int i = 0; i <= cnt_srf_rd || i <= cnt_vrf_rd; i++) begin
       if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       ci_rfm[i].bp_imm = imms;
       ci_rfm[i].vrf_rd_grp = vrf_grp[i];
@@ -491,7 +491,7 @@ class ise_thread_inf extends ovm_component;
       ci_rfm[i].srf_rd_adr = srf_adr[i];
     end
     
-    for(int i = 0; i < cnt_vrf_rd; i++) begin
+    for(int i = 0; i <= cnt_vrf_rd; i++) begin
       if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
       if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       if(en_dse)

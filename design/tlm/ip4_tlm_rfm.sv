@@ -49,7 +49,10 @@ class ip4_tlm_rfm extends ovm_component;
   local ip4_tlm_rfm_vars v, vn;
   local word csrf_l[num_srf_bks];
   local word bp_imm_l[num_bp_imm];
-  
+  local tr_rfm2spa to_spa;
+  local tr_rfm2spu to_spu;
+  local tr_rfm2dse to_dse;
+      
   `ovm_component_utils_begin(ip4_tlm_rfm)
   `ovm_component_utils_end
       
@@ -62,7 +65,7 @@ class ip4_tlm_rfm extends ovm_component;
   ovm_nonblocking_transport_port #(tr_rfm2dse, tr_rfm2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_rfm2spu, tr_rfm2spu) spu_tr_port;
   
-  extern function word read_rf(input rbk_sel_e, uchar, const ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks], 
+  extern function void read_rf(inout word, input rbk_sel_e, uchar, const ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks], 
                                 bp_imm[num_bp_imm], input word imm);
   //endfunction
   
@@ -78,36 +81,25 @@ class ip4_tlm_rfm extends ovm_component;
     vn.fm_spa = null;
     vn.fm_ise[0] = null;
 
+    to_spa = null;
+    to_spu = null;
+    to_dse = null;
+  
     for(int i=stage_eex_vwb0; i > 0; i--) 
       vn.fm_ise[i] = v.fm_ise[i-1];
   endfunction
   
   function void req_proc();
-    tr_rfm2spa to_spa;
-    tr_rfm2spu to_spu;
-    tr_rfm2dse to_dse;
     word cvrf[num_vrf_bks][num_sp];
     word csrf[num_srf_bks];
       
     ovm_report_info("RFM", "req_proc procing...", OVM_FULL); 
    
-    ///--------------prepare---------------------------------
-
-///    to_spa = tr_rfm2spa::type_id::create("to_spa", this);
-///    to_spu = tr_rfm2spu::type_id::create("to_spu", this);
-///    to_dse = tr_rfm2dse::type_id::create("to_dse", this);
-    
     ///----------------------write back results---------------------
     if(v.fm_spa != null) begin
-///      bit cancel = 0;
-///      tr_ise2rfm ise = v.fm_ise[stage_rrf_wb0];
       tr_spa2rfm spa = v.fm_spa;
       uchar bk0, bk1;
       
-///      if(v.fm_ise[0] != null && v.fm_ise[0].cancel)
-///        cancel = 1;
-        
-///      if(!cancel) begin
       foreach(spa.fu[fid]) begin
         ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s...", fid, fu_cfg[fid].name), OVM_HIGH);
         bk0 = spa.fu[fid].vrf_wr_bk & ('1 - 'b01);
@@ -122,8 +114,6 @@ class ip4_tlm_rfm extends ovm_component;
               vrf[spa.fu[fid].vrf_wr_grp][spa.fu[fid].vrf_wr_adr][spa.fu[fid].vrf_wr_bk][spa.fu[fid].subv][sp] = spa.fu[fid].res0[sp];
           end
       end
-///      end
-      
     end
     
     if(v.fm_dse != null) begin
@@ -148,8 +138,6 @@ class ip4_tlm_rfm extends ovm_component;
       bit dw = 0;
       ovm_report_info("RFM_WR", "Write Back SPU...", OVM_HIGH);
       res = spu.res;
-///      if(spu.sel_dwbp && dse != null)
-///        res = dse.res[0];
       srf[spu.srf_wr_grp][spu.srf_wr_adr][spu.srf_wr_bk] = res;
     end
          
@@ -177,34 +165,36 @@ class ip4_tlm_rfm extends ovm_component;
         if(vn.spa[cyc] == null) vn.spa[cyc] = tr_rfm2spa::type_id::create("to_spa", this);
         foreach(vn.spa[cyc].fu[fid].rp[rp])
           foreach(vn.spa[cyc].fu[fid].rp[rp].op[sp])
-            vn.spa[cyc].fu[fid].rp[rp].op[sp] = read_rf(ise.fu[fid].rd_bk[rp], sp, cvrf, csrf_l, bp_imm_l, ise.fu[fid].imm);
+            read_rf(vn.spa[cyc].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf_l, bp_imm_l, ise.fu[fid].imm);
       end
       
       if(ise.dse_en) begin
         ovm_report_info("RFM_RD", $psprintf("Read for DSE cyc %0d ...", cyc), OVM_HIGH);
         if(to_dse == null) to_dse = tr_rfm2dse::type_id::create("to_dse", this);
         foreach(to_dse.base[sp]) begin
-          to_dse.base[sp] = read_rf(ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
-          to_dse.op1[sp] = read_rf(ise.dse_rd_bk[1], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+          read_rf(to_dse.base[sp], ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+          read_rf(to_dse.op1[sp], ise.dse_rd_bk[1], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
         end
         if(cyc == 0) begin
 ///          to_dse.op1 = read_rf(ise.dse_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
-          to_dse.op2 = read_rf(ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+          read_rf(to_dse.op2, ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
         end
       end
             
       if(ise.spu_en && cyc == 0) begin
         ovm_report_info("RFM_RD", $psprintf("Read for SPU subs %0d ...", cyc), OVM_HIGH);
         if(vn.spu == null) vn.spu = tr_rfm2spu::type_id::create("to_spu", this);
-        vn.spu.op0 = read_rf(ise.spu_rd_bk[0], 0, cvrf, csrf, ise.bp_imm, ise.spu_imm);
-        vn.spu.op1 = read_rf(ise.spu_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.spu_imm);          
+        read_rf(vn.spu.op0, ise.spu_rd_bk[0], 0, cvrf, csrf, ise.bp_imm, ise.spu_imm);
+        read_rf(vn.spu.op1, ise.spu_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.spu_imm);          
       end
     end
     
     for(int cyc = 0; cyc < cyc_vec; cyc++)
-      if(v.fm_ise[cyc] != null && v.fm_ise[cyc].vec_end) begin
-        tr_ise2rfm ise = v.fm_ise[cyc];
+      if(v.fm_ise[stage_rrf_rrc0+cyc] != null && v.fm_ise[stage_rrf_rrc0+cyc].vec_end) begin
+        tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0+cyc];
         to_spa = vn.spa[cyc];
+        foreach(to_spa.fu[fid])
+          to_spa.fu[fid].en = ise.fu[fid].en;
         vn.spa[cyc] = null;
         break;
       end
@@ -317,40 +307,40 @@ endclass : ip4_tlm_rfm
 ///      return;
 ///  endfunction
   
-  function word ip4_tlm_rfm::read_rf(input rbk_sel_e s, uchar i, const ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks], 
+  function void ip4_tlm_rfm::read_rf(inout word res, input rbk_sel_e s, uchar i, const ref word cvrf[num_vrf_bks][num_sp], csrf[num_srf_bks], 
                                       bp_imm[num_bp_imm], input word imm);
     case(s)
-    selv0:    return cvrf[0][i];
-    selv1:    return cvrf[1][i];
-    selv2:    return cvrf[2][i];
-    selv3:    return cvrf[3][i];
-    selv4:    return cvrf[4][i];
-    selv5:    return cvrf[5][i];
-    selv6:    return cvrf[6][i];
-    selv7:    return cvrf[7][i];
-    selv8:    return cvrf[8][i];
-    selv9:    return cvrf[9][i];
-    selv10:   return cvrf[10][i];
-    selv11:   return cvrf[11][i];
-    selv12:   return cvrf[12][i];
-    selv13:   return cvrf[13][i];
-    selv14:   return cvrf[14][i];
-    selv15:   return cvrf[15][i];
-    sels0:    return csrf[0];
-    sels1:    return csrf[1];
-    sels2:    return csrf[2];
-    sels3:    return csrf[3];
-    sels4:    return csrf[4];
-    sels5:    return csrf[5];
-    sels6:    return csrf[6];
-    sels7:    return csrf[7];
-    sels8:    return csrf[8];
-    selz:     return 0;
-    seli0:    return bp_imm[0];
-    selii:    return imm;
-///    seli1:    return bp_imm[1];
-///    seli2:    return bp_imm[2];
-///    seli3:    return bp_imm[3];
-///    seli4:    return bp_imm[4];
+    selv0:    res = cvrf[0][i];
+    selv1:    res = cvrf[1][i];
+    selv2:    res = cvrf[2][i];
+    selv3:    res = cvrf[3][i];
+    selv4:    res = cvrf[4][i];
+    selv5:    res = cvrf[5][i];
+    selv6:    res = cvrf[6][i];
+    selv7:    res = cvrf[7][i];
+    selv8:    res = cvrf[8][i];
+    selv9:    res = cvrf[9][i];
+    selv10:   res = cvrf[10][i];
+    selv11:   res = cvrf[11][i];
+    selv12:   res = cvrf[12][i];
+    selv13:   res = cvrf[13][i];
+    selv14:   res = cvrf[14][i];
+    selv15:   res = cvrf[15][i];
+    sels0:    res = csrf[0];
+    sels1:    res = csrf[1];
+    sels2:    res = csrf[2];
+    sels3:    res = csrf[3];
+    sels4:    res = csrf[4];
+    sels5:    res = csrf[5];
+    sels6:    res = csrf[6];
+    sels7:    res = csrf[7];
+    sels8:    res = csrf[8];
+    selz:     res = 0;
+    seli0:    res = bp_imm[0];
+    selii:    res = imm;
+///    seli1:    res = bp_imm[1];
+///    seli2:    res = bp_imm[2];
+///    seli3:    res = bp_imm[3];
+///    seli4:    res = bp_imm[4];
     endcase
   endfunction : read_rf
