@@ -170,8 +170,8 @@ class ip4_tlm_rfm extends ovm_component;
         bp_imm_l = ise.bp_imm;
       end
       
-      foreach(ise.en[fid]) begin
-        if(!ise.en[fid]) continue;
+      foreach(ise.fu[fid]) begin
+        if(!ise.fu[fid].en) continue;
         ovm_report_info("RFM_RD", $psprintf("Read for SPA cyc %0d, FU%0d : %s ...", cyc, fid, fu_cfg[fid].name), OVM_HIGH);
 
         if(vn.spa[cyc] == null) vn.spa[cyc] = tr_rfm2spa::type_id::create("to_spa", this);

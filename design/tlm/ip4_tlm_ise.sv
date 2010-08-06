@@ -71,9 +71,9 @@ endclass : ip4_tlm_ise_vars
 
 class ise_thread_inf extends ovm_component;
   ise_thread_state ts;
-  uchar ibuf[num_ibuf_bytes];
+  uchar ibuf[$];
   bit nc, dse_vec;
-  uchar ibuf_level, igrp_bytes, ap_bytes, num_imms,
+  uchar igrp_bytes, ap_bytes, num_imms,
         cnt_srf_rd, cnt_vrf_rd, cnt_dse_rd;
   word imms[num_bp_imm];
   uchar vrf_adr[cyc_vec][num_vrf_bks], vrf_grp[cyc_vec][num_vrf_bks],
@@ -86,7 +86,7 @@ class ise_thread_inf extends ovm_component;
       decoded,
       decode_error,
       cancel;
-  uchar wcnt, vec_mode;
+  uchar wcnt, wcnt_n, vec_mode;
   
   uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
         srf_map[num_inst_srf/num_prf_p_grp];
@@ -100,10 +100,10 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_enum(ise_thread_state, ts, OVM_ALL_ON)
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decode_error, OVM_ALL_ON)
+    `ovm_field_int(cancel, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
-    `ovm_field_sarray_int(ibuf, OVM_ALL_ON)
+    `ovm_field_array_int(ibuf, OVM_ALL_ON)
     `ovm_field_int(nc, OVM_ALL_ON)
-    `ovm_field_int(ibuf_level, OVM_ALL_ON)
     `ovm_field_int(igrp_bytes, OVM_ALL_ON)
     `ovm_field_int(ap_bytes, OVM_ALL_ON)
     `ovm_field_int(num_imms, OVM_ALL_ON)
@@ -119,6 +119,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_sarray_int(en_fu, OVM_ALL_ON)
     `ovm_field_int(en_vec, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(wcnt, OVM_ALL_ON)
+    `ovm_field_int(wcnt_n, OVM_ALL_ON)
     `ovm_field_int(vec_mode, OVM_ALL_ON)
     `ovm_field_int(pd_ifet, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
@@ -175,8 +176,8 @@ class ise_thread_inf extends ovm_component;
   function void cyc_new();
     cancel = 0;
     if(wcnt != 0) wcnt--;
-    if(ts == ts_w_pip && wcnt == 0)
-      ts = ts_rdy;
+///    if(ts == ts_w_pip && wcnt == 0)
+///      ts = ts_rdy;
   endfunction : cyc_new
 
   function void exe_priv();
@@ -234,7 +235,6 @@ class ise_thread_inf extends ovm_component;
   endfunction : decode_igs
     
   function void decode_ig();
-///    decode_igs();  /// no need
     uchar tmp = 0;
     iga_t a[12];
     uchar os;
@@ -248,7 +248,8 @@ class ise_thread_inf extends ovm_component;
     cnt_vrf_wr = '{default : 0};
     cnt_srf_wr = '{default : 0};
     cnt_pr_wr = 0;
-    
+    wcnt_n = 0;
+        
     if(!gs0.t) begin
       tmp = 1;
       os = 1;
@@ -272,8 +273,8 @@ class ise_thread_inf extends ovm_component;
     end
     else begin
       i_gs1_u gs;
-      gs.b[0] = ibuf[0];
-      gs.b[1] = ibuf[1];
+      foreach(gs.b[i])
+        gs.b[i] = ibuf[i];
       os = 2;
       tmp = 1;
       if(ap_bytes != 0) ap_bytes --;
@@ -358,11 +359,11 @@ class ise_thread_inf extends ovm_component;
     end
     
     foreach(i_fu[fid]) begin
-      i_fu[fid].set_wcnt(wcnt);
+      i_fu[fid].set_wcnt(wcnt_n);
       decode_error |= i_fu[fid].decode_error;
     end
-    i_spu.set_wcnt(wcnt);
-    i_dse.set_wcnt(wcnt);
+    i_spu.set_wcnt(wcnt_n);
+    i_dse.set_wcnt(wcnt_n);
     decode_error |= i_spu.decode_error;
     decode_error |= i_dse.decode_error;
     
@@ -371,15 +372,15 @@ class ise_thread_inf extends ovm_component;
   endfunction : decode_ig
 
   function void flush();
-    ibuf_level = 0;
+    ibuf = {};
     igrp_bytes = 0;
     decoded = 0;
     decode_error = 0;
     pd_ifet = 0;
-    if(wcnt > 0)
-      ts = ts_w_pip;
-    else
-      ts = ts_rdy;
+///    if(wcnt > 0)
+///      ts = ts_w_pip;
+///    else
+    ts = ts_rdy;
   endfunction : flush
   
   function void retrieve_pc_l();
@@ -399,23 +400,23 @@ class ise_thread_inf extends ovm_component;
   endfunction : br_pre_miss
 
   function bit can_req_ifet();
-    ovm_report_info("can_req_ifet", $psprintf("ts:%s, ibuf lv:%0d, pd:%0d", ts.name, ibuf_level, pd_ifet), OVM_HIGH);
+    ovm_report_info("can_req_ifet", $psprintf("ts:%s, ibuf lv:%0d, pd:%0d", ts.name, ibuf.size(), pd_ifet), OVM_HIGH);
     if(ts == ts_disabled)
       return 0;
-    if(ibuf_level + pd_ifet * num_ifet_bytes >=  num_ibuf_bytes)
+    if(ibuf.size() + pd_ifet * num_ifet_bytes >=  num_ibuf_bytes)
       return 0;
     if(igrp_bytes == 0)
       return 1;
-    if(ibuf_level < igrp_bytes)
+    if(ibuf.size() < igrp_bytes)
       return 1;
     return 0;
   endfunction : can_req_ifet
       
   function void update_inst(input inst_fg_c fg);
-    uchar os = 0, level_l = ibuf_level;
-    if(ibuf_level  >= num_max_igrp_bytes)
+    uchar os = 0, level_l = ibuf.size();
+    if(level_l  >= num_max_igrp_bytes)
       ovm_report_warning("ISE", "ibuf overflow!");
-    if(ibuf_level == 0)
+    if(level_l == 0) ///only calculate offset when ibuf size is reset to 0
       os = pc & ~{'1 << bits_ifet};
 
     if(pd_ifet > 0)
@@ -425,16 +426,16 @@ class ise_thread_inf extends ovm_component;
       ovm_report_info("update_inst", $psprintf("cancel, pc:0x%0h, os:%0h, pd:%0d", pc, os, pd_ifet), OVM_HIGH);
       return;
     end
-    else
-      ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, pd:%0d, ibuf lv %0d->%0d", pc, os, pd_ifet, level_l, ibuf_level), OVM_HIGH);
       
     foreach(fg.data[i])
       if(i >= os)
-        ibuf[ibuf_level++] = fg.data[i];
-              
-    if(ibuf_level > 1 && !decoded) begin
+        ibuf.push_back(fg.data[i]);
+
+    ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, pd:%0d, ibuf lv %0d->%0d", pc, os, pd_ifet, level_l, ibuf.size()), OVM_HIGH);
+    
+    if(ibuf.size() > 1 && !decoded) begin
       decode_igs();
-      if(ibuf_level >= igrp_bytes)
+      if(ibuf.size() >= igrp_bytes)
         decode_ig();
     end
   endfunction : update_inst
@@ -463,6 +464,12 @@ class ise_thread_inf extends ovm_component;
       if(ci_rfm[cnt_srf_rd] == null) ci_rfm[cnt_srf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       ci_rfm[0].start = 1;
       ci_rfm[cnt_srf_rd].scl_end = 1;
+      for(int i = 0; i < cnt_srf_rd; i++) begin
+        if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+        if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
+        i_spu.fill_rfm(ci_rfm[i]);
+        i_spu.fill_spa(ci_spa[i]);
+      end
     end
     
     if(en_dse) begin
@@ -484,21 +491,16 @@ class ise_thread_inf extends ovm_component;
       ci_rfm[i].srf_rd_adr = srf_adr[i];
     end
     
-    for(int i = 0; i < cnt_srf_rd; i++) begin
-      if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-      if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
-      i_spu.fill_rfm(ci_rfm[i]);
-      i_spu.fill_spa(ci_spa[i]);
-    end
-    
     for(int i = 0; i < cnt_vrf_rd; i++) begin
       if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
       if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-      i_dse.fill_spa(ci_spa[i]);
-      foreach(i_fu[fid]) begin
-        i_fu[fid].fill_rfm(ci_rfm[i]);
-        i_fu[fid].fill_spa(ci_spa[i]);
-      end
+      if(en_dse)
+        i_dse.fill_spa(ci_spa[i]);
+      foreach(i_fu[fid])
+        if(en_fu[fid]) begin
+          i_fu[fid].fill_rfm(ci_rfm[i]);
+          i_fu[fid].fill_spa(ci_spa[i]);
+        end
       ci_spa[i].subv = i;
       ci_spa[i].vec_mode = vec_mode;
     end
@@ -627,7 +629,7 @@ class ip4_tlm_ise extends ovm_component;
     foreach(cnt_srf_wr[i])
       if(cnt_srf_wr[i] + tif.cnt_srf_wr[i] > cyc_vec)
         return 0;
-    return tif.decoded && ((tif.ts == ts_rdy) || (tif.ts == ts_w_pip && tif.nc));
+    return tif.decoded && (tif.ts == ts_rdy && (tif.wcnt == 0 || tif.nc));
   endfunction : can_iss
 
   function void issue(input uchar tid);
@@ -637,14 +639,16 @@ class ip4_tlm_ise extends ovm_component;
       return;
     end
     
+    tif.ibuf = tif.ibuf[tif.igrp_bytes:$];
+///    for(int i = 0; i< tif.igrp_bytes; i++)
+///      void'(tif.ibuf.pop_front());
     tif.pc += tif.igrp_bytes;
-    tif.ibuf_level -= tif.igrp_bytes;
     tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
     tif.decoded = 0;
     tif.decode_error = 0;
     
-    if(tif.wcnt > 0)
-      tif.ts = ts_w_pip;
+    if(tif.wcnt_n > tif.wcnt)
+      tif.wcnt = tif.wcnt_n;
     if(tif.en_spu && tif.i_spu.is_pd_br())
       tif.ts = ts_w_b;
               

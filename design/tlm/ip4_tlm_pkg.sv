@@ -243,7 +243,7 @@ typedef enum bit {
 
 typedef enum uchar {
   ts_disabled,    ts_rdy,     ts_w_ls,    ts_w_msg,
-  ts_w_b,         ts_w_pip
+  ts_w_b
 }ise_thread_state;
 
 typedef enum uchar {

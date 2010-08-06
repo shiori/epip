@@ -770,7 +770,7 @@ class inst_c extends ovm_object;
 	    wcnt = t;
 	endfunction : set_wcnt
 		
-	function void set_data(const ref uchar data[num_ibuf_bytes], input uchar start, id = 0, bit vec = 0);
+	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
     fuid = id;
     is_vec = vec;
     decoded = 0;
@@ -883,7 +883,7 @@ class inst_c extends ovm_object;
         rfm.dse_rd_bk[i] = rd_bk[i];      
     end
     else begin
-      rfm.en[fuid] = 1;
+      rfm.fu[fuid].en = 1;
       rfm.fu[fuid].imm = imm;
       foreach(rfm.fu[0].rd_bk[i])
         rfm.fu[fuid].rd_bk[i] = rd_bk[i];       

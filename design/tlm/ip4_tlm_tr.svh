@@ -3,22 +3,18 @@ typedef class inst_fg_c;    // endclass
 ///---------------------------trsaction ise_rfm rfm_ise------------------------
 class ise2rfm_fu extends ovm_object;
   rand rbk_sel_e rd_bk[num_fu_rp];
-///  rand uchar vrf_wr_grp, vrf_wr_bk, vrf_wr_adr;
   rand word imm;
+  rand bit en;
   
   constraint valid_var {
+    en dist {0:=1, 1:=9};
 	  foreach(rd_bk[i])
 	    rd_bk[i] inside {[selv0:selv_e], [sels0:sels_e], [seli0:seli_e], selz, selii};
-/// 		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
-/// 		vrf_wr_bk  inside {[0:num_vrf_bks-1]};
-/// 		vrf_wr_adr inside {[0:num_phy_srf_grp-1]};
   }
   `ovm_object_utils_begin(ise2rfm_fu)
     `ovm_field_sarray_enum(rbk_sel_e, rd_bk, OVM_ALL_ON)
 	  `ovm_field_int(imm, OVM_ALL_ON)    
-///	  `ovm_field_int(vrf_wr_grp, OVM_ALL_ON)
-///	  `ovm_field_int(vrf_wr_bk, OVM_ALL_ON)
-///	  `ovm_field_int(vrf_wr_adr, OVM_ALL_ON)
+	  `ovm_field_int(en, OVM_ALL_ON)    
   `ovm_object_utils_end
 
 	function new (string name = "ise2rfm_fu");
@@ -32,12 +28,9 @@ class tr_ise2rfm extends ovm_sequence_item;
 	
 	rand ise2rfm_fu fu[num_fu];
 	rand rbk_sel_e dse_rd_bk[3], spu_rd_bk[2];
-///	rand uchar subv; ///cycs, subs;
 	rand bit vec_end, scl_end, start;
-///	rand uchar tid;
 	rand word bp_imm[num_bp_imm], dse_imm, spu_imm;
-	rand bit en[num_fu], dse_en, spu_en;
-///	         cancel; /// cancel is sync to vwb0 stage
+	rand bit dse_en, spu_en;
 	
 	constraint valid_var {
 		foreach(vrf_rd_grp[i]) {
@@ -48,25 +41,16 @@ class tr_ise2rfm extends ovm_sequence_item;
 			srf_rd_grp[i] inside {[0:num_phy_srf_grp-1]};
 			srf_rd_adr[i] inside {[0:num_prf_p_grp/num_srf_bks-1]};
     }
-///	  cycv == cyc_vec - 1;
-///	  cycs inside {[1:cyc_vec]};
-
     dse_rd_bk[0] inside {[selv0:selv_e], [sels0:sels_e], [seli0:seli_e], selz};
     dse_rd_bk[1] inside {[sels0:sels_e], [seli0:seli_e], selz};
     dse_rd_bk[2] inside {[seli0:seli_e], selz};
-
 	  foreach(spu_rd_bk[i])
 	    spu_rd_bk[i] inside {[sels0:sels_e], [seli0:seli_e], selz};
 	}
 	
 	constraint dist_var {
-///		subv dist {0:=5, 1:=5};
-///		subs dist {0:=5, 1:=5};
-		foreach(en[i])
-		  en[i] dist {0:=1, 1:=9};
 		dse_en dist {0:=6, 1:=4};
 		spu_en dist {0:=6, 1:=4};
-///		cancel dist {0:=19, 1:=1};
 	}
   
   function void copy_scalar(tr_ise2rfm fm);
@@ -79,38 +63,14 @@ class tr_ise2rfm extends ovm_sequence_item;
   endfunction
     
 	function void post_randomize();
-///		static uchar last_subv = 0, last_subs = 0, last_cycs;
-///		if(last_subv == 0 || last_subv == (cyc_vec - 1)) begin
-///			last_subv = subv;
-///		end
-///		else begin
-///		  last_subv++;
-///			subv = last_subv;
-///	  end
-	  
-///		if(last_subs == 0 || last_subs == (last_cycs - 1)) begin
-///			last_subs = subs;
-///			last_cycs = cycs;
-///		end
-///		else begin
-///		  last_subs++;
-///			subs = last_subs;
-///			cycs = last_cycs;
-///	  end
-
 		foreach(fu[i])
 		  assert(fu[i].randomize());
   endfunction
 	
 	`ovm_object_utils_begin(tr_ise2rfm)
-///		`ovm_field_int(tid, OVM_ALL_ON)
-		`ovm_field_sarray_int(en, OVM_ALL_ON)
+		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
 		`ovm_field_int(spu_en, OVM_ALL_ON)
 		`ovm_field_int(dse_en, OVM_ALL_ON)
-///		`ovm_field_int(cycv, OVM_ALL_ON)
-///		`ovm_field_int(cycs, OVM_ALL_ON)
-///		`ovm_field_int(subs, OVM_ALL_ON)
-///		`ovm_field_int(subv, OVM_ALL_ON)
 	  `ovm_field_int(vec_end, OVM_ALL_ON)
 		`ovm_field_int(scl_end, OVM_ALL_ON)
 		`ovm_field_int(start, OVM_ALL_ON)
@@ -118,15 +78,20 @@ class tr_ise2rfm extends ovm_sequence_item;
 		`ovm_field_sarray_int(vrf_rd_adr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srf_rd_grp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srf_rd_adr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_sarray_object(fu, OVM_ALL_ON)
 		`ovm_field_sarray_enum(rbk_sel_e, dse_rd_bk, OVM_ALL_ON)
 		`ovm_field_sarray_enum(rbk_sel_e, spu_rd_bk, OVM_ALL_ON)
 		`ovm_field_sarray_int(bp_imm, OVM_ALL_ON)
 		`ovm_field_int(dse_imm, OVM_ALL_ON)
 		`ovm_field_int(spu_imm, OVM_ALL_ON)
-///		`ovm_field_int(cancel, OVM_ALL_ON)
   `ovm_object_utils_end
-  
+
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+		foreach(fu[i])
+		  if(fu[i].en)
+		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+	endfunction : do_print
+	  
 	function new (string name = "tr_ise2rfm");
 		super.new(name);
 		foreach(fu[i])
@@ -441,7 +406,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   rand rbk_sel_e bp_rf_dse;
   
 	`ovm_object_utils_begin(tr_ise2spa)
-	  `ovm_field_sarray_object(fu, OVM_ALL_ON)
+	  `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
 	  `ovm_field_enum(pr_merge_e, fmerge, OVM_ALL_ON)
 	  `ovm_field_int(subv, OVM_ALL_ON)
 	  `ovm_field_int(vec_mode, OVM_ALL_ON)
@@ -450,7 +415,14 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  `ovm_field_int(bp_rf_dse_wp, OVM_ALL_ON)
 	  `ovm_field_enum(rbk_sel_e, bp_rf_dse, OVM_ALL_ON)
   `ovm_object_utils_end
-  
+
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+		foreach(fu[i])
+		  if(fu[i].en)
+		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+	endfunction : do_print
+	  
   constraint dist_vars{
     subv dist {0:=5, 1:=5};
     vec_mode inside {[1:cyc_vec]};
