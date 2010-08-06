@@ -71,10 +71,9 @@ class ip4_tlm_ife extends ovm_component;
       vn.ise[1].inst_en = 1;
       vn.ise[1].tid = ise.tid;
       vn.ise[1].fg.fill(data);
-      if(ise.cancel)
-        foreach(vn.ise[i])
-          if(vn.ise[i] != null && vn.ise[i].tid == ise.tid_cancel)
-            vn.ise[i] = null;
+      foreach(vn.ise[i])
+        if(vn.ise[i] != null && ise.cancel[vn.ise[i].tid])
+          vn.ise[i] = null;
     end
   endfunction
   

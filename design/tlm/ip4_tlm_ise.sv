@@ -40,8 +40,8 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ise2spu spu[stage_ise:1];
   tr_ise2dse dse[stage_ise:1];
   
-  uchar tid_iss_l, tid_fet_l, tid_ife_cancel;
-  bit ife_cancel;
+  uchar tid_iss_l, tid_fet_l;
+  bit cancel[num_thread];
   ip4_tlm_ise_sr sr;
     
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
@@ -56,8 +56,7 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_int(tid_iss_l, OVM_ALL_ON)
     `ovm_field_int(tid_fet_l, OVM_ALL_ON)
-    `ovm_field_int(tid_ife_cancel, OVM_ALL_ON)
-    `ovm_field_int(ife_cancel, OVM_ALL_ON)
+    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
     `ovm_field_object(sr, OVM_ALL_ON)
   `ovm_component_utils_end
 
@@ -85,7 +84,8 @@ class ise_thread_inf extends ovm_component;
   bit en_spu, en_dse, en_vec, en_fu[num_fu];
   bit priv_mode,  ///privilege running status
       decoded,
-      decode_error;
+      decode_error,
+      cancel;
   uchar wcnt, vec_mode;
   
   uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
@@ -173,6 +173,7 @@ class ise_thread_inf extends ovm_component;
   endfunction : map_iaddr
 
   function void cyc_new();
+    cancel = 0;
     if(wcnt != 0) wcnt--;
     if(ts == ts_w_pip && wcnt == 0)
       ts = ts_rdy;
@@ -371,12 +372,14 @@ class ise_thread_inf extends ovm_component;
 
   function void flush();
     ibuf_level = 0;
-    pd_ifet = 0;
     igrp_bytes = 0;
     decoded = 0;
     decode_error = 0;
-    if(pd_ifet != 0)
-      ts = ts_w_ife;
+    pd_ifet = 0;
+    if(wcnt > 0)
+      ts = ts_w_pip;
+    else
+      ts = ts_rdy;
   endfunction : flush
   
   function void retrieve_pc_l();
@@ -418,9 +421,9 @@ class ise_thread_inf extends ovm_component;
     if(pd_ifet > 0)
       pd_ifet--;
     
-    if(ts == ts_w_ife) begin
-      ovm_report_info("update_inst", $psprintf("ts_w_ife, pc:0x%0h, os:%0h, pd:%0d", pc, os, pd_ifet), OVM_HIGH);
-      if(pd_ifet == 0)  ts = ts_rdy;
+    if(cancel) begin
+      ovm_report_info("update_inst", $psprintf("cancel, pc:0x%0h, os:%0h, pd:%0d", pc, os, pd_ifet), OVM_HIGH);
+      return;
     end
     else
       ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, pd:%0d, ibuf lv %0d->%0d", pc, os, pd_ifet, level_l, ibuf_level), OVM_HIGH);
@@ -497,6 +500,7 @@ class ise_thread_inf extends ovm_component;
         i_fu[fid].fill_spa(ci_spa[i]);
       end
       ci_spa[i].subv = i;
+      ci_spa[i].vec_mode = vec_mode;
     end
   endfunction : fill_iss
 
@@ -547,9 +551,6 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(cnt_pr_wr, OVM_ALL_ON)
     `ovm_field_sarray_int(cnt_srf_wr, OVM_ALL_ON)
     `ovm_field_sarray_int(cnt_vrf_wr, OVM_ALL_ON)
-///    `ovm_field_object(v, OVM_ALL_ON + OVM_NOPRINT)
-///    `ovm_field_object(vn, OVM_ALL_ON + OVM_NOPRINT)
-///    `ovm_field_sarray_object(tinf, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
   
   function void enter_exp(input uchar tid, ise_exp_t err);
@@ -709,7 +710,7 @@ class ip4_tlm_ise extends ovm_component;
     foreach(tinf[i])
       tinf[i].cyc_new();
     
-    vn.ife_cancel = 0;
+    vn.cancel = '{default : 0};
     
     for(int i = 0; i < (cyc_vec - 1); i++) begin
       ci_rfm[i] = ci_rfm[i+1];
@@ -746,8 +747,8 @@ class ip4_tlm_ise extends ovm_component;
         v.fm_ife.inst_en = 0;
     end
 
-    if(v.fm_ife != null && v.fm_ife.tid == v.tid_ife_cancel && v.ife_cancel)
-      v.fm_ife.inst_en = 0;
+    if(v.fm_ife != null && v.cancel[v.fm_ife.tid])
+      v.fm_ife = null;
                 
     for(int i = stage_exe_vwbp; i > stage_exe_dwbp; i--)
       vn.fm_dse[i] = v.fm_dse[i-1];  
@@ -816,24 +817,18 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     foreach(tinf[i])
-      if(tinf[i].ts == ts_w_ife) begin
+      if(tinf[i].cancel) begin
         if(to_ife == null) to_ife = tr_ise2ife::type_id::create("to_ife", this);
-        to_ife.cancel = 1;
-        to_ife.tid_cancel = i;
-        vn.ife_cancel = 1;
-        vn.tid_ife_cancel = i;
-        tinf[i].ts = ts_rdy;
+        to_ife.cancel[i] = 1;
+        vn.cancel[i] = 1;
       end
     
     if(v.fm_dse[stage_exe_vwbp] != null && v.fm_dse[stage_exe_vwbp].cancel) begin
       tr_dse2ise dse = v.fm_dse[stage_exe_vwbp];
-      if(to_spa != null) to_spa = tr_ise2spa::type_id::create("to_spa", this);
-      to_spa.tid_cancel = dse.tid;
-      to_spa.cancel = 1;
+      if(to_spa == null) to_spa = tr_ise2spa::type_id::create("to_spa", this);
+      to_spa.cancel[dse.tid] = 1;
     end
       
-///    iinf.cyc_new();
-    
     ///------------req to other module----------------
     if(to_rfm != null) void'(rfm_tr_port.nb_transport(to_rfm, to_rfm));
     if(to_spu != null) void'(spu_tr_port.nb_transport(to_spu, to_spu));

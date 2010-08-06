@@ -42,15 +42,16 @@ class ip4_tlm_spu extends ovm_component;
   local bit cm[num_thread][cyc_vec][num_sp];
   local word msc[num_thread][cyc_vec][num_sp];
   local bit pr[num_thread][num_pr:1][cyc_vec][num_sp];
+  local uchar exe_mode[num_thread];
+  local bit [num_sp-1:0][6:0] exp_flag[num_thread][cyc_vec][num_fu];
   
   ///buffer for branch infos
   local bit b_pd[num_thread], b_nmsk[num_thread], b_inv[num_thread];
-  local uchar b_rdy[num_thread], b_adr[num_thread];///, b_rot_adr[num_thread];
+  local uchar b_rdy[num_thread], b_adr[num_thread];
   local br_opcode_e bop[num_thread];
   local msc_opcode_e sop[num_thread];
   local msk_opcode_e mop[num_thread];
   local ushort popcnt[num_thread];
-///  local bit b_rot_up[num_thread], b_rot_val[num_thread], b_ec_nzo[num_thread];
   
   `ovm_component_utils_begin(ip4_tlm_spu)
   `ovm_component_utils_end
@@ -102,17 +103,17 @@ class ip4_tlm_spu extends ovm_component;
     to_rfm = v.rfm[stage_rrf_swbp];
     
     ///----------process data---------------------
-    ///write back predication register results
+    ///write back predication register results, exp_flag
     if(v.fm_spa != null && v.fm_ise[stage_rrf_vwb0] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_vwb0];
       tr_spa2spu spa = v.fm_spa;
-///      ovm_report_info("SPU", "write back SPA pres", OVM_HIGH);
+      ovm_report_info("SPU", "write back SPA pres", OVM_FULL);
+      exp_flag[ise.tid][spa.subv] = spa.exp_flag;
+      
       pr[ise.tid][ise.pr_wr_adr0][ise.subv] = spa.pres_cmp0;
       pr[ise.tid][ise.pr_wr_adr1][ise.subv] = spa.pres_cmp1;
       if(v.fm_dse != null)
         pr[ise.tid][ise.pr_wr_adr2][ise.subv] = v.fm_dse.pres;
-      /// used for op_grag, op_vroru, op_vsru, op_vslu
-///      pr[ise.tid][ise.pr_up_adr][ise.subv] = spa.pres_update;
       if(ise.op inside {op_br, op_fcr} && b_pd[ise.tid] && b_rdy[ise.tid] > 0)
         b_rdy[ise.tid]--;
     end
@@ -122,6 +123,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_ise2spu ise = v.fm_ise[stage_rrf_rrc];
       to_spa = tr_spu2spa::type_id::create("to_spa", this);
       to_dse = tr_spu2dse::type_id::create("to_dse", this);
+      to_spa.exe_mode = exe_mode[ise.tid];
       foreach(to_spa.fu[fid]) begin
         to_spa.fu[fid].emsk = ise.pr_rd_adr == 0 ? '{default:1} : pr[ise.tid][ise.pr_rd_adr][ise.subv];
         if(ise.pr_inv[fid])
@@ -149,7 +151,7 @@ class ip4_tlm_spu extends ovm_component;
       bit pr_spu = 0, pr_tmp[cyc_vec][num_sp];
       
       if(ise.spu_start) begin
-///        ovm_report_info("SPU", "process SPU inst", OVM_HIGH);
+        ovm_report_info("SPU", "process SPU inst", OVM_FULL);
         foreach(pr_tmp[i,j]) begin
           pr_tmp[i][j] = ise.pr_rd_adr_spu == 0 ? 1 : pr[ise.tid][ise.pr_rd_adr_spu][i][j];
           if(ise.pr_inv_spu)
@@ -213,12 +215,8 @@ class ip4_tlm_spu extends ovm_component;
         sop[ise.tid] = ise.sop;
         bop[ise.tid] = ise.bop;
         popcnt[ise.tid] = v.fm_rfm[stage_rrf_rrc1] == null ? 0 : v.fm_rfm[stage_rrf_rrc1].op0;
-///        b_rot_up[ise.tid] = ise.pr_up_en_rot;
-///        b_rot_val[ise.tid] = ise.pr_up_val_rot;
-///        b_ec_nzo[ise.tid] = ise.pr_up_fnaz_rot;
         b_pd[ise.tid] = 1;
         b_adr[ise.tid] = ise.pr_rd_adr_spu;
-///        b_rot_adr[ise.tid] = ise.pr_up_adr_rot;
         b_nmsk[ise.tid] = ise.pr_nmsk_spu;
         b_inv[ise.tid] = ise.pr_inv_spu;
         if(ise.pr_br_dep) begin
@@ -267,12 +265,8 @@ class ip4_tlm_spu extends ovm_component;
              emsk_az = 0;
              break;
           end
-        
-///        foreach(emsk[j,k]) 
-///          if(!emsk[j][k] && b_rot_up[tid])
-///            pr[tid][b_rot_adr[tid]][j][k] = b_rot_val[tid];
-        
-        if(is_nop)/// || ec_nzo)
+
+        if(is_nop)
           to_ise.br_taken = 0;
         else
           case(bop[adr])
@@ -302,8 +296,6 @@ class ip4_tlm_spu extends ovm_component;
             ilm[tid] = emsk;
             cm[tid] = emsk;
           end
-///          else if(ec_nzo)
-///            cm[tid] = ilm[tid];
         mop_cont  :
           if(!emsk_az)
             cm[tid] = emsk;
