@@ -414,8 +414,9 @@ class inst_c extends ovm_object;
      sel = rbk_sel_e'(sels0 + cyc * num_srf_bks + bk);
     end
     else if(adr > 15) begin
-      cyc = adr >> (bits_srf_bks + 3);
-      bk = (adr >> 3) & ~{'1 << bits_srf_bks};
+      adr -= 16;
+      cyc = adr >> bits_vrf_bks;
+      bk = adr & ~{'1 << bits_vrf_bks};
       vrf = (vrf > cyc) ? vrf : cyc;
       vrf_en[cyc][bk] = 1;
       has_vec = 1;

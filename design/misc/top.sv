@@ -1,5 +1,10 @@
+`include "ovm_macros.svh"
+
 module top;
   `include "ip4_tlm_ts.svh"
+  import ovm_pkg::*;
+  import ip4_tlm_pkg::*;
+  
   tlm_vif_object vif;
   bit clk;
   tlm_sys_if sysif(.*);

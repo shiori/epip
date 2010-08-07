@@ -400,6 +400,9 @@ endclass
 `include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
 
+`include "../misc/test_sys.sv"
+`include "../misc/test.sv"
+
 endpackage : ip4_tlm_pkg
 
 `endif
