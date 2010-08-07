@@ -52,7 +52,8 @@ class ip4_tlm_rfm extends ovm_component;
   local tr_rfm2spa to_spa;
   local tr_rfm2spu to_spu;
   local tr_rfm2dse to_dse;
-      
+  local uchar sr_exp_flag[num_thread][cyc_vec][num_sp];
+  
   `ovm_component_utils_begin(ip4_tlm_rfm)
   `ovm_component_utils_end
       
@@ -102,6 +103,7 @@ class ip4_tlm_rfm extends ovm_component;
       
       foreach(spa.fu[fid]) begin
         ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s...", fid, fu_cfg[fid].name), OVM_HIGH);
+        sr_exp_flag[spa.fu[fid].tid][spa.fu[fid].subv] = spa.fu[fid].exp_flag;
         bk0 = spa.fu[fid].vrf_wr_bk & ('1 - 'b01);
         bk1 = spa.fu[fid].vrf_wr_bk & ('1 - 'b01) + 'b01;
         foreach(spa.fu[0].wen[sp])

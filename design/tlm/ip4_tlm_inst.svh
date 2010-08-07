@@ -329,7 +329,7 @@ class inst_c extends ovm_object;
   uchar cnt_vrf_wr, cnt_srf_wr, pr_adr_rd, pr_adr_wr[2], fuid,
         grp_wr[2], adr_wr[2], bk_wr[2],
         grp_rmsg[2], adr_rmsg[2], bk_rmsg[2];
-  uint imm;
+  uint imm, os;
   bit vrf_en[cyc_vec][num_vrf_bks], srf_en[cyc_vec][num_srf_bks], 
       wr_en[2], pr_rd_en, pr_wr_en[2], pr_br_dep;
   cmp_opcode_e cmp_op;
@@ -367,6 +367,7 @@ class inst_c extends ovm_object;
 ///    `ovm_field_sarray_int(adr_rmsg, OVM_ALL_ON)
 ///    `ovm_field_sarray_int(bk_rmsg, OVM_ALL_ON)
     `ovm_field_int(imm, OVM_ALL_ON)
+    `ovm_field_int(os, OVM_ALL_ON)
     `ovm_field_sarray_int(wr_en, OVM_ALL_ON)
     `ovm_field_enum(cmp_opcode_e, cmp_op, OVM_ALL_ON)
     `ovm_field_enum(pr_merge_e, merge_op, OVM_ALL_ON)
@@ -518,7 +519,7 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
-      imm = {inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
+      os = {{word_width{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       set_rf_en(inst.i.b.fcr.ja, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       op = op_fcr;
       case(inst.i.op)
@@ -533,7 +534,8 @@ class inst_c extends ovm_object;
       msc_op = inst.i.b.fcr.su ? (inst.i.b.fcr.l ? sop_store : sop_pop2n) : sop_nop;
     end
     else if(inst.i.op inside {iop_bs}) begin
-      imm = {inst.i.b.b.sc, inst.i.b.b.os};
+      imm = inst.i.b.b.sc;
+      os = {{word_width{inst.i.b.b.os[$bits(inst.i.b.b.os)-1]}}, inst.i.b.b.os};
       op = op_br;
       case(inst.i.op)
       iop_b   : begin pr_br_dep = 0; br_op = bop_az; end

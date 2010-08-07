@@ -43,7 +43,6 @@ class ip4_tlm_spu extends ovm_component;
   local word msc[num_thread][cyc_vec][num_sp];
   local bit pr[num_thread][num_pr:1][cyc_vec][num_sp];
   local uchar exe_mode[num_thread];
-  local bit [num_sp-1:0][6:0] exp_flag[num_thread][cyc_vec][num_fu];
   
   ///buffer for branch infos
   local bit b_pd[num_thread], b_nmsk[num_thread], b_inv[num_thread];
@@ -103,13 +102,11 @@ class ip4_tlm_spu extends ovm_component;
     to_rfm = v.rfm[stage_rrf_swbp];
     
     ///----------process data---------------------
-    ///write back predication register results, exp_flag
+    ///write back predication register results
     if(v.fm_spa != null && v.fm_ise[stage_rrf_vwb0] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_vwb0];
       tr_spa2spu spa = v.fm_spa;
       ovm_report_info("SPU", "write back SPA pres", OVM_FULL);
-      exp_flag[ise.tid][spa.subv] = spa.exp_flag;
-      
       pr[ise.tid][ise.pr_wr_adr0][ise.subv] = spa.pres_cmp0;
       pr[ise.tid][ise.pr_wr_adr1][ise.subv] = spa.pres_cmp1;
       if(v.fm_dse != null)
@@ -232,9 +229,8 @@ class ip4_tlm_spu extends ovm_component;
     foreach(b_pd[tid])
       if(b_pd[tid] && b_rdy[tid] == 0) begin
         uchar adr = b_adr[tid];
-        bit is_nop = mop[adr] == mop_nop, emsk_az = 1, update_msc = 0;///ec_nzo = b_ec_nzo[tid], 
+        bit is_nop = mop[adr] == mop_nop, emsk_az = 1, update_msc = 0;
         bit emsk[cyc_vec][num_sp] = adr == 0 ? '{default:1} : pr[tid][adr];
-        
         
         ovm_report_info("SPU", $psprintf("process branch for thread %0d", tid), OVM_HIGH);
         b_pd[tid] = 0;

@@ -33,7 +33,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_rfm2ise fm_rfm;
   tr_ife2ise fm_ife;
   tr_spa2ise fm_spa;
-  tr_dse2ise fm_dse[stage_exe_vwbp:stage_exe_dwbp];
+  tr_dse2ise fm_dse[stage_ise_vwbp:stage_ise_dc];
   
   tr_ise2rfm rfm[stage_ise:1];
   tr_ise2spa spa[stage_ise:1];
@@ -43,6 +43,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   uchar tid_iss_l, tid_fet_l;
   bit cancel[num_thread];
   ip4_tlm_ise_sr sr;
+  uint pcs[stage_ise_vwb:1];
     
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -58,6 +59,7 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_int(tid_fet_l, OVM_ALL_ON)
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
     `ovm_field_object(sr, OVM_ALL_ON)
+    `ovm_field_sarray_int(pcs, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function new(string name, ovm_component parent);
@@ -93,7 +95,7 @@ class ise_thread_inf extends ovm_component;
   uchar pd_ifet;
   
   inst_c i_spu, i_dse, i_fu[num_fu];
-  uint pc, pc_l;  ///pc_br
+  uint pc, pc_br;
   bit br_pred;
     
   `ovm_component_utils_begin(ise_thread_inf)
@@ -123,7 +125,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(vec_mode, OVM_ALL_ON)
     `ovm_field_int(pd_ifet, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
-    `ovm_field_int(pc_l, OVM_ALL_ON)
+    `ovm_field_int(pc_br, OVM_ALL_ON)
     `ovm_field_int(br_pred, OVM_ALL_ON)
     `ovm_field_sarray_int(vrf_map, OVM_ALL_ON)
     `ovm_field_sarray_int(srf_map, OVM_ALL_ON)
@@ -159,7 +161,7 @@ class ise_thread_inf extends ovm_component;
     ts = ts_disabled;
     priv_mode = 0;
     pc = cfg_start_adr;
-    pc_l = cfg_start_adr;
+    pc_br = cfg_start_adr;
     vec_mode = cyc_vec - 1;
     decoded = 0;
     decode_error = 0;
@@ -176,8 +178,6 @@ class ise_thread_inf extends ovm_component;
   function void cyc_new();
     cancel = 0;
     if(wcnt != 0) wcnt--;
-///    if(ts == ts_w_pip && wcnt == 0)
-///      ts = ts_rdy;
   endfunction : cyc_new
 
   function void exe_priv();
@@ -377,16 +377,14 @@ class ise_thread_inf extends ovm_component;
     decoded = 0;
     decode_error = 0;
     pd_ifet = 0;
-///    if(wcnt > 0)
-///      ts = ts_w_pip;
-///    else
     ts = ts_rdy;
   endfunction : flush
   
-  function void retrieve_pc_l();
+  function void retrieve_pc(uint adr);
     flush();
-    pc = pc_l;
-   endfunction : retrieve_pc_l
+    pc = adr;
+    cancel = 1;
+   endfunction : retrieve_pc
 
   function void msg_wait();
   endfunction : msg_wait
@@ -394,9 +392,15 @@ class ise_thread_inf extends ovm_component;
   function bit br_pre_miss(input bit br);
     if(ts == ts_w_b)
       ts = ts_rdy;
-    if(br == br_pred)
+    
+    if(br != br_pred) begin
+      flush();
+      pc = pc_br;
+      cancel = 1;
+      return 1;
+    end
+    else
       return 0;
-    return 1;
   endfunction : br_pre_miss
 
   function bit can_req_ifet();
@@ -558,6 +562,7 @@ class ip4_tlm_ise extends ovm_component;
   function void enter_exp(input uchar tid, ise_exp_t err);
     ise_thread_inf tif = tinf[tid];
     tif.priv_mode = 1;
+    tif.cancel = 1;
     tif.pc = v.sr.ebase;
     case(err)
     exp_decode_err  : begin end
@@ -569,17 +574,6 @@ class ip4_tlm_ise extends ovm_component;
   
   function void exe_priv(input inst_c i);
   endfunction : exe_priv
-  
-  function void update_block(input tr_spa2ise spa, tr_dse2ise dse);
-    if(spa != null)
-      no_fu = spa.no_fu;
-    if(dse == null)
-      return;
-    no_ld = dse.no_ld;
-    no_st = dse.no_st;
-    no_smsg = dse.no_smsg;
-    no_rmsg = dse.no_rmsg;
-  endfunction : update_block
 
   function bit can_iss(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
@@ -634,14 +628,13 @@ class ip4_tlm_ise extends ovm_component;
 
   function void issue(input uchar tid);
     ise_thread_inf tif = tinf[tid];
+    vn.pcs[1] = tif.pc;
     if(tif.decode_error) begin
       enter_exp(tid, exp_decode_err);
       return;
     end
     
     tif.ibuf = tif.ibuf[tif.igrp_bytes:$];
-///    for(int i = 0; i< tif.igrp_bytes; i++)
-///      void'(tif.ibuf.pop_front());
     tif.pc += tif.igrp_bytes;
     tif.fill_iss(ci_rfm, ci_spa, ci_spu, ci_dse);
     tif.decoded = 0;
@@ -649,9 +642,12 @@ class ip4_tlm_ise extends ovm_component;
     
     if(tif.wcnt_n > tif.wcnt)
       tif.wcnt = tif.wcnt_n;
-    if(tif.en_spu && tif.i_spu.is_pd_br())
+    if(tif.en_spu && tif.i_spu.is_pd_br()) begin
       tif.ts = ts_w_b;
-              
+      tif.pc_br = tif.pc + tif.i_spu.os;
+      tif.br_pred = 0;
+    end
+    
     /// spu or scalar dse issue
     if(tif.en_spu) begin
       if(tif.i_spu.is_priv()) begin
@@ -684,21 +680,19 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : issue
       
   function void comb_proc();
-///    bit spu_from_vec = 0;
-    
     ovm_report_info("ISE", "comb_proc procing...", OVM_FULL); 
     
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_spa != null) end_tr(v.fm_spa);
     if(v.fm_rfm != null) end_tr(v.fm_rfm);
     if(v.fm_ife != null) end_tr(v.fm_ife);
-    if(v.fm_dse[stage_exe_dwbp] != null) end_tr(v.fm_dse[stage_exe_dwbp]);
+    if(v.fm_dse[stage_ise_dc] != null) end_tr(v.fm_dse[stage_ise_dc]);
     
     vn.fm_spu = null;
     vn.fm_spa = null;
     vn.fm_rfm = null;
     vn.fm_ife = null;
-    vn.fm_dse[stage_exe_dwbp] = null;
+    vn.fm_dse[stage_ise_dc] = null;
     
     for(int i = stage_ise; i > 1; i--) begin
       vn.rfm[i] = v.rfm[i-1];  
@@ -710,7 +704,10 @@ class ip4_tlm_ise extends ovm_component;
     vn.spa[1] = null;
     vn.spu[1] = null;
     vn.dse[1] = null;
-          
+    
+    for(int i = stage_ise_vwb; i > 1; i--)
+      vn.pcs[i] = v.pcs[i-1];
+      
     foreach(tinf[i])
       tinf[i].cyc_new();
     
@@ -744,27 +741,27 @@ class ip4_tlm_ise extends ovm_component;
     no_st = 0;
     no_smsg = 0;
     no_rmsg = 0;
-    
+
+    for(int i = stage_ise_vwbp; i > stage_ise_dc; i--)
+      vn.fm_dse[i] = v.fm_dse[i-1];  
+          
+    ///cancel condition 1 branch mispredication
     if(v.fm_spu != null && v.fm_spu.br_rsp && tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken)) begin
-      tinf[v.fm_spu.tid].retrieve_pc_l();
+///      tinf[v.fm_spu.tid].retrieve_pc();
       if(v.fm_ife != null && v.fm_ife.tid == v.fm_spu.tid)
         v.fm_ife.inst_en = 0;
     end
-
-    if(v.fm_ife != null && v.cancel[v.fm_ife.tid])
-      v.fm_ife = null;
-                
-    for(int i = stage_exe_vwbp; i > stage_exe_dwbp; i--)
-      vn.fm_dse[i] = v.fm_dse[i-1];  
     
-    update_block(v.fm_spa, v.fm_dse[stage_exe_dwbp]);
+    ///cancel condition 2, spa exp
+    if(v.fm_spa != null && v.fm_spa.exp) begin
+      tinf[v.fm_spa.tid].retrieve_pc(v.pcs[stage_ise_vwb]);
+    end
     
-    if(v.fm_ife != null && v.fm_ife.inst_en)
-      tinf[v.fm_ife.tid].update_inst(v.fm_ife.fg);
-    if(v.fm_dse[stage_exe_dwbp] != null) begin
-      tr_dse2ise dse = v.fm_dse[stage_exe_dwbp];
+    ///cancel condition 2 dse exp or cache miss
+    if(v.fm_dse[stage_ise_dc] != null) begin
+      tr_dse2ise dse = v.fm_dse[stage_ise_dc];
       if(dse.cancel) begin
-        tinf[dse.tid].retrieve_pc_l();
+        tinf[dse.tid].retrieve_pc(v.pcs[stage_ise_vwb]);
         if(dse.exp)
           enter_exp(dse.tid, exp_dse_err);
       end
@@ -773,6 +770,19 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
+    ///update no_* for issue & check
+    if(v.fm_spa != null)
+      no_fu = v.fm_spa.no_fu;
+      
+    if(v.fm_dse[stage_ise_dc] != null) begin
+      tr_dse2ise dse = v.fm_dse[stage_ise_dc];
+      no_ld = dse.no_ld;
+      no_st = dse.no_st;
+      no_smsg = dse.no_smsg;
+      no_rmsg = dse.no_rmsg;
+    end
+    
+    ///check & issue, cancel condition 3, ise decode err, priv enter.
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_iss_l;
@@ -786,7 +796,14 @@ class ip4_tlm_ise extends ovm_component;
         break;
       end
     end
-    
+
+    ///cancel from one cycle delayed
+    if(v.fm_ife != null && v.cancel[v.fm_ife.tid])
+      v.fm_ife = null;
+      
+    ///update ife data into tinf
+    if(v.fm_ife != null && v.fm_ife.inst_en)
+      tinf[v.fm_ife.tid].update_inst(v.fm_ife.fg);
   endfunction
   
   function void req_proc();
@@ -808,6 +825,7 @@ class ip4_tlm_ise extends ovm_component;
     to_spu = v.spu[stage_ise];
     to_dse = v.dse[stage_ise];
     
+    ///ife req search
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_fet_l;
       tid = tid & ~('1 << bits_tid);
@@ -820,6 +838,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
+    ///delay cancel one cycle
     foreach(tinf[i])
       if(tinf[i].cancel) begin
         if(to_ife == null) to_ife = tr_ise2ife::type_id::create("to_ife", this);
@@ -827,8 +846,9 @@ class ip4_tlm_ise extends ovm_component;
         vn.cancel[i] = 1;
       end
     
-    if(v.fm_dse[stage_exe_vwbp] != null && v.fm_dse[stage_exe_vwbp].cancel) begin
-      tr_dse2ise dse = v.fm_dse[stage_exe_vwbp];
+    ///send dse cancel to spa
+    if(v.fm_dse[stage_ise_vwbp] != null && v.fm_dse[stage_ise_vwbp].cancel) begin
+      tr_dse2ise dse = v.fm_dse[stage_ise_vwbp];
       if(to_spa == null) to_spa = tr_ise2spa::type_id::create("to_spa", this);
       to_spa.cancel[dse.tid] = 1;
     end
@@ -889,7 +909,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_dse[stage_exe_dwbp] = req;
+    vn.fm_dse[stage_ise_dc] = req;
     return 1;
   endfunction : nb_transport_dse
     

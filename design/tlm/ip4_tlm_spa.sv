@@ -79,7 +79,7 @@ class ip4_tlm_spa extends ovm_component;
   extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, uchar,
                                       const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
                                       ref bit pres0[num_sp], pres1[num_sp], word res0[num_sp], r1[num_sp],
-                                      inout bit [num_sp-1:0][6:0], bit);
+                                      inout uchar exp_flag[num_sp], bit);
   // endfunction
 
   function void comb_proc();
@@ -141,8 +141,13 @@ class ip4_tlm_spa extends ovm_component;
       
       if(ise.subv == 0) begin
         cancel[tid_l] = exe_exp;
-        if(exe_exp) to_dse = tr_spa2dse::type_id::create("to_dse", this);
-        to_dse.cancel[tid_l] = exe_exp;
+        if(exe_exp) begin
+          to_dse = tr_spa2dse::type_id::create("to_dse", this);
+          to_ise = tr_spa2ise::type_id::create("to_ise", this);
+          to_dse.cancel[tid_l] = 1;
+          to_ise.tid = tid_l;
+          to_ise.exp = 1;
+        end
         exe_exp = 0;
       end
       tid_l = ise.tid;
@@ -152,13 +157,14 @@ class ip4_tlm_spa extends ovm_component;
         if(!fu.en) continue;
         ovm_report_info("SPA", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
       
-        to_spu.tid[fid] = ise.tid;
-        to_spu.subv[fid] = ise.subv;
+///        to_spu.tid[fid] = ise.tid;
+///        to_spu.subv[fid] = ise.subv;
       
         to_rfm.fu[fid].vrf_wr_grp = fu.vrf_wr_grp;
         to_rfm.fu[fid].vrf_wr_adr = fu.vrf_wr_adr;
         to_rfm.fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
         to_rfm.fu[fid].wen = spu.fu[fid].emsk;
+        to_rfm.fu[fid].tid = ise.tid;
         
         if(fu.op inside {bp_ops}) begin
           word spu_res;
@@ -181,7 +187,7 @@ class ip4_tlm_spa extends ovm_component;
         end
         proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
                   to_spu.pres_cmp0, to_spu.pres_cmp1, to_rfm.fu[fid].res0, to_rfm.fu[fid].res1,
-                  to_spu.exp_flag[fid], exe_exp);
+                  to_rfm.fu[fid].exp_flag, exe_exp);
       end
     end
     
@@ -208,7 +214,7 @@ class ip4_tlm_spa extends ovm_component;
           
         proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
                   pres, pres, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
-                  to_spu.exp_flag[fid], exe_exp);
+                  to_rfm.fu[fid].exp_flag, exe_exp);
       end
     end
     
@@ -219,11 +225,12 @@ class ip4_tlm_spa extends ovm_component;
         if(!sfu.en[fid]) continue;
         if(to_spu == null) to_spu = tr_spa2spu::type_id::create("to_spu", this);
         if(to_rfm == null) to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-        to_spu.subv[fid] = v.sfu[stage_eex].subv;
-        to_spu.tid[fid] = v.sfu[stage_eex].tid;
-        to_rfm.fu[fid].res0 = v.sfu[stage_eex].res0[fid];
-        to_rfm.fu[fid].res1 = v.sfu[stage_eex].res1[fid];
-        to_rfm.fu[fid].wen = v.sfu[stage_eex].emsk[fid];
+///        to_spu.subv[fid] = sfu.subv;
+///        to_spu.tid[fid] = sfu.tid;
+        to_rfm.fu[fid].tid = sfu.tid;
+        to_rfm.fu[fid].res0 = sfu.res0[fid];
+        to_rfm.fu[fid].res1 = sfu.res1[fid];
+        to_rfm.fu[fid].wen = sfu.emsk[fid];
         if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
           && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
           ovm_report_warning("SPA", "sfu writeback conflict");
@@ -388,7 +395,7 @@ endclass : ip4_tlm_spa
 function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_merge_e fmerge, 
                                     uchar subv, exe_mode, const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
                                     ref bit pres0[num_sp], pres1[num_sp], word res0[num_sp], r1[num_sp],
-                                    inout bit [num_sp-1:0][6:0] exp_flag, bit exp);
+                                    inout uchar exp_flag[num_sp], bit exp);
   bit pres[num_sp];
   bit[word_width:0] op0[num_sp], op1[num_sp], op2[num_sp], op3[num_sp], r0[num_sp] = '{default:0};
   

@@ -225,13 +225,15 @@ endclass : tr_rfm2spa
 class spa2rfm_fu extends ovm_object;
   rand word res0[num_sp],	res1[num_sp], res_vsbp;
   rand bit dw, wen[num_sp];
-  rand uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv;
+  rand uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv, tid;
+  rand uchar exp_flag[num_sp];
   
 	constraint valid_vars{
 		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
 		vrf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		vrf_wr_bk inside {[0:num_vrf_bks-1]};
 		subv dist {0:=5, 1:=5};
+		tid < num_thread;
 		foreach(wen[i])
 			wen[i] dist {0:=1, 1:=9};				
 	}
@@ -246,6 +248,7 @@ class spa2rfm_fu extends ovm_object;
     `ovm_field_int(vrf_wr_grp, OVM_ALL_ON)
     `ovm_field_int(vrf_wr_adr, OVM_ALL_ON)
     `ovm_field_int(vrf_wr_bk, OVM_ALL_ON)
+    `ovm_field_sarray_int(exp_flag, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "spa2rfm_fu");
@@ -469,14 +472,19 @@ endclass : tr_ise2spa
 
 class tr_spa2ise extends ovm_sequence_item;
   rand bit no_fu[num_fu];
+  rand bit exp;
+  rand uchar tid;
   
 	`ovm_object_utils_begin(tr_spa2ise)
 	  `ovm_field_sarray_int(no_fu, OVM_ALL_ON)
+	  `ovm_field_int(exp, OVM_ALL_ON)
+	  `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spa2ise");
 		super.new(name);
 		no_fu = '{default : 0};
+		exp = 0;
 	endfunction : new
 	
 endclass : tr_spa2ise
@@ -527,40 +535,38 @@ endclass : tr_spu2spa
 
 class tr_spa2spu extends ovm_sequence_item;
   rand bit pres_cmp0[num_sp], pres_cmp1[num_sp];///, pres_update[num_sp];
-  rand uchar tid[num_fu], subv[num_fu];
-  rand bit [num_sp-1:0][6:0] exp_flag[num_fu];
+///  rand uchar tid[num_fu], subv[num_fu];
   
-  constraint valid_vars {
-    foreach(tid[i]) {
-      tid[i] < num_thread;
-      subv[i] dist {0:=5, 1:=5};
-    }
-  }
+///  constraint valid_vars {
+///    foreach(tid[i]) {
+///      tid[i] < num_thread;
+///      subv[i] dist {0:=5, 1:=5};
+///    }
+///  }
   
 	`ovm_object_utils_begin(tr_spa2spu)
 	  `ovm_field_sarray_int(pres_cmp0, OVM_ALL_ON)
 	  `ovm_field_sarray_int(pres_cmp1, OVM_ALL_ON)
-	  `ovm_field_sarray_int(exp_flag, OVM_ALL_ON)
-	  `ovm_field_sarray_int(tid, OVM_ALL_ON)
-	  `ovm_field_sarray_int(subv, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(tid, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(subv, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spa2spu");
 		super.new(name);
 	endfunction : new
 
-	function void post_randomize();
-	  static uchar last_subv[num_fu] = '{default:0};
-	  foreach(subv[i]) begin
-  		if(last_subv[i] == 0 || last_subv[i] == (cyc_vec - 1)) begin
-  			last_subv[i] = subv[i];
-  		end
-  		else begin
-  		  last_subv[i]++;
-  			subv[i] = last_subv[i];
-  		end	    
-	  end
-	endfunction : post_randomize
+///	function void post_randomize();
+///	  static uchar last_subv[num_fu] = '{default:0};
+///	  foreach(subv[i]) begin
+///  		if(last_subv[i] == 0 || last_subv[i] == (cyc_vec - 1)) begin
+///  			last_subv[i] = subv[i];
+///  		end
+///  		else begin
+///  		  last_subv[i]++;
+///  			subv[i] = last_subv[i];
+///  		end	    
+///	  end
+///	endfunction : post_randomize
 endclass : tr_spa2spu
 
 ///---------------------------trsaction ise_spu spu_ise------------------------

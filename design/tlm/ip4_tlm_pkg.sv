@@ -120,7 +120,10 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
                 stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
                 stage_rrf_tag     = stage_rrf_ag + 1,               ///3
-                stage_rrf_sel     = stage_rrf_tag + 1;              ///4
+                stage_rrf_sel     = stage_rrf_tag + 1,              ///4
+                stage_ise_vwb     = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp + cyc_vec - 1,
+                stage_ise_vwbp    = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp - 1,
+                stage_ise_dc      = lat_ise + lat_rf + lat_dse;
                                 
 
 parameter uchar ck_stage_sfu1     = stage_eex - stage_rrf_exe,      ///19
