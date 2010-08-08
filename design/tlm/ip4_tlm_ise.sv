@@ -11,7 +11,7 @@
 ///Created by Andy Chen on Mar 16 2010
 
 typedef enum uchar {
-  exp_decode_err,   exp_dse_err,    exp_priv_err
+  exp_decode_err,   exp_dse_err,    exp_priv_err,     exp_msc_err
 }ise_exp_t;
 
 class ip4_tlm_ise_sr extends ovm_object;
@@ -471,7 +471,7 @@ class ise_thread_inf extends ovm_component;
       for(int i = 0; i <= cnt_srf_rd; i++) begin
         if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
         if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
-        i_spu.fill_rfm(ci_rfm[i]);
+        i_spu.fill_rfm(ci_rfm[i], i);
         i_spu.fill_spa(ci_spa[i]);
       end
     end
@@ -482,7 +482,7 @@ class ise_thread_inf extends ovm_component;
       i_dse.fill_dse(ci_dse[0]);      
       for(int i = 0; i <= cnt_dse_rd; i++) begin
         if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
-        i_dse.fill_rfm(ci_rfm[i]);
+        i_dse.fill_rfm(ci_rfm[i], i);
       end
     end
           
@@ -502,11 +502,12 @@ class ise_thread_inf extends ovm_component;
         i_dse.fill_spa(ci_spa[i]);
       foreach(i_fu[fid])
         if(en_fu[fid]) begin
-          i_fu[fid].fill_rfm(ci_rfm[i]);
+          i_fu[fid].fill_rfm(ci_rfm[i], i);
           i_fu[fid].fill_spa(ci_spa[i]);
         end
       ci_spa[i].subv = i;
       ci_spa[i].vec_mode = vec_mode;
+      ci_rfm[i].cyc = i;
     end
   endfunction : fill_iss
 
@@ -568,6 +569,7 @@ class ip4_tlm_ise extends ovm_component;
     exp_decode_err  : begin end
     exp_dse_err     : begin end
     exp_priv_err    : begin end
+    exp_msc_err     : begin end
     endcase
     tif.flush();
   endfunction : enter_exp
@@ -745,10 +747,15 @@ class ip4_tlm_ise extends ovm_component;
     for(int i = stage_ise_vwbp; i > stage_ise_dc; i--)
       vn.fm_dse[i] = v.fm_dse[i-1];  
           
-    ///cancel condition 1 branch mispredication
-    if(v.fm_spu != null && v.fm_spu.br_rsp && tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken)) begin
-///      tinf[v.fm_spu.tid].retrieve_pc();
-      if(v.fm_ife != null && v.fm_ife.tid == v.fm_spu.tid)
+    ///cancel condition 1 branch mispredication, msc overflow
+    if(v.fm_spu != null && v.fm_spu.br_rsp) begin
+      bit cancel;
+      cancel = tinf[v.fm_spu.tid].br_pre_miss(v.fm_spu.br_taken);
+      if(v.fm_spu.msc_top_chg) begin
+        cancel = 1;
+        enter_exp(v.fm_ife.tid, exp_msc_err);
+      end
+      if(v.fm_ife != null && cancel && v.fm_ife.tid == v.fm_spu.tid)
         v.fm_ife.inst_en = 0;
     end
     

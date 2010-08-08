@@ -49,7 +49,7 @@ parameter uchar num_sp            = 8,
                 num_inst_srf      = 16,
                 num_rf_bank       = num_sp;   /// register file bank number, default equal to num_sp
                 
-parameter uchar lat_mac           = 4,
+parameter uchar lat_mac           = 5,
                 lat_sfu           = 16,
                 lat_rf            = 1,
                 lat_rbp           = 1,
@@ -86,12 +86,15 @@ parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
-dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
-spu:    | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
-        0     1      2      3      4      5      6      7      8      9      10     11     12     13     14
-                                          0      1      2      3      4      5      6      7      8      9
-                     0      1      2      3      4      5      6    
+dse:      | rrf | rrc0 |  ag  |  tag |  sel |  dc  | exg0 | exg1 | exg2 | exg3 |
+dse exp:  | rrf | rrc0 |  ag  |  tag |  sel | sel1 | sel2 | sel3 | dexp |
+dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
+spu:      | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
+exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
+cmp:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
+          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
+                                            0      1      2      3      4      5      6      7      8      9      10
+                       0      1      2      3      4      5      6    
   */  
   
 parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
@@ -106,16 +109,14 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_exe         = lat_mac - 1,                    ///3
                 stage_exe_vwbp    = stage_exe + lat_vwbp,           ///4
                 stage_exe_vwb0    = stage_exe_vwbp + 1,             ///5
-                stage_exe_dwbp    = lat_dse - cyc_vec + lat_dwbp,   ///1
-                stage_exe_dwb     = stage_exe_dwbp + 1,             ///2
+                stage_exe_swbp    = lat_dse - cyc_vec + lat_dwbp,   ///1
+                stage_exe_swb     = stage_exe_swbp + 1,             ///2
                 stage_eex         = lat_sfu + cyc_sfu_busy -cyc_vec - 1,     ///27
                 stage_eex_vwbp    = stage_eex + lat_vwbp,           ///28
                 stage_eex_vwb0    = stage_eex_vwbp + 1,             ///29
-                stage_rrf_dwbp    = stage_rrf_rrc + stage_exe_dwbp + 1,    ///6
-                stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
                 stage_ife         = lat_ife - 1,                    ///1
-                stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
+                stage_ag_swb      = lat_dse + lat_dwbp ,            ///5
                 stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
                 stage_rrf_tag     = stage_rrf_ag + 1,               ///3
                 stage_rrf_sel     = stage_rrf_tag + 1,              ///4

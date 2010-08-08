@@ -19,6 +19,7 @@ class ip4_tlm_rfm_vars extends ovm_component;
   tr_rfm2spa spa[cyc_vec];
 ///  tr_rfm2dse dse[cyc_vec];
   tr_rfm2spu spu;
+  word dse_op1[cyc_vec];
   
   `ovm_component_utils_begin(ip4_tlm_rfm_vars)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
@@ -27,6 +28,7 @@ class ip4_tlm_rfm_vars extends ovm_component;
     `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE)
 ///    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_int(dse_op1, OVM_ALL_ON)
     `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
@@ -86,8 +88,10 @@ class ip4_tlm_rfm extends ovm_component;
     to_spu = null;
     to_dse = null;
   
-    for(int i=stage_eex_vwb0; i > 0; i--) 
+    for(int i = stage_eex_vwb0; i > 0; i--) 
       vn.fm_ise[i] = v.fm_ise[i-1];
+    for(int i = cyc_vec - 1; i > 0; i--) 
+      vn.dse_op1[i] = v.dse_op1[i-1];
   endfunction
   
   function void req_proc();
@@ -170,17 +174,14 @@ class ip4_tlm_rfm extends ovm_component;
             read_rf(vn.spa[cyc].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf_l, bp_imm_l, ise.fu[fid].imm);
       end
       
-      if(ise.dse_en) begin
+      if(ise.dse_en && cyc == 0) begin
         ovm_report_info("RFM_RD", $psprintf("Read for DSE cyc %0d ...", cyc), OVM_HIGH);
         if(to_dse == null) to_dse = tr_rfm2dse::type_id::create("to_dse", this);
         foreach(to_dse.base[sp]) begin
           read_rf(to_dse.base[sp], ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
-          read_rf(to_dse.op1[sp], ise.dse_rd_bk[1], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
+          read_rf(vn.dse_op1[ise.cyc][sp], ise.dse_rd_bk[1], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
         end
-        if(cyc == 0) begin
-///          to_dse.op1 = read_rf(ise.dse_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
-          read_rf(to_dse.op2, ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
-        end
+        read_rf(to_dse.op2, ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
       end
             
       if(ise.spu_en && cyc == 0) begin
@@ -316,27 +317,26 @@ endclass : ip4_tlm_rfm
     selv1:    res = cvrf[1][i];
     selv2:    res = cvrf[2][i];
     selv3:    res = cvrf[3][i];
-    selv4:    res = cvrf[4][i];
-    selv5:    res = cvrf[5][i];
-    selv6:    res = cvrf[6][i];
-    selv7:    res = cvrf[7][i];
-    selv8:    res = cvrf[8][i];
-    selv9:    res = cvrf[9][i];
-    selv10:   res = cvrf[10][i];
-    selv11:   res = cvrf[11][i];
-    selv12:   res = cvrf[12][i];
-    selv13:   res = cvrf[13][i];
-    selv14:   res = cvrf[14][i];
-    selv15:   res = cvrf[15][i];
+///    selv4:    res = cvrf[0][i];
+///    selv5:    res = cvrf[1][i];
+///    selv6:    res = cvrf[2][i];
+///    selv7:    res = cvrf[3][i];
+///    selv8:    res = cvrf[0][i];
+///    selv9:    res = cvrf[1][i];
+///    selv10:   res = cvrf[2][i];
+///    selv11:   res = cvrf[3][i];
+///    selv12:   res = cvrf[0][i];
+///    selv13:   res = cvrf[1][i];
+///    selv14:   res = cvrf[2][i];
+///    selv15:   res = cvrf[3][i];
     sels0:    res = csrf[0];
     sels1:    res = csrf[1];
-    sels2:    res = csrf[2];
-    sels3:    res = csrf[3];
-    sels4:    res = csrf[4];
-    sels5:    res = csrf[5];
-    sels6:    res = csrf[6];
-    sels7:    res = csrf[7];
-    sels8:    res = csrf[8];
+///    sels2:    res = csrf[2];
+///    sels3:    res = csrf[3];
+///    sels4:    res = csrf[4];
+///    sels5:    res = csrf[5];
+///    sels6:    res = csrf[6];
+///    sels7:    res = csrf[7];
     selz:     res = 0;
     seli0:    res = bp_imm[0];
     selii:    res = imm;

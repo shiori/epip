@@ -14,7 +14,7 @@ parameter uint SM_SIZE = 2^16;  /// shared memory size 64Kbyte
 
 class ip4_tlm_dse_vars extends ovm_component;
   
-  tr_ise2dse fm_ise[stage_rrf_dwb:stage_rrf_rrc0];
+  tr_ise2dse fm_ise[stage_rrf_swb:stage_rrf_rrc0];
   tr_spu2dse fm_spu;
   tr_rfm2dse fm_rfm;
   tr_spa2dse fm_spa;
@@ -103,7 +103,7 @@ class ip4_tlm_dse extends ovm_component;
     vn.fm_tlb = null;
     vn.fm_shm = null;
     
-    for (int i = stage_rrf_dwb; i > stage_rrf_rrc0; i--)
+    for (int i = stage_rrf_swb; i > stage_rrf_rrc0; i--)
       vn.fm_ise[i] = v.fm_ise[i-1];
     
     /// calculating the virtual address  ag stage
@@ -190,15 +190,15 @@ class ip4_tlm_dse extends ovm_component;
     end
  
     /// send signals to rfm
-    if(v.fm_ise[stage_rrf_dwb] != null)begin
+    if(v.fm_ise[stage_rrf_swb] != null)begin
       vn.rfm = tr_dse2rfm::type_id::create("to_rfm", this);
-      if(v.fm_ise[stage_rrf_dwb].en)begin
-        vn.rfm.wr_grp = v.fm_ise[stage_rrf_dwb].wr_grp;
-        vn.rfm.wr_adr = v.fm_ise[stage_rrf_dwb].wr_adr;
-        vn.rfm.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
-        vn.rfm.ua_wr_grp = v.fm_ise[stage_rrf_dwb].ua_wr_grp;
-        vn.rfm.ua_wr_adr = v.fm_ise[stage_rrf_dwb].ua_wr_adr;
-        vn.rfm.ua_wr_bk = v.fm_ise[stage_rrf_dwb].ua_wr_bk;
+      if(v.fm_ise[stage_rrf_swb].en)begin
+        vn.rfm.wr_grp = v.fm_ise[stage_rrf_swb].wr_grp;
+        vn.rfm.wr_adr = v.fm_ise[stage_rrf_swb].wr_adr;
+        vn.rfm.wr_bk  = v.fm_ise[stage_rrf_swb].wr_bk;
+        vn.rfm.ua_wr_grp = v.fm_ise[stage_rrf_swb].ua_wr_grp;
+        vn.rfm.ua_wr_adr = v.fm_ise[stage_rrf_swb].ua_wr_adr;
+        vn.rfm.ua_wr_bk = v.fm_ise[stage_rrf_swb].ua_wr_bk;
       end
     end
   endfunction
@@ -209,12 +209,12 @@ class ip4_tlm_dse extends ovm_component;
     ovm_report_info("DSE", "req_proc procing...", OVM_FULL); 
     
     ///send write back control signal to rfm
-    if(v.fm_ise[stage_rrf_dwb] != null)begin
+    if(v.fm_ise[stage_rrf_swb] != null)begin
       res = tr_dse2rfm::type_id::create("to_rfm", this);
-      if(v.fm_ise[stage_rrf_dwb].en)begin
-        res.wr_grp = v.fm_ise[stage_rrf_dwb].wr_grp;
-        res.wr_adr = v.fm_ise[stage_rrf_dwb].wr_adr;
-        res.wr_bk  = v.fm_ise[stage_rrf_dwb].wr_bk;
+      if(v.fm_ise[stage_rrf_swb].en)begin
+        res.wr_grp = v.fm_ise[stage_rrf_swb].wr_grp;
+        res.wr_adr = v.fm_ise[stage_rrf_swb].wr_adr;
+        res.wr_bk  = v.fm_ise[stage_rrf_swb].wr_bk;
       end
     end
     

@@ -31,8 +31,10 @@ class tr_ise2rfm extends ovm_sequence_item;
 	rand bit vec_end, scl_end, start;
 	rand word bp_imm[num_bp_imm], dse_imm, spu_imm;
 	rand bit dse_en, spu_en;
+	rand uchar cyc;
 	
 	constraint valid_var {
+	  cyc < cyc_vec;
 		foreach(vrf_rd_grp[i]) {
 			vrf_rd_grp[i] inside {[0:num_phy_vrf_grp-1]};
 			vrf_rd_adr[i] inside {[0:num_prf_p_grp/num_vrf_bks-1]};
@@ -74,6 +76,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	  `ovm_field_int(vec_end, OVM_ALL_ON)
 		`ovm_field_int(scl_end, OVM_ALL_ON)
 		`ovm_field_int(start, OVM_ALL_ON)
+		`ovm_field_int(cyc, OVM_ALL_ON)
 		`ovm_field_sarray_int(vrf_rd_grp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(vrf_rd_adr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srf_rd_grp, OVM_ALL_ON + OVM_DEC)
@@ -572,12 +575,13 @@ endclass : tr_spa2spu
 ///---------------------------trsaction ise_spu spu_ise------------------------
 
 class tr_spu2ise extends ovm_sequence_item;
-  rand bit br_rsp, br_taken;
+  rand bit br_rsp, br_taken, msc_top_chg;
   rand uchar tid;
   
 	`ovm_object_utils_begin(tr_spu2ise)
 	  `ovm_field_int(br_rsp, OVM_ALL_ON)
 	  `ovm_field_int(br_taken, OVM_ALL_ON)
+	  `ovm_field_int(msc_top_chg, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -783,11 +787,11 @@ endclass : tr_ise2ife
 ///---------------------------trsaction dse_spa spa_dse------------------------
 
 class tr_spa2dse extends ovm_sequence_item;
-  rand word res[num_sp];    ///sync to vwb0
+///  rand word res[num_sp];    ///sync to vwb0
   rand bit cancel[num_thread];
     
 	`ovm_object_utils_begin(tr_spa2dse)
-	  `ovm_field_sarray_int(res, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(res, OVM_ALL_ON)
 	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -798,10 +802,10 @@ class tr_spa2dse extends ovm_sequence_item;
 endclass : tr_spa2dse
 
 class tr_dse2spa extends ovm_sequence_item;
-  rand word res[num_sp];
+///  rand word res[num_sp];
   
 	`ovm_object_utils_begin(tr_dse2spa)
-	  `ovm_field_sarray_int(res, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(res, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2spa");

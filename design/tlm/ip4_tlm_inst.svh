@@ -908,26 +908,36 @@ class inst_c extends ovm_object;
     dse = en_dse;
     fu = en_fu;
   endfunction : analyze_fu
-
-  function void fill_rfm(input tr_ise2rfm rfm);
+  
+  function rbk_sel_e cvt_sel(input rbk_sel_e s, uchar i);
+    cvt_sel = s;
+    if(s inside {[selv0:selv_e], [sels0:sels_e]})
+      cvt_sel = selnull;
+    if(s inside {[selv0+i*num_vrf_bks:selv0+(i+1)*num_vrf_bks-1]})
+      cvt_sel = rbk_sel_e'(s - i * num_vrf_bks);
+    if(s inside {[sels0+i*num_srf_bks:sels0+(i+1)*num_srf_bks-1]})
+      cvt_sel = rbk_sel_e'(s - i * num_srf_bks);
+  endfunction
+  
+  function void fill_rfm(input tr_ise2rfm rfm, uchar i);
     if(!decoded) decode();
     if(en_spu) begin
       rfm.spu_en = 1;
       rfm.spu_imm = imm;
       foreach(rfm.spu_rd_bk[i])
-        rfm.spu_rd_bk[i] = rd_bk[i];
+        rfm.spu_rd_bk[i] = cvt_sel(rd_bk[i], i);
     end
     else if(en_dse) begin
       rfm.dse_en = 1;
       rfm.dse_imm = imm;
       foreach(rfm.dse_rd_bk[i])
-        rfm.dse_rd_bk[i] = rd_bk[i];      
+        rfm.dse_rd_bk[i] = cvt_sel(rd_bk[i], i);
     end
     else begin
       rfm.fu[fuid].en = 1;
       rfm.fu[fuid].imm = imm;
       foreach(rfm.fu[0].rd_bk[i])
-        rfm.fu[fuid].rd_bk[i] = rd_bk[i];       
+        rfm.fu[fuid].rd_bk[i] = cvt_sel(rd_bk[i], i);
     end
   endfunction : fill_rfm
 
