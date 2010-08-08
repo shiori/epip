@@ -83,6 +83,12 @@ iop_r2w1_e iop21_sfu_ops[] = {
   iop21_udiv,   iop21_uquo,   iop21_ures
 };
 
+iop_r2w1_e iop11_ops[] = {
+  iop21_srl,    iop21_clo,    iop21_ext,    iop21_sll,
+  iop21_rot,    iop21_seb,    iop21_wsbh,   iop21_sra,
+  iop21_clz,    iop21_ins,    iop21_she,    iop21_mv2s
+};
+
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1;
@@ -497,7 +503,8 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op == iop_r2w1) begin
       set_rf_en(inst.i.b.ir2w1.rs0, rd_bk[0], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
-      set_rf_en(inst.i.b.ir2w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
+      if(!(inst.i.op inside {iop11_ops}))
+        set_rf_en(inst.i.b.ir2w1.rs1, rd_bk[1], vec_rd, vrf_en, srf_en, cnt_vrf_wr, cnt_srf_wr);
       if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
         wr_en = '{default : 1};
         adr_wr[0] = inst.i.b.ir2w1.rd & ('1 << 1);
@@ -516,6 +523,34 @@ class inst_c extends ovm_object;
       iop21_udiv  : begin op = op_udiv; end
       iop21_uquo  : begin op = op_uquo; end
       iop21_ures  : begin op = op_ures; end
+      iop21_uadd  : begin op = op_uadd; end
+      iop21_usub  : begin op = op_usub; end
+      iop21_srl   : begin op = op_srl; rd_bk[1] = selii; end
+      iop21_srlv  : begin op = op_srl; end
+      iop21_or    : begin op = op_or; end
+      iop21_clo   : begin op = op_clo; end
+      iop21_ext   : begin op = op_ext; rd_bk[1] = selii; end
+      iop21_sll   : begin op = op_sll; rd_bk[1] = selii; end
+      iop21_rot   : begin op = op_ror; rd_bk[1] = selii; end
+      iop21_and   : begin op = op_and; end
+      iop21_seb   : begin op = op_seb; rd_bk[1] = selii; end
+      iop21_wsbh  : begin op = op_wsbh; rd_bk[1] = selii; end
+      iop21_max   : begin op = op_max; end
+      iop21_min   : begin op = op_min; end
+      iop21_add   : begin op = op_add; end
+      iop21_sub   : begin op = op_sub; end
+      iop21_sra   : begin op = op_sra; rd_bk[1] = selii; end
+      iop21_srav  : begin op = op_sra; end
+      iop21_nor   : begin op = op_nor; end
+      iop21_clz   : begin op = op_clz; end
+      iop21_ins   : begin op = op_ins; end
+      iop21_sllv  : begin op = op_sll; end
+      iop21_rotv  : begin op = op_ror; end
+      iop21_xor   : begin op = op_xor; end
+      iop21_she   : begin op = op_she; end
+      iop21_mv2s  : begin op = op_mvs; end
+      iop21_umax  : begin op = op_umax; end
+      iop21_umin  : begin op = op_umin; end
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin

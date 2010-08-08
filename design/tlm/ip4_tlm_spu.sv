@@ -217,7 +217,7 @@ class ip4_tlm_spu extends ovm_component;
         b_nmsk[ise.tid] = ise.pr_nmsk_spu;
         b_inv[ise.tid] = ise.pr_inv_spu;
         if(ise.pr_br_dep) begin
-          b_rdy[ise.tid] = ise.vec_mode;
+          b_rdy[ise.tid] = ise.vec_mode + 1;
         end
         else begin
           b_rdy[ise.tid] = 0;

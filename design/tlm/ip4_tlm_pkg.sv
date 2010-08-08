@@ -83,12 +83,11 @@ parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
 
 /*
                                            pipeline stages:
-ise,ife:      | if0 | if1 | ii0 | ii1 | rrf |
+ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
 dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
 spu:    | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | vsbp | vswb |
 exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
         0     1      2      3      4      5      6      7      8      9      10     11     12     13     14
                                           0      1      2      3      4      5      6      7      8      9
@@ -116,14 +115,13 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
                 stage_ife         = lat_ife - 1,                    ///1
-                stage_ife_ii0     = stage_ife + 1,                  ///2
                 stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
                 stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
                 stage_rrf_tag     = stage_rrf_ag + 1,               ///3
                 stage_rrf_sel     = stage_rrf_tag + 1,              ///4
-                stage_ise_vwb     = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp + cyc_vec - 1,
-                stage_ise_vwbp    = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp - 1,
-                stage_ise_dc      = lat_ise + lat_rf + lat_dse;
+                stage_ise_vwb     = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp + cyc_vec - 1,  ///15
+                stage_ise_vwbp    = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp - 1,            ///11
+                stage_ise_dc      = lat_ise + lat_rf + lat_dse;     ///7
                                 
 
 parameter uchar ck_stage_sfu1     = stage_eex - stage_rrf_exe,      ///19
@@ -284,7 +282,7 @@ typedef enum uchar {
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr
+  op_tlbwr,   op_mvs
 } opcode_e;
 
 parameter opcode_e bp_ops[] = '{
@@ -355,7 +353,7 @@ parameter opcode_e spu_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr
+  op_tlbwr,   op_mvs
 };
 
 parameter opcode_e tlb_ops[] = '{

@@ -156,10 +156,7 @@ class ip4_tlm_spa extends ovm_component;
         ise2spa_fu fu = ise.fu[fid];
         if(!fu.en) continue;
         ovm_report_info("SPA", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
-      
-///        to_spu.tid[fid] = ise.tid;
-///        to_spu.subv[fid] = ise.subv;
-      
+
         to_rfm.fu[fid].vrf_wr_grp = fu.vrf_wr_grp;
         to_rfm.fu[fid].vrf_wr_adr = fu.vrf_wr_adr;
         to_rfm.fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
@@ -225,8 +222,6 @@ class ip4_tlm_spa extends ovm_component;
         if(!sfu.en[fid]) continue;
         if(to_spu == null) to_spu = tr_spa2spu::type_id::create("to_spu", this);
         if(to_rfm == null) to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-///        to_spu.subv[fid] = sfu.subv;
-///        to_spu.tid[fid] = sfu.tid;
         to_rfm.fu[fid].tid = sfu.tid;
         to_rfm.fu[fid].res0 = sfu.res0[fid];
         to_rfm.fu[fid].res1 = sfu.res1[fid];
@@ -258,14 +253,6 @@ class ip4_tlm_spa extends ovm_component;
     if(v.fm_ise[0] != null) begin
       foreach(cancel[i])
         cancel[i] |= v.fm_ise[0].cancel[i];
-///      for(int i = 0; i < cyc_vec; i++) begin
-///        if(vn.sfu[stage_exe_vwb0-i] != null && vn.sfu[stage_exe_vwb0-i].tid == v.fm_ise[0].tid_cancel)
-///          vn.sfu[stage_exe_vwb0] = null;
-///        
-///        if(v.fm_ise[stage_exe_vwb0-i] != null && v.fm_ise[stage_exe_vwb0-i].tid == v.fm_ise[0].tid_cancel && v.fm_spu[stage_exe_vwb0-i] != null)
-///          foreach(v.fm_spu[stage_exe_vwb0-i].fu[fid])
-///            v.fm_spu[stage_exe_vwb0-i].fu[fid].emsk = '{default : 0};
-///      end
     end
     
     foreach(vn.fm_ise[i])

@@ -223,7 +223,7 @@ class tr_rfm2spa extends ovm_sequence_item;
 endclass : tr_rfm2spa
 
 class spa2rfm_fu extends ovm_object;
-  rand word res0[num_sp],	res1[num_sp], res_vsbp;
+  rand word res0[num_sp],	res1[num_sp];///, res_vsbp;
   rand bit dw, wen[num_sp];
   rand uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv, tid;
   rand uchar exp_flag[num_sp];
@@ -241,7 +241,7 @@ class spa2rfm_fu extends ovm_object;
   `ovm_object_utils_begin(spa2rfm_fu)
     `ovm_field_sarray_int(res0, OVM_ALL_ON)
     `ovm_field_sarray_int(res1, OVM_ALL_ON)
-    `ovm_field_int(res_vsbp, OVM_ALL_ON)
+///    `ovm_field_int(res_vsbp, OVM_ALL_ON)
     `ovm_field_sarray_int(wen, OVM_ALL_ON)
     `ovm_field_int(dw, OVM_ALL_ON)
     `ovm_field_int(subv, OVM_ALL_ON)
