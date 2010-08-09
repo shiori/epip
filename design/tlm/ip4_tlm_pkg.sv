@@ -49,7 +49,7 @@ parameter uchar num_sp            = 8,
                 num_inst_srf      = 16,
                 num_rf_bank       = num_sp;   /// register file bank number, default equal to num_sp
                 
-parameter uchar lat_mac           = 4,
+parameter uchar lat_mac           = 5,
                 lat_sfu           = 16,
                 lat_rf            = 1,
                 lat_rbp           = 1,
@@ -94,23 +94,27 @@ parameter uint SM_SIZE = 2^16,  /// shared memory size 64Kbyte
 
 /*
                                            pipeline stages:
-ise,ife:      | if0 | if1 | ii0 | ii1 | rrf |
+ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
-dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
-spu:    | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | vsbp | vswb |
-exe:    | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
-        0     1      2      3      4      5      6      7      8      9      10     11     12     13     14
-                                          0      1      2      3      4      5      6      7      8      9
-                     0      1      2      3      4      5      6    
+dse:      | rrf | rrc0 |  ag  |  tag |  sel |  dc  | exg0 | exg1 | exg2 | exg3 |
+dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
+spu:      | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
+exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
+cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
+          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
+                                            0      1      2      3      4      5      6      7      8      9      10
+                       0      1      2      3      4      5      6    
   */  
   
 parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
-                stage_rrf_rrc1    = stage_rrf_rrc0 + 1,             ///2
+                stage_rrf_exs0    = stage_rrf_rrc0 + 1,             ///2
                 stage_rrf_rrc     = stage_rrf_rrc0 + cyc_vec - 1,   ///4
                 stage_rrf_exe0    = stage_rrf_rrc + 1,              ///5
                 stage_rrf_exe     = stage_rrf_rrc + lat_mac,        ///8
+                stage_rrf_cmp     = stage_rrf_rrc + num_fu,         ///7
+                stage_rrf_cem0    = stage_rrf_cmp + 1,              ///8
+                stage_rrf_dem0    = stage_rrf_rrc0 + lat_dse,       ///5
                 stage_rrf_vwbp    = stage_rrf_exe + lat_vwbp,       ///9
                 stage_rrf_swbp    = stage_rrf_rrc0 + lat_dse + lat_dwbp,      ///6
                 stage_rrf_swb     = stage_rrf_swbp + 1,             ///7
@@ -118,20 +122,21 @@ parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_exe         = lat_mac - 1,                    ///3
                 stage_exe_vwbp    = stage_exe + lat_vwbp,           ///4
                 stage_exe_vwb0    = stage_exe_vwbp + 1,             ///5
-                stage_exe_dwbp    = lat_dse - cyc_vec + lat_dwbp,   ///1
-                stage_exe_dwb     = stage_exe_dwbp + 1,             ///2
+                stage_exe_cmp     = num_fu - 1,                     ///2
+                stage_exe_swbp    = lat_dse - cyc_vec + lat_dwbp,   ///1
+                stage_exe_swb     = stage_exe_swbp + 1,             ///2
                 stage_eex         = lat_sfu + cyc_sfu_busy -cyc_vec - 1,     ///27
                 stage_eex_vwbp    = stage_eex + lat_vwbp,           ///28
                 stage_eex_vwb0    = stage_eex_vwbp + 1,             ///29
-                stage_rrf_dwbp    = stage_rrf_rrc + stage_exe_dwbp + 1,    ///6
-                stage_rrf_dwb     = stage_rrf_dwbp + 1,             ///7
                 stage_ise         = lat_ise - 1,                    ///1
                 stage_ife         = lat_ife - 1,                    ///1
-                stage_ife_ii0     = stage_ife + 1,                  ///2
-                stage_ag_dwb      = lat_dse + lat_dwbp ,            ///5
+                stage_ag_swb      = lat_dse + lat_dwbp ,            ///5
                 stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
                 stage_rrf_tag     = stage_rrf_ag + 1,               ///3
-                stage_rrf_sel     = stage_rrf_tag + 1;              ///4
+                stage_rrf_sel     = stage_rrf_tag + 1,              ///4
+                stage_ise_vwb     = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp + cyc_vec - 1,  ///15
+                stage_ise_vwbp    = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp - 1,            ///11
+                stage_ise_dc      = lat_ise + lat_rf + lat_dse;     ///7
                                 
 
 parameter uchar ck_stage_sfu1     = stage_eex - stage_rrf_exe,      ///19
@@ -254,7 +259,7 @@ typedef enum bit {
 
 typedef enum uchar {
   ts_disabled,    ts_rdy,     ts_w_ls,    ts_w_msg,
-  ts_w_b,         ts_w_pip,   ts_w_ife
+  ts_w_b
 }ise_thread_state;
 
 typedef enum uchar {
@@ -292,7 +297,7 @@ typedef enum uchar {
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr
+  op_tlbwr,   op_mvs
 } opcode_e;
 
 parameter opcode_e bp_ops[] = '{
@@ -363,7 +368,7 @@ parameter opcode_e spu_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr
+  op_tlbwr,   op_mvs
 };
 
 parameter opcode_e tlb_ops[] = '{
@@ -410,6 +415,9 @@ endclass
 `include "ip4_tlm_shm.sv"
 `include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
+
+`include "../misc/test_sys.sv"
+`include "../misc/test.sv"
 
 endpackage : ip4_tlm_pkg
 

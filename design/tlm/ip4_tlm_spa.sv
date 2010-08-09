@@ -27,23 +27,36 @@ class ip4_tlm_sfu_stages extends ovm_object;
 endclass
 
 class ip4_tlm_spa_vars extends ovm_component;
-  tr_ise2spa fm_ise[stage_exe_vwbp:0];
-  tr_rfm2spa fm_rfm[stage_exe_vwbp:0];
-  tr_spu2spa fm_spu[stage_exe_vwbp:0];
-  tr_dse2spa fm_dse[stage_exe_vwbp:stage_exe_dwb];
-  
+  tr_ise2spa fm_ise;
+  tr_rfm2spa fm_rfm;
+  tr_spu2spa fm_spu;
+///  tr_dse2spa fm_dse[stage_exe_vwbp:stage_exe_dwb];
+
+  tr_spa2rfm rfm[stage_exe_vwbp:1];
+  tr_spa2ise ise[stage_exe_vwbp:1];
+  tr_spa2spu spu[stage_exe_cmp:1];
+  tr_spa2dse dse[stage_exe_vwbp:1];
+    
   ip4_tlm_sfu_stages sfu[stage_eex_vwbp:1];
   
+  bit cancel[num_thread];
+  
   `ovm_component_utils_begin(ip4_tlm_spa_vars)
-    `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
+///    `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(sfu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(ise, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
   
   function new (string name, ovm_component parent);
     super.new(name, parent);
+    cancel = '{default : 0};
   endfunction : new
 endclass : ip4_tlm_spa_vars
 
@@ -55,11 +68,8 @@ class ip4_tlm_spa extends ovm_component;
   local time stamp;
     
   local ip4_tlm_spa_vars v, vn;
-///  local word grag_base;
-///  local word op0_vec[num_fu][cyc_vec][num_sp];
-///  local word op1_vec[num_fu][cyc_vec][num_sp];
-///  local bit emsk_vec[num_fu][cyc_vec][num_sp];
-  local word spu_res_l;
+///  local word spu_res_l;
+  local bit exe_exp;
   
   `ovm_component_utils_begin(ip4_tlm_spa)
   `ovm_component_utils_end
@@ -74,35 +84,36 @@ class ip4_tlm_spa extends ovm_component;
   ovm_nonblocking_transport_port #(tr_spa2spu, tr_spa2spu) spu_tr_port;
   ovm_nonblocking_transport_port #(tr_spa2dse, tr_spa2dse) dse_tr_port;
   
-  extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, 
+  extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, uchar,
                                       const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
-                                      ref bit pres0[num_sp], pres1[num_sp], /// pres2[num_sp], pres3[num_sp],
-                                      word res0[num_sp], r1[num_sp]);
+                                      ref bit pres0[num_sp], pres1[num_sp], word res0[num_sp], r1[num_sp],
+                                      inout uchar exp_flag[num_sp], bit);
   // endfunction
 
-///  extern function void proc_data_vec(input uchar, tr_ise2spa, tr_rfm2spa, tr_spu2spa, tr_spa2rfm, tr_spa2spu);
-///  // endfunction
-    
   function void comb_proc();
     ovm_report_info("SPA", "comb_proc procing...", OVM_FULL); 
-    if(v.fm_ise[0] != null) end_tr(v.fm_ise[0]);
-    if(v.fm_spu[0] != null) end_tr(v.fm_spu[0]);
-    if(v.fm_rfm[0] != null) end_tr(v.fm_rfm[0]);
-    if(v.fm_dse[stage_exe_dwb] != null) end_tr(v.fm_dse[stage_exe_dwb]);
+    if(v.fm_ise != null) end_tr(v.fm_ise);
+    if(v.fm_spu != null) end_tr(v.fm_spu);
+    if(v.fm_rfm != null) end_tr(v.fm_rfm);
+///    if(v.fm_dse[stage_exe_dwb] != null) end_tr(v.fm_dse[stage_exe_dwb]);
     
-    vn.fm_ise[0] = null;
-    vn.fm_spu[0] = null;
-    vn.fm_rfm[0] = null;
-    vn.fm_dse[stage_exe_dwb] = null;
-     
-    for(int i = stage_exe_vwbp; i > 0; i--) begin
-      vn.fm_ise[i] = v.fm_ise[i-1];
-      vn.fm_rfm[i] = v.fm_rfm[i-1];
-      vn.fm_spu[i] = v.fm_spu[i-1];
+    vn.fm_ise = null;
+    vn.fm_spu = null;
+    vn.fm_rfm = null;
+///    vn.fm_dse[stage_exe_dwb] = null;
+
+    vn.cancel = '{default : 0};
+    for(int i = stage_exe_vwbp; i > 1; i--) begin
+      vn.ise[i] = v.ise[i-1];
+      vn.rfm[i] = v.rfm[i-1];
+      vn.dse[i] = v.dse[i-1];
     end
     
-    for(int i = stage_exe_vwbp; i > stage_exe_dwb; i--)
-      vn.fm_dse[i] = v.fm_dse[i-1];
+    for(int i = stage_exe_cmp; i > 1; i--)
+      vn.spu[i] = v.spu[i-1];
+      
+///    for(int i = stage_exe_vwbp; i > stage_exe_dwb; i--)
+///      vn.fm_dse[i] = v.fm_dse[i-1];
 
     for(int fid = 0; fid < num_fu; fid++) begin
       uchar cnt = 0;
@@ -121,6 +132,120 @@ class ip4_tlm_spa extends ovm_component;
     for(int sg = stage_eex; sg > 1; sg--)
       vn.sfu[sg] = v.sfu[sg-1];
     vn.sfu[1] = null;
+
+    ///----------process data---------------------
+    if(v.fm_spu != null && v.fm_ise != null && v.fm_rfm != null) begin
+      word op[num_fu_rp][num_sp];
+      bit pres_cmp0[num_sp], pres_cmp1[num_sp];
+      tr_ise2spa ise = v.fm_ise;
+      tr_spu2spa spu = v.fm_spu;
+      tr_rfm2spa rfm = v.fm_rfm;
+///      tr_dse2spa dse = v.fm_dse[stage_exe_vwbp];
+
+      foreach(ise.fu[fid]) begin
+        ise2spa_fu fu = ise.fu[fid];
+        if(!fu.en) continue;
+        ovm_report_info("SPA", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
+        
+        if(fu.op inside {spu_only_ops}) begin
+          ///long operations
+          if (vn.sfu[1] == null) vn.sfu[1] = new();
+          vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
+          vn.sfu[1].en[fid] = fu.en;
+          vn.sfu[1].vrf_wr_bk[fid] = fu.vrf_wr_bk;
+          vn.sfu[1].vrf_wr_adr[fid] = fu.vrf_wr_adr;
+          vn.sfu[1].vrf_wr_grp[fid] = fu.vrf_wr_grp;
+          vn.sfu[1].tid = ise.tid;
+          vn.sfu[1].subv = ise.subv;
+          foreach(op[i])
+            op[i] = rfm.fu[fid].rp[i].op;
+            
+          proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
+                    pres_cmp0, pres_cmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
+                    vn.rfm[1].fu[fid].exp_flag, exe_exp);
+        end
+        else begin
+          ///normal operations
+          if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("to_rfm", this);
+          vn.rfm[1].fu[fid].vrf_wr_grp = fu.vrf_wr_grp;
+          vn.rfm[1].fu[fid].vrf_wr_adr = fu.vrf_wr_adr;
+          vn.rfm[1].fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
+          vn.rfm[1].fu[fid].wen = spu.fu[fid].emsk;
+          vn.rfm[1].fu[fid].tid = ise.tid;
+          
+          ///bypass op
+          if(fu.op inside {bp_ops}) begin
+///            word spu_res;
+///            if(ise.subv == 0)
+///              spu_res_l = spu.res;
+///            spu_res = spu_res_l;
+            
+            foreach(fu_cfg[i])
+              foreach(op[rp])
+                if(i < fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
+                  op[rp] = vn.rfm[1].fu[i].res0;
+                  
+///          if(dse != null)
+///            foreach(op[rp])
+///              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
+            
+///            foreach(op[rp])
+///              op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
+          end
+          
+          proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
+                    pres_cmp0, pres_cmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
+                    vn.rfm[1].fu[fid].exp_flag, exe_exp);
+        end
+        if(fu.op inside {op_cmp, op_ucmp}) begin
+          if(vn.spu[1] == null) vn.spu[1] = tr_spa2spu::type_id::create("to_spu", this);
+          vn.spu[1].pres_cmp0 = pres_cmp0;
+          vn.spu[1].pres_cmp1 = pres_cmp1;
+        end
+      end
+      
+      if(ise.subv == ise.vec_mode) begin
+        if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("to_ise", this);
+        vn.ise[1].exp = exe_exp;
+        vn.ise[1].tid = ise.tid;
+        exe_exp = 0;
+      end
+    end
+    
+    ///log spa exp to cancel
+    if(v.ise[stage_exe_vwbp] != null) begin
+      tr_spa2ise ise = v.ise[stage_exe_vwbp];
+      vn.cancel[ise.tid] = ise.exp;
+    end
+        
+    ///dse bypass
+///    if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse inside {[selfu0:selfu0+num_fu]}) begin
+///      tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
+///      if(to_dse == null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
+///      if(to_rfm == null) begin
+///        to_dse.res = '{default:0};
+///      end
+///      else begin
+///        uchar fu_sel = uchar'(ise.bp_rf_dse) - uchar'(selfu0);
+///        assert(fu_sel < num_fu);
+///        if(ise.bp_rf_dse_wp == 0)
+///          to_dse.res = to_rfm.fu[fu_sel].res0;
+///        else
+///          to_dse.res = to_rfm.fu[fu_sel].res1;
+///      end
+///    end
+    
+    ///canceling from ise
+    if(v.fm_ise != null) begin
+      foreach(vn.cancel[i])
+        vn.cancel[i] |= v.fm_ise.cancel[i];
+    end
+    
+    foreach(vn.rfm[i])
+      if(vn.rfm[i] != null && v.cancel[vn.rfm[i].fu[0].tid]) begin
+        vn.rfm[i] = null;
+        ovm_report_info("SPA", $psprintf("canceling tid:%0d, at stage %0d", vn.rfm[i].fu[0].tid, i), OVM_HIGH);
+      end
   endfunction
   
   function void req_proc();
@@ -128,162 +253,38 @@ class ip4_tlm_spa extends ovm_component;
     tr_spa2ise to_ise;
     tr_spa2spu to_spu;
     tr_spa2dse to_dse;
-///    bit pr2dse[num_sp];
-    uchar tmp[cyc_vec][num_sp];
-    
     ovm_report_info("SPA", "req_proc procing...", OVM_FULL); 
-    
-    ///--------------prepare---------------------------------
-///    to_rfm = tr_spa2rfm::type_id::create("to_spa", this);
-///    to_spu = tr_spa2spu::type_id::create("to_spu", this);
-///    to_ise = tr_spa2ise::type_id::create("to_ise", this);
-///    to_rfm = v.fm_rfm[lat_mac-1];
-///    to_spu = v.fm_spu[lat_mac-1];
-       
-    ///----------process data---------------------
-    if(v.fm_spu[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp] != null && v.fm_rfm[stage_exe_vwbp] != null) begin
-      
-      word op[num_fu_rp][num_sp];
-      tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
-      tr_spu2spa spu = v.fm_spu[stage_exe_vwbp];
-      tr_rfm2spa rfm = v.fm_rfm[stage_exe_vwbp];
-      tr_dse2spa dse = v.fm_dse[stage_exe_vwbp];
-      
-      to_spu = tr_spa2spu::type_id::create("to_spu", this);
-      to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-      
-      foreach(ise.fu[fid]) begin
-        ise2spa_fu fu = ise.fu[fid];
-        if(!fu.en) continue;
-        ovm_report_info("SPA", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
-      
-        to_spu.tid[fid] = ise.tid;
-        to_spu.subv[fid] = ise.subv;
-      
-        to_rfm.fu[fid].vrf_wr_grp = fu.vrf_wr_grp;
-        to_rfm.fu[fid].vrf_wr_adr = fu.vrf_wr_adr;
-        to_rfm.fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
-        to_rfm.fu[fid].wen = spu.fu[fid].emsk;
         
-        if(fu.op inside {bp_ops}) begin
-          word spu_res;
-          if(ise.subv == 0)
-            spu_res_l = spu.res;
-          spu_res = spu_res_l;
-          
-          foreach(fu_cfg[i])
-            foreach(op[rp])
-              if(i > fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
-                op[rp] = to_rfm.fu[i].res0;
-                
-          if(dse != null)
-            foreach(op[rp])
-              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
-          
-          if(spu != null)
-            foreach(op[rp])
-              op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
-        end
+    to_rfm = v.rfm[stage_exe_vwbp];
+    to_ise = v.ise[stage_exe_vwbp];
+    to_dse = v.dse[stage_exe_vwbp];
+    to_spu = v.spu[stage_exe_cmp];
         
-///        op0_vec[fid][ise.subv] = rfm.fu[fid].rp[0].op;        
-///        op1_vec[fid][ise.subv] = rfm.fu[fid].rp[1].op;        
-///        emsk_vec[fid][ise.subv] = spu.fu[fid].emsk;
-///        
-///        if(fu.op inside {op_gglw, op_gglb, op_gglh, op_ggsw, op_ggsh, op_ggsb}) begin
-///          foreach(tmp[i,j])
-///            if(emsk_vec[fid][i][j]) begin
-///              grag_base = op0_vec[fid][i][j];
-///              break;
-///            end
-///        end
-        proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.fu[fid].emsk, op,
-                  to_spu.pres_cmp0, to_spu.pres_cmp1,/// to_spu.pres_update, pr2dse, 
-                  to_rfm.fu[fid].res0, to_rfm.fu[fid].res1);
-        
-///        proc_data_vec(fid, ise, rfm, spu, to_rfm, to_spu);
-        
-      end
-    end
- 
-    if(v.fm_rfm[0] != null && v.fm_spu[0] != null && v.fm_ise[0] != null) begin
-      tr_ise2spa ise = v.fm_ise[0];
-      tr_spu2spa spu = v.fm_spu[0];
-      tr_rfm2spa rfm = v.fm_rfm[0];
-      bit pres[num_sp];
-      word op[num_fu_rp][num_sp];
-      foreach(ise.fu[fid]) begin
-        ise2spa_fu fu = ise.fu[fid];
-        if(!(fu.op inside {spu_only_ops})) continue;
-        if (vn.sfu[1] == null) vn.sfu[1] = new();
-        vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
-        vn.sfu[1].en[fid] = fu.en;
-        vn.sfu[1].vrf_wr_bk[fid] = fu.vrf_wr_bk;
-        vn.sfu[1].vrf_wr_adr[fid] = fu.vrf_wr_adr;
-        vn.sfu[1].vrf_wr_grp[fid] = fu.vrf_wr_grp;
-        vn.sfu[1].tid = ise.tid;
-        vn.sfu[1].subv = ise.subv;
-        foreach(op[i])
-          op[i] = rfm.fu[fid].rp[i].op;
-          
-        proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.fu[fid].emsk, op,
-                  pres, pres, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid]);
-      end
-    end
-   
+    ///long operations write back
     if(v.sfu[stage_eex] != null) begin
       ip4_tlm_sfu_stages sfu = v.sfu[stage_eex];
       foreach(sfu.en[fid]) begin
         if(!sfu.en[fid]) continue;
-        if(to_spu == null) to_spu = tr_spa2spu::type_id::create("to_spu", this);
+        ovm_report_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_HIGH);
         if(to_rfm == null) to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-        to_spu.subv[fid] = v.sfu[stage_eex].subv;
-        to_spu.tid[fid] = v.sfu[stage_eex].tid;
-        to_rfm.fu[fid].res0 = v.sfu[stage_eex].res0[fid];
-        to_rfm.fu[fid].res1 = v.sfu[stage_eex].res1[fid];
-        to_rfm.fu[fid].wen = v.sfu[stage_eex].emsk[fid];
-        if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
-          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
-          ovm_report_warning("SPA", "sfu writeback conflict");
+        to_rfm.fu[fid].tid = sfu.tid;
+        to_rfm.fu[fid].res0 = sfu.res0[fid];
+        to_rfm.fu[fid].res1 = sfu.res1[fid];
+        to_rfm.fu[fid].wen = sfu.emsk[fid];
+///        if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
+///          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
+///          ovm_report_warning("SPA", "sfu writeback conflict");
       end
-    end
-    
-    if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse inside {[selfu0:selfu0+num_fu]}) begin
-      tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
-      if(to_dse == null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
-      if(to_rfm == null) begin
-        to_dse.res = '{default:0};
-///        to_dse.emsk = '{default:0};
-      end
-      else begin
-        uchar fu_sel = uchar'(ise.bp_rf_dse) - uchar'(selfu0);
-        assert(fu_sel < num_fu);
-        if(ise.bp_rf_dse_wp == 0)
-          to_dse.res = to_rfm.fu[fu_sel].res0;
-        else
-          to_dse.res = to_rfm.fu[fu_sel].res1;
-///        to_dse.emsk = pr2dse;
-      end
-    end
-    
-    if(v.fm_ise[0] != null && v.fm_ise[0].cancel) begin
-      ovm_report_info("SPA", "Canceling FU...", OVM_HIGH);
-      for(int i = 0; i < cyc_vec; i++) begin
-        if(vn.sfu[stage_exe_vwb0-i] != null && vn.sfu[stage_exe_vwb0-i].tid == v.fm_ise[0].tid_cancel)
-          vn.sfu[stage_exe_vwb0] = null;
-        
-        if(v.fm_ise[stage_exe_vwb0-i] != null && v.fm_ise[stage_exe_vwb0-i].tid == v.fm_ise[0].tid_cancel && v.fm_spu[stage_exe_vwb0-i] != null)
-          foreach(v.fm_spu[stage_exe_vwb0-i].fu[fid])
-            v.fm_spu[stage_exe_vwb0-i].fu[fid].emsk = '{default : 0};
-      end
-    end
-    
+    end    
+
+    ///no_fu generation
     for(int i = ck_stage_sfu0; i <= ck_stage_sfu1; i++)
       foreach(v.sfu[0].en[fid])
         if(v.sfu[i] != null && v.sfu[i].en[fid]) begin
           if(to_ise == null) to_ise = tr_spa2ise::type_id::create("to_ise", this);
           to_ise.no_fu[fid] = 1;
-        end
-          
+        end    
+                  
     ///------------req to other module----------------
     if(to_rfm != null) void'(rfm_tr_port.nb_transport(to_rfm, to_rfm));
     if(to_ise != null) void'(ise_tr_port.nb_transport(to_ise, to_ise));
@@ -298,7 +299,10 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_ise[0] = req;
+    if(v.cancel[req.tid])
+      ovm_report_info("SPA_TR", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
+    else
+      vn.fm_ise = req;
     return 1;
   endfunction : nb_transport_ise
 
@@ -308,7 +312,7 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_rfm[0] = req;
+    vn.fm_rfm = req;
     return 1;
   endfunction : nb_transport_rfm
 
@@ -318,7 +322,7 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_spu[0] = req;
+    vn.fm_spu = req;
     return 1;
   endfunction : nb_transport_spu
 
@@ -328,7 +332,7 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_dse[stage_exe_dwb] = req;
+///    vn.fm_dse[stage_exe_dwb] = req;
     return 1;
   endfunction : nb_transport_dse
   
@@ -379,15 +383,16 @@ class ip4_tlm_spa extends ovm_component;
     failed_convert_interface: assert($cast(vif_cfg, tmp));
     sysif = vif_cfg.get_vif();  
     stamp = 0ns;
+    
   endfunction : build
 endclass : ip4_tlm_spa
 
 ///-------------------------------------other functions-----------------------------------------
   
 function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_merge_e fmerge, 
-                                    uchar subv, const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
-                                    ref bit pres0[num_sp], pres1[num_sp], ///pres2[num_sp], pres3[num_sp],
-                                    word res0[num_sp], r1[num_sp]);
+                                    uchar subv, exe_mode, const ref bit emsk[num_sp], word o[num_fu_rp][num_sp],
+                                    ref bit pres0[num_sp], pres1[num_sp], word res0[num_sp], r1[num_sp],
+                                    inout uchar exp_flag[num_sp], bit exp);
   bit pres[num_sp];
   bit[word_width:0] op0[num_sp], op1[num_sp], op2[num_sp], op3[num_sp], r0[num_sp] = '{default:0};
   
@@ -460,52 +465,6 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   
   op_cmp,
   op_ucmp,  
-///  op_ggsw,
-///  op_ggsh,
-///  op_ggsb,
-///  op_pera,
-///  op_perb:  begin end /// those are not processed by this case statement
-///  op_vsl,
-///  op_vslu,
-///  op_vror,
-///  op_vroru,
-///  op_vsr,
-///  op_vsru:
-///    begin
-///    end  /// those are not processed by this case statement
-///  op_gglw:
-///    begin
-///      word base = grag_base >> 7;
-///      pres2 = emsk;
-///      foreach(op0[sp])
-///        if(base == (o[0][sp] >> 7)) begin
-///          r0[sp] = (o[0][sp] >> 2) & 'b011111;
-///          pres2[sp] = 0;
-///          pres0[sp] = 1;
-///        end
-///    end
-///  op_gglb:
-///    begin
-///      word base = grag_base >> 6;
-///      pres2 = emsk;
-///      foreach(op0[sp])
-///        if(base == (o[0][sp] >> 6)) begin
-///          r0[sp] = (o[0][sp] >> 1) & 'b011111;
-///          pres2[sp] = 0;
-///          pres0[sp] = 1;
-///        end
-///    end
-///  op_gglh:
-///    begin
-///      word base = grag_base >> 5;
-///      pres2 = emsk;
-///      foreach(op0[sp])
-///        if(base == (o[0][sp] >> 5)) begin
-///          r0[sp] = o[0][sp] & 'b011111;
-///          pres2[sp] = 0;
-///          pres0[sp] = 1;
-///        end
-///    end
   op_div:   foreach(r0[i]) begin r0[i] = op0[i] / op1[i]; r1[i] = op0[i] % op1[i]; end
   op_udiv:  foreach(r0[i]) begin r0[i] = o[0][i] / o[1][i]; r1[i] = o[0][i] % o[1][i]; end
   op_quo:   foreach(r0[i]) r0[i] = op0[i] / op1[i];
@@ -593,95 +552,3 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal fmerge!!!");
   endcase
 endfunction : proc_data
-        
-///function void ip4_tlm_spa::proc_data_vec(input uchar fid, tr_ise2spa ise, tr_rfm2spa rfm, tr_spu2spa spu,
-///                                         tr_spa2rfm to_rfm, tr_spa2spu to_spu);
-///  uchar tmp[cyc_vec][num_sp];
-///  ise2spa_fu fu = ise.fu[fid];
-///  
-///  case(fu.op)
-///  op_ggsw:
-///    begin
-///      to_spu.pres_update = spu.fu[fid].emsk;
-///      foreach(to_rfm.fu[0].res0[k])
-///        foreach(tmp[i,j]) begin
-///          uchar vid = (op0_vec[fid][i][j] >> 2) & 'b011111;
-///          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
-///              && ((grag_base >> 7) == (op0_vec[fid][i][j] >> 7))) begin
-///            to_spu.pres_cmp0[k] = 1;
-///            to_spu.pres_update[k] = 0;
-///            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
-///          end
-///        end
-///    end
-///  op_ggsh:
-///    begin
-///      to_spu.pres_update = spu.fu[fid].emsk;
-///      foreach(to_rfm.fu[0].res0[k])
-///        foreach(tmp[i,j]) begin
-///          uchar vid = (op0_vec[fid][i][j] >> 1) & 'b011111;
-///          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
-///              && ((grag_base >> 6) == (op0_vec[fid][i][j] >> 6))) begin
-///            to_spu.pres_cmp0[k] = 1;
-///            to_spu.pres_update[k] = 0;
-///            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
-///          end
-///        end
-///    end
-///  op_ggsb:
-///    begin
-///      to_spu.pres_update = spu.fu[fid].emsk;
-///      foreach(to_rfm.fu[0].res0[k])
-///        foreach(tmp[i,j]) begin
-///          uchar vid = op0_vec[fid][i][j] & 'b011111;
-///          if((vid == (ise.subv * num_sp + k)) && spu.fu[fid].emsk[k]
-///              && ((grag_base >> 5) == (op0_vec[fid][i][j] >> 5))) begin
-///            to_spu.pres_cmp0[k] = 1;
-///            to_spu.pres_update[k] = 0;
-///            to_rfm.fu[fid].res0[k] = i * num_sp + j; 
-///          end
-///        end
-///    end              
-///    op_pera:
-///    ///wen is emsk after permute
-///      begin
-///        foreach(rfm.fu[0].rp[2].op[sp]) begin
-///          uchar subv = rfm.fu[fid].rp[2].op[sp] >> 3,
-///                sel = rfm.fu[fid].rp[2].op[sp] & 'b0111;
-///          if(rfm.fu[fid].rp[2].op[sp] < 32) begin
-///            to_rfm.fu[fid].res0[sp] = op0_vec[fid][subv][sel];
-///            to_rfm.fu[fid].wen[sp] = emsk_vec[fid][subv][sel];
-///          end
-///          else if(rfm.fu[fid].rp[2].op[sp] < 64) begin
-///            to_rfm.fu[fid].res0[sp] = op1_vec[fid][subv][sel];
-///            to_rfm.fu[fid].wen[sp] = emsk_vec[fid][subv][sel];
-///          end
-///          else
-///            to_rfm.fu[fid].wen[sp] = 0;
-///        end
-///      end
-///    op_perb:
-///    ///wen is emsk before permute
-///      begin
-///        to_rfm.fu[fid].wen = spu.fu[fid].emsk;
-///        foreach(rfm.fu[0].rp[2].op[sp]) begin
-///          uchar subv = rfm.fu[fid].rp[2].op[sp] >> 3,
-///                sel = rfm.fu[fid].rp[2].op[sp] & 'b0111;
-///          if(rfm.fu[fid].rp[2].op[sp] < 32)
-///            to_rfm.fu[fid].res0[sp] = op0_vec[fid][subv][sel];
-///          else if(rfm.fu[fid].rp[2].op[sp] < 64)
-///            to_rfm.fu[fid].res0[sp] = op1_vec[fid][subv][sel];
-///          else
-///            to_rfm.fu[fid].wen[sp] = 0;
-///        end
-///      end
-///  op_vsl,
-///  op_vslu,
-///  op_vror,
-///  op_vroru,
-///  op_vsr,
-///  op_vsru:
-///    begin
-///    end  /// those are not processed by this case statement            
-///  endcase
-///endfunction : proc_data_vec
