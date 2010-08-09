@@ -27,21 +27,30 @@ class ip4_tlm_sfu_stages extends ovm_object;
 endclass
 
 class ip4_tlm_spa_vars extends ovm_component;
-  tr_ise2spa fm_ise[stage_exe_vwbp:0];
-  tr_rfm2spa fm_rfm[stage_exe_vwbp:0];
-  tr_spu2spa fm_spu[stage_exe_vwbp:0];
+  tr_ise2spa fm_ise;
+  tr_rfm2spa fm_rfm;
+  tr_spu2spa fm_spu;
 ///  tr_dse2spa fm_dse[stage_exe_vwbp:stage_exe_dwb];
-  
+
+  tr_spa2rfm rfm[stage_exe_vwbp:1];
+  tr_spa2ise ise[stage_exe_vwbp:1];
+  tr_spa2spu spu[stage_exe_cmp:1];
+  tr_spa2dse dse[stage_exe_vwbp:1];
+    
   ip4_tlm_sfu_stages sfu[stage_eex_vwbp:1];
   
   bit cancel[num_thread];
   
   `ovm_component_utils_begin(ip4_tlm_spa_vars)
 ///    `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(sfu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(ise, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
   
@@ -59,12 +68,7 @@ class ip4_tlm_spa extends ovm_component;
   local time stamp;
     
   local ip4_tlm_spa_vars v, vn;
-  local tr_spa2rfm to_rfm;
-  local tr_spa2ise to_ise;
-  local tr_spa2spu to_spu;
-  local tr_spa2dse to_dse;
   local word spu_res_l;
-  local uchar tid_l;
   local bit exe_exp;
   
   `ovm_component_utils_begin(ip4_tlm_spa)
@@ -88,28 +92,26 @@ class ip4_tlm_spa extends ovm_component;
 
   function void comb_proc();
     ovm_report_info("SPA", "comb_proc procing...", OVM_FULL); 
-    if(v.fm_ise[0] != null) end_tr(v.fm_ise[0]);
-    if(v.fm_spu[0] != null) end_tr(v.fm_spu[0]);
-    if(v.fm_rfm[0] != null) end_tr(v.fm_rfm[0]);
+    if(v.fm_ise != null) end_tr(v.fm_ise);
+    if(v.fm_spu != null) end_tr(v.fm_spu);
+    if(v.fm_rfm != null) end_tr(v.fm_rfm);
 ///    if(v.fm_dse[stage_exe_dwb] != null) end_tr(v.fm_dse[stage_exe_dwb]);
     
-    vn.fm_ise[0] = null;
-    vn.fm_spu[0] = null;
-    vn.fm_rfm[0] = null;
+    vn.fm_ise = null;
+    vn.fm_spu = null;
+    vn.fm_rfm = null;
 ///    vn.fm_dse[stage_exe_dwb] = null;
 
-    to_rfm = null;
-    to_ise = null;
-    to_spu = null;
-    to_dse = null;
-    
     vn.cancel = '{default : 0};
-    for(int i = stage_exe_vwbp; i > 0; i--) begin
-      vn.fm_ise[i] = v.fm_ise[i-1];
-      vn.fm_rfm[i] = v.fm_rfm[i-1];
-      vn.fm_spu[i] = v.fm_spu[i-1];
+    for(int i = stage_exe_vwbp; i > 1; i--) begin
+      vn.ise[i] = v.ise[i-1];
+      vn.rfm[i] = v.rfm[i-1];
+      vn.dse[i] = v.dse[i-1];
     end
     
+    for(int i = stage_exe_cmp; i > 1; i--)
+      vn.spu[i] = v.spu[i-1];
+      
 ///    for(int i = stage_exe_vwbp; i > stage_exe_dwb; i--)
 ///      vn.fm_dse[i] = v.fm_dse[i-1];
 
@@ -132,104 +134,90 @@ class ip4_tlm_spa extends ovm_component;
     vn.sfu[1] = null;
 
     ///----------process data---------------------
-    ///normal operations
-    if(v.fm_spu[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp] != null && v.fm_rfm[stage_exe_vwbp] != null) begin
-      
+    if(v.fm_spu != null && v.fm_ise != null && v.fm_rfm != null) begin
       word op[num_fu_rp][num_sp];
-      tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
-      tr_spu2spa spu = v.fm_spu[stage_exe_vwbp];
-      tr_rfm2spa rfm = v.fm_rfm[stage_exe_vwbp];
+      bit pres_cmp0[num_sp], pres_cmp1[num_sp];
+      tr_ise2spa ise = v.fm_ise;
+      tr_spu2spa spu = v.fm_spu;
+      tr_rfm2spa rfm = v.fm_rfm;
 ///      tr_dse2spa dse = v.fm_dse[stage_exe_vwbp];
-      
-      to_spu = tr_spa2spu::type_id::create("to_spu", this);
-      to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-            
+
       foreach(ise.fu[fid]) begin
         ise2spa_fu fu = ise.fu[fid];
         if(!fu.en) continue;
         ovm_report_info("SPA", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
-
-        to_rfm.fu[fid].vrf_wr_grp = fu.vrf_wr_grp;
-        to_rfm.fu[fid].vrf_wr_adr = fu.vrf_wr_adr;
-        to_rfm.fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
-        to_rfm.fu[fid].wen = spu.fu[fid].emsk;
-        to_rfm.fu[fid].tid = ise.tid;
         
-        if(fu.op inside {bp_ops}) begin
-          word spu_res;
-          if(ise.subv == 0)
-            spu_res_l = spu.res;
-          spu_res = spu_res_l;
+        if(fu.op inside {spu_only_ops}) begin
+          ///long operations
+          if (vn.sfu[1] == null) vn.sfu[1] = new();
+          vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
+          vn.sfu[1].en[fid] = fu.en;
+          vn.sfu[1].vrf_wr_bk[fid] = fu.vrf_wr_bk;
+          vn.sfu[1].vrf_wr_adr[fid] = fu.vrf_wr_adr;
+          vn.sfu[1].vrf_wr_grp[fid] = fu.vrf_wr_grp;
+          vn.sfu[1].tid = ise.tid;
+          vn.sfu[1].subv = ise.subv;
+          foreach(op[i])
+            op[i] = rfm.fu[fid].rp[i].op;
+            
+          proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
+                    pres_cmp0, pres_cmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
+                    vn.rfm[1].fu[fid].exp_flag, exe_exp);
+        end
+        else begin
+          ///normal operations
+          if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("to_rfm", this);
+          vn.rfm[1].fu[fid].vrf_wr_grp = fu.vrf_wr_grp;
+          vn.rfm[1].fu[fid].vrf_wr_adr = fu.vrf_wr_adr;
+          vn.rfm[1].fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
+          vn.rfm[1].fu[fid].wen = spu.fu[fid].emsk;
+          vn.rfm[1].fu[fid].tid = ise.tid;
           
-          foreach(fu_cfg[i])
-            foreach(op[rp])
-              if(i > fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
-                op[rp] = to_rfm.fu[i].res0;
-                
-///          if(dse != null)
-///            foreach(op[rp])
-///              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
-          
-          if(spu != null)
+          ///bypass op
+          if(fu.op inside {bp_ops}) begin
+            word spu_res;
+            if(ise.subv == 0)
+              spu_res_l = spu.res;
+            spu_res = spu_res_l;
+            
+            foreach(fu_cfg[i])
+              foreach(op[rp])
+                if(i > fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
+                  op[rp] = vn.rfm[1].fu[i].res0;
+                  
+  ///          if(dse != null)
+  ///            foreach(op[rp])
+  ///              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
+            
             foreach(op[rp])
               op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
+          end
+          
+          proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
+                    pres_cmp0, pres_cmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
+                    vn.rfm[1].fu[fid].exp_flag, exe_exp);
         end
-        proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
-                  to_spu.pres_cmp0, to_spu.pres_cmp1, to_rfm.fu[fid].res0, to_rfm.fu[fid].res1,
-                  to_rfm.fu[fid].exp_flag, exe_exp);
+        if(fu.op inside {op_cmp, op_ucmp}) begin
+          if(vn.spu[1] == null) vn.spu[1] = tr_spa2spu::type_id::create("to_spu", this);
+          vn.spu[1].pres_cmp0 = pres_cmp0;
+          vn.spu[1].pres_cmp1 = pres_cmp1;
+        end
       end
       
       if(ise.subv == ise.vec_mode) begin
-        vn.cancel[tid_l] = exe_exp;
+        if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("to_ise", this);
+        vn.ise[1].exp = exe_exp;
+        vn.ise[1].tid = ise.tid;
         exe_exp = 0;
       end
-      tid_l = ise.tid;
     end
     
-    ///long operations
-    if(v.fm_rfm[0] != null && v.fm_spu[0] != null && v.fm_ise[0] != null) begin
-      tr_ise2spa ise = v.fm_ise[0];
-      tr_spu2spa spu = v.fm_spu[0];
-      tr_rfm2spa rfm = v.fm_rfm[0];
-      bit pres[num_sp];
-      word op[num_fu_rp][num_sp];
-      foreach(ise.fu[fid]) begin
-        ise2spa_fu fu = ise.fu[fid];
-        if(!(fu.op inside {spu_only_ops})) continue;
-        if (vn.sfu[1] == null) vn.sfu[1] = new();
-        vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
-        vn.sfu[1].en[fid] = fu.en;
-        vn.sfu[1].vrf_wr_bk[fid] = fu.vrf_wr_bk;
-        vn.sfu[1].vrf_wr_adr[fid] = fu.vrf_wr_adr;
-        vn.sfu[1].vrf_wr_grp[fid] = fu.vrf_wr_grp;
-        vn.sfu[1].tid = ise.tid;
-        vn.sfu[1].subv = ise.subv;
-        foreach(op[i])
-          op[i] = rfm.fu[fid].rp[i].op;
-          
-        proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
-                  pres, pres, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
-                  to_rfm.fu[fid].exp_flag, exe_exp);
-      end
+    ///log spa exp to cancel
+    if(v.ise[stage_exe_vwbp] != null) begin
+      tr_spa2ise ise = v.ise[stage_exe_vwbp];
+      vn.cancel[ise.tid] = ise.exp;
     end
-    
-    ///long operations write back
-    if(v.sfu[stage_eex] != null) begin
-      ip4_tlm_sfu_stages sfu = v.sfu[stage_eex];
-      foreach(sfu.en[fid]) begin
-        if(!sfu.en[fid]) continue;
-        if(to_spu == null) to_spu = tr_spa2spu::type_id::create("to_spu", this);
-        if(to_rfm == null) to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-        to_rfm.fu[fid].tid = sfu.tid;
-        to_rfm.fu[fid].res0 = sfu.res0[fid];
-        to_rfm.fu[fid].res1 = sfu.res1[fid];
-        to_rfm.fu[fid].wen = sfu.emsk[fid];
-        if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
-          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
-          ovm_report_warning("SPA", "sfu writeback conflict");
-      end
-    end
-    
+        
     ///dse bypass
 ///    if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse inside {[selfu0:selfu0+num_fu]}) begin
 ///      tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
@@ -248,17 +236,47 @@ class ip4_tlm_spa extends ovm_component;
 ///    end
     
     ///canceling from ise
-    if(v.fm_ise[0] != null) begin
+    if(v.fm_ise != null) begin
       foreach(vn.cancel[i])
-        vn.cancel[i] |= v.fm_ise[0].cancel[i];
+        vn.cancel[i] |= v.fm_ise.cancel[i];
     end
     
-    foreach(vn.fm_ise[i])
-      if(vn.fm_ise[i] != null && v.cancel[vn.fm_ise[i].tid]) begin
-        vn.fm_ise[i] = null;
-        ovm_report_info("SPA", $psprintf("canceling tid:%0d, at stage %0d", vn.fm_ise[i].tid, i), OVM_HIGH);
+    foreach(vn.rfm[i])
+      if(vn.rfm[i] != null && v.cancel[vn.rfm[i].fu[0].tid]) begin
+        vn.rfm[i] = null;
+        ovm_report_info("SPA", $psprintf("canceling tid:%0d, at stage %0d", vn.rfm[i].fu[0].tid, i), OVM_HIGH);
       end
-      
+  endfunction
+  
+  function void req_proc();
+    tr_spa2rfm to_rfm;
+    tr_spa2ise to_ise;
+    tr_spa2spu to_spu;
+    tr_spa2dse to_dse;
+    ovm_report_info("SPA", "req_proc procing...", OVM_FULL); 
+        
+    to_rfm = v.rfm[stage_exe_vwbp];
+    to_ise = v.ise[stage_exe_vwbp];
+    to_dse = v.dse[stage_exe_vwbp];
+    to_spu = v.spu[stage_exe_cmp];
+        
+    ///long operations write back
+    if(v.sfu[stage_eex] != null) begin
+      ip4_tlm_sfu_stages sfu = v.sfu[stage_eex];
+      foreach(sfu.en[fid]) begin
+        if(!sfu.en[fid]) continue;
+        ovm_report_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_HIGH);
+        if(to_rfm == null) to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
+        to_rfm.fu[fid].tid = sfu.tid;
+        to_rfm.fu[fid].res0 = sfu.res0[fid];
+        to_rfm.fu[fid].res1 = sfu.res1[fid];
+        to_rfm.fu[fid].wen = sfu.emsk[fid];
+///        if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
+///          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
+///          ovm_report_warning("SPA", "sfu writeback conflict");
+      end
+    end    
+
     ///no_fu generation
     for(int i = ck_stage_sfu0; i <= ck_stage_sfu1; i++)
       foreach(v.sfu[0].en[fid])
@@ -266,12 +284,7 @@ class ip4_tlm_spa extends ovm_component;
           if(to_ise == null) to_ise = tr_spa2ise::type_id::create("to_ise", this);
           to_ise.no_fu[fid] = 1;
         end    
-  endfunction
-  
-  function void req_proc();
-    ovm_report_info("SPA", "req_proc procing...", OVM_FULL); 
-    
-          
+                  
     ///------------req to other module----------------
     if(to_rfm != null) void'(rfm_tr_port.nb_transport(to_rfm, to_rfm));
     if(to_ise != null) void'(ise_tr_port.nb_transport(to_ise, to_ise));
@@ -289,7 +302,7 @@ class ip4_tlm_spa extends ovm_component;
     if(v.cancel[req.tid])
       ovm_report_info("SPA_TR", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
     else
-      vn.fm_ise[0] = req;
+      vn.fm_ise = req;
     return 1;
   endfunction : nb_transport_ise
 
@@ -299,7 +312,7 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_rfm[0] = req;
+    vn.fm_rfm = req;
     return 1;
   endfunction : nb_transport_rfm
 
@@ -309,7 +322,7 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fm_spu[0] = req;
+    vn.fm_spu = req;
     return 1;
   endfunction : nb_transport_spu
 

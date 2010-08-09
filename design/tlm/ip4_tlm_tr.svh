@@ -474,6 +474,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 endclass : tr_ise2spa
 
 class tr_spa2ise extends ovm_sequence_item;
+  ///syn to vwb0
   rand bit no_fu[num_fu];
   rand bit exp;
   rand uchar tid;
@@ -537,7 +538,7 @@ class tr_spu2spa extends ovm_sequence_item;
 endclass : tr_spu2spa
 
 class tr_spa2spu extends ovm_sequence_item;
-  rand bit pres_cmp0[num_sp], pres_cmp1[num_sp];///, pres_update[num_sp];
+  rand bit pres_cmp0[num_sp], pres_cmp1[num_sp];///syn to cem0
 ///  rand uchar tid[num_fu], subv[num_fu];
   
 ///  constraint valid_vars {

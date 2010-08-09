@@ -149,12 +149,12 @@ class ip4_tlm_rfm extends ovm_component;
          
     ///----------read registers---------------------
    
-    for(int cyc = 0; cyc < cyc_vec; cyc++) begin
-      tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0+cyc];
+    for(int subv = 0; subv < cyc_vec; subv++) begin
+      tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0+subv];
       
       if(ise == null) continue;
       foreach(cvrf[bk,sp])
-        cvrf[bk][sp] = vrf[ise.vrf_rd_grp[bk]][ise.vrf_rd_adr[bk]][bk][cyc][sp];
+        cvrf[bk][sp] = vrf[ise.vrf_rd_grp[bk]][ise.vrf_rd_adr[bk]][bk][subv][sp];
 
       foreach(csrf[bk])
         csrf[bk] = srf[ise.srf_rd_grp[bk]][ise.srf_rd_adr[bk]][bk];  
@@ -166,16 +166,16 @@ class ip4_tlm_rfm extends ovm_component;
       
       foreach(ise.fu[fid]) begin
         if(!ise.fu[fid].en) continue;
-        ovm_report_info("RFM_RD", $psprintf("Read for SPA cyc %0d, FU%0d : %s ...", cyc, fid, fu_cfg[fid].name), OVM_HIGH);
+        ovm_report_info("RFM_RD", $psprintf("Read for SPA subv %0d, FU%0d : %s ...", subv, fid, fu_cfg[fid].name), OVM_HIGH);
 
-        if(vn.spa[cyc] == null) vn.spa[cyc] = tr_rfm2spa::type_id::create("to_spa", this);
-        foreach(vn.spa[cyc].fu[fid].rp[rp])
-          foreach(vn.spa[cyc].fu[fid].rp[rp].op[sp])
-            read_rf(vn.spa[cyc].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf_l, bp_imm_l, ise.fu[fid].imm);
+        if(vn.spa[subv] == null) vn.spa[subv] = tr_rfm2spa::type_id::create("to_spa", this);
+        foreach(vn.spa[subv].fu[fid].rp[rp])
+          foreach(vn.spa[subv].fu[fid].rp[rp].op[sp])
+            read_rf(vn.spa[subv].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf_l, bp_imm_l, ise.fu[fid].imm);
       end
       
-      if(ise.dse_en && cyc == 0) begin
-        ovm_report_info("RFM_RD", $psprintf("Read for DSE cyc %0d ...", cyc), OVM_HIGH);
+      if(ise.dse_en && subv == 0) begin
+        ovm_report_info("RFM_RD", $psprintf("Read for DSE subv %0d ...", subv), OVM_HIGH);
         if(to_dse == null) to_dse = tr_rfm2dse::type_id::create("to_dse", this);
         foreach(to_dse.base[sp]) begin
           read_rf(to_dse.base[sp], ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bp_imm, ise.dse_imm);
@@ -184,21 +184,21 @@ class ip4_tlm_rfm extends ovm_component;
         read_rf(to_dse.op2, ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bp_imm, ise.dse_imm);
       end
             
-      if(ise.spu_en && cyc == 0) begin
-        ovm_report_info("RFM_RD", $psprintf("Read for SPU subs %0d ...", cyc), OVM_HIGH);
+      if(ise.spu_en && subv == 0) begin
+        ovm_report_info("RFM_RD", $psprintf("Read for SPU subs %0d ...", subv), OVM_HIGH);
         if(vn.spu == null) vn.spu = tr_rfm2spu::type_id::create("to_spu", this);
         read_rf(vn.spu.op0, ise.spu_rd_bk[0], 0, cvrf, csrf, ise.bp_imm, ise.spu_imm);
         read_rf(vn.spu.op1, ise.spu_rd_bk[1], 0, cvrf, csrf, ise.bp_imm, ise.spu_imm);          
       end
     end
     
-    for(int cyc = 0; cyc < cyc_vec; cyc++)
-      if(v.fm_ise[stage_rrf_rrc0+cyc] != null && v.fm_ise[stage_rrf_rrc0+cyc].vec_end) begin
-        tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0+cyc];
-        to_spa = vn.spa[cyc];
+    for(int subv = 0; subv < cyc_vec; subv++)
+      if(v.fm_ise[stage_rrf_rrc0+subv] != null && v.fm_ise[stage_rrf_rrc0+subv].vec_end) begin
+        tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0+subv];
+        to_spa = vn.spa[subv];
         foreach(to_spa.fu[fid])
           to_spa.fu[fid].en = ise.fu[fid].en;
-        vn.spa[cyc] = null;
+        vn.spa[subv] = null;
         break;
       end
     
