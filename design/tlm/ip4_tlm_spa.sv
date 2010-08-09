@@ -68,7 +68,7 @@ class ip4_tlm_spa extends ovm_component;
   local time stamp;
     
   local ip4_tlm_spa_vars v, vn;
-  local word spu_res_l;
+///  local word spu_res_l;
   local bit exe_exp;
   
   `ovm_component_utils_begin(ip4_tlm_spa)
@@ -175,22 +175,22 @@ class ip4_tlm_spa extends ovm_component;
           
           ///bypass op
           if(fu.op inside {bp_ops}) begin
-            word spu_res;
-            if(ise.subv == 0)
-              spu_res_l = spu.res;
-            spu_res = spu_res_l;
+///            word spu_res;
+///            if(ise.subv == 0)
+///              spu_res_l = spu.res;
+///            spu_res = spu_res_l;
             
             foreach(fu_cfg[i])
               foreach(op[rp])
-                if(i > fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
+                if(i < fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
                   op[rp] = vn.rfm[1].fu[i].res0;
                   
-  ///          if(dse != null)
-  ///            foreach(op[rp])
-  ///              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
+///          if(dse != null)
+///            foreach(op[rp])
+///              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
             
-            foreach(op[rp])
-              op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
+///            foreach(op[rp])
+///              op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
           end
           
           proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,

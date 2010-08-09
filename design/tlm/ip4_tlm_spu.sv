@@ -198,11 +198,11 @@ class ip4_tlm_spu extends ovm_component;
       end
     end
     
-    ///bypass to spa
-    if(to_rfm != null) begin
-      if(to_spa == null) to_spa = tr_spu2spa::type_id::create("to_spa", this);
-      to_spa.res = to_rfm.res;
-    end
+///    ///bypass to spa
+///    if(to_rfm != null) begin
+///      if(to_spa == null) to_spa = tr_spu2spa::type_id::create("to_spa", this);
+///      to_spa.res = to_rfm.res;
+///    end
     
     ///log branch info to buf
     if(v.fm_ise[stage_rrf_rrc1] != null) begin

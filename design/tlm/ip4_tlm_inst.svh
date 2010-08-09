@@ -431,16 +431,19 @@ class inst_c extends ovm_object;
     end
     else if(adr == 15)
       sel = selz;
-    else if(adr == 14)
-      sel = selspu;
-    else if(adr == 13)
-      sel = seldse;
-    else if(adr == 12) begin
-      if(fuid > 1)
-        sel = rbk_sel_e'(selfu0 + fuid - 1);
-      else
-        sel = selfu0;
+    else if(adr inside {[12:14]}) begin
+      sel = rbk_sel_e'(selfu0 + adr - 12);
     end
+///    else if(adr == 14)
+///      sel = selspu;
+///    else if(adr == 13)
+///      sel = seldse;
+///    else if(adr == 12) begin
+///      if(fuid > 1)
+///        sel = rbk_sel_e'(selfu0 + fuid - 1);
+///      else
+///        sel = selfu0;
+///    end
   endfunction : set_rf_en
   
 	function void decode();
@@ -986,7 +989,7 @@ class inst_c extends ovm_object;
       dse.ua_wr_bk = (rd_bk[0] >= selv0 && rd_bk[0] <= selv_e) ? rd_bk[0] - selv0 : 0;
       dse.ua_wr = m_ua != 0 ? 1 : 0;
       dse.op = op;
-      dse.bp_data = (rd_bk[1] inside {selspu, [selfu0:selfu0+num_fu-1]}) ? 1 : 0;
+///      dse.bp_data = (rd_bk[1] inside {selspu, [selfu0:selfu0+num_fu-1]}) ? 1 : 0;
     end
   endfunction : fill_dse
 

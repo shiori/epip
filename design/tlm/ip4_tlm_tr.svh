@@ -515,12 +515,12 @@ endclass : spu2spa_fu
 
 class tr_spu2spa extends ovm_sequence_item;
   spu2spa_fu fu[num_fu];
-  rand word res;     ///spu res bypass
+///  rand word res;     ///spu res bypass
   rand uchar exe_mode;
   
 	`ovm_object_utils_begin(tr_spu2spa)
 	  `ovm_field_sarray_object(fu, OVM_ALL_ON)
-	  `ovm_field_int(res, OVM_ALL_ON)
+///	  `ovm_field_int(res, OVM_ALL_ON)
 	  `ovm_field_int(exe_mode, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -820,7 +820,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wr_grp, wr_adr, wr_bk,
              ua_wr_grp, ua_wr_adr, ua_wr_bk, tid;
-  rand bit vec, en, bp_data, ua_wr;
+  rand bit vec, en, ua_wr;  ///bp_data
   rand opcode_e op;
   rand uchar vec_mode;
   rand uchar pb_id;
@@ -836,7 +836,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(ua_wr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(vec_mode, OVM_ALL_ON)
-	  `ovm_field_int(bp_data, OVM_ALL_ON)
+///	  `ovm_field_int(bp_data, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pb_id, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
@@ -844,11 +844,11 @@ class tr_ise2dse extends ovm_sequence_item;
   
   constraint valid_vars{
     en dist {0:=4, 1:=6};
-    bp_data dist {0:=4, 1:=6};
+///    bp_data dist {0:=4, 1:=6};
     op inside {dse_ops};
-    bp_data -> vec;
+///    bp_data -> vec;
     vec_mode < cyc_vec; ///inside {[1:cyc_vec]};
-    solve vec before bp_data;
+///    solve vec before bp_data;
   }
   
 	function new (string name = "tr_ise2dse");
