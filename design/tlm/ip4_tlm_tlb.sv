@@ -159,7 +159,7 @@ class ip4_tlm_tlb extends ovm_component;
   
   local bit find;
   word vir_adr; 
-  word var_padr;
+  bit [PHY_width-1:0] var_padr;
   
   `ovm_component_utils_begin(ip4_tlm_tlb)
   `ovm_component_utils_end
@@ -285,8 +285,8 @@ class ip4_tlm_tlb extends ovm_component;
                   break;
                 end
                                 
-                for (int n = EvenOddBit; n < PFN_width+EvenOddBit; n++)
-                 var_padr[n] = var_pfn[n-EvenOddBit];      /// 23 
+                for (int n = EvenOddBit; n < PHY_width; n++)
+                  var_padr[n] = var_pfn[n-EvenOddBit];      
                 find = 1;
                 break;
             end  

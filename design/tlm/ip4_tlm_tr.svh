@@ -961,7 +961,7 @@ class tr_dse2tlb extends ovm_sequence_item;
 endclass : tr_dse2tlb
 
 class tr_tlb2dse extends ovm_sequence_item;
-  rand word phy_adr;
+  rand bit[PHY_width-1:0] phy_adr;
   rand bit hit, exp;
   rand uchar eobit;  /// evenoddbit
   
@@ -1005,8 +1005,8 @@ endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_sm sm_dse------------------------
 class tr_dse2shm extends ovm_sequence_item;
-  rand word ld_adr[num_sp];
-  rand word st_adr[num_sp];
+  rand bit[PHY_width-1:0] ld_adr[num_sp];
+  rand bit[PHY_width-1:0] st_adr[num_sp];
   rand word st_dat[num_sp];
   rand bit st_emask[num_sp];
   
@@ -1027,3 +1027,29 @@ class tr_shm2dse extends ovm_sequence_item;
   `ovm_object_utils_end
    
 endclass : tr_shm2dse
+
+class tr_dse2ci extends ovm_sequence_item;
+  rand bit req;
+  rand bit[PHY_width-1:0] ld_adr[num_sp];
+  rand bit[PHY_width-1:0] st_adr[num_sp];
+  rand word st_dat[num_sp];
+  rand uchar tid;
+  
+  `ovm_object_utils_begin(tr_dse2ci)
+    `ovm_field_int(req, OVM_ALL_ON);
+    `ovm_field_sarray_int(ld_adr, OVM_ALL_ON);
+    `ovm_field_sarray_int(st_adr, OVM_ALL_ON);
+    `ovm_field_sarray_int(st_dat, OVM_ALL_ON);
+    `ovm_field_int(tid, OVM_ALL_ON);
+  `ovm_object_utils_end
+
+endclass : tr_dse2ci
+
+class tr_ci2dse extends ovm_sequence_item;
+  rand bit rsp;
+  
+  `ovm_object_utils_begin(tr_ci2dse)
+    `ovm_field_int(rsp, OVM_ALL_ON);
+  `ovm_object_utils_end
+
+endclass : tr_ci2dse

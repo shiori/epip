@@ -69,8 +69,9 @@ parameter uchar cyc_vec       = num_vec/num_sp,     ///4
                 cyc_iss_dse   = cyc_iss_spu,
                 cyc_iss_vec   = lat_rf + lat_rbp + cyc_vec -1 + lat_mac + lat_dwbp;
 
-parameter uchar VADD_START = 14;  /// 8K 14BIT START for tlb and dse
-parameter uchar PFN_width = 23;
+parameter uchar VADD_START = 14,  /// 8K 14BIT START for tlb and dse
+                PFN_width = 23,
+                PHY_width = VADD_START + PFN_width;
 parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
                 rf_bank1 = 1,      ///  unit : word 32bit
                 rf_bank2 = 2,      /// 
@@ -79,6 +80,16 @@ parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
                 rf_bank5 = 5,
                 rf_bank6 = 6,
                 rf_bank7 = 7;
+parameter bit [PHY_width-1:0] SM_BASE   = 0x00_0000_0000,
+                  TFIF_BASE = 0x00_0020_0000,
+                  CTLR_BASE = 0x00_0024_0000,
+                  EJTG_BASE = 0x00_0024_1000,
+                  EBUS_BASE = 0x00_0024_2000;
+               
+parameter uint SM_SIZE = 2^16,  /// shared memory size 64Kbyte
+               MSG_SIZE = 256,  /// 256BYTE
+               CTLR_SIZE = 128, /// each control register of pb 128byte
+               EJTG_SIZE = 128; /// each ejtag of pb 128byte
                 
 
 /*
