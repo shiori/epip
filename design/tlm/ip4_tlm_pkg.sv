@@ -97,10 +97,13 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
   */  
   
 parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
-                stage_rrf_rrc1    = stage_rrf_rrc0 + 1,             ///2
+                stage_rrf_exs0    = stage_rrf_rrc0 + 1,             ///2
                 stage_rrf_rrc     = stage_rrf_rrc0 + cyc_vec - 1,   ///4
                 stage_rrf_exe0    = stage_rrf_rrc + 1,              ///5
                 stage_rrf_exe     = stage_rrf_rrc + lat_mac,        ///8
+                stage_rrf_cmp     = stage_rrf_rrc + num_fu,         ///7
+                stage_rrf_cem0    = stage_rrf_cmp + 1,              ///8
+                stage_rrf_dem0    = stage_rrf_rrc0 + lat_dse,       ///5
                 stage_rrf_vwbp    = stage_rrf_exe + lat_vwbp,       ///9
                 stage_rrf_swbp    = stage_rrf_rrc0 + lat_dse + lat_dwbp,      ///6
                 stage_rrf_swb     = stage_rrf_swbp + 1,             ///7

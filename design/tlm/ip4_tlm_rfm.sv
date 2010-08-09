@@ -49,7 +49,7 @@ class ip4_tlm_rfm extends ovm_component;
   local word srf[num_phy_srf_grp][num_prf_p_grp/num_vrf_bks][num_srf_bks];
     
   local ip4_tlm_rfm_vars v, vn;
-  local word csrf_l[num_srf_bks];
+///  local word csrf_l[num_srf_bks];
   local word bp_imm_l[num_bp_imm];
   local tr_rfm2spa to_spa;
   local tr_rfm2spu to_spu;
@@ -160,7 +160,7 @@ class ip4_tlm_rfm extends ovm_component;
         csrf[bk] = srf[ise.srf_rd_grp[bk]][ise.srf_rd_adr[bk]][bk];  
                 
       if(ise.start) begin
-        csrf_l = csrf;
+///        csrf_l = csrf;
         bp_imm_l = ise.bp_imm;
       end
       
@@ -171,7 +171,7 @@ class ip4_tlm_rfm extends ovm_component;
         if(vn.spa[subv] == null) vn.spa[subv] = tr_rfm2spa::type_id::create("to_spa", this);
         foreach(vn.spa[subv].fu[fid].rp[rp])
           foreach(vn.spa[subv].fu[fid].rp[rp].op[sp])
-            read_rf(vn.spa[subv].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf_l, bp_imm_l, ise.fu[fid].imm);
+            read_rf(vn.spa[subv].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf, bp_imm_l, ise.fu[fid].imm);
       end
       
       if(ise.dse_en && subv == 0) begin

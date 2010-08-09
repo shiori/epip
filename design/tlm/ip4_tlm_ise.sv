@@ -463,16 +463,31 @@ class ise_thread_inf extends ovm_component;
 
     /// spu or scalar dse issue
     if(en_spu) begin
+      bit br_dep_dse = 0, br_dep_spa = 0;
       i_spu.map_wr_grp(vrf_map, srf_map);
       if(ci_rfm[0] == null) ci_rfm[0] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
       if(ci_rfm[cnt_srf_rd] == null) ci_rfm[cnt_srf_rd] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+      if(ci_spu[cnt_srf_rd] == null) ci_spu[cnt_srf_rd] = tr_ise2spu::type_id::create("to_spu", get_parent());
       ci_rfm[0].start = 1;
       ci_rfm[cnt_srf_rd].scl_end = 1;
+      ci_spu[cnt_srf_rd].start = 1;
+      if(i_spu.is_br() && !i_spu.is_unc_br()) begin ///a conditional branch need vec_mode cycles
+        cnt_srf_rd = vec_mode;
+        ///find what br is depend on
+        foreach(en_fu[fid])
+          if(en_fu[fid] && i_fu[fid].op inside {op_cmp, op_ucmp})
+            br_dep_spa = 1;
+        if(en_dse)
+          br_dep_dse = !br_dep_spa;
+      end
+      ci_spu[cnt_srf_rd].br_end = i_spu.is_br();
       for(int i = 0; i <= cnt_srf_rd; i++) begin
         if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
         if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
         i_spu.fill_rfm(ci_rfm[i], i);
-        i_spu.fill_spa(ci_spa[i]);
+        i_spu.fill_spu(ci_spu[i]);
+        ci_spu[i].br_dep_spa = br_dep_spa;
+        ci_spu[i].br_dep_dse = br_dep_dse;
       end
     end
     
@@ -482,7 +497,9 @@ class ise_thread_inf extends ovm_component;
       i_dse.fill_dse(ci_dse[0]);      
       for(int i = 0; i <= cnt_dse_rd; i++) begin
         if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+        if(ci_spu[i] == null) ci_spu[i] = tr_ise2spu::type_id::create("to_spu", get_parent());
         i_dse.fill_rfm(ci_rfm[i], i);
+        i_dse.fill_spu(ci_spu[i]);
       end
     end
           
@@ -498,12 +515,14 @@ class ise_thread_inf extends ovm_component;
     for(int i = 0; i <= cnt_vrf_rd; i++) begin
       if(ci_spa[i] == null) ci_spa[i] = tr_ise2spa::type_id::create("to_spa", get_parent());
       if(ci_rfm[i] == null) ci_rfm[i] = tr_ise2rfm::type_id::create("to_rfm", get_parent());
+      if(ci_spu[i] == null) ci_spu[i] = tr_ise2spu::type_id::create("to_spu", get_parent());
       if(en_dse)
         i_dse.fill_spa(ci_spa[i]);
       foreach(i_fu[fid])
         if(en_fu[fid]) begin
           i_fu[fid].fill_rfm(ci_rfm[i], i);
           i_fu[fid].fill_spa(ci_spa[i]);
+          i_fu[fid].fill_spu(ci_spu[i]);
         end
       ci_spa[i].subv = i;
       ci_spa[i].vec_mode = vec_mode;
@@ -644,11 +663,18 @@ class ip4_tlm_ise extends ovm_component;
     
     if(tif.wcnt_n > tif.wcnt)
       tif.wcnt = tif.wcnt_n;
-    if(tif.en_spu && tif.i_spu.is_pd_br()) begin
-      tif.ts = ts_w_b;
-      tif.pc_br = tif.pc + tif.i_spu.os;
-      tif.br_pred = 0;
-    end
+      
+    if(tif.en_spu) 
+      if(tif.i_spu.is_unc_br()) begin
+        tif.pc = tif.pc + tif.i_spu.os;
+        tif.flush();
+        tif.cancel = 1;
+      end
+      else if(tif.i_spu.is_br()) begin
+        tif.ts = ts_w_b;
+        tif.pc_br = tif.pc + tif.i_spu.os;
+        tif.br_pred = 0;
+      end
     
     /// spu or scalar dse issue
     if(tif.en_spu) begin
@@ -789,7 +815,7 @@ class ip4_tlm_ise extends ovm_component;
       no_rmsg = dse.no_rmsg;
     end
     
-    ///check & issue, cancel condition 3, ise decode err, priv enter.
+    ///check & issue, cancel condition 3, ise decode err, priv enter, uncond branch
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= num_thread; i++) begin
       uchar tid = i + v.tid_iss_l;
@@ -996,8 +1022,8 @@ class ip4_tlm_ise extends ovm_component;
     cnt_srf_rd = 0;
     cnt_dse_rd = 0;
     cnt_pr_wr = 0;
-    cnt_srf_wr[num_srf_bks] = '{default: 0};
-    cnt_vrf_wr[num_vrf_bks] = '{default: 0};
+    cnt_srf_wr = '{default: 0};
+    cnt_vrf_wr = '{default: 0};
     
     printer = new();
     printer.knobs.depth = 1;

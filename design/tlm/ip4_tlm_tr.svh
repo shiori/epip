@@ -538,7 +538,8 @@ class tr_spu2spa extends ovm_sequence_item;
 endclass : tr_spu2spa
 
 class tr_spa2spu extends ovm_sequence_item;
-  rand bit pres_cmp0[num_sp], pres_cmp1[num_sp];///syn to cem0
+  ///syn to cem0
+  rand bit pres_cmp0[num_sp], pres_cmp1[num_sp];
 ///  rand uchar tid[num_fu], subv[num_fu];
   
 ///  constraint valid_vars {
@@ -596,13 +597,16 @@ class tr_ise2spu extends ovm_sequence_item;
   rand msc_opcode_e sop;
   rand msk_opcode_e mop;
   rand br_opcode_e bop;
-  rand cmp_opcode_e cop;
+///  rand cmp_opcode_e cop;
 ///  rand pr_merge_e fmerge;  
   rand opcode_e op;
   
   rand uchar tid, subv, vec_mode;
-  rand bit spu_start;
-  rand bit pr_br_dep;
+  rand bit start,   ///signal spu normal op to start
+           br_end,  ///signal the last subv of a br
+           br_dep,
+           br_dep_dse,
+           br_dep_spa;
 ///  rand uchar pr_br_adr;
   
   rand uchar srf_wr_bk, srf_wr_grp, srf_wr_adr, srf_wr_dsel;
@@ -618,13 +622,14 @@ class tr_ise2spu extends ovm_sequence_item;
   
   constraint valid_data{
     tid < num_thread;
-    pr_br_dep dist {0:=6, 1:=4};
+    br_dep dist {0:=6, 1:=4};
+    br_dep -> br_dep_dse || br_dep_spa;
 ///    pr_br_adr <= num_pr;
     subv dist {0:=5, 1:=5};
     vec_mode < cyc_vec; ///inside {[1:cyc_vec]};
 ///    subs dist {0:=5, 1:=5};
 ///    cycs inside {[1:cyc_vec]};
-    pr_rd_adr_spu == 0 -> pr_br_dep == 0;
+    pr_rd_adr_spu == 0 -> br_dep == 0;
     op inside {spu_ops, spu_com_ops};
     op != op_br -> sop == sop_nop && mop == mop_nop && bop == bop_az;
     foreach(pr_rd_adr[i])
@@ -641,7 +646,7 @@ class tr_ise2spu extends ovm_sequence_item;
 		srf_wr_grp inside {[0:num_phy_vrf_grp-1]};
 		srf_wr_adr inside {[0:num_prf_p_grp/num_vrf_bks-1]};
 		srf_wr_dsel < 2;
-    solve pr_rd_adr_spu before pr_br_dep;
+    solve pr_rd_adr_spu before br_dep;
     solve op before sop, mop, bop;
   }
   
@@ -670,7 +675,10 @@ class tr_ise2spu extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_ise2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(pr_br_dep, OVM_ALL_ON)
+	  `ovm_field_int(br_dep, OVM_ALL_ON)
+	  `ovm_field_int(br_dep_dse, OVM_ALL_ON)
+	  `ovm_field_int(br_dep_spa, OVM_ALL_ON)
+	  `ovm_field_int(start, OVM_ALL_ON)
 ///	  `ovm_field_int(pr_br_adr, OVM_ALL_ON)
 ///	  `ovm_field_int(cycs, OVM_ALL_ON)
 ///	  `ovm_field_int(subs, OVM_ALL_ON)
@@ -695,7 +703,7 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_enum(msc_opcode_e, sop, OVM_ALL_ON)
 	  `ovm_field_enum(msk_opcode_e, mop, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
-	  `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
+///	  `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
 ///	  `ovm_field_enum(pr_merge_e, fmerge, OVM_ALL_ON)
 	  `ovm_field_enum(br_opcode_e, bop, OVM_ALL_ON)
 		`ovm_field_int(srf_wr_dsel, OVM_ALL_ON)
@@ -726,17 +734,16 @@ class tr_spu2dse extends ovm_sequence_item;
 endclass : tr_spu2dse
 
 class tr_dse2spu extends ovm_sequence_item;
-  rand uchar tid, subv;
-  rand bit pres[num_sp];
+  rand uchar tid;
+  rand bit pres[num_sp], exp;
   
   constraint valid_vars {
     tid < num_thread;
-    subv < cyc_vec;
   }
   
 	`ovm_object_utils_begin(tr_dse2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(subv, OVM_ALL_ON)
+	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_sarray_int(pres, OVM_ALL_ON)
   `ovm_object_utils_end
   
