@@ -47,7 +47,8 @@ parameter uchar num_sp            = 8,
                 num_ifet_bytes    = 16,
                 num_inst_vrf      = 32,
                 num_inst_srf      = 16,
-                num_rf_bank       = num_sp;   /// register file bank number, default equal to num_sp
+                num_rf_bank       = num_sp,   /// register file bank number, default equal to num_sp
+                num_w_cnt         = 2;
                 
 parameter uchar lat_mac           = 5,
                 lat_sfu           = 16,

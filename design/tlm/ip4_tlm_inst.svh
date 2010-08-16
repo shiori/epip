@@ -251,7 +251,7 @@ typedef union packed{
 typedef bit[3] iga_t;
 
 typedef struct packed{
-  bit t, nc;
+  bit t, cg;
   bit[5] fua;
   bit[3] apb;
   bit[2] ipw;
@@ -265,7 +265,7 @@ typedef union packed{
 } i_gs1_u;
 
 typedef struct packed{
-  bit t, nc, fua, apb, ipw;
+  bit t, cg, fua, apb, ipw;
   iga_t a;
 }i_gs0_t;
 

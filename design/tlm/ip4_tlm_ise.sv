@@ -74,7 +74,7 @@ endclass : ip4_tlm_ise_vars
 class ise_thread_inf extends ovm_component;
   ise_thread_state ts;
   uchar ibuf[$];
-  bit nc, dse_vec;
+  bit dse_vec;
   uchar igrp_bytes, ap_bytes, num_imms,
         cnt_srf_rd, cnt_vrf_rd, cnt_dse_rd;
   word imms[num_bp_imm];
@@ -88,7 +88,7 @@ class ise_thread_inf extends ovm_component;
       decoded,
       decode_error,
       cancel;
-  uchar wcnt, wcnt_n, vec_mode;
+  uchar wcnt[num_w_cnt], wcnt_n, wcnt_sel, vec_mode;
   
   uchar vrf_map[num_inst_vrf/num_prf_p_grp], 
         srf_map[num_inst_srf/num_prf_p_grp];
@@ -105,7 +105,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(cancel, OVM_ALL_ON)
     `ovm_field_int(priv_mode, OVM_ALL_ON)
     `ovm_field_queue_int(ibuf, OVM_ALL_ON)
-    `ovm_field_int(nc, OVM_ALL_ON)
+    `ovm_field_int(wcnt_sel, OVM_ALL_ON)
     `ovm_field_int(igrp_bytes, OVM_ALL_ON)
     `ovm_field_int(ap_bytes, OVM_ALL_ON)
     `ovm_field_int(num_imms, OVM_ALL_ON)
@@ -120,7 +120,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(en_dse, OVM_ALL_ON)
     `ovm_field_sarray_int(en_fu, OVM_ALL_ON)
     `ovm_field_int(en_vec, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_int(wcnt, OVM_ALL_ON)
+    `ovm_field_sarray_int(wcnt, OVM_ALL_ON)
     `ovm_field_int(wcnt_n, OVM_ALL_ON)
     `ovm_field_int(vec_mode, OVM_ALL_ON)
     `ovm_field_int(pd_ifet, OVM_ALL_ON)
@@ -177,7 +177,8 @@ class ise_thread_inf extends ovm_component;
 
   function void cyc_new();
     cancel = 0;
-    if(wcnt != 0) wcnt--;
+    foreach(wcnt[i])
+      if(wcnt[i] != 0) wcnt[i]--;
   endfunction : cyc_new
 
   function void exe_priv();
@@ -191,7 +192,7 @@ class ise_thread_inf extends ovm_component;
     en_fu = '{default : 0};
 
     if(!gs0.t) begin
-      nc = gs0.nc;
+      wcnt_sel = gs0.cg;
       ap_bytes = gs0.apb;
       num_imms = gs0.ipw;
       dse_vec = gs0.fua;
@@ -208,7 +209,7 @@ class ise_thread_inf extends ovm_component;
         ovm_report_warning("decode_igs", "igs decode error, fua not valid");
         decode_error = 1;
       end
-      nc = gs.i.nc;
+      wcnt_sel = gs.i.cg;
       ap_bytes = gs.i.apb;
       num_imms = gs.i.ipw;
       igrp_bytes = 2 + ap_bytes + num_imms * num_word_bytes + tmp * num_inst_bytes;
@@ -228,8 +229,8 @@ class ise_thread_inf extends ovm_component;
         en_fu_t[i] = en_fu[i];
         
       ovm_report_info("decode_igs",
-        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b, apb:%0d, ipw:%0d", 
-                   igrp_bytes, en_spu, en_dse, en_fu_t, dse_vec, nc, ap_bytes, num_imms),
+        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wcnt_sel:%0b, apb:%0d, ipw:%0d", 
+                   igrp_bytes, en_spu, en_dse, en_fu_t, dse_vec, wcnt_sel, ap_bytes, num_imms),
         OVM_HIGH);
     end
   endfunction : decode_igs
@@ -606,9 +607,9 @@ class ip4_tlm_ise extends ovm_component;
         en_fu_t[i] = tif.en_fu[i];
         
       ovm_report_info("can_iss",
-        $psprintf("ts:%s, decoded:%0d, err:%0d, wcnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, nc:%0b", 
-                   tif.ts.name, tif.decoded, tif.decode_error, tif.wcnt, tif.pc, tif.en_spu, tif.en_dse,
-                   en_fu_t, tif.dse_vec, tif.nc),
+        $psprintf("ts:%s, decoded:%0d, err:%0d, wcnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wcnt_sel:%0b", 
+                   tif.ts.name, tif.decoded, tif.decode_error, tif.wcnt[tif.wcnt_sel], tif.pc, tif.en_spu, tif.en_dse,
+                   en_fu_t, tif.dse_vec, tif.wcnt_sel),
         OVM_HIGH);
     end
     
@@ -644,7 +645,7 @@ class ip4_tlm_ise extends ovm_component;
     foreach(cnt_srf_wr[i])
       if(cnt_srf_wr[i] + tif.cnt_srf_wr[i] > cyc_vec)
         return 0;
-    return tif.decoded && (tif.ts == ts_rdy && (tif.wcnt == 0 || tif.nc));
+    return tif.decoded && (tif.ts == ts_rdy && tif.wcnt[tif.wcnt_sel] == 0);
   endfunction : can_iss
 
   function void issue(input uchar tid);
@@ -661,8 +662,8 @@ class ip4_tlm_ise extends ovm_component;
     tif.decoded = 0;
     tif.decode_error = 0;
     
-    if(tif.wcnt_n > tif.wcnt)
-      tif.wcnt = tif.wcnt_n;
+    if(tif.wcnt_n > tif.wcnt[tif.wcnt_sel])
+      tif.wcnt[tif.wcnt_sel] = tif.wcnt_n;
       
     if(tif.en_spu) 
       if(tif.i_spu.is_unc_br()) begin
