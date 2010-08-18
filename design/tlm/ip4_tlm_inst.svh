@@ -350,7 +350,7 @@ class inst_c extends ovm_object;
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decode_error, OVM_ALL_ON)
     `ovm_field_int(is_vec, OVM_ALL_ON)
-    `ovm_field_int(fuid, OVM_ALL_ON)
+    `ovm_field_int(fuid, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(inst, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(en_spu, OVM_ALL_ON)

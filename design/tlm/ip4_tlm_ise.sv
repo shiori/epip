@@ -119,7 +119,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(en_spu, OVM_ALL_ON)
     `ovm_field_int(en_dse, OVM_ALL_ON)
     `ovm_field_sarray_int(en_fu, OVM_ALL_ON)
-    `ovm_field_int(en_vec, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_int(en_vec, OVM_ALL_ON)
     `ovm_field_sarray_int(wcnt, OVM_ALL_ON)
     `ovm_field_int(wcnt_n, OVM_ALL_ON)
     `ovm_field_int(vec_mode, OVM_ALL_ON)
@@ -220,9 +220,6 @@ class ise_thread_inf extends ovm_component;
         en_fu[i] = gs.i.fua[2+i];
     end
         
-    foreach(en_fu[i])
-      en_vec |= en_fu[i];
-      
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [num_fu-1:0] en_fu_t;
       foreach(en_fu_t[i])
@@ -304,7 +301,10 @@ class ise_thread_inf extends ovm_component;
 
       a[0] = gs.i.a;
     end
-    
+
+    foreach(en_fu[i])
+      en_vec |= en_fu[i];
+          
     ///fill in rf address
     while(ap_bytes != 0) begin
       if(ap_bytes >= 3) begin
@@ -525,9 +525,11 @@ class ise_thread_inf extends ovm_component;
           i_fu[fid].fill_spa(ci_spa[i]);
           i_fu[fid].fill_spu(ci_spu[i]);
         end
-      ci_spa[i].subv = i;
       ci_spa[i].vec_mode = vec_mode;
+      ci_spu[i].vec_mode = vec_mode;
       ci_rfm[i].cyc = i;
+      ci_spa[i].subv = i;
+      ci_spu[i].subv = i;
     end
   endfunction : fill_iss
 
