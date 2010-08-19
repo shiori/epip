@@ -47,7 +47,8 @@ parameter uchar num_sp            = 8,
                 num_ifet_bytes    = 16,
                 num_inst_vrf      = 32,
                 num_inst_srf      = 16,
-                num_rf_bank       = num_sp;   /// register file bank number, default equal to num_sp
+                num_rf_bank       = num_sp,   /// register file bank number, default equal to num_sp
+                num_w_cnt         = 2;
                 
 parameter uchar lat_mac           = 5,
                 lat_sfu           = 16,
@@ -109,6 +110,7 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
   
 parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
                 stage_rrf_exs0    = stage_rrf_rrc0 + 1,             ///2
+                stage_rrf_exs1    = stage_rrf_exs0 + 1,             ///3
                 stage_rrf_rrc     = stage_rrf_rrc0 + cyc_vec - 1,   ///4
                 stage_rrf_exe0    = stage_rrf_rrc + 1,              ///5
                 stage_rrf_exe     = stage_rrf_rrc + lat_mac,        ///8

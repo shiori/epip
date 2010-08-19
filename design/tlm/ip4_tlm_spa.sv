@@ -27,7 +27,7 @@ class ip4_tlm_sfu_stages extends ovm_object;
 endclass
 
 class ip4_tlm_spa_vars extends ovm_component;
-  tr_ise2spa fm_ise;
+  tr_ise2spa fm_ise[stage_rrf_exe0:0];
   tr_rfm2spa fm_rfm;
   tr_spu2spa fm_spu;
 ///  tr_dse2spa fm_dse[stage_exe_vwbp:stage_exe_dwb];
@@ -43,7 +43,7 @@ class ip4_tlm_spa_vars extends ovm_component;
   
   `ovm_component_utils_begin(ip4_tlm_spa_vars)
 ///    `ovm_field_sarray_object(fm_dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fm_rfm, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(sfu, OVM_ALL_ON + OVM_REFERENCE)
@@ -92,15 +92,15 @@ class ip4_tlm_spa extends ovm_component;
 
   function void comb_proc();
     ovm_report_info("SPA", "comb_proc procing...", OVM_FULL); 
-    if(v.fm_ise != null) end_tr(v.fm_ise);
+    if(v.fm_ise[stage_rrf_exe0] != null) end_tr(v.fm_ise[stage_rrf_exe0]);
     if(v.fm_spu != null) end_tr(v.fm_spu);
     if(v.fm_rfm != null) end_tr(v.fm_rfm);
-///    if(v.fm_dse[stage_exe_dwb] != null) end_tr(v.fm_dse[stage_exe_dwb]);
-    
-    vn.fm_ise = null;
+
+    for(int i = stage_rrf_exe0; i > 0; i--)
+      vn.fm_ise[i] = vn.fm_ise[i-1];
+    vn.fm_ise[0] = null;
     vn.fm_spu = null;
     vn.fm_rfm = null;
-///    vn.fm_dse[stage_exe_dwb] = null;
 
     vn.cancel = '{default : 0};
     for(int i = stage_exe_vwbp; i > 1; i--) begin
@@ -108,13 +108,15 @@ class ip4_tlm_spa extends ovm_component;
       vn.rfm[i] = v.rfm[i-1];
       vn.dse[i] = v.dse[i-1];
     end
-    
+    vn.ise[1] = null;
+    vn.rfm[1] = null;
+    vn.dse[1] = null;
+          
     for(int i = stage_exe_cmp; i > 1; i--)
       vn.spu[i] = v.spu[i-1];
-      
-///    for(int i = stage_exe_vwbp; i > stage_exe_dwb; i--)
-///      vn.fm_dse[i] = v.fm_dse[i-1];
-
+    vn.spu[1] = null;
+    
+    ///check for sfu write back conflict
     for(int fid = 0; fid < num_fu; fid++) begin
       uchar cnt = 0;
       for(int sg = stage_eex_vwbp; sg > 0; sg--) begin
@@ -134,13 +136,12 @@ class ip4_tlm_spa extends ovm_component;
     vn.sfu[1] = null;
 
     ///----------process data---------------------
-    if(v.fm_spu != null && v.fm_ise != null && v.fm_rfm != null) begin
+    if(v.fm_spu != null && v.fm_ise[stage_rrf_exe0] != null && v.fm_rfm != null) begin
       word op[num_fu_rp][num_sp];
       bit pres_cmp0[num_sp], pres_cmp1[num_sp];
-      tr_ise2spa ise = v.fm_ise;
+      tr_ise2spa ise = v.fm_ise[stage_rrf_exe0];
       tr_spu2spa spu = v.fm_spu;
       tr_rfm2spa rfm = v.fm_rfm;
-///      tr_dse2spa dse = v.fm_dse[stage_exe_vwbp];
 
       foreach(ise.fu[fid]) begin
         ise2spa_fu fu = ise.fu[fid];
@@ -172,25 +173,16 @@ class ip4_tlm_spa extends ovm_component;
           vn.rfm[1].fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
           vn.rfm[1].fu[fid].wen = spu.fu[fid].emsk;
           vn.rfm[1].fu[fid].tid = ise.tid;
-          
+
+          foreach(op[i])
+            op[i] = rfm.fu[fid].rp[i].op;
+                      
           ///bypass op
           if(fu.op inside {bp_ops}) begin
-///            word spu_res;
-///            if(ise.subv == 0)
-///              spu_res_l = spu.res;
-///            spu_res = spu_res_l;
-            
             foreach(fu_cfg[i])
               foreach(op[rp])
                 if(i < fid && fu.bp_sel[rp] == rbk_sel_e'(selfu0 + i))
                   op[rp] = vn.rfm[1].fu[i].res0;
-                  
-///          if(dse != null)
-///            foreach(op[rp])
-///              op[rp] = fu.bp_sel[rp] == seldse ? dse.res : rfm.fu[fid].rp[rp].op;
-            
-///            foreach(op[rp])
-///              op[rp] = fu.bp_sel[rp] == selspu ? '{default : spu_res} : rfm.fu[fid].rp[rp].op;
           end
           
           proc_data(fu.op, fu.cop, ise.fmerge, ise.subv, spu.exe_mode, spu.fu[fid].emsk, op,
@@ -218,27 +210,10 @@ class ip4_tlm_spa extends ovm_component;
       vn.cancel[ise.tid] = ise.exp;
     end
         
-    ///dse bypass
-///    if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].bp_rf_dse inside {[selfu0:selfu0+num_fu]}) begin
-///      tr_ise2spa ise = v.fm_ise[stage_exe_vwbp];
-///      if(to_dse == null) to_dse = tr_spa2dse::type_id::create("to_dse", this);
-///      if(to_rfm == null) begin
-///        to_dse.res = '{default:0};
-///      end
-///      else begin
-///        uchar fu_sel = uchar'(ise.bp_rf_dse) - uchar'(selfu0);
-///        assert(fu_sel < num_fu);
-///        if(ise.bp_rf_dse_wp == 0)
-///          to_dse.res = to_rfm.fu[fu_sel].res0;
-///        else
-///          to_dse.res = to_rfm.fu[fu_sel].res1;
-///      end
-///    end
-    
     ///canceling from ise
-    if(v.fm_ise != null) begin
+    if(v.fm_ise[0] != null) begin
       foreach(vn.cancel[i])
-        vn.cancel[i] |= v.fm_ise.cancel[i];
+        vn.cancel[i] |= v.fm_ise[0].cancel[i];
     end
     
     foreach(vn.rfm[i])
@@ -302,7 +277,7 @@ class ip4_tlm_spa extends ovm_component;
     if(v.cancel[req.tid])
       ovm_report_info("SPA_TR", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
     else
-      vn.fm_ise = req;
+      vn.fm_ise[0] = req;
     return 1;
   endfunction : nb_transport_ise
 
@@ -551,4 +526,6 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
       end
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal fmerge!!!");
   endcase
+  
+///  ovm_report_info("SPA_PROC_DATA", $psprintf("subv:%0d, op:%s, res0:%0h, op1:%0h, o1:%0h", subv, op.name, res0[0], op1[0], o[1][0]), OVM_HIGH);
 endfunction : proc_data

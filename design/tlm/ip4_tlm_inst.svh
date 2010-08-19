@@ -251,7 +251,7 @@ typedef union packed{
 typedef bit[3] iga_t;
 
 typedef struct packed{
-  bit t, nc;
+  bit t, cg;
   bit[5] fua;
   bit[3] apb;
   bit[2] ipw;
@@ -265,7 +265,7 @@ typedef union packed{
 } i_gs1_u;
 
 typedef struct packed{
-  bit t, nc, fua, apb, ipw;
+  bit t, cg, fua, apb, ipw;
   iga_t a;
 }i_gs0_t;
 
@@ -350,7 +350,7 @@ class inst_c extends ovm_object;
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decode_error, OVM_ALL_ON)
     `ovm_field_int(is_vec, OVM_ALL_ON)
-    `ovm_field_int(fuid, OVM_ALL_ON)
+    `ovm_field_int(fuid, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(inst, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(en_spu, OVM_ALL_ON)
@@ -981,8 +981,10 @@ class inst_c extends ovm_object;
       spu.pr_nmsk_dse = 0;
       spu.pr_inv_dse = 0;
       spu.pr_wr_adr2 = pr_adr_wr[0];
+      spu.en_dse = 1;
     end
     else begin
+      spu.en_fu[fuid] = 1;
       spu.pr_inv[fuid] = 0;
       spu.pr_nmsk[fuid] = 0;
       spu.pr_rd_adr[fuid] = pr_adr_rd;
