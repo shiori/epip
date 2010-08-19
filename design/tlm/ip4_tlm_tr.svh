@@ -829,7 +829,7 @@ class tr_ise2dse extends ovm_sequence_item;
              ua_wr_grp, ua_wr_adr, ua_wr_bk, tid;
   rand bit vec, en, ua_wr;  ///bp_data
   rand opcode_e op;
-  rand uchar vec_mode;
+  rand uchar vec_mode, subv;
   rand uchar pb_id;
   
 	`ovm_object_utils_begin(tr_ise2dse)
@@ -843,6 +843,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(ua_wr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(vec_mode, OVM_ALL_ON)
+	  `ovm_field_int(subv, OVM_ALL_ON)
 ///	  `ovm_field_int(bp_data, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pb_id, OVM_ALL_ON)

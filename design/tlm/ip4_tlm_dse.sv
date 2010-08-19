@@ -89,10 +89,14 @@ class ip4_tlm_dse extends ovm_component;
     bit [PHY_width-1:0] smadr_start;   /// pb_id owns shared memory start address  
     bit [PHY_width-1:0] smadr_end;     /// pb_id owns shared memory end address
     
-    bit [PHY_width-1:0] que_ldst_adr[QUEUE_SIZE];
-    ushort qldst_adr_ptr = 0;
+    bit [PHY_width-1:0] que_ld_adr[QUEUE_SIZE];
+    uchar que_ld_tid[QUEUE_SIZE];
+    ushort qld_adr_ptr = 0;
+    
+    bit [PHY_width-1:0] que_st_adr[QUEUE_SIZE];
+    ushort qst_adr_ptr = 0;
     word que_stdat[QUEUE_SIZE];
-    uchar que_tid[QUEUE_SIZE];
+    uchar que_st_tid[QUEUE_SIZE];
     
     ovm_report_info("DSE", "comb_proc procing...", OVM_FULL); 
     
@@ -193,9 +197,9 @@ class ip4_tlm_dse extends ovm_component;
             end
             else begin          /// access other pb share memory
               if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb))begin  
-                que_ldst_adr[qldst_adr_ptr] = phy_adr[i];
-                que_tid[qldst_adr_ptr] = v.fm_ise[stage_rrf_sel].tid;
-                qldst_adr_ptr = qldst_adr_ptr + 1;
+                que_ld_adr[qld_adr_ptr] = phy_adr[i];
+                que_ld_tid[qld_adr_ptr] = v.fm_ise[stage_rrf_sel].tid;
+                qld_adr_ptr = qld_adr_ptr + 1;
               end
               
               if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb))begin
