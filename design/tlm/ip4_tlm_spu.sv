@@ -15,7 +15,7 @@ class ip4_tlm_spu_vars extends ovm_component;
   tr_rfm2spu fm_rfm[stage_rrf_vwb0:stage_rrf_exs0];
   tr_spa2spu fm_spa;
   tr_dse2spu fm_dse;
-  tr_spu2rfm rfm[stage_rrf_swbp:stage_rrf_exs0];
+  tr_spu2rfm rfm[stage_rrf_swbp:stage_rrf_exs1];
     
   `ovm_component_utils_begin(ip4_tlm_spu_vars)
     `ovm_field_sarray_object(fm_ise, OVM_ALL_ON + OVM_REFERENCE)
@@ -75,16 +75,16 @@ class ip4_tlm_spu extends ovm_component;
     for(int i = stage_rrf_vwb0; i > stage_rrf_exs0; i--)
       vn.fm_rfm[i] = v.fm_rfm[i-1];
 
-    for(int i = stage_rrf_swbp; i > stage_rrf_exs0; i--)
+    for(int i = stage_rrf_swbp; i > stage_rrf_exs1; i--)
       vn.rfm[i] = v.rfm[i-1];
-    vn.rfm[stage_rrf_swbp] = null;
+    vn.rfm[stage_rrf_exs1] = null;
     
-    if(v.fm_ise[stage_rrf_exs0] != null) end_tr(v.fm_ise[stage_rrf_exs0]);
+    if(v.fm_ise[0] != null) end_tr(v.fm_ise[0]);
     if(v.fm_rfm[stage_rrf_exs0] != null) end_tr(v.fm_rfm[stage_rrf_exs0]);
     if(v.fm_spa != null) end_tr(v.fm_spa);
     if(v.fm_dse != null) end_tr(v.fm_dse);
     
-    vn.fm_ise[stage_rrf_exs0] = null;
+    vn.fm_ise[0] = null;
     vn.fm_rfm[stage_rrf_exs0] = null;
     vn.fm_spa = null;
     vn.fm_dse = null;
@@ -127,11 +127,10 @@ class ip4_tlm_spu extends ovm_component;
     ///predication register read
     if(v.fm_ise[stage_rrf_rrc] != null) begin
       tr_ise2spu ise = v.fm_ise[stage_rrf_rrc];
-      to_spa = tr_spu2spa::type_id::create("to_spa", this);
-      to_dse = tr_spu2dse::type_id::create("to_dse", this);
-      to_spa.exe_mode = sr_exe_mode[ise.tid];
       foreach(to_spa.fu[fid]) begin
-        to_spa.fu[fid].emsk = ise.pr_rd_adr == 0 ? '{default:1} : pr[ise.tid][ise.pr_rd_adr][ise.subv];
+        if(!ise.en_fu[fid]) continue;
+        if(to_spa == null) to_spa = tr_spu2spa::type_id::create("to_spa", this);
+        to_spa.fu[fid].emsk = ise.pr_rd_adr[fid] == 0 ? '{default:1} : pr[ise.tid][ise.pr_rd_adr[fid]][ise.subv];
         if(ise.pr_inv[fid])
           foreach(to_spa.fu[fid].emsk[i])
             to_spa.fu[fid].emsk[i] = !to_spa.fu[fid].emsk[i];
@@ -139,14 +138,19 @@ class ip4_tlm_spu extends ovm_component;
           foreach(to_spa.fu[fid].emsk[i])
             to_spa.fu[fid].emsk[i] = to_spa.fu[fid].emsk[i] && ilm[ise.tid][ise.subv][i] && cm[ise.tid][ise.subv][i];
       end
-      to_dse.emsk = ise.pr_rd_adr_dse == 0 ? '{default:1} : pr[ise.tid][ise.pr_rd_adr_dse][ise.subv];
-      
+      if(to_spa != null) to_spa.exe_mode = sr_exe_mode[ise.tid];
+    end
+    
+    if(v.fm_ise[stage_rrf_rrc0] != null && v.fm_ise[stage_rrf_rrc0].en_dse) begin
+      tr_ise2spu ise = v.fm_ise[stage_rrf_rrc0];
+      to_dse = tr_spu2dse::type_id::create("to_dse", this);
       foreach(to_dse.emsk[i]) begin
         if(ise.pr_inv_dse)
           to_dse.emsk[i] = !to_dse.emsk[i];
         if(!ise.pr_nmsk_dse)
           to_dse.emsk[i] = to_dse.emsk[i] && ilm[ise.tid][ise.subv][i] && cm[ise.tid][ise.subv][i];
       end
+      to_dse.emsk = ise.pr_rd_adr_dse == 0 ? '{default:1} : pr[ise.tid][ise.pr_rd_adr_dse][ise.subv];
     end
     
     ///processing normal spu instructions
@@ -197,13 +201,13 @@ class ip4_tlm_spu extends ovm_component;
         op_she:   ovm_report_warning("SPU_UNIMP", "she is not implemented yet");
         op_wsbh:  ovm_report_warning("SPU_UNIMP", "wsbh is not implemented yet");
         endcase
-        vn.rfm[stage_rrf_exs0] = tr_spu2rfm::type_id::create("to_rfm", this);
-        vn.rfm[stage_rrf_exs0].res = r0[word_width-1:0];
-        vn.rfm[stage_rrf_exs0].wen = pr_spu;
-        vn.rfm[stage_rrf_exs0].srf_wr_dsel = ise.srf_wr_dsel;
-        vn.rfm[stage_rrf_exs0].srf_wr_bk   = ise.srf_wr_bk;
-        vn.rfm[stage_rrf_exs0].srf_wr_grp  = ise.srf_wr_grp;
-        vn.rfm[stage_rrf_exs0].srf_wr_adr  = ise.srf_wr_adr;
+        vn.rfm[stage_rrf_exs1] = tr_spu2rfm::type_id::create("to_rfm", this);
+        vn.rfm[stage_rrf_exs1].res = r0[word_width-1:0];
+        vn.rfm[stage_rrf_exs1].wen = pr_spu;
+        vn.rfm[stage_rrf_exs1].srf_wr_dsel = ise.srf_wr_dsel;
+        vn.rfm[stage_rrf_exs1].srf_wr_bk   = ise.srf_wr_bk;
+        vn.rfm[stage_rrf_exs1].srf_wr_grp  = ise.srf_wr_grp;
+        vn.rfm[stage_rrf_exs1].srf_wr_adr  = ise.srf_wr_adr;
       end
     end
     
@@ -468,6 +472,8 @@ class ip4_tlm_spu extends ovm_component;
     stamp = 0ns;
 ///    b_rdy = '{default: cyc_vec};
 ///    b_pd = '{default: 0};
+    ilm = '{default : 1};
+    cm = '{default : 1};
   endfunction : build
 endclass : ip4_tlm_spu
 

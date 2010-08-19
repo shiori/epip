@@ -606,7 +606,9 @@ class tr_ise2spu extends ovm_sequence_item;
            br_end,  ///signal the last subv of a br
            br_dep,
            br_dep_dse,
-           br_dep_spa;
+           br_dep_spa,
+           en_fu[num_fu],
+           en_dse;
 ///  rand uchar pr_br_adr;
   
   rand uchar srf_wr_bk, srf_wr_grp, srf_wr_adr, srf_wr_dsel;
@@ -692,6 +694,7 @@ class tr_ise2spu extends ovm_sequence_item;
 ///	  `ovm_field_int(pr_up_en_rot, OVM_ALL_ON)
 ///	  `ovm_field_int(pr_up_fnaz_rot, OVM_ALL_ON)
 ///	  `ovm_field_int(pr_up_val_rot, OVM_ALL_ON)
+    `ovm_field_sarray_int(pr_rd_adr, OVM_ALL_ON)
 	  `ovm_field_int(pr_rd_adr_spu, OVM_ALL_ON)
 	  `ovm_field_int(pr_rd_adr_dse, OVM_ALL_ON)
 	  `ovm_field_sarray_int(pr_inv, OVM_ALL_ON)
@@ -710,6 +713,8 @@ class tr_ise2spu extends ovm_sequence_item;
 		`ovm_field_int(srf_wr_bk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srf_wr_grp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srf_wr_adr, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(en_dse, OVM_ALL_ON + OVM_NOPRINT)
+		`ovm_field_sarray_int(en_fu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2spu");

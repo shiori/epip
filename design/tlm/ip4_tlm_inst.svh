@@ -981,8 +981,10 @@ class inst_c extends ovm_object;
       spu.pr_nmsk_dse = 0;
       spu.pr_inv_dse = 0;
       spu.pr_wr_adr2 = pr_adr_wr[0];
+      spu.en_dse = 1;
     end
     else begin
+      spu.en_fu[fuid] = 1;
       spu.pr_inv[fuid] = 0;
       spu.pr_nmsk[fuid] = 0;
       spu.pr_rd_adr[fuid] = pr_adr_rd;
