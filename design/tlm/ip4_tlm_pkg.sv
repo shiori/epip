@@ -81,14 +81,14 @@ parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
                 rf_bank5 = 5,
                 rf_bank6 = 6,
                 rf_bank7 = 7;
-parameter bit [PHY_width-1:0] SM_BASE   = 0x00_0000_0000,
-                  TFIF_BASE = 0x00_0020_0000,
-                  CTLR_BASE = 0x00_0024_0000,
-                  EJTG_BASE = 0x00_0024_1000,
-                  EBUS_BASE = 0x00_0024_2000;
+parameter bit [PHY_width-1:0] SM_BASE   = 'h00_0000_0000,
+                              TFIF_BASE = 'h00_0020_0000,
+                              CTLR_BASE = 'h00_0024_0000,
+                              EJTG_BASE = 'h00_0024_1000,
+                              EBUS_BASE = 'h00_0024_2000;
                
-parameter uint SM_SIZE = 2^16,  /// shared memory size 64Kbyte
-               MSG_SIZE = 256,  /// 256BYTE
+parameter uint SM_SIZE   = 2^16,/// shared memory size 64Kbyte
+               MSG_SIZE  = 256, /// 256BYTE
                CTLR_SIZE = 128, /// each control register of pb 128byte
                EJTG_SIZE = 128; /// each ejtag of pb 128byte
                 

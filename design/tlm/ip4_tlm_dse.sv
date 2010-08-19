@@ -14,7 +14,7 @@ parameter QUEUE_SIZE = 256*2;  /// 32*8*2
 
 class ip4_tlm_dse_vars extends ovm_component;
   
-  tr_ise2dse fm_ise[stage_rrf_swb:stage_rrf_rrc0];
+  tr_ise2dse fm_ise[stage_rrf_vwb0:stage_rrf_rrc0];
   tr_spu2dse fm_spu;
   tr_rfm2dse fm_rfm;
   tr_spa2dse fm_spa;
@@ -116,7 +116,7 @@ class ip4_tlm_dse extends ovm_component;
     vn.fm_shm = null;
     vn.fm_ci  = null;
     
-    for (int i = stage_rrf_dwb; i > stage_rrf_rrc0; i--) 
+    for (int i = stage_rrf_vwb0; i > stage_rrf_rrc0; i--) 
       vn.fm_ise[i] = v.fm_ise[i-1];
       
     for (int i = stage_exe_vwbp; i > 0; i--)
@@ -127,18 +127,18 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fm_spu != null)
       var_emsk = v.fm_spu.emsk;
     
-    if(v.fm_rfm != null && v.fm_ise[stage_rrf_ag] != null && v.fm_spu != null)begin
-      if(v.fm_ise[stage_rrf_ag].en)begin
+    if(v.fm_rfm != null && v.fm_ise[stage_rrf_ag] != null && v.fm_spu != null) begin
+      if(v.fm_ise[stage_rrf_ag].en) begin
         /// virtual address gen and selected send to tlb
         for (int i = 0; i < num_sp; i++)
           var_vadr[i] = v.fm_rfm.base[i] + v.fm_rfm.op2[i];
         
-        for (int i = 0; (i < num_sp)&&(v.fm_spu.emsk[i]==1); i++)begin
+        for (int i = 0; (i < num_sp)&&(v.fm_spu.emsk[i]==1); i++) begin
           valva_adr = var_vadr[i];
           break;
         end
         
-        for (int i = 0; (i < num_sp)&&(v.fm_spu.emsk[i]==1); i++)begin
+        for (int i = 0; (i < num_sp)&&(v.fm_spu.emsk[i]==1); i++) begin
           if((var_vadr[i][31:VADD_START] != valva_adr[31:VADD_START]))
             var_emsk[i] = 0;           /// the first step emask modification
         end
@@ -149,75 +149,74 @@ class ip4_tlm_dse extends ovm_component;
         end
     
         /// check the physical address in sel stage
-        if(v.fm_ise[stage_rrf_sel] != null && v.fm_tlb != null)begin
+        if(v.fm_ise[stage_rrf_sel] != null && v.fm_tlb != null) begin
           vn.ise = tr_dse2ise::type_id::create("to_ise", this);
           vn.shm[0] = tr_dse2shm::type_id::create("to_shm", this);
           /// use the pb_id to compute the pb self shared memory address mapped to the address space 
           smadr_start = v.fm_ise[stage_rrf_sel].pb_id * SM_SIZE;
           smadr_end = smadr_start + SM_SIZE - 1;
-          if(v.fm_tlb.hit)begin
+          if(v.fm_tlb.hit) begin
             /// gen the complete phy_adr
-            for(int i = 0; (i < num_sp)&&(var_emsk[i]==1); i++)begin
+            for(int i = 0; (i < num_sp)&&(var_emsk[i]==1); i++) begin
               for(int j = 0; j < v.fm_tlb.eobit; j++)
-                phy_adr[i][j] = valva_adr[i][j];
+                phy_adr[i][j] = valva_adr[j];
               for(int m = v.fm_tlb.eobit; m < PHY_width; m++)
                 phy_adr[i][m] = v.fm_tlb.phy_adr[m];
             end
             
-            for(int i = 0; (i < num_sp)&&(var_emsk[i]==1); i++)begin
+            for(int i = 0; (i < num_sp)&&(var_emsk[i]==1); i++) begin
               bank_check = phy_adr[i][4:2];
               k = i;
             end
                 
             /// check the physical address whether match the op_code or not
-            for(int i = 0; (i < num_sp)&&(var_emsk[i]==1); i++)begin
+            for(int i = 0; (i < num_sp)&&(var_emsk[i]==1); i++) begin
               if((((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_sw)) && (phy_adr[i][1:0] != 2'b00)) 
-                  ||(((v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_sh)) && (phy_adr[i][0] != 1'b0)))begin
+                  ||(((v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_sh)) && (phy_adr[i][0] != 1'b0))) begin
                 vn.ise.exp = 1;
                 ovm_report_warning("DSE_ILLEGAL0", "Phy ADR does not match with the op_code type!!!");
               end
             
-            /// the shared memory or other PB shared memory will be access, so must judge which memory
-            /// if the address is pb_self shared memory
-            if(smadr_start <= phy_adr[i] <= smadr_end)begin
-              if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb))begin  
-                /// the sm access will be execution, so must check if the sm bank conflict
-                vn.shm[0].ld_adr[i] = phy_adr[i]- SM_BASE; /// real memory address
-                if((phy_adr[i][4:2] == bank_check)&&(k!=i))
-                  var_emsk[i] = 0;             /// the second step emask modification
-              end
-              if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb))begin
-                if((phy_adr[i][4:2] == bank_check)&&(k!=i))
-                  var_emsk[i] = 0;             /// the second step emask modification
-                if(v.fm_rfm != null)begin
-                  vn.shm[0].st_adr[i] = phy_adr[i]- SM_BASE; /// real memory address
-                  vn.shm[0].st_dat[i] = v.fm_rfm.op1[i];
+              /// the shared memory or other PB shared memory will be access, so must judge which memory
+              /// if the address is pb_self shared memory
+              if(smadr_start <= phy_adr[i] && phy_adr[i] <= smadr_end) begin
+                if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb)) begin  
+                  /// the sm access will be execution, so must check if the sm bank conflict
+                  vn.shm[0].ld_adr[i] = phy_adr[i]- SM_BASE; /// real memory address
+                  if((phy_adr[i][4:2] == bank_check)&&(k!=i))
+                    var_emsk[i] = 0;             /// the second step emask modification
+                end
+                if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb)) begin
+                  if((phy_adr[i][4:2] == bank_check)&&(k!=i))
+                    var_emsk[i] = 0;             /// the second step emask modification
+                  if(v.fm_rfm != null) begin
+                    vn.shm[0].st_adr[i] = phy_adr[i]- SM_BASE; /// real memory address
+                    vn.shm[0].st_dat[i] = v.fm_rfm.op1[i];
+                  end
                 end
               end
-            end
-            else begin          /// access other pb share memory
-              if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb))begin  
-                que_ld_adr[qld_adr_ptr] = phy_adr[i];
-                que_ld_tid[qld_adr_ptr] = v.fm_ise[stage_rrf_sel].tid;
-                qld_adr_ptr = qld_adr_ptr + 1;
-              end
-              
-              if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb))begin
+              else begin          /// access other pb share memory
+                if((v.fm_ise[stage_rrf_sel].op == op_lw) || (v.fm_ise[stage_rrf_sel].op == op_lh) || (v.fm_ise[stage_rrf_sel].op == op_lb)) begin  
+                  que_ld_adr[qld_adr_ptr] = phy_adr[i];
+                  que_ld_tid[qld_adr_ptr] = v.fm_ise[stage_rrf_sel].tid;
+                  qld_adr_ptr = qld_adr_ptr + 1;
+                end
                 
+                if((v.fm_ise[stage_rrf_sel].op == op_sw) || (v.fm_ise[stage_rrf_sel].op == op_sh) || (v.fm_ise[stage_rrf_sel].op == op_sb)) begin
+                  
+                end
               end
-            end
-          
-          
-        end  /// end of for var_cnt 
+            end  /// end of for  
          
-      end   /// end of hit
-      else vn.ise.cancel = 1;  /// no find the match entry in tlb,  miss 
+          end   /// end of hit
+          else vn.ise.cancel = 1;  /// no find the match entry in tlb,  miss 
+        end
+      end
     end
- 
     /// send signals to rfm
-    if(v.fm_ise[stage_rrf_swb] != null)begin
+    if(v.fm_ise[stage_rrf_swb] != null) begin
       vn.rfm = tr_dse2rfm::type_id::create("to_rfm", this);
-      if(v.fm_ise[stage_rrf_swb].en)begin
+      if(v.fm_ise[stage_rrf_swb].en) begin
         vn.rfm.wr_grp = v.fm_ise[stage_rrf_swb].wr_grp;
         vn.rfm.wr_adr = v.fm_ise[stage_rrf_swb].wr_adr;
         vn.rfm.wr_bk  = v.fm_ise[stage_rrf_swb].wr_bk;
@@ -234,18 +233,18 @@ class ip4_tlm_dse extends ovm_component;
     ovm_report_info("DSE", "req_proc procing...", OVM_FULL); 
     
     ///send write back control signal to rfm
-    if(v.fm_ise[stage_rrf_swb] != null)begin
+    if(v.fm_ise[stage_rrf_swb] != null) begin
       res = tr_dse2rfm::type_id::create("to_rfm", this);
-      if(v.fm_ise[stage_rrf_swb].en)begin
+      if(v.fm_ise[stage_rrf_swb].en) begin
         res.wr_grp = v.fm_ise[stage_rrf_swb].wr_grp;
         res.wr_adr = v.fm_ise[stage_rrf_swb].wr_adr;
         res.wr_bk  = v.fm_ise[stage_rrf_swb].wr_bk;
       end
     end
     
-///    if(v.fm_ise != null)begin
-///      if(v.fm_ise[stage_rrf_ag].en)begin
-///        if(v.fm_ise[stage_rrf_ag].op == op_)begin
+///    if(v.fm_ise != null) begin
+///      if(v.fm_ise[stage_rrf_ag].en) begin
+///        if(v.fm_ise[stage_rrf_ag].op == op_) begin
 ///        end
 ///      end
 ///    end
