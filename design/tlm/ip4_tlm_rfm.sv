@@ -160,15 +160,14 @@ class ip4_tlm_rfm extends ovm_component;
         csrf[bk] = srf[ise.srf_rd_grp[bk]][ise.srf_rd_adr[bk]][bk];  
                 
       if(ise.start) begin
-///        csrf_l = csrf;
         bp_imm_l = ise.bp_imm;
       end
       
       foreach(ise.fu[fid]) begin
         if(!ise.fu[fid].en) continue;
         ovm_report_info("RFM_RD", $psprintf("Read for SPA subv %0d, FU%0d : %s ...", subv, fid, fu_cfg[fid].name), OVM_HIGH);
-
         if(vn.spa[subv] == null) vn.spa[subv] = tr_rfm2spa::type_id::create("to_spa", this);
+        vn.spa[subv].fu[fid].en = 1;
         foreach(vn.spa[subv].fu[fid].rp[rp])
           foreach(vn.spa[subv].fu[fid].rp[rp].op[sp])
             read_rf(vn.spa[subv].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf, bp_imm_l, ise.fu[fid].imm);
@@ -194,20 +193,16 @@ class ip4_tlm_rfm extends ovm_component;
     
     for(int subv = 0; subv < cyc_vec; subv++)
       if(v.fm_ise[stage_rrf_rrc0+subv] != null && v.fm_ise[stage_rrf_rrc0+subv].vec_end) begin
-        tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0+subv];
         to_spa = vn.spa[subv];
-        foreach(to_spa.fu[fid])
-          to_spa.fu[fid].en = ise.fu[fid].en;
         vn.spa[subv] = null;
         break;
       end
     
     if(v.fm_ise[stage_rrf_rrc0] != null && v.fm_ise[stage_rrf_rrc0].scl_end) begin
-      tr_ise2rfm ise = v.fm_ise[stage_rrf_rrc0];
       to_spu = vn.spu;
       vn.spu = null;
     end
-       
+
     ///------------req to other module----------------
     if(to_spa != null) void'(spa_tr_port.nb_transport(to_spa, to_spa));
     if(to_spu != null) void'(spu_tr_port.nb_transport(to_spu, to_spu));

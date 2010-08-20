@@ -437,12 +437,6 @@ class ise_thread_inf extends ovm_component;
         ibuf.push_back(fg.data[i]);
 
     ovm_report_info("update_inst", $psprintf("pc:0x%0h, os:%0h, pd:%0d, ibuf lv %0d->%0d", pc, os, pd_ifet, level_l, ibuf.size()), OVM_HIGH);
-    
-    if(ibuf.size() > 1 && !decoded) begin
-      decode_igs();
-      if(ibuf.size() >= igrp_bytes)
-        decode_ig();
-    end
   endfunction : update_inst
 
   function void fill_ife(input tr_ise2ife ife);
@@ -840,6 +834,16 @@ class ip4_tlm_ise extends ovm_component;
     ///update ife data into tinf
     if(v.fm_ife != null && v.fm_ife.inst_en)
       tinf[v.fm_ife.tid].update_inst(v.fm_ife.fg);
+    
+    ///try to decode one inst grp
+    foreach(tinf[i])
+      if(tinf[i].ts != ts_disabled && tinf[i].ibuf.size() > 1 && !tinf[i].decoded) begin
+        tinf[i].decode_igs();
+        if(tinf[i].ibuf.size() >= tinf[i].igrp_bytes) begin
+          tinf[i].decode_ig();
+          break;
+        end
+      end
   endfunction
   
   function void req_proc();

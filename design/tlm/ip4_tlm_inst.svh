@@ -808,16 +808,16 @@ class inst_c extends ovm_object;
 	  uchar t;
 	  if(is_vec) begin
 	    if(op inside {spu_only_ops}) begin
-	      t = stage_rrf_rrc + stage_eex_vwbp + lat_ise;
+	      t = stage_rrf_rrc + stage_eex_vwbp;
 	    end
 	    else begin
-	      t = stage_rrf_vwbp + lat_ise;
+	      t = stage_rrf_vwbp;
 	    end
 	  end
 	  else if(op inside {ise_ops})
 	    t = 0;
 	  else
-	    t = stage_rrf_swb + lat_ise;
+	    t = stage_rrf_swb;
 	  if(wcnt < t)
 	    wcnt = t;
 	endfunction : set_wcnt

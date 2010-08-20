@@ -173,6 +173,8 @@ class ip4_tlm_spa extends ovm_component;
           vn.rfm[1].fu[fid].vrf_wr_bk  = fu.vrf_wr_bk;       
           vn.rfm[1].fu[fid].wen = spu.fu[fid].emsk;
           vn.rfm[1].fu[fid].tid = ise.tid;
+          vn.rfm[1].fu[fid].subv = ise.subv;
+          vn.rfm[1].fu[fid].en = 1;
 
           foreach(op[i])
             op[i] = rfm.fu[fid].rp[i].op;
@@ -242,10 +244,15 @@ class ip4_tlm_spa extends ovm_component;
         if(!sfu.en[fid]) continue;
         ovm_report_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_HIGH);
         if(to_rfm == null) to_rfm = tr_spa2rfm::type_id::create("to_rfm", this);
-        to_rfm.fu[fid].tid = sfu.tid;
+        to_rfm.fu[fid].vrf_wr_grp = sfu.vrf_wr_grp[fid];
+        to_rfm.fu[fid].vrf_wr_adr = sfu.vrf_wr_adr[fid];
+        to_rfm.fu[fid].vrf_wr_bk  = sfu.vrf_wr_bk[fid]; 
         to_rfm.fu[fid].res0 = sfu.res0[fid];
         to_rfm.fu[fid].res1 = sfu.res1[fid];
         to_rfm.fu[fid].wen = sfu.emsk[fid];
+        to_rfm.fu[fid].tid = sfu.tid;
+        to_rfm.fu[fid].subv = sfu.subv;
+        to_rfm.fu[fid].en = 1;
 ///        if(v.fm_ise[stage_exe_vwbp] != null && v.fm_ise[stage_exe_vwbp].fu[fid].en 
 ///          && !(v.fm_ise[stage_exe_vwbp].fu[fid].op inside {spu_only_ops}))
 ///          ovm_report_warning("SPA", "sfu writeback conflict");

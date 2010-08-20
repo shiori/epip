@@ -230,6 +230,7 @@ class spa2rfm_fu extends ovm_object;
   rand bit dw, wen[num_sp];
   rand uchar vrf_wr_grp, vrf_wr_adr, vrf_wr_bk, subv, tid;
   rand uchar exp_flag[num_sp];
+  rand bit en;   ///used only for printing
   
 	constraint valid_vars{
 		vrf_wr_grp inside {[0:num_phy_vrf_grp-1]};
@@ -252,6 +253,7 @@ class spa2rfm_fu extends ovm_object;
     `ovm_field_int(vrf_wr_adr, OVM_ALL_ON)
     `ovm_field_int(vrf_wr_bk, OVM_ALL_ON)
     `ovm_field_sarray_int(exp_flag, OVM_ALL_ON)
+    `ovm_field_int(en, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_object_utils_end
   
 	function new (string name = "spa2rfm_fu");
@@ -277,9 +279,16 @@ class tr_spa2rfm extends ovm_sequence_item;
 	endfunction : post_randomize
 	
 	`ovm_object_utils_begin(tr_spa2rfm)
-		`ovm_field_sarray_object(fu, OVM_ALL_ON)
+		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_object_utils_end
   
+	virtual function void do_print(ovm_printer printer);
+		super.do_print(printer);
+		foreach(fu[i])
+		  if(fu[i].en)
+		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+	endfunction : do_print
+	
 	function new (string name = "tr_spa2rfm");
 		super.new(name);
 	  foreach(fu[i])
