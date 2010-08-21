@@ -15,15 +15,15 @@ typedef enum uchar {
 }ise_exp_t;
 
 class ip4_tlm_ise_sr extends ovm_object;
-  uint EBase;   ///SR[4]
+  uint expBase;   ///sr[4]
   
   `ovm_object_utils_begin(ip4_tlm_ise_sr)
-    `ovm_field_int(EBase, OVM_ALL_ON)
+    `ovm_field_int(expBase, OVM_ALL_ON)
   `ovm_object_utils_end
 
   function new(string name = "ise_sr");
    super.new(name);
-   EBase = CFG_START_ADR;
+   expBase = CFG_START_ADR;
   endfunction
 endclass
 
@@ -32,17 +32,17 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_rfm2ise fmRFM;
   tr_ife2ise fmIFE;
   tr_spa2ise fmSPA;
-  tr_dse2ise fmDSE[stage_ise_vwbp:stage_ise_dc];
+  tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DC];
   
-  tr_ise2rfm rfm[stage_ise:1];
-  tr_ise2spa spa[stage_ise:1];
-  tr_ise2spu spu[stage_ise:1];
-  tr_ise2dse dse[stage_ise:1];
+  tr_ise2rfm rfm[STAGE_ISE:1];
+  tr_ise2spa spa[STAGE_ISE:1];
+  tr_ise2spu spu[STAGE_ISE:1];
+  tr_ise2dse dse[STAGE_ISE:1];
   
   uchar TIdIssueLast, TIdFetchLast;
   bit cancel[NUM_THREAD];
-  ip4_tlm_ise_sr SR;
-  uint PCStages[stage_ise_vwb:1];
+  ip4_tlm_ise_sr sr;
+  uint pcStages[STAGE_ISE_VWB:1];
     
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -57,15 +57,15 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_int(TIdIssueLast, OVM_ALL_ON)
     `ovm_field_int(TIdFetchLast, OVM_ALL_ON)
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
-    `ovm_field_object(SR, OVM_ALL_ON)
-    `ovm_field_sarray_int(PCStages, OVM_ALL_ON)
+    `ovm_field_object(sr, OVM_ALL_ON)
+    `ovm_field_sarray_int(pcStages, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function new(string name, ovm_component parent);
     super.new(name, parent);
     TIdFetchLast = 0;
     TIdIssueLast = 0;
-    SR = new(); 
+    sr = new(); 
     print_enabled = 0;
   endfunction : new
 endclass : ip4_tlm_ise_vars
@@ -87,14 +87,14 @@ class ise_thread_inf extends ovm_component;
       decoded,
       decodeErr,
       cancel;
-  uchar WCnt[NUM_W_CNT], WCntNext, WCntSel, vecMode;
+  uchar wCnt[NUM_W_CNT], wCntNext, wCntSel, vecMode;
   
-  uchar vrfMap[NUM_INST_VRF/NUM_PRF_P_GRP], 
-        srfMap[NUM_INST_SRF/NUM_PRF_P_GRP];
+  uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
+        srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   uchar pendIFetch;
   
-  inst_c ISPU, IDSE, IFu[NUM_FU];
-  uint PC, PCBr;
+  inst_c iSPU, iDSE, iFu[NUM_FU];
+  uint pc, pcBr;
   bit brPred;
     
   `ovm_component_utils_begin(ise_thread_inf)
@@ -104,7 +104,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(cancel, OVM_ALL_ON)
     `ovm_field_int(privMode, OVM_ALL_ON)
     `ovm_field_queue_int(IBuf, OVM_ALL_ON)
-    `ovm_field_int(WCntSel, OVM_ALL_ON)
+    `ovm_field_int(wCntSel, OVM_ALL_ON)
     `ovm_field_int(IGrpBytes, OVM_ALL_ON)
     `ovm_field_int(adrPkgBytes, OVM_ALL_ON)
     `ovm_field_int(numImms, OVM_ALL_ON)
@@ -119,30 +119,30 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(enDSE, OVM_ALL_ON)
     `ovm_field_sarray_int(enFu, OVM_ALL_ON)
     `ovm_field_int(enVec, OVM_ALL_ON)
-    `ovm_field_sarray_int(WCnt, OVM_ALL_ON)
-    `ovm_field_int(WCntNext, OVM_ALL_ON)
+    `ovm_field_sarray_int(wCnt, OVM_ALL_ON)
+    `ovm_field_int(wCntNext, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
-    `ovm_field_int(PC, OVM_ALL_ON)
-    `ovm_field_int(PCBr, OVM_ALL_ON)
+    `ovm_field_int(pc, OVM_ALL_ON)
+    `ovm_field_int(pcBr, OVM_ALL_ON)
     `ovm_field_int(brPred, OVM_ALL_ON)
     `ovm_field_sarray_int(vrfMap, OVM_ALL_ON)
     `ovm_field_sarray_int(srfMap, OVM_ALL_ON)
-    `ovm_field_object(ISPU, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_object(IDSE, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_sarray_object(IFu, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_object(iSPU, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_object(iDSE, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_object(iFu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
 	  if(get_report_verbosity_level() >= OVM_HIGH) begin
   		if(enSPU)
-  		  printer.print_object("spu", ISPU);
+  		  printer.print_object("spu", iSPU);
   		if(enDSE)
-  		  printer.print_object("dse", IDSE);
+  		  printer.print_object("dse", iDSE);
   		foreach(enFu[i])
   		  if(enFu[i])
-  		    printer.print_object($psprintf("fu%0d", i), IFu[i]);
+  		    printer.print_object($psprintf("fu%0d", i), iFu[i]);
     end
 	    
     `PAF2(vrfAdr, OVM_DEC)
@@ -153,37 +153,37 @@ class ise_thread_inf extends ovm_component;
 	
   function new(string name, ovm_component parent);
     super.new(name, parent);
-    ISPU = new();
-    IDSE = new();
-    foreach(IFu[i])
-      IFu[i] = new();
+    iSPU = new();
+    iDSE = new();
+    foreach(iFu[i])
+      iFu[i] = new();
     threadState = ts_disabled;
     privMode = 0;
-    PC = CFG_START_ADR;
-    PCBr = CFG_START_ADR;
+    pc = CFG_START_ADR;
+    pcBr = CFG_START_ADR;
     vecMode = CYC_VEC - 1;
     decoded = 0;
     decodeErr = 0;
     print_enabled = 0;
   endfunction : new
  
-  function void mapIAdr(input bit v, uchar orgAdr, output uchar grp, adr);
+  function void map_iadr(input bit v, uchar orgAdr, output uchar grp, adr);
     uchar adrBits =  v ? (BITS_PRF_P_GRP - BITS_VRF_BKS) : (BITS_PRF_P_GRP - BITS_SRF_BKS);
     adr = orgAdr & ('1 << adrBits);
     grp = orgAdr >> adrBits;
     grp = v ? vrfMap[grp] : srfMap[grp];
-  endfunction : mapIAdr
+  endfunction : map_iadr
 
-  function void cycNew();
+  function void cyc_new();
     cancel = 0;
-    foreach(WCnt[i])
-      if(WCnt[i] != 0) WCnt[i]--;
-  endfunction : cycNew
+    foreach(wCnt[i])
+      if(wCnt[i] != 0) wCnt[i]--;
+  endfunction : cyc_new
 
-  function void exePriv();
-  endfunction : exePriv
+  function void exe_priv();
+  endfunction : exe_priv
   
-  function void decodeIGrpStart();
+  function void decode_igrp_start();
     i_gs0_t grpStart = IBuf[0];
     enSPU = 0;
     enDSE = 0;
@@ -191,7 +191,7 @@ class ise_thread_inf extends ovm_component;
     enFu = '{default : 0};
 
     if(!grpStart.t) begin
-      WCntSel = grpStart.chkGrp;
+      wCntSel = grpStart.chkGrp;
       adrPkgBytes = grpStart.adrPkgB;
       numImms = grpStart.immPkgW;
       DSEVec = grpStart.unitEn;
@@ -205,10 +205,10 @@ class ise_thread_inf extends ovm_component;
       foreach(grpStart.i.unitEn[i])
         tmp += grpStart.i.unitEn[i];
       if(tmp == 0) begin
-        ovm_report_warning("decodeIGrpStart", "igs decode error, unitEn not valid");
+        ovm_report_warning("decode_igrp_start", "igs decode error, unitEn not valid");
         decodeErr = 1;
       end
-      WCntSel = grpStart.i.chkGrp;
+      wCntSel = grpStart.i.chkGrp;
       adrPkgBytes = grpStart.i.adrPkgB;
       numImms = grpStart.i.immPkgW;
       IGrpBytes = 2 + adrPkgBytes + numImms * NUM_WORD_BYTES + tmp * NUM_INST_BYTES;
@@ -220,18 +220,18 @@ class ise_thread_inf extends ovm_component;
     end
         
     if(get_report_verbosity_level() >= OVM_HIGH) begin
-      bit [NUM_FU-1:0] enFuTmp;
+      bit [NUM_FU - 1 : 0] enFuTmp;
       foreach(enFuTmp[i])
         enFuTmp[i] = enFu[i];
         
-      ovm_report_info("decodeIGrpStart",
-        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, WCntSel:%0b, adrPkgB:%0d, immPkgW:%0d", 
-                   IGrpBytes, enSPU, enDSE, enFuTmp, DSEVec, WCntSel, adrPkgBytes, numImms),
+      ovm_report_info("decode_igrp_start",
+        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, adrPkgB:%0d, immPkgW:%0d", 
+                   IGrpBytes, enSPU, enDSE, enFuTmp, DSEVec, wCntSel, adrPkgBytes, numImms),
         OVM_HIGH);
     end
-  endfunction : decodeIGrpStart
+  endfunction : decode_igrp_start
     
-  function void decodeIGrp();
+  function void decode_igrp();
     uchar tmp = 0;
     iga_t adrs[12];
     uchar offSet;
@@ -245,21 +245,21 @@ class ise_thread_inf extends ovm_component;
     cntVrfWr = '{default : 0};
     cntSrfWr = '{default : 0};
     cntPRWr = 0;
-    WCntNext = 0;
+    wCntNext = 0;
         
     if(!grpStart.t) begin
       tmp = 1;
       offSet = 1;
       if(adrPkgBytes != 0) adrPkgBytes --;
-      ISPU.setData(IBuf, offSet, 0, DSEVec);
-      IDSE.setData(IBuf, offSet, 0, DSEVec);
-      foreach(IFu[i])
-        IFu[i].setData(IBuf, offSet, i, 1);
+      iSPU.setData(IBuf, offSet, 0, DSEVec);
+      iDSE.setData(IBuf, offSet, 0, DSEVec);
+      foreach(iFu[i])
+        iFu[i].setData(IBuf, offSet, i, 1);
         
       offSet += NUM_INST_BYTES;
-      ISPU.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-      ISPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
-      ISPU.analyze_fu(enSPU, enDSE, enFu);
+      iSPU.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
+      iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+      iSPU.analyze_fu(enSPU, enDSE, enFu);
       adrs[0] = grpStart.a;
       if(adrPkgBytes) begin
         i_ap0_t AdrPkg = IBuf[offSet];
@@ -277,24 +277,24 @@ class ise_thread_inf extends ovm_component;
       if(adrPkgBytes != 0) adrPkgBytes --;
       
       if(enSPU) begin
-        ISPU.setData(IBuf, offSet, 0, 0);
-        ISPU.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-        ISPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+        iSPU.setData(IBuf, offSet, 0, 0);
+        iSPU.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
+        iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
         offSet += NUM_INST_BYTES;
       end
       
       if(enDSE) begin
-        IDSE.setData(IBuf, offSet, 0, DSEVec);
-        IDSE.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-        IDSE.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+        iDSE.setData(IBuf, offSet, 0, DSEVec);
+        iDSE.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
+        iDSE.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
         offSet += NUM_INST_BYTES;
       end
       
-      foreach(IFu[i])
+      foreach(iFu[i])
         if(enFu[i]) begin
-          IFu[i].setData(IBuf, offSet, i, 1);
-          IFu[i].analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-          ISPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+          iFu[i].setData(IBuf, offSet, i, 1);
+          iFu[i].analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
+          iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
           offSet += NUM_INST_BYTES;          
         end
 
@@ -337,7 +337,7 @@ class ise_thread_inf extends ovm_component;
     end
       
     for(int i = 0; i < numImms; i++) begin
-      imms[i] = {IBuf[i+3], IBuf[i+2], IBuf[i+1], IBuf[i]};
+      imms[i] = {IBuf[i + 3], IBuf[i + 2], IBuf[i + 1], IBuf[i]};
       offSet += NUM_WORD_BYTES;
     end
       
@@ -347,29 +347,29 @@ class ise_thread_inf extends ovm_component;
     for(int i = 0; i < CYC_VEC; i++) begin
       for(int j = 0; j < NUM_VRF_BKS; j++)
         if(vrfRdEn[i][j]) begin
-          mapIAdr(1, adrs[tmp], vrfGrp[i][j], vrfAdr[i][j]);
+          map_iadr(1, adrs[tmp], vrfGrp[i][j], vrfAdr[i][j]);
           tmp++;
         end
 
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfRdEn[i][j]) begin
-          mapIAdr(0, adrs[tmp], srfGrp[i][j], srfAdr[i][j]);
+          map_iadr(0, adrs[tmp], srfGrp[i][j], srfAdr[i][j]);
           tmp++;
         end
     end
     
-    foreach(IFu[fid]) begin
-      IFu[fid].set_wcnt(WCntNext);
-      decodeErr |= IFu[fid].decodeErr;
+    foreach(iFu[fid]) begin
+      iFu[fid].set_wcnt(wCntNext);
+      decodeErr |= iFu[fid].decodeErr;
     end
-    ISPU.set_wcnt(WCntNext);
-    IDSE.set_wcnt(WCntNext);
-    decodeErr |= ISPU.decodeErr;
-    decodeErr |= IDSE.decodeErr;
+    iSPU.set_wcnt(wCntNext);
+    iDSE.set_wcnt(wCntNext);
+    decodeErr |= iSPU.decodeErr;
+    decodeErr |= iDSE.decodeErr;
     
     decoded = 1;
-    ovm_report_info("decodeIGrp", {"\n", sprint()}, OVM_HIGH);
-  endfunction : decodeIGrp
+    ovm_report_info("decode_igrp", {"\n", sprint()}, OVM_HIGH);
+  endfunction : decode_igrp
 
   function void flush();
     IBuf = {};
@@ -380,31 +380,31 @@ class ise_thread_inf extends ovm_component;
     threadState = ts_rdy;
   endfunction : flush
   
-  function void retrievePC(uint adr);
+  function void retrieve_pc(uint adr);
     flush();
-    PC = adr;
+    pc = adr;
     cancel = 1;
-   endfunction : retrievePC
+   endfunction : retrieve_pc
 
-  function void msgWait();
-  endfunction : msgWait
+  function void msg_wait();
+  endfunction : msg_wait
   
-  function bit brPreMiss(input bit Br);
+  function bit br_pre_miss(input bit Br);
     if(threadState == ts_w_b)
       threadState = ts_rdy;
     
     if(Br != brPred) begin
       flush();
-      PC = PCBr;
+      pc = pcBr;
       cancel = 1;
       return 1;
     end
     else
       return 0;
-  endfunction : brPreMiss
+  endfunction : br_pre_miss
 
-  function bit canReqIFetch();
-    ovm_report_info("canReqIFetch", $psprintf("threadState:%s, IBuf lv:%0d, pd:%0d", threadState.name, IBuf.size(), pendIFetch), OVM_HIGH);
+  function bit can_req_ifetch();
+    ovm_report_info("can_req_ifetch", $psprintf("threadState:%s, IBuf lv:%0d, pd:%0d", threadState.name, IBuf.size(), pendIFetch), OVM_HIGH);
     if(threadState == ts_disabled)
       return 0;
     if(IBuf.size() + pendIFetch * NUM_IFET_BYTES >=  NUM_IBUF_BYTES)
@@ -414,20 +414,20 @@ class ise_thread_inf extends ovm_component;
     if(IBuf.size() < IGrpBytes)
       return 1;
     return 0;
-  endfunction : canReqIFetch
+  endfunction : can_req_ifetch
       
-  function void updateInst(input inst_fg_c fetchGrp);
+  function void update_inst(input inst_fg_c fetchGrp);
     uchar offSet = 0, LvlLast = IBuf.size();
     if(LvlLast  >= NUM_MAX_IGRP_BYTES)
       ovm_report_warning("ise", "IBuf overflow!");
     if(LvlLast == 0) ///only calculate offSet when IBuf size is reset to 0
-      offSet = PC & ~{'1 << BITS_IFET};
+      offSet = pc & ~{'1 << BITS_IFET};
 
     if(pendIFetch > 0)
       pendIFetch--;
     
     if(cancel) begin
-      ovm_report_info("updateInst", $psprintf("cancel, PC:0x%0h, offSet:%0h, pd:%0d", PC, offSet, pendIFetch), OVM_HIGH);
+      ovm_report_info("update_inst", $psprintf("cancel, pc:0x%0h, offSet:%0h, pd:%0d", pc, offSet, pendIFetch), OVM_HIGH);
       return;
     end
       
@@ -435,96 +435,96 @@ class ise_thread_inf extends ovm_component;
       if(i >= offSet)
         IBuf.push_back(fetchGrp.data[i]);
 
-    ovm_report_info("updateInst", $psprintf("PC:0x%0h, offSet:%0h, pd:%0d, IBuf lv %0d->%0d", PC, offSet, pendIFetch, LvlLast, IBuf.size()), OVM_HIGH);
-  endfunction : updateInst
+    ovm_report_info("update_inst", $psprintf("pc:0x%0h, offSet:%0h, pd:%0d, IBuf lv %0d->%0d", pc, offSet, pendIFetch, LvlLast, IBuf.size()), OVM_HIGH);
+  endfunction : update_inst
 
-  function void fillIFE(input tr_ise2ife ife);
-    ife.FetchReq = 1;
-    ife.PC = (PC + NUM_IFET_BYTES * pendIFetch) & ~{'1 << BITS_IFET};
+  function void fill_ife(input tr_ise2ife ife);
+    ife.fetchReq = 1;
+    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & ~{'1 << BITS_IFET};
     pendIFetch++;
-  endfunction : fillIFE
+  endfunction : fill_ife
   
-  function void fillIssue(ref tr_ise2rfm CiRFM[CYC_VEC], tr_ise2spa CiSPA[CYC_VEC], 
-                               tr_ise2spu CiSPU[CYC_VEC], tr_ise2dse CiDSE[CYC_VEC]);
+  function void fill_issue(ref tr_ise2rfm ciRFM[CYC_VEC], tr_ise2spa ciSPA[CYC_VEC], 
+                               tr_ise2spu ciSPU[CYC_VEC], tr_ise2dse ciDSE[CYC_VEC]);
     
-    if(CiRFM[0] == null) CiRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-    if(CiRFM[cntVrfRd] == null) CiRFM[cntVrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-    CiRFM[0].start = 1;
-    CiRFM[cntVrfRd].vec_end = 1;
+    if(ciRFM[0] == null) ciRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+    if(ciRFM[cntVrfRd] == null) ciRFM[cntVrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+    ciRFM[0].start = 1;
+    ciRFM[cntVrfRd].vecEnd = 1;
 
-    foreach(IFu[i])
-      IFu[i].map_wr_grp(vrfMap, srfMap);
+    foreach(iFu[i])
+      iFu[i].map_wr_grp(vrfMap, srfMap);
 
     /// spu or scalar dse issue
     if(enSPU) begin
-      bit br_dep_dse = 0, br_dep_spa = 0;
-      ISPU.map_wr_grp(vrfMap, srfMap);
-      if(CiRFM[0] == null) CiRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      if(CiRFM[cntSrfRd] == null) CiRFM[cntSrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      if(CiSPU[cntSrfRd] == null) CiSPU[cntSrfRd] = tr_ise2spu::type_id::create("toSPU", get_parent());
-      CiRFM[0].start = 1;
-      CiRFM[cntSrfRd].scl_end = 1;
-      CiSPU[cntSrfRd].start = 1;
-      if(ISPU.is_br() && !ISPU.is_unc_br()) begin ///a conditional branch need vecMode cycles
+      bit brDepDSE = 0, brDepSPA = 0;
+      iSPU.map_wr_grp(vrfMap, srfMap);
+      if(ciRFM[0] == null) ciRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      if(ciRFM[cntSrfRd] == null) ciRFM[cntSrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      if(ciSPU[cntSrfRd] == null) ciSPU[cntSrfRd] = tr_ise2spu::type_id::create("toSPU", get_parent());
+      ciRFM[0].start = 1;
+      ciRFM[cntSrfRd].sclEnd = 1;
+      ciSPU[cntSrfRd].start = 1;
+      if(iSPU.is_br() && !iSPU.is_unc_br()) begin ///a conditional branch need vecMode cycles
         cntSrfRd = vecMode;
         ///find what br is depend on
         foreach(enFu[fid])
-          if(enFu[fid] && IFu[fid].op inside {op_cmp, op_ucmp})
-            br_dep_spa = 1;
+          if(enFu[fid] && iFu[fid].op inside {op_cmp, op_ucmp})
+            brDepSPA = 1;
         if(enDSE)
-          br_dep_dse = !br_dep_spa;
+          brDepDSE = !brDepSPA;
       end
-      CiSPU[cntSrfRd].br_end = ISPU.is_br();
+      ciSPU[cntSrfRd].brEnd = iSPU.is_br();
       for(int i = 0; i <= cntSrfRd; i++) begin
-        if(CiRFM[i] == null) CiRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-        if(CiSPA[i] == null) CiSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
-        ISPU.fill_rfm(CiRFM[i], i);
-        ISPU.fill_spu(CiSPU[i]);
-        CiSPU[i].br_dep_spa = br_dep_spa;
-        CiSPU[i].br_dep_dse = br_dep_dse;
+        if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+        if(ciSPA[i] == null) ciSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
+        iSPU.fill_rfm(ciRFM[i], i);
+        iSPU.fill_spu(ciSPU[i]);
+        ciSPU[i].brDepSPA = brDepSPA;
+        ciSPU[i].brDepDSE = brDepDSE;
       end
     end
     
     if(enDSE) begin
-      IDSE.map_wr_grp(vrfMap, srfMap);
-      CiDSE[0] = tr_ise2dse::type_id::create("toDSE", get_parent());
-      IDSE.fill_dse(CiDSE[0]);      
+      iDSE.map_wr_grp(vrfMap, srfMap);
+      ciDSE[0] = tr_ise2dse::type_id::create("toDSE", get_parent());
+      iDSE.fill_dse(ciDSE[0]);      
       for(int i = 0; i <= cntDSERd; i++) begin
-        if(CiRFM[i] == null) CiRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-        if(CiSPU[i] == null) CiSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
-        IDSE.fill_rfm(CiRFM[i], i);
-        IDSE.fill_spu(CiSPU[i]);
+        if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+        if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
+        iDSE.fill_rfm(ciRFM[i], i);
+        iDSE.fill_spu(ciSPU[i]);
       end
     end
           
     for(int i = 0; i <= cntSrfRd || i <= cntVrfRd; i++) begin
-      if(CiRFM[i] == null) CiRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      CiRFM[i].bpImm = imms;
-      CiRFM[i].VrfRdGrp = vrfGrp[i];
-      CiRFM[i].VrfRdAdr = vrfAdr[i];
-      CiRFM[i].SrfRdGrp = srfGrp[i];
-      CiRFM[i].SrfRdAdr = srfAdr[i];
+      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      ciRFM[i].bpImm = imms;
+      ciRFM[i].vrfRdGrp = vrfGrp[i];
+      ciRFM[i].vrfRdAdr = vrfAdr[i];
+      ciRFM[i].srfRdGrp = srfGrp[i];
+      ciRFM[i].srfRdAdr = srfAdr[i];
     end
     
     for(int i = 0; i <= cntVrfRd; i++) begin
-      if(CiSPA[i] == null) CiSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
-      if(CiRFM[i] == null) CiRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      if(CiSPU[i] == null) CiSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
+      if(ciSPA[i] == null) ciSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
+      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
       if(enDSE)
-        IDSE.fill_spa(CiSPA[i]);
-      foreach(IFu[fid])
+        iDSE.fill_spa(ciSPA[i]);
+      foreach(iFu[fid])
         if(enFu[fid]) begin
-          IFu[fid].fill_rfm(CiRFM[i], i);
-          IFu[fid].fill_spa(CiSPA[i]);
-          IFu[fid].fill_spu(CiSPU[i]);
+          iFu[fid].fill_rfm(ciRFM[i], i);
+          iFu[fid].fill_spa(ciSPA[i]);
+          iFu[fid].fill_spu(ciSPU[i]);
         end
-      CiSPA[i].vecMode = vecMode;
-      CiSPU[i].vecMode = vecMode;
-      CiRFM[i].Cyc = i;
-      CiSPA[i].subVec = i;
-      CiSPU[i].subVec = i;
+      ciSPA[i].vecMode = vecMode;
+      ciSPU[i].vecMode = vecMode;
+      ciRFM[i].cyc = i;
+      ciSPA[i].subVec = i;
+      ciSPU[i].subVec = i;
     end
-  endfunction : fillIssue
+  endfunction : fill_issue
 
 endclass : ise_thread_inf
 
@@ -534,15 +534,15 @@ class ip4_tlm_ise extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
 
-  local uchar cntVrfRd, cntSrfRd, cntDSERd, cnt_vec_proc,
+  local uchar cntVrfRd, cntSrfRd, cntDSERd, cntVecProc,
               cntPRWr, cntSrfWr[NUM_SRF_BKS], cntVrfWr[NUM_VRF_BKS];
         
-  local bit NoLd, NoSt, NoSMsg, NoRMsg, NoFu[NUM_FU];
+  local bit noLd, noSt, noSMsg, noRMsg, noFu[NUM_FU];
   
-  local tr_ise2rfm CiRFM[CYC_VEC];
-  local tr_ise2spa CiSPA[CYC_VEC];
-  local tr_ise2spu CiSPU[CYC_VEC];
-  local tr_ise2dse CiDSE[CYC_VEC];
+  local tr_ise2rfm ciRFM[CYC_VEC];
+  local tr_ise2spa ciSPA[CYC_VEC];
+  local tr_ise2spu ciSPU[CYC_VEC];
+  local tr_ise2dse ciDSE[CYC_VEC];
   
   ovm_nonblocking_transport_imp_spu #(tr_spu2ise, tr_spu2ise, ip4_tlm_ise) spu_tr_imp;
   ovm_nonblocking_transport_imp_spa #(tr_spa2ise, tr_spa2ise, ip4_tlm_ise) spa_tr_imp;
@@ -557,339 +557,338 @@ class ip4_tlm_ise extends ovm_component;
   ovm_nonblocking_transport_port #(tr_ise2dse, tr_ise2dse) dse_tr_port;
 
   local ip4_tlm_ise_vars v, vn;
-  local ise_thread_inf tinf[NUM_THREAD];
+  local ise_thread_inf thread[NUM_THREAD];
   local ip4_printer printer;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
-    `ovm_field_int(cnt_vec_proc, OVM_ALL_ON)
+    `ovm_field_int(cntVecProc, OVM_ALL_ON)
     `ovm_field_int(cntVrfRd, OVM_ALL_ON)
     `ovm_field_int(cntSrfRd, OVM_ALL_ON)
     `ovm_field_int(cntDSERd, OVM_ALL_ON)
-    `ovm_field_int(NoLd, OVM_ALL_ON)
-    `ovm_field_int(NoSt, OVM_ALL_ON)
-    `ovm_field_int(NoSMsg, OVM_ALL_ON)
-    `ovm_field_int(NoRMsg, OVM_ALL_ON)
-    `ovm_field_sarray_int(NoFu, OVM_ALL_ON)
+    `ovm_field_int(noLd, OVM_ALL_ON)
+    `ovm_field_int(noSt, OVM_ALL_ON)
+    `ovm_field_int(noSMsg, OVM_ALL_ON)
+    `ovm_field_int(noRMsg, OVM_ALL_ON)
+    `ovm_field_sarray_int(noFu, OVM_ALL_ON)
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
   `ovm_component_utils_end
   
-  function void enterExp(input uchar TId, ise_exp_t Err);
-    ise_thread_inf TInf = tinf[TId];
-    TInf.privMode = 1;
-    TInf.cancel = 1;
-    TInf.PC = v.SR.EBase;
+  function void enter_exp(input uchar tid, ise_exp_t Err);
+    ise_thread_inf tInf = thread[tid];
+    tInf.privMode = 1;
+    tInf.cancel = 1;
+    tInf.pc = v.sr.expBase;
     case(Err)
     exp_decode_err  : begin end
     exp_dse_err     : begin end
     exp_priv_err    : begin end
     exp_msc_err     : begin end
     endcase
-    TInf.flush();
-  endfunction : enterExp
+    tInf.flush();
+  endfunction : enter_exp
   
-  function void exePriv(input inst_c I);
-  endfunction : exePriv
+  function void exe_priv(input inst_c I);
+  endfunction : exe_priv
 
-  function bit canIssue(input uchar TId);
-    /// the vec value indicate 4 Cyc issue style is needed
-///    vec = TInf.DSEVec;
-    ise_thread_inf TInf = tinf[TId];
+  function bit can_issue(input uchar tid);
+    /// the vec value indicate 4 cyc issue style is needed
+    ise_thread_inf tInf = thread[tid];
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [NUM_FU-1:0] enFuTmp;
       foreach(enFuTmp[i])
-        enFuTmp[i] = TInf.enFu[i];
+        enFuTmp[i] = tInf.enFu[i];
         
-      ovm_report_info("canIssue",
-        $psprintf("threadState:%s, decoded:%0d, Err:%0d, WCnt:%0d, PC:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, WCntSel:%0b", 
-                   TInf.threadState.name, TInf.decoded, TInf.decodeErr, TInf.WCnt[TInf.WCntSel], TInf.PC, TInf.enSPU, TInf.enDSE,
-                   enFuTmp, TInf.DSEVec, TInf.WCntSel),
+      ovm_report_info("can_issue",
+        $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
+                   tInf.threadState.name, tInf.decoded, tInf.decodeErr, tInf.wCnt[tInf.wCntSel], tInf.pc, tInf.enSPU, tInf.enDSE,
+                   enFuTmp, tInf.DSEVec, tInf.wCntSel),
         OVM_HIGH);
     end
     
-    if(TInf.enVec && cnt_vec_proc >= TInf.vecMode)
+    if(tInf.enVec && cntVecProc >= tInf.vecMode)
       return 0;
       
     ///issue disable check
-    if(TInf.IDSE.dse_block(NoLd, NoSt, NoSMsg, NoRMsg))
+    if(tInf.iDSE.dse_block(noLd, noSt, noSMsg, noRMsg))
       return 0;
     
-    foreach(NoFu[i])
-      if(NoFu[i] && TInf.enFu[i])
+    foreach(noFu[i])
+      if(noFu[i] && tInf.enFu[i])
         return 0;
     
-    ///read Cyc check
-    if(cntSrfRd > 0 && TInf.cntSrfRd > 0)
+    ///read cyc check
+    if(cntSrfRd > 0 && tInf.cntSrfRd > 0)
       return 0;
 
-    if(cntVrfRd > 0 && TInf.cntVrfRd > 0)
+    if(cntVrfRd > 0 && tInf.cntVrfRd > 0)
       return 0;
 
-    if(cntDSERd > 0 && TInf.cntDSERd > 0)
+    if(cntDSERd > 0 && tInf.cntDSERd > 0)
       return 0;
 
     /// write buf overflow check
-    if(cntPRWr + TInf.cntPRWr > CYC_VEC)
+    if(cntPRWr + tInf.cntPRWr > CYC_VEC)
       return 0;
     
     foreach(cntVrfWr[i])
-      if(cntVrfWr[i] + TInf.cntVrfWr[i] > CYC_VEC)
+      if(cntVrfWr[i] + tInf.cntVrfWr[i] > CYC_VEC)
         return 0;      
 
     foreach(cntSrfWr[i])
-      if(cntSrfWr[i] + TInf.cntSrfWr[i] > CYC_VEC)
+      if(cntSrfWr[i] + tInf.cntSrfWr[i] > CYC_VEC)
         return 0;
-    return TInf.decoded && (TInf.threadState == ts_rdy && TInf.WCnt[TInf.WCntSel] == 0);
-  endfunction : canIssue
+    return tInf.decoded && (tInf.threadState == ts_rdy && tInf.wCnt[tInf.wCntSel] == 0);
+  endfunction : can_issue
 
-  function void issue(input uchar TId);
-    ise_thread_inf TInf = tinf[TId];
-    vn.PCStages[1] = TInf.PC;
-    if(TInf.decodeErr) begin
-      enterExp(TId, exp_decode_err);
+  function void issue(input uchar tid);
+    ise_thread_inf tInf = thread[tid];
+    vn.pcStages[1] = tInf.pc;
+    if(tInf.decodeErr) begin
+      enter_exp(tid, exp_decode_err);
       return;
     end
     
-    TInf.IBuf = TInf.IBuf[TInf.IGrpBytes:$];
-    TInf.PC += TInf.IGrpBytes;
-    TInf.fillIssue(CiRFM, CiSPA, CiSPU, CiDSE);
-    TInf.decoded = 0;
-    TInf.decodeErr = 0;
+    tInf.IBuf = tInf.IBuf[tInf.IGrpBytes:$];
+    tInf.pc += tInf.IGrpBytes;
+    tInf.fill_issue(ciRFM, ciSPA, ciSPU, ciDSE);
+    tInf.decoded = 0;
+    tInf.decodeErr = 0;
     
-    if(TInf.WCntNext > TInf.WCnt[TInf.WCntSel])
-      TInf.WCnt[TInf.WCntSel] = TInf.WCntNext;
+    if(tInf.wCntNext > tInf.wCnt[tInf.wCntSel])
+      tInf.wCnt[tInf.wCntSel] = tInf.wCntNext;
       
-    if(TInf.enSPU) 
-      if(TInf.ISPU.is_unc_br()) begin
-        TInf.PC = TInf.PC + TInf.ISPU.offSet;
-        TInf.flush();
-        TInf.cancel = 1;
+    if(tInf.enSPU) 
+      if(tInf.iSPU.is_unc_br()) begin
+        tInf.pc = tInf.pc + tInf.iSPU.offSet;
+        tInf.flush();
+        tInf.cancel = 1;
       end
-      else if(TInf.ISPU.is_br()) begin
-        TInf.threadState = ts_w_b;
-        TInf.PCBr = TInf.PC + TInf.ISPU.offSet;
-        TInf.brPred = 0;
+      else if(tInf.iSPU.is_br()) begin
+        tInf.threadState = ts_w_b;
+        tInf.pcBr = tInf.pc + tInf.iSPU.offSet;
+        tInf.brPred = 0;
       end
     
     /// spu or scalar dse issue
-    if(TInf.enSPU) begin
-      if(TInf.ISPU.is_priv()) begin
-        if(TInf.privMode) begin
-          exePriv(TInf.ISPU);
-          TInf.exePriv();
+    if(tInf.enSPU) begin
+      if(tInf.iSPU.is_priv()) begin
+        if(tInf.privMode) begin
+          exe_priv(tInf.iSPU);
+          tInf.exe_priv();
         end
         else
-          enterExp(TId, exp_priv_err);
+          enter_exp(tid, exp_priv_err);
       end
     end
     
-    if(TInf.enDSE) begin
-      cntDSERd = TInf.cntDSERd;
+    if(tInf.enDSE) begin
+      cntDSERd = tInf.cntDSERd;
     end
     
-    cntSrfRd = TInf.cntSrfRd;
-    cntVrfRd = TInf.cntVrfRd;
-    cntDSERd = TInf.cntDSERd;
-    cntPRWr += TInf.cntPRWr;
+    cntSrfRd = tInf.cntSrfRd;
+    cntVrfRd = tInf.cntVrfRd;
+    cntDSERd = tInf.cntDSERd;
+    cntPRWr += tInf.cntPRWr;
   
     foreach(cntVrfWr[i])
-      cntVrfWr[i] += TInf.cntVrfWr[i];
+      cntVrfWr[i] += tInf.cntVrfWr[i];
 
     foreach(cntSrfWr[i])
-      cntSrfWr[i] += TInf.cntSrfWr[i];
+      cntSrfWr[i] += tInf.cntSrfWr[i];
     
-    if(TInf.enVec)
-      cnt_vec_proc = TInf.vecMode;
+    if(tInf.enVec)
+      cntVecProc = tInf.vecMode;
   endfunction : issue
       
-  function void combProc();
-    ovm_report_info("ise", "combProc procing...", OVM_FULL); 
+  function void comb_proc();
+    ovm_report_info("ise", "comb_proc procing...", OVM_FULL); 
     
     if(v.fmSPU != null) end_tr(v.fmSPU);
     if(v.fmSPA != null) end_tr(v.fmSPA);
     if(v.fmRFM != null) end_tr(v.fmRFM);
     if(v.fmIFE != null) end_tr(v.fmIFE);
-    if(v.fmDSE[stage_ise_dc] != null) end_tr(v.fmDSE[stage_ise_dc]);
+    if(v.fmDSE[STAGE_ISE_DC] != null) end_tr(v.fmDSE[STAGE_ISE_DC]);
     
     vn.fmSPU = null;
     vn.fmSPA = null;
     vn.fmRFM = null;
     vn.fmIFE = null;
-    vn.fmDSE[stage_ise_dc] = null;
+    vn.fmDSE[STAGE_ISE_DC] = null;
     
-    for(int i = stage_ise; i > 1; i--) begin
-      vn.rfm[i] = v.rfm[i-1];  
-      vn.spa[i] = v.spa[i-1];
-      vn.spu[i] = v.spu[i-1];
-      vn.dse[i] = v.dse[i-1];
+    for(int i = STAGE_ISE; i > 1; i--) begin
+      vn.rfm[i] = v.rfm[i - 1];  
+      vn.spa[i] = v.spa[i - 1];
+      vn.spu[i] = v.spu[i - 1];
+      vn.dse[i] = v.dse[i - 1];
     end
     vn.rfm[1] = null; 
     vn.spa[1] = null;
     vn.spu[1] = null;
     vn.dse[1] = null;
     
-    for(int i = stage_ise_vwb; i > 1; i--)
-      vn.PCStages[i] = v.PCStages[i-1];
+    for(int i = STAGE_ISE_VWB; i > 1; i--)
+      vn.pcStages[i] = v.pcStages[i - 1];
       
-    foreach(tinf[i])
-      tinf[i].cycNew();
+    foreach(thread[i])
+      thread[i].cyc_new();
     
     vn.cancel = '{default : 0};
     
     for(int i = 0; i < (CYC_VEC - 1); i++) begin
-      CiRFM[i] = CiRFM[i+1];
-      CiSPA[i] = CiSPA[i+1];
-      CiSPU[i] = CiSPU[i+1];
-      CiDSE[i] = CiDSE[i+1];
+      ciRFM[i] = ciRFM[i + 1];
+      ciSPA[i] = ciSPA[i + 1];
+      ciSPU[i] = ciSPU[i + 1];
+      ciDSE[i] = ciDSE[i + 1];
     end
 
-    CiRFM[CYC_VEC-1] = null;
-    CiSPA[CYC_VEC-1] = null;
-    CiSPU[CYC_VEC-1] = null;
-    CiDSE[CYC_VEC-1] = null;
+    ciRFM[CYC_VEC-1] = null;
+    ciSPA[CYC_VEC-1] = null;
+    ciSPU[CYC_VEC-1] = null;
+    ciDSE[CYC_VEC-1] = null;
     
     if(cntVrfRd != 0) cntVrfRd--;
     if(cntDSERd != 0) cntDSERd--;
     if(cntSrfRd != 0) cntSrfRd--;
     if(cntPRWr != 0) cntPRWr--;
-    if(cnt_vec_proc != 0) cnt_vec_proc--;
+    if(cntVecProc != 0) cntVecProc--;
     
     foreach(cntSrfWr[i])
       if(cntSrfWr[i] != 0) cntSrfWr[i]--;
     foreach(cntVrfWr[i])
       if(cntVrfWr[i] != 0) cntVrfWr[i]--;
     
-    NoFu = '{default: 0};
-    NoLd = 0;
-    NoSt = 0;
-    NoSMsg = 0;
-    NoRMsg = 0;
+    noFu = '{default: 0};
+    noLd = 0;
+    noSt = 0;
+    noSMsg = 0;
+    noRMsg = 0;
 
-    for(int i = stage_ise_vwbp; i > stage_ise_dc; i--)
+    for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DC; i--)
       vn.fmDSE[i] = v.fmDSE[i-1];  
           
     ///cancel condition 1 branch mispredication, msc overflow
-    if(v.fmSPU != null && v.fmSPU.br_rsp) begin
+    if(v.fmSPU != null && v.fmSPU.brRsp) begin
       bit cancel;
-      cancel = tinf[v.fmSPU.TId].brPreMiss(v.fmSPU.br_taken);
-      if(v.fmSPU.msc_top_chg) begin
+      cancel = thread[v.fmSPU.tid].br_pre_miss(v.fmSPU.brTaken);
+      if(v.fmSPU.mscTopChg) begin
         cancel = 1;
-        enterExp(v.fmIFE.TId, exp_msc_err);
+        enter_exp(v.fmIFE.tid, exp_msc_err);
       end
-      if(v.fmIFE != null && cancel && v.fmIFE.TId == v.fmSPU.TId)
+      if(v.fmIFE != null && cancel && v.fmIFE.tid == v.fmSPU.tid)
         v.fmIFE.instEn = 0;
     end
     
     ///cancel condition 2, spa exp
     if(v.fmSPA != null && v.fmSPA.exp) begin
-      tinf[v.fmSPA.TId].retrievePC(v.PCStages[stage_ise_vwb]);
+      thread[v.fmSPA.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
     end
     
     ///cancel condition 2 dse exp or cache miss
-    if(v.fmDSE[stage_ise_dc] != null) begin
-      tr_dse2ise dse = v.fmDSE[stage_ise_dc];
+    if(v.fmDSE[STAGE_ISE_DC] != null) begin
+      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DC];
       if(dse.cancel) begin
-        tinf[dse.TId].retrievePC(v.PCStages[stage_ise_vwb]);
+        thread[dse.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
         if(dse.exp)
-          enterExp(dse.TId, exp_dse_err);
+          enter_exp(dse.tid, exp_dse_err);
       end
       if(dse.msgWait) begin
-        tinf[dse.TId].msgWait();
+        thread[dse.tid].msg_wait();
       end
     end
     
     ///update no_* for issue & check
     if(v.fmSPA != null)
-      NoFu = v.fmSPA.NoFu;
+      noFu = v.fmSPA.noFu;
       
-    if(v.fmDSE[stage_ise_dc] != null) begin
-      tr_dse2ise dse = v.fmDSE[stage_ise_dc];
-      NoLd = dse.NoLd;
-      NoSt = dse.NoSt;
-      NoSMsg = dse.NoSMsg;
-      NoRMsg = dse.NoRMsg;
+    if(v.fmDSE[STAGE_ISE_DC] != null) begin
+      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DC];
+      noLd = dse.noLd;
+      noSt = dse.noSt;
+      noSMsg = dse.noSMsg;
+      noRMsg = dse.noRMsg;
     end
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= NUM_THREAD; i++) begin
-      uchar TId = i + v.TIdIssueLast;
-      TId = TId & ~('1 << bits_tid);
+      uchar tid = i + v.TIdIssueLast;
+      tid = tid & ~('1 << bits_tid);
       
-      ovm_report_info("issue", $psprintf("checking thread %0d", TId), OVM_HIGH);
-      if(canIssue(TId)) begin
-        ovm_report_info("issue", $psprintf("issuing thread %0d", TId), OVM_HIGH);
-        issue(TId);
-        vn.TIdIssueLast = TId;
+      ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
+      if(can_issue(tid)) begin
+        ovm_report_info("issue", $psprintf("issuing thread %0d", tid), OVM_HIGH);
+        issue(tid);
+        vn.TIdIssueLast = tid;
         break;
       end
     end
 
     ///cancel from one cycle delayed
-    if(v.fmIFE != null && v.cancel[v.fmIFE.TId])
+    if(v.fmIFE != null && v.cancel[v.fmIFE.tid])
       v.fmIFE = null;
       
-    ///update ife data into tinf
+    ///update ife data into thread
     if(v.fmIFE != null && v.fmIFE.instEn)
-      tinf[v.fmIFE.TId].updateInst(v.fmIFE.fetchGrp);
+      thread[v.fmIFE.tid].update_inst(v.fmIFE.fetchGrp);
     
     ///try to decode one inst grp
-    foreach(tinf[i])
-      if(tinf[i].threadState != ts_disabled && tinf[i].IBuf.size() > 1 && !tinf[i].decoded) begin
-        tinf[i].decodeIGrpStart();
-        if(tinf[i].IBuf.size() >= tinf[i].IGrpBytes) begin
-          tinf[i].decodeIGrp();
+    foreach(thread[i])
+      if(thread[i].threadState != ts_disabled && thread[i].IBuf.size() > 1 && !thread[i].decoded) begin
+        thread[i].decode_igrp_start();
+        if(thread[i].IBuf.size() >= thread[i].IGrpBytes) begin
+          thread[i].decode_igrp();
           break;
         end
       end
   endfunction
   
-  function void reqProc();
+  function void req_proc();
     tr_ise2rfm toRFM;
     tr_ise2spu toSPU;
     tr_ise2spa toSPA;
     tr_ise2ife toIFE;
     tr_ise2dse toDSE;
     
-    ovm_report_info("ise", "reqProc procing...", OVM_FULL); 
+    ovm_report_info("ise", "req_proc procing...", OVM_FULL); 
     
-    vn.rfm[1] = CiRFM[0];
-    vn.spa[1] = CiSPA[0];
-    vn.spu[1] = CiSPU[0];
-    vn.dse[1] = CiDSE[0];  
+    vn.rfm[1] = ciRFM[0];
+    vn.spa[1] = ciSPA[0];
+    vn.spu[1] = ciSPU[0];
+    vn.dse[1] = ciDSE[0];  
         
-    toRFM = v.rfm[stage_ise];
-    toSPA = v.spa[stage_ise];
-    toSPU = v.spu[stage_ise];
-    toDSE = v.dse[stage_ise];
+    toRFM = v.rfm[STAGE_ISE];
+    toSPA = v.spa[STAGE_ISE];
+    toSPU = v.spu[STAGE_ISE];
+    toDSE = v.dse[STAGE_ISE];
     
     ///ife req search
     for(int i = 1; i <= NUM_THREAD; i++) begin
-      uchar TId = i + v.TIdFetchLast;
-      TId = TId & ~('1 << bits_tid);
-      if(tinf[TId].canReqIFetch()) begin
+      uchar tid = i + v.TIdFetchLast;
+      tid = tid & ~('1 << bits_tid);
+      if(thread[tid].can_req_ifetch()) begin
         toIFE = tr_ise2ife::type_id::create("toIFE", this);
-        tinf[TId].fillIFE(toIFE);
-        toIFE.TId = TId;
-        vn.TIdFetchLast = TId;
+        thread[tid].fill_ife(toIFE);
+        toIFE.tid = tid;
+        vn.TIdFetchLast = tid;
         break;
       end
     end
     
     ///delay cancel one cycle
-    foreach(tinf[i])
-      if(tinf[i].cancel) begin
+    foreach(thread[i])
+      if(thread[i].cancel) begin
         if(toIFE == null) toIFE = tr_ise2ife::type_id::create("toIFE", this);
         toIFE.cancel[i] = 1;
         vn.cancel[i] = 1;
       end
     
     ///send dse cancel to spa
-    if(v.fmDSE[stage_ise_vwbp] != null && v.fmDSE[stage_ise_vwbp].cancel) begin
-      tr_dse2ise dse = v.fmDSE[stage_ise_vwbp];
+    if(v.fmDSE[STAGE_ISE_VWBP] != null && v.fmDSE[STAGE_ISE_VWBP].cancel) begin
+      tr_dse2ise dse = v.fmDSE[STAGE_ISE_VWBP];
       if(toSPA == null) toSPA = tr_ise2spa::type_id::create("toSPA", this);
-      toSPA.cancel[dse.TId] = 1;
+      toSPA.cancel[dse.tid] = 1;
     end
       
     ///------------req to other module----------------
@@ -948,7 +947,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fmDSE[stage_ise_dc] = req;
+    vn.fmDSE[STAGE_ISE_DC] = req;
     return 1;
   endfunction : nb_transport_dse
     
@@ -962,14 +961,14 @@ class ip4_tlm_ise extends ovm_component;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
-    combProc();
+    comb_proc();
   endfunction : sync
 
   task run();
     forever begin
       @(posedge sysif.clk);
       sync();
-      reqProc();
+      req_proc();
     end
   endtask : run
 
@@ -979,7 +978,7 @@ class ip4_tlm_ise extends ovm_component;
     
   virtual function void build();
     ovm_object tmp;
-    tlm_vif_object vif_cfg;
+    tlm_vif_object vifCfg;
     
     super.build();
     ife_tr_imp = new("ife_tr_imp", this);
@@ -997,15 +996,15 @@ class ip4_tlm_ise extends ovm_component;
     v = new("v", this);
     vn = new("vn", this);
     
-    no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
-    failed_convert_interface: assert($cast(vif_cfg, tmp));
-    sysif = vif_cfg.get_vif();  
+    no_virtual_interface: assert(get_config_object("vifCfg", tmp));
+    failed_convert_interface: assert($cast(vifCfg, tmp));
+    sysif = vifCfg.get_vif();  
     stamp = 0ns;
     
-    foreach(tinf[i])
-      tinf[i] = new($psprintf("tinf%0d", i), this);
-    tinf[0].threadState = ts_rdy;
-    tinf[0].privMode = 1;
+    foreach(thread[i])
+      thread[i] = new($psprintf("thread%0d", i), this);
+    thread[0].threadState = ts_rdy;
+    thread[0].privMode = 1;
     
     cntVrfRd = 0;
     cntSrfRd = 0;

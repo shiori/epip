@@ -15,11 +15,10 @@ class ip4_tlm_rfm_vars extends ovm_component;
   tr_dse2rfm fmDSE;
   tr_spa2rfm fmSPA;
   
-  tr_ise2rfm fmISE[stage_eex_vwb0:0];
+  tr_ise2rfm fmISE[STAGE_EEX_VWB0:0];
   tr_rfm2spa spa[CYC_VEC];
-///  tr_rfm2dse dse[CYC_VEC];
   tr_rfm2spu spu;
-  word DSEOp1[CYC_VEC];
+  word dseOp1[CYC_VEC];
   
   `ovm_component_utils_begin(ip4_tlm_rfm_vars)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE)
@@ -27,8 +26,7 @@ class ip4_tlm_rfm_vars extends ovm_component;
     `ovm_field_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fmISE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE)
-///    `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_int(DSEOp1, OVM_ALL_ON)
+    `ovm_field_sarray_int(dseOp1, OVM_ALL_ON)
     `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
@@ -49,12 +47,11 @@ class ip4_tlm_rfm extends ovm_component;
   local word srf[NUM_PHY_SRF_GRP][NUM_PRF_P_GRP/NUM_VRF_BKS][NUM_SRF_BKS];
     
   local ip4_tlm_rfm_vars v, vn;
-///  local word csrf_l[NUM_SRF_BKS];
   local word bpImmLast[NUM_BP_IMM];
   local tr_rfm2spa toSPA;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
-  local uchar SRExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
+  local uchar srExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
   
   `ovm_component_utils_begin(ip4_tlm_rfm)
   `ovm_component_utils_end
@@ -68,12 +65,12 @@ class ip4_tlm_rfm extends ovm_component;
   ovm_nonblocking_transport_port #(tr_rfm2dse, tr_rfm2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_rfm2spu, tr_rfm2spu) spu_tr_port;
   
-  extern function void read_rf(inout word, input rbk_sel_e, uchar, const ref word cvrf[NUM_VRF_BKS][NUM_SP], csrf[NUM_SRF_BKS], 
-                                bpImm[NUM_BP_IMM], input word imm);
+  extern function void read_rf(inout word, input rbk_sel_e, uchar, const ref word cvrf[NUM_VRF_BKS][NUM_SP],
+                                csrf[NUM_SRF_BKS], bpImm[NUM_BP_IMM], input word imm);
   //endfunction
   
-  function void combProc();
-    ovm_report_info("rfm", "combProc procing...", OVM_FULL); 
+  function void comb_proc();
+    ovm_report_info("rfm", "comb_proc procing...", OVM_FULL); 
     if(v.fmSPU != null) end_tr(v.fmSPU);
     if(v.fmDSE != null) end_tr(v.fmDSE);
     if(v.fmSPA != null) end_tr(v.fmSPA);
@@ -88,17 +85,17 @@ class ip4_tlm_rfm extends ovm_component;
     toSPU = null;
     toDSE = null;
   
-    for(int i = stage_eex_vwb0; i > 0; i--) 
-      vn.fmISE[i] = v.fmISE[i-1];
+    for(int i = STAGE_EEX_VWB0; i > 0; i--) 
+      vn.fmISE[i] = v.fmISE[i - 1];
     for(int i = CYC_VEC - 1; i > 0; i--) 
-      vn.DSEOp1[i] = v.DSEOp1[i-1];
+      vn.dseOp1[i] = v.dseOp1[i - 1];
   endfunction
   
-  function void reqProc();
+  function void req_proc();
     word cvrf[NUM_VRF_BKS][NUM_SP];
     word csrf[NUM_SRF_BKS];
       
-    ovm_report_info("rfm", "reqProc procing...", OVM_FULL); 
+    ovm_report_info("rfm", "req_proc procing...", OVM_FULL); 
    
     ///----------------------write back results---------------------
     if(v.fmSPA != null) begin
@@ -107,7 +104,7 @@ class ip4_tlm_rfm extends ovm_component;
       
       foreach(spa.fu[fid]) begin
         ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s...", fid, fu_cfg[fid].name), OVM_HIGH);
-        SRExpFlag[spa.fu[fid].TId][spa.fu[fid].subVec] = spa.fu[fid].expFlag;
+        srExpFlag[spa.fu[fid].tid][spa.fu[fid].subVec] = spa.fu[fid].expFlag;
         bk0 = spa.fu[fid].vrfWrBk & ('1 - 'b01);
         bk1 = spa.fu[fid].vrfWrBk & ('1 - 'b01) + 'b01;
         foreach(spa.fu[0].wrEn[sp])
@@ -130,10 +127,10 @@ class ip4_tlm_rfm extends ovm_component;
       else foreach(dse.wrEn[sp])
         if(dse.wrEn[sp])
           vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
-      if(!dse.srfWr && dse.ua_wr)
+      if(!dse.srfWr && dse.updateAdrWr)
         foreach(dse.wrEn[sp])
           if(dse.wrEn[sp])
-            vrf[dse.UAWrGrp][dse.UAWrAdr][dse.UAWrBk][dse.subVec][sp] = dse.UARes[sp];
+            vrf[dse.updateAdrWrGrp][dse.updateAdrWrAdr][dse.updateAdrWrBk][dse.subVec][sp] = dse.updateAdrRes[sp];
     end
     
     if(v.fmSPU != null && v.fmSPU.wrEn) begin
@@ -150,14 +147,14 @@ class ip4_tlm_rfm extends ovm_component;
     ///----------read registers---------------------
    
     for(int subVec = 0; subVec < CYC_VEC; subVec++) begin
-      tr_ise2rfm ise = v.fmISE[STAGE_RRF_RRC0+subVec];
+      tr_ise2rfm ise = v.fmISE[STAGE_RRF_RRC0 + subVec];
       
       if(ise == null) continue;
       foreach(cvrf[bk,sp])
-        cvrf[bk][sp] = vrf[ise.VrfRdGrp[bk]][ise.VrfRdAdr[bk]][bk][subVec][sp];
+        cvrf[bk][sp] = vrf[ise.vrfRdGrp[bk]][ise.vrfRdAdr[bk]][bk][subVec][sp];
 
       foreach(csrf[bk])
-        csrf[bk] = srf[ise.SrfRdGrp[bk]][ise.SrfRdAdr[bk]][bk];  
+        csrf[bk] = srf[ise.srfRdGrp[bk]][ise.srfRdAdr[bk]][bk];  
                 
       if(ise.start) begin
         bpImmLast = ise.bpImm;
@@ -170,35 +167,35 @@ class ip4_tlm_rfm extends ovm_component;
         vn.spa[subVec].fu[fid].en = 1;
         foreach(vn.spa[subVec].fu[fid].rp[rp])
           foreach(vn.spa[subVec].fu[fid].rp[rp].op[sp])
-            read_rf(vn.spa[subVec].fu[fid].rp[rp].op[sp], ise.fu[fid].rd_bk[rp], sp, cvrf, csrf, bpImmLast, ise.fu[fid].imm);
+            read_rf(vn.spa[subVec].fu[fid].rp[rp].op[sp], ise.fu[fid].rdBkSel[rp], sp, cvrf, csrf, bpImmLast, ise.fu[fid].imm);
       end
       
-      if(ise.dse_en && subVec == 0) begin
+      if(ise.dseEn && subVec == 0) begin
         ovm_report_info("RFM_RD", $psprintf("Read for dse subVec %0d ...", subVec), OVM_HIGH);
         if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
         foreach(toDSE.base[sp]) begin
-          read_rf(toDSE.base[sp], ise.dse_rd_bk[0], sp, cvrf, csrf, ise.bpImm, ise.dse_imm);
-          read_rf(vn.DSEOp1[ise.Cyc][sp], ise.dse_rd_bk[1], sp, cvrf, csrf, ise.bpImm, ise.dse_imm);
+          read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, ise.bpImm, ise.dseImm);
+          read_rf(vn.dseOp1[ise.cyc][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpImm, ise.dseImm);
         end
-        read_rf(toDSE.op2, ise.dse_rd_bk[2], 0, cvrf, csrf, ise.bpImm, ise.dse_imm);
+        read_rf(toDSE.op2, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpImm, ise.dseImm);
       end
             
-      if(ise.spu_en && subVec == 0) begin
+      if(ise.spuEn && subVec == 0) begin
         ovm_report_info("RFM_RD", $psprintf("Read for spu subs %0d ...", subVec), OVM_HIGH);
         if(vn.spu == null) vn.spu = tr_rfm2spu::type_id::create("toSPU", this);
-        read_rf(vn.spu.op0, ise.spu_rd_bk[0], 0, cvrf, csrf, ise.bpImm, ise.spu_imm);
-        read_rf(vn.spu.op1, ise.spu_rd_bk[1], 0, cvrf, csrf, ise.bpImm, ise.spu_imm);          
+        read_rf(vn.spu.op0, ise.spuRdBk[0], 0, cvrf, csrf, ise.bpImm, ise.spuImm);
+        read_rf(vn.spu.op1, ise.spuRdBk[1], 0, cvrf, csrf, ise.bpImm, ise.spuImm);          
       end
     end
     
     for(int subVec = 0; subVec < CYC_VEC; subVec++)
-      if(v.fmISE[STAGE_RRF_RRC0+subVec] != null && v.fmISE[STAGE_RRF_RRC0+subVec].vec_end) begin
+      if(v.fmISE[STAGE_RRF_RRC0 + subVec] != null && v.fmISE[STAGE_RRF_RRC0 + subVec].vecEnd) begin
         toSPA = vn.spa[subVec];
         vn.spa[subVec] = null;
         break;
       end
     
-    if(v.fmISE[STAGE_RRF_RRC0] != null && v.fmISE[STAGE_RRF_RRC0].scl_end) begin
+    if(v.fmISE[STAGE_RRF_RRC0] != null && v.fmISE[STAGE_RRF_RRC0].sclEnd) begin
       toSPU = vn.spu;
       vn.spu = null;
     end
@@ -217,7 +214,6 @@ class ip4_tlm_rfm extends ovm_component;
     void'(begin_tr(req));
     rsp = req;
     vn.fmISE[0] = req;
-///    rsp.set_id_info(req);
     return 1;
   endfunction : nb_transport_ise
 
@@ -261,14 +257,14 @@ class ip4_tlm_rfm extends ovm_component;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
-    combProc();
+    comb_proc();
   endfunction : sync
 
   task run();
     forever begin
       @(posedge sysif.clk);
       sync();
-      reqProc();
+      req_proc();
     end
   endtask : run
 
@@ -278,7 +274,7 @@ class ip4_tlm_rfm extends ovm_component;
     
   virtual function void build();
     ovm_object tmp;
-    tlm_vif_object vif_cfg;
+    tlm_vif_object vifCfg;
     
     super.build();
     ise_tr_imp = new("ise_tr_imp", this);
@@ -292,18 +288,14 @@ class ip4_tlm_rfm extends ovm_component;
     v = new("v", this);
     vn = new("vn", this);
     
-    no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
-    failed_convert_interface: assert($cast(vif_cfg, tmp));
-    sysif = vif_cfg.get_vif();  
+    no_virtual_interface: assert(get_config_object("vifCfg", tmp));
+    failed_convert_interface: assert($cast(vifCfg, tmp));
+    sysif = vifCfg.get_vif();  
     stamp = 0ns;
   endfunction : build
 endclass : ip4_tlm_rfm
 
 ///-------------------------------------other functions-----------------------------------------
-///  function void ip4_tlm_rfm::read_crf(input tr_ise2rfm t, uchar vec, ref word cvrf[NUM_VRF_BKS][NUM_SP], csrf[NUM_SRF_BKS]);
-///    if(t == null)
-///      return;
-///  endfunction
   
   function void ip4_tlm_rfm::read_rf(inout word res, input rbk_sel_e s, uchar i, const ref word cvrf[NUM_VRF_BKS][NUM_SP], csrf[NUM_SRF_BKS], 
                                       bpImm[NUM_BP_IMM], input word imm);
@@ -312,32 +304,10 @@ endclass : ip4_tlm_rfm
     selv1:    res = cvrf[1][i];
     selv2:    res = cvrf[2][i];
     selv3:    res = cvrf[3][i];
-///    selv4:    res = cvrf[0][i];
-///    selv5:    res = cvrf[1][i];
-///    selv6:    res = cvrf[2][i];
-///    selv7:    res = cvrf[3][i];
-///    selv8:    res = cvrf[0][i];
-///    selv9:    res = cvrf[1][i];
-///    selv10:   res = cvrf[2][i];
-///    selv11:   res = cvrf[3][i];
-///    selv12:   res = cvrf[0][i];
-///    selv13:   res = cvrf[1][i];
-///    selv14:   res = cvrf[2][i];
-///    selv15:   res = cvrf[3][i];
     sels0:    res = csrf[0];
     sels1:    res = csrf[1];
-///    sels2:    res = csrf[2];
-///    sels3:    res = csrf[3];
-///    sels4:    res = csrf[4];
-///    sels5:    res = csrf[5];
-///    sels6:    res = csrf[6];
-///    sels7:    res = csrf[7];
     selz:     res = 0;
     seli0:    res = bpImm[0];
     selii:    res = imm;
-///    seli1:    res = bpImm[1];
-///    seli2:    res = bpImm[2];
-///    seli3:    res = bpImm[3];
-///    seli4:    res = bpImm[4];
     endcase
   endfunction : read_rf

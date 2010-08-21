@@ -19,56 +19,54 @@ package ip4_tlm_pkg;
 import ovm_pkg::*;
 
 parameter VERSION = 0.1;
-ovm_verbosity tr_verb = OVM_LOW;
 
 typedef byte unsigned       uchar;  /// 8bits
 typedef shortint unsigned   ushort; /// 16bits
 typedef int unsigned        uint;
 typedef longint unsigned    ulong;
 
-parameter time clk_p              = 2ns;
-parameter uchar word_width        = 32;
-parameter uchar NUM_WORD_BYTES    = word_width / 8;
+parameter time CLK_P              = 2ns;
+parameter uchar WORD_WIDTH        = 32;
+parameter uchar NUM_WORD_BYTES    = WORD_WIDTH / 8;
 
 parameter uchar NUM_SP            = 8,
-                num_vec           = 32,
-                num_sfu           = 2,
+                NUM_VEC           = 32,
+                NUM_SFU           = 2,
                 NUM_THREAD        = 4,
                 NUM_FU            = 3,
-                num_fu_rp         = 4,
-///                num_fu_wp         = 2,
+                NUM_FU_RP         = 4,
                 NUM_PHY_VRF_GRP   = 64,
                 NUM_PHY_SRF_GRP   = 32,
-                NUM_PRF_P_GRP   = 8,
+                NUM_PRF_P_GRP     = 8,
                 NUM_VRF_BKS       = 4,
                 NUM_SRF_BKS       = 2,
                 NUM_BP_IMM        = 1,
-                num_pr            = 7,
+                NUM_PR            = 7,
                 NUM_IFET_BYTES    = 16,
                 NUM_INST_VRF      = 32,
                 NUM_INST_SRF      = 16,
-                num_rf_bank       = NUM_SP,   /// register file bank number, default equal to NUM_SP
+                NUM_SMEM_BK       = NUM_SP,   /// register file bank number, default equal to NUM_SP
                 NUM_W_CNT         = 2;
                 
-parameter uchar lat_mac           = 5,
-                lat_sfu           = 16,
-                lat_rf            = 1,
-                lat_rbp           = 1,
-                lat_vwbp          = 1,    ///vector writeback bypass time
-                lat_wb            = 4,
-                lat_ise           = 2,
-                lat_ife           = 2,
-                lat_dse           = 4,
-                lat_dwbp          = 1;    ///dse writeback bypass time
+parameter uchar LAT_MAC           = 5,
+                LAT_SFU           = 16,
+                LAT_RF            = 1,
+                LAT_RBP           = 1,
+                LAT_VWBP          = 1,    ///vector writeback bypass time
+                LAT_WB            = 4,
+                LAT_ISE           = 2,
+                LAT_IFE           = 2,
+                LAT_DSE           = 4,
+                LAT_DWBP          = 1;    ///dse writeback bypass time
 
 parameter uint CFG_START_ADR      = 'hf000_0000;
 
-parameter uchar CYC_VEC       = num_vec/NUM_SP,     ///4
-                cyc_sfu_busy  = num_vec/num_sfu,    ///16 
-                cyc_iss_sfu   = lat_rf + lat_rbp + CYC_VEC -1 + lat_sfu + cyc_sfu_busy + lat_vwbp,
-                cyc_iss_spu   = lat_rf + lat_rbp + lat_dse + lat_dwbp,
-                cyc_iss_dse   = cyc_iss_spu,
-                cyc_iss_vec   = lat_rf + lat_rbp + CYC_VEC -1 + lat_mac + lat_dwbp;
+parameter uchar CYC_VEC       = NUM_VEC/NUM_SP,     ///4
+                CYC_SFU_BUSY  = NUM_VEC/NUM_SFU,    ///16 
+                CYC_ISS_SFU   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_SFU + CYC_SFU_BUSY + LAT_VWBP,
+                CYC_ISS_SPU   = LAT_RF + LAT_RBP + LAT_DSE + LAT_DWBP,
+                CYC_ISS_DSE   = CYC_ISS_SPU,
+                CYC_ISS_VEC   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_MAC + LAT_DWBP;
 
 
 /*
@@ -86,43 +84,43 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
                        0      1      2      3      4      5      6    
   */  
   
-parameter uchar STAGE_RRF_RRC0    = lat_rf + lat_rbp - 1,           ///1
-                stage_rrf_exs0    = STAGE_RRF_RRC0 + 1,             ///2
-                stage_rrf_exs1    = stage_rrf_exs0 + 1,             ///3
-                stage_rrf_rrc     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
-                stage_rrf_exe0    = stage_rrf_rrc + 1,              ///5
-                stage_rrf_exe     = stage_rrf_rrc + lat_mac,        ///8
-                stage_rrf_cmp     = stage_rrf_rrc + NUM_FU,         ///7
-                stage_rrf_cem0    = stage_rrf_cmp + 1,              ///8
-                stage_rrf_dem0    = STAGE_RRF_RRC0 + lat_dse,       ///5
-                stage_rrf_vwbp    = stage_rrf_exe + lat_vwbp,       ///9
-                stage_rrf_swbp    = STAGE_RRF_RRC0 + lat_dse + lat_dwbp,      ///6
-                stage_rrf_swb     = stage_rrf_swbp + 1,             ///7
-                stage_rrf_vwb0    = stage_rrf_vwbp + 1,             ///10
-                stage_exe         = lat_mac - 1,                    ///3
-                stage_exe_vwbp    = stage_exe + lat_vwbp,           ///4
-                stage_exe_vwb0    = stage_exe_vwbp + 1,             ///5
-                stage_exe_cmp     = NUM_FU - 1,                     ///2
-                stage_exe_swbp    = lat_dse - CYC_VEC + lat_dwbp,   ///1
-                stage_exe_swb     = stage_exe_swbp + 1,             ///2
-                stage_eex         = lat_sfu + cyc_sfu_busy -CYC_VEC - 1,     ///27
-                stage_eex_vwbp    = stage_eex + lat_vwbp,           ///28
-                stage_eex_vwb0    = stage_eex_vwbp + 1,             ///29
-                stage_ise         = lat_ise - 1,                    ///1
-                stage_ife         = lat_ife - 1,                    ///1
-                stage_ag_swb      = lat_dse + lat_dwbp ,            ///5
-                stage_rrf_ag      = STAGE_RRF_RRC0 + lat_rf,        ///2
-                stage_rrf_tag     = stage_rrf_ag + 1,               ///3
-                stage_rrf_sel     = stage_rrf_tag + 1,              ///4
-                stage_ise_vwb     = lat_ise + lat_rf + CYC_VEC + lat_mac + lat_vwbp + CYC_VEC - 1,  ///15
-                stage_ise_vwbp    = lat_ise + lat_rf + CYC_VEC + lat_mac + lat_vwbp - 1,            ///11
-                stage_ise_dc      = lat_ise + lat_rf + lat_dse;     ///7
+parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
+                STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 1,             ///2
+                STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///3
+                STAGE_RRF_RRC     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
+                STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
+                STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///8
+                STAGE_RRF_CMP     = STAGE_RRF_RRC + NUM_FU,         ///7
+                STAGE_RRF_CEM0    = STAGE_RRF_CMP + 1,              ///8
+                STAGE_RRF_DEM0    = STAGE_RRF_RRC0 + LAT_DSE,       ///5
+                STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///9
+                STAGE_RRF_SWBP    = STAGE_RRF_RRC0 + LAT_DSE + LAT_DWBP,      ///6
+                STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///7
+                STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///10
+                STAGE_EXE         = LAT_MAC - 1,                    ///3
+                STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
+                STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
+                STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
+                STAGE_EXE_SWBP    = LAT_DSE - CYC_VEC + LAT_DWBP,   ///1
+                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///2
+                STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY -CYC_VEC - 1,     ///27
+                STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
+                STAGE_EEX_VWB0    = STAGE_EEX_VWBP + 1,             ///29
+                STAGE_ISE         = LAT_ISE - 1,                    ///1
+                STAGE_IFE         = LAT_IFE - 1,                    ///1
+                STAGE_AG_SWB      = LAT_DSE + LAT_DWBP ,            ///5
+                STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
+                STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
+                STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
+                STAGE_ISE_VWB     = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP + CYC_VEC - 1,  ///15
+                STAGE_ISE_VWBP    = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP - 1,            ///11
+                STAGE_ISE_DC      = LAT_ISE + LAT_RF + LAT_DSE;     ///7
                                 
 
-parameter uchar ck_stage_sfu1     = stage_eex - stage_rrf_exe,      ///19
-                ck_stage_sfu0     = ck_stage_sfu1 - CYC_VEC + 1;    ///16
+parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
+                CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
                  
-typedef bit[word_width-1:0]     word;
+typedef bit[WORD_WIDTH-1:0]     word;
     
 ///Basic functions for parameters etc
   
@@ -316,10 +314,6 @@ parameter opcode_e alu_ops[] = '{
   op_umin,    op_umax,    op_lid,
   op_ext,     op_ins,     op_seb,     op_she,
   op_wsbh
-///  op_gglw,    op_gglb,    op_gglh,    op_ggsw,
-///  op_ggsh,    op_ggsb,
-///  op_vror,    op_vroru,   op_vsr,     op_vsru,
-///  op_vsl,     op_vslu  
 };
 
 parameter opcode_e sfu_ops[] = '{

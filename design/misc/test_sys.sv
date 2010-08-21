@@ -92,12 +92,12 @@ class ip4_sys_test extends ovm_test;
   `ovm_component_utils_end
 
   virtual function void build();
-    set_config_int("*", "run_delay", 6ns);
+    set_config_int("*", "runDelay", 6ns);
     set_config_int("*.sequencer", "count", 200);
     set_config_int("*", "recording_detail", 1);
-    set_config_int("*", "im_base", CFG_START_ADR);
-    set_config_int("*", "im_size", 1024);
-    set_config_string("*", "im_file_path", "../misc/code.txt");
+    set_config_int("*", "imBase", CFG_START_ADR);
+    set_config_int("*", "imSize", 1024);
+    set_config_string("*", "imFilePath", "../misc/code.txt");
     
     env = new("env", this);
     super.build();

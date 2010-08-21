@@ -12,19 +12,19 @@ class ip4_tlm_driver #(type T=ovm_sequence_item) extends ovm_driver #(T);
   
   virtual function void build();
     ovm_object tmp;
-    tlm_vif_object vif_cfg;  
+    tlm_vif_object vifCfg;  
     super.build();
     tr_port = new("port", this);
-    no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
-    failed_convert_interface: assert($cast(vif_cfg, tmp));
-    sysif = vif_cfg.get_vif();      
+    no_virtual_interface: assert(get_config_object("vifCfg", tmp));
+    failed_convert_interface: assert($cast(vifCfg, tmp));
+    sysif = vifCfg.get_vif();      
   endfunction : build
   
   task run();
-    time run_delay;
+    time runDelay;
     T req, rsp;
-    assert(get_config_int("run_delay", run_delay));
-    #run_delay;    
+    assert(get_config_int("runDelay", runDelay));
+    #runDelay;    
     forever begin
       @(posedge sysif.clk);
       seq_item_port.get_next_item(req);
@@ -50,13 +50,13 @@ class ip4_tlm_monitor #(type T=ovm_sequence_item) extends ovm_driver #(T);
   
   virtual function void build();
     ovm_object tmp;
-    tlm_vif_object vif_cfg;  
+    tlm_vif_object vifCfg;  
     super.build();
     tr_imp = new("imp", this);
     item_collected_port = new("item_collected_port", this);
-    no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
-    failed_convert_interface: assert($cast(vif_cfg, tmp));
-    sysif = vif_cfg.get_vif();      
+    no_virtual_interface: assert(get_config_object("vifCfg", tmp));
+    failed_convert_interface: assert($cast(vifCfg, tmp));
+    sysif = vifCfg.get_vif();      
   endfunction : build
   
   task run();

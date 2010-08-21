@@ -122,7 +122,7 @@ class ip4_module_rand_test extends ovm_test;
   `ovm_component_utils_end
 
   virtual function void build();
-    set_config_int("*", "run_delay", 6ns);
+    set_config_int("*", "runDelay", 6ns);
     set_config_int("*.sequencer", "count", 200);
     set_config_int("*", "recording_detail", 1);
     set_report_verbosity_level_hier(OVM_HIGH);

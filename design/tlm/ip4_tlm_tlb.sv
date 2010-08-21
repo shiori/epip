@@ -183,7 +183,7 @@ class ip4_tlm_tlb extends ovm_component;
   ovm_nonblocking_transport_port #(tr_tlb2dse, tr_tlb2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_tlb2ife, tr_tlb2ife) ife_tr_port;
     
-  function void combProc();
+  function void comb_proc();
 /*    uchar EvenOddBit; 
     bit[mask_width-1:0] var_mask[num_tlb_e];
     bit[PFN_width-1:0] var_pfn;
@@ -193,7 +193,7 @@ class ip4_tlm_tlb extends ovm_component;
     uchar var_tid;
     bit rsp_dse = 0, rsp_ife = 0, exp = 0;
     
-    ovm_report_info("TLB", "combProc procing...", OVM_FULL);
+    ovm_report_info("TLB", "comb_proc procing...", OVM_FULL);
      
     if(v.fmDSE != null) end_tr(v.fmDSE);
     if(v.fmSPU != null) end_tr(v.fmSPU);
@@ -237,12 +237,12 @@ class ip4_tlm_tlb extends ovm_component;
     ///tlb basic function
     if(rsp_dse || rsp_ife)begin
       if(rsp_ife && v.fmIFE[0] != null) begin
-        vir_adr = v.fmIFE[0].v_adr;
-        var_tid = v.fmIFE[0].TId;
+        vir_adr = v.fmIFE[0].vAdr;
+        var_tid = v.fmIFE[0].tid;
       end
       else if(v.fmDSE != null) begin
-        vir_adr = v.fmDSE.v_adrh;
-        var_tid = v.fmDSE.TId;
+        vir_adr = v.fmDSE.vAdrHi;
+        var_tid = v.fmDSE.tid;
       end
       
       for (int i = 0; i < num_tlb_e; i++)begin
@@ -304,8 +304,8 @@ class ip4_tlm_tlb extends ovm_component;
       end    
       if(rsp_ife) begin
         if(vn.ife == null) vn.ife = tr_tlb2ife::type_id::create("toIFE", this);
-        vn.ife.p_adr = var_padr;
-        vn.ife.TId = v.fmIFE[0].TId;
+        vn.ife.pAdr = var_padr;
+        vn.ife.tid = v.fmIFE[0].tid;
         vn.ife.rsp = 1;
         vn.ife.hit = find;
         vn.ife.exp = exp;
@@ -329,8 +329,8 @@ class ip4_tlm_tlb extends ovm_component;
       /// TLBP
       op_tlbp:
         for (int i = 0; i < num_tlb_e; i++)begin
-          if((v.tlb_vpn2[i] && (!var_mask[i])) == (v.REntryHi[word_width-1:word_width-vpn2_width] && (!var_mask[i]))
-              && ((v.tlb_G[i] == 1) || (v.tlb_asid[i][v.fmDSE.TId] == v.REntryHi[asid_width-1:0])))
+          if((v.tlb_vpn2[i] && (!var_mask[i])) == (v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-vpn2_width] && (!var_mask[i]))
+              && ((v.tlb_G[i] == 1) || (v.tlb_asid[i][v.fmDSE.tid] == v.REntryHi[asid_width-1:0])))
               vn.RIndex = i;
         end
       
@@ -340,7 +340,7 @@ class ip4_tlm_tlb extends ovm_component;
         i0 = v.RIndex;
         if(i0 < num_tlb_e) begin
           vn.RPageType[type_width-1:0] = v.tlb_ptype[i0];
-          vn.REntryHi = {(v.tlb_vpn2[i0] && (!var_mask[i0])), 6'b0, v.tlb_asid[i0][v.fmDSE.TId]};
+          vn.REntryHi = {(v.tlb_vpn2[i0] && (!var_mask[i0])), 6'b0, v.tlb_asid[i0][v.fmDSE.tid]};
           vn.REntryLo1 = {(v.tlb_pfn21[i0] && (!var_mask[i0])), v.tlb_EX1[i0], 
                            v.tlb_C1[i0], v.tlb_K1[i0], v.tlb_E1[i0], v.tlb_D1[i0],
                            v.tlb_V1[i0], v.tlb_G1[i0]};
@@ -354,13 +354,13 @@ class ip4_tlm_tlb extends ovm_component;
       begin
         i1 = v.RIndex;
         vn.tlb_ptype[i1] = v.RPageType[type_width-1:0];
-        vn.tlb_vpn2[i1] = v.REntryHi[word_width-1:word_width-vpn2_width] && (!var_mask[i1]);
-        vn.tlb_asid[i1][v.fmDSE.TId] = v.REntryHi[asid_width-1:0];
+        vn.tlb_vpn2[i1] = v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-vpn2_width] && (!var_mask[i1]);
+        vn.tlb_asid[i1][v.fmDSE.tid] = v.REntryHi[asid_width-1:0];
         vn.tlb_G[i1] = v.REntryLo1[0] && v.REntryLo0[0];
-        vn.tlb_pfn21[i1] = v.REntryLo1[word_width-1:9] && (!var_mask[i1]);
+        vn.tlb_pfn21[i1] = v.REntryLo1[WORD_WIDTH-1:9] && (!var_mask[i1]);
         vn.tlb_EX1[i1] = v.REntryLo1[8]; vn.tlb_C1[i1] = v.REntryLo1[7:5]; vn.tlb_K1[i1] = v.REntryLo1[4];
         vn.tlb_E1[i1] = v.REntryLo1[3]; vn.tlb_D1[i1] = v.REntryLo1[2]; vn.tlb_V1[i1] = v.REntryLo1[1];
-        vn.tlb_pfn20[i1] = v.REntryLo0[word_width-1:9] && (!var_mask[i1]);
+        vn.tlb_pfn20[i1] = v.REntryLo0[WORD_WIDTH-1:9] && (!var_mask[i1]);
         vn.tlb_EX0[i1] = v.REntryLo0[8]; vn.tlb_C0[i1] = v.REntryLo0[7:5]; vn.tlb_K0[i1] = v.REntryLo0[4];
         vn.tlb_E0[i1] = v.REntryLo0[3]; vn.tlb_D0[i1] = v.REntryLo0[2]; vn.tlb_V0[i1] = v.REntryLo0[1];
       end
@@ -369,19 +369,19 @@ class ip4_tlm_tlb extends ovm_component;
       begin
         i1 = v.RIndex;
         vn.tlb_ptype[i2] = v.RPageType[type_width-1:0];
-        vn.tlb_vpn2[i2] = v.REntryHi[word_width-1:word_width-vpn2_width] && (!var_mask[i1]);
-        vn.tlb_asid[i2][v.fmDSE.TId] = v.REntryHi[asid_width-1:0];
+        vn.tlb_vpn2[i2] = v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-vpn2_width] && (!var_mask[i1]);
+        vn.tlb_asid[i2][v.fmDSE.tid] = v.REntryHi[asid_width-1:0];
         vn.tlb_G[i2] = v.REntryLo1[0] && v.REntryLo0[0];
-        vn.tlb_pfn21[i2] = v.REntryLo1[word_width-1:9] && (!var_mask[i1]);
+        vn.tlb_pfn21[i2] = v.REntryLo1[WORD_WIDTH-1:9] && (!var_mask[i1]);
         vn.tlb_EX1[i2] = v.REntryLo1[8]; vn.tlb_C1[i2] = v.REntryLo1[7:5]; vn.tlb_K1[i2] = v.REntryLo1[4];
         vn.tlb_E1[i2] = v.REntryLo1[3]; vn.tlb_D1[i2] = v.REntryLo1[2]; vn.tlb_V1[i2] = v.REntryLo1[1];
-        vn.tlb_pfn20[i2] = v.REntryLo0[word_width-1:9] && (!var_mask[i1]);
+        vn.tlb_pfn20[i2] = v.REntryLo0[WORD_WIDTH-1:9] && (!var_mask[i1]);
         vn.tlb_EX0[i2] = v.REntryLo0[8]; vn.tlb_C0[i2] = v.REntryLo0[7:5]; vn.tlb_K0[i2] = v.REntryLo0[4];
         vn.tlb_E0[i2] = v.REntryLo0[3]; vn.tlb_D0[i2] = v.REntryLo0[2]; vn.tlb_V0[i2] = v.REntryLo0[1];
       end
       /// GP2S
       op_gp2s:
-        case(v.fmSPU.sr_adr)
+        case(v.fmSPU.srAdr)
         RContent_NO: vn.RContent = v.fmSPU.op0;
         RIndex_NO: vn.RIndex = v.fmSPU.op0;
         RRandom_NO: vn.RRandom = v.fmSPU.op0;
@@ -397,7 +397,7 @@ class ip4_tlm_tlb extends ovm_component;
       begin
         if(vn.spu[1] == null)
           vn.spu[1] = tr_tlb2spu::type_id::create("toSPU", this);
-        case(v.fmSPU.sr_adr)
+        case(v.fmSPU.srAdr)
         RContent_NO: vn.spu[1].res = v.RContent;
         RIndex_NO: vn.spu[1].res = v.RIndex;
         RRandom_NO: vn.spu[1].res = v.RRandom;
@@ -413,12 +413,12 @@ class ip4_tlm_tlb extends ovm_component;
 */    
   endfunction
   
-  function void reqProc();
+  function void req_proc();
 /*    tr_tlb2dse toDSE;
     tr_tlb2spu toSPU;
     tr_tlb2ife toIFE;
     
-    ovm_report_info("TLB", "reqProc procing...", OVM_FULL); 
+    ovm_report_info("TLB", "req_proc procing...", OVM_FULL); 
    
     /// send to dse
     toDSE = v.dse;
@@ -484,14 +484,14 @@ class ip4_tlm_tlb extends ovm_component;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
-    combProc();
+    comb_proc();
   endfunction : sync
 
   task run();
     forever begin
       @(posedge sysif.clk);
       sync();
-      reqProc();
+      req_proc();
     end
   endtask : run
 
@@ -501,7 +501,7 @@ class ip4_tlm_tlb extends ovm_component;
     
   virtual function void build();
     ovm_object tmp;
-    tlm_vif_object vif_cfg;
+    tlm_vif_object vifCfg;
     
     super.build();
     dse_tr_imp = new("dse_tr_imp", this);
@@ -515,9 +515,9 @@ class ip4_tlm_tlb extends ovm_component;
     v = new("v", this);
     vn = new("vn", this);
     
-    no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
-    failed_convert_interface: assert($cast(vif_cfg, tmp));
-    sysif = vif_cfg.get_vif();  
+    no_virtual_interface: assert(get_config_object("vifCfg", tmp));
+    failed_convert_interface: assert($cast(vifCfg, tmp));
+    sysif = vifCfg.get_vif();  
     stamp = 0ns;
   endfunction : build
 endclass : ip4_tlm_tlb

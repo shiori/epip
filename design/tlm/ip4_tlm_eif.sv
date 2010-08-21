@@ -38,18 +38,18 @@ class ip4_tlm_eif extends ovm_component;
     
   ovm_nonblocking_transport_port #(tr_eif2dse, tr_eif2dse) dse_tr_port;
         
-  function void combProc();
+  function void comb_proc();
     
-    ovm_report_info("EIF", "combProc procing...", OVM_FULL); 
+    ovm_report_info("EIF", "comb_proc procing...", OVM_FULL); 
     
     if(v.fmDSE != null) end_tr(v.fmDSE);
     vn.fmDSE = null;
     
   endfunction
   
-  function void reqProc();
+  function void req_proc();
    
-    ovm_report_info("EIF", "reqProc procing...", OVM_FULL); 
+    ovm_report_info("EIF", "req_proc procing...", OVM_FULL); 
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
@@ -75,14 +75,14 @@ class ip4_tlm_eif extends ovm_component;
     ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
-    combProc();
+    comb_proc();
   endfunction : sync
 
   task run();
     forever begin
       @(posedge sysif.clk);
       sync();
-      reqProc();
+      req_proc();
     end
   endtask : run
 
@@ -92,7 +92,7 @@ class ip4_tlm_eif extends ovm_component;
     
   virtual function void build();
     ovm_object tmp;
-    tlm_vif_object vif_cfg;
+    tlm_vif_object vifCfg;
     
     super.build();
     dse_tr_imp = new("dse_tr_imp", this);
@@ -102,9 +102,9 @@ class ip4_tlm_eif extends ovm_component;
     v = new("v", this);
     vn = new("vn", this);
     
-    no_virtual_interface: assert(get_config_object("vif_cfg", tmp));
-    failed_convert_interface: assert($cast(vif_cfg, tmp));
-    sysif = vif_cfg.get_vif();  
+    no_virtual_interface: assert(get_config_object("vifCfg", tmp));
+    failed_convert_interface: assert($cast(vifCfg, tmp));
+    sysif = vifCfg.get_vif();  
     stamp = 0ns;
   endfunction : build
 endclass : ip4_tlm_eif
