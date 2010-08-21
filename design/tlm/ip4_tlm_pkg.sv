@@ -28,27 +28,27 @@ typedef longint unsigned    ulong;
 
 parameter time clk_p              = 2ns;
 parameter uchar word_width        = 32;
-parameter uchar num_word_bytes    = word_width / 8;
+parameter uchar NUM_WORD_BYTES    = word_width / 8;
 
-parameter uchar num_sp            = 8,
+parameter uchar NUM_SP            = 8,
                 num_vec           = 32,
                 num_sfu           = 2,
-                num_thread        = 4,
-                num_fu            = 3,
+                NUM_THREAD        = 4,
+                NUM_FU            = 3,
                 num_fu_rp         = 4,
 ///                num_fu_wp         = 2,
-                num_phy_vrf_grp   = 64,
-                num_phy_srf_grp   = 32,
-                num_prf_p_grp   = 8,
-                num_vrf_bks       = 4,
-                num_srf_bks       = 2,
-                num_bp_imm        = 1,
+                NUM_PHY_VRF_GRP   = 64,
+                NUM_PHY_SRF_GRP   = 32,
+                NUM_PRF_P_GRP   = 8,
+                NUM_VRF_BKS       = 4,
+                NUM_SRF_BKS       = 2,
+                NUM_BP_IMM        = 1,
                 num_pr            = 7,
-                num_ifet_bytes    = 16,
-                num_inst_vrf      = 32,
-                num_inst_srf      = 16,
-                num_rf_bank       = num_sp,   /// register file bank number, default equal to num_sp
-                num_w_cnt         = 2;
+                NUM_IFET_BYTES    = 16,
+                NUM_INST_VRF      = 32,
+                NUM_INST_SRF      = 16,
+                num_rf_bank       = NUM_SP,   /// register file bank number, default equal to NUM_SP
+                NUM_W_CNT         = 2;
                 
 parameter uchar lat_mac           = 5,
                 lat_sfu           = 16,
@@ -61,37 +61,15 @@ parameter uchar lat_mac           = 5,
                 lat_dse           = 4,
                 lat_dwbp          = 1;    ///dse writeback bypass time
 
-parameter uint cfg_start_adr      = 'hf000_0000;
+parameter uint CFG_START_ADR      = 'hf000_0000;
 
-parameter uchar cyc_vec       = num_vec/num_sp,     ///4
+parameter uchar CYC_VEC       = num_vec/NUM_SP,     ///4
                 cyc_sfu_busy  = num_vec/num_sfu,    ///16 
-                cyc_iss_sfu   = lat_rf + lat_rbp + cyc_vec -1 + lat_sfu + cyc_sfu_busy + lat_vwbp,
+                cyc_iss_sfu   = lat_rf + lat_rbp + CYC_VEC -1 + lat_sfu + cyc_sfu_busy + lat_vwbp,
                 cyc_iss_spu   = lat_rf + lat_rbp + lat_dse + lat_dwbp,
                 cyc_iss_dse   = cyc_iss_spu,
-                cyc_iss_vec   = lat_rf + lat_rbp + cyc_vec -1 + lat_mac + lat_dwbp;
+                cyc_iss_vec   = lat_rf + lat_rbp + CYC_VEC -1 + lat_mac + lat_dwbp;
 
-parameter uchar VADD_START = 14,  /// 8K 14BIT START for tlb and dse
-                PFN_width = 23,
-                PHY_width = VADD_START + PFN_width;
-parameter uchar rf_bank0 = 0,      /// num_sp register file bank in code  3bit
-                rf_bank1 = 1,      ///  unit : word 32bit
-                rf_bank2 = 2,      /// 
-                rf_bank3 = 3,
-                rf_bank4 = 4,
-                rf_bank5 = 5,
-                rf_bank6 = 6,
-                rf_bank7 = 7;
-parameter bit [PHY_width-1:0] SM_BASE   = 'h00_0000_0000,
-                              TFIF_BASE = 'h00_0020_0000,
-                              CTLR_BASE = 'h00_0024_0000,
-                              EJTG_BASE = 'h00_0024_1000,
-                              EBUS_BASE = 'h00_0024_2000;
-               
-parameter uint SM_SIZE   = 2^16,/// shared memory size 64Kbyte
-               MSG_SIZE  = 256, /// 256BYTE
-               CTLR_SIZE = 128, /// each control register of pb 128byte
-               EJTG_SIZE = 128; /// each ejtag of pb 128byte
-                
 
 /*
                                            pipeline stages:
@@ -108,41 +86,41 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
                        0      1      2      3      4      5      6    
   */  
   
-parameter uchar stage_rrf_rrc0    = lat_rf + lat_rbp - 1,           ///1
-                stage_rrf_exs0    = stage_rrf_rrc0 + 1,             ///2
+parameter uchar STAGE_RRF_RRC0    = lat_rf + lat_rbp - 1,           ///1
+                stage_rrf_exs0    = STAGE_RRF_RRC0 + 1,             ///2
                 stage_rrf_exs1    = stage_rrf_exs0 + 1,             ///3
-                stage_rrf_rrc     = stage_rrf_rrc0 + cyc_vec - 1,   ///4
+                stage_rrf_rrc     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
                 stage_rrf_exe0    = stage_rrf_rrc + 1,              ///5
                 stage_rrf_exe     = stage_rrf_rrc + lat_mac,        ///8
-                stage_rrf_cmp     = stage_rrf_rrc + num_fu,         ///7
+                stage_rrf_cmp     = stage_rrf_rrc + NUM_FU,         ///7
                 stage_rrf_cem0    = stage_rrf_cmp + 1,              ///8
-                stage_rrf_dem0    = stage_rrf_rrc0 + lat_dse,       ///5
+                stage_rrf_dem0    = STAGE_RRF_RRC0 + lat_dse,       ///5
                 stage_rrf_vwbp    = stage_rrf_exe + lat_vwbp,       ///9
-                stage_rrf_swbp    = stage_rrf_rrc0 + lat_dse + lat_dwbp,      ///6
+                stage_rrf_swbp    = STAGE_RRF_RRC0 + lat_dse + lat_dwbp,      ///6
                 stage_rrf_swb     = stage_rrf_swbp + 1,             ///7
                 stage_rrf_vwb0    = stage_rrf_vwbp + 1,             ///10
                 stage_exe         = lat_mac - 1,                    ///3
                 stage_exe_vwbp    = stage_exe + lat_vwbp,           ///4
                 stage_exe_vwb0    = stage_exe_vwbp + 1,             ///5
-                stage_exe_cmp     = num_fu - 1,                     ///2
-                stage_exe_swbp    = lat_dse - cyc_vec + lat_dwbp,   ///1
+                stage_exe_cmp     = NUM_FU - 1,                     ///2
+                stage_exe_swbp    = lat_dse - CYC_VEC + lat_dwbp,   ///1
                 stage_exe_swb     = stage_exe_swbp + 1,             ///2
-                stage_eex         = lat_sfu + cyc_sfu_busy -cyc_vec - 1,     ///27
+                stage_eex         = lat_sfu + cyc_sfu_busy -CYC_VEC - 1,     ///27
                 stage_eex_vwbp    = stage_eex + lat_vwbp,           ///28
                 stage_eex_vwb0    = stage_eex_vwbp + 1,             ///29
                 stage_ise         = lat_ise - 1,                    ///1
                 stage_ife         = lat_ife - 1,                    ///1
                 stage_ag_swb      = lat_dse + lat_dwbp ,            ///5
-                stage_rrf_ag      = stage_rrf_rrc0 + lat_rf,        ///2
+                stage_rrf_ag      = STAGE_RRF_RRC0 + lat_rf,        ///2
                 stage_rrf_tag     = stage_rrf_ag + 1,               ///3
                 stage_rrf_sel     = stage_rrf_tag + 1,              ///4
-                stage_ise_vwb     = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp + cyc_vec - 1,  ///15
-                stage_ise_vwbp    = lat_ise + lat_rf + cyc_vec + lat_mac + lat_vwbp - 1,            ///11
+                stage_ise_vwb     = lat_ise + lat_rf + CYC_VEC + lat_mac + lat_vwbp + CYC_VEC - 1,  ///15
+                stage_ise_vwbp    = lat_ise + lat_rf + CYC_VEC + lat_mac + lat_vwbp - 1,            ///11
                 stage_ise_dc      = lat_ise + lat_rf + lat_dse;     ///7
                                 
 
 parameter uchar ck_stage_sfu1     = stage_eex - stage_rrf_exe,      ///19
-                ck_stage_sfu0     = ck_stage_sfu1 - cyc_vec + 1;    ///16
+                ck_stage_sfu0     = ck_stage_sfu1 - CYC_VEC + 1;    ///16
                  
 typedef bit[word_width-1:0]     word;
     
@@ -173,11 +151,11 @@ function automatic ulong max2(
     max2 = a1;
 endfunction
 
-parameter uchar bits_vrf_bks    = n2w(num_vrf_bks),
-                bits_srf_bks    = n2w(num_srf_bks),
-                bits_tid        = n2w(num_thread),
-                bits_ifet       = n2w(num_ifet_bytes),
-                bits_prf_p_grp  = n2w(num_prf_p_grp);
+parameter uchar BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
+                BITS_SRF_BKS    = n2w(NUM_SRF_BKS),
+                bits_tid        = n2w(NUM_THREAD),
+                BITS_IFET       = n2w(NUM_IFET_BYTES),
+                BITS_PRF_P_GRP  = n2w(NUM_PRF_P_GRP);
 
 `ovm_nonblocking_transport_imp_decl(_rfm)
 `ovm_nonblocking_transport_imp_decl(_ise)
@@ -186,7 +164,7 @@ parameter uchar bits_vrf_bks    = n2w(num_vrf_bks),
 `ovm_nonblocking_transport_imp_decl(_dse)
 `ovm_nonblocking_transport_imp_decl(_ife)
 `ovm_nonblocking_transport_imp_decl(_tlb)
-`ovm_nonblocking_transport_imp_decl(_shm)
+`ovm_nonblocking_transport_imp_decl(_eif)
   
 class tlm_vif_object extends ovm_object;
   `ovm_object_utils(tlm_vif_object)
@@ -218,9 +196,9 @@ typedef enum uchar {
   selv[0:127], sels[0:31], seli[0:7], selz, selii, selspu, seldse, selfu[0:15], selnull
 } rbk_sel_e;
   
-parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + num_vrf_bks - 1),
-                    sels_e = rbk_sel_e'(sels0 + num_srf_bks - 1),
-                    seli_e = rbk_sel_e'(seli0 + num_bp_imm - 1);
+parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
+                    sels_e = rbk_sel_e'(sels0 + NUM_SRF_BKS - 1),
+                    seli_e = rbk_sel_e'(seli0 + NUM_BP_IMM - 1);
 
 typedef enum uchar {
   mac, alu, dse, sfu, spu
@@ -230,7 +208,7 @@ typedef enum uchar {
   mac0 = 0, alu0, sfu0, spu0, dse0, fu_null
 } unit_inst_e;
 
-parameter unit_typ_e fu_cfg[num_fu] = '{
+parameter unit_typ_e fu_cfg[NUM_FU] = '{
   mac0  : mac, 
   alu0  : alu,
   sfu0  : sfu
@@ -414,7 +392,7 @@ endclass
 `include "ip4_tlm_ise.sv"
 `include "ip4_tlm_tlb.sv"
 `include "ip4_tlm_dse.sv"
-`include "ip4_tlm_shm.sv"
+`include "ip4_tlm_eif.sv"
 `include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
 

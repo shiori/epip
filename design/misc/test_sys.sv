@@ -8,7 +8,7 @@ class test_sys_env extends ovm_env;
   ip4_tlm_ife ife;
   ip4_tlm_tlb tlb;
   ip4_tlm_dse dse;
-  ip4_tlm_shm shm;
+  ip4_tlm_eif eif;
  
   virtual tlm_sys_if.mods sysif;
 
@@ -25,7 +25,7 @@ class test_sys_env extends ovm_env;
     ife = ip4_tlm_ife::type_id::create("ife", this);
     tlb = ip4_tlm_tlb::type_id::create("tlb", this);
     dse = ip4_tlm_dse::type_id::create("dse", this);
-    shm = ip4_tlm_shm::type_id::create("shm", this);
+    eif = ip4_tlm_eif::type_id::create("eif", this);
   endfunction
 
   virtual function void connect();
@@ -72,8 +72,8 @@ class test_sys_env extends ovm_env;
     dse.tlb_tr_port.connect(tlb.dse_tr_imp);
     tlb.dse_tr_port.connect(dse.tlb_tr_imp);
 
-    dse.shm_tr_port.connect(shm.dse_tr_imp);
-    shm.dse_tr_port.connect(dse.shm_tr_imp);
+    dse.eif_tr_port.connect(eif.dse_tr_imp);
+    eif.dse_tr_port.connect(dse.eif_tr_imp);
   endfunction
 
   virtual task run();
@@ -95,7 +95,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "run_delay", 6ns);
     set_config_int("*.sequencer", "count", 200);
     set_config_int("*", "recording_detail", 1);
-    set_config_int("*", "im_base", cfg_start_adr);
+    set_config_int("*", "im_base", CFG_START_ADR);
     set_config_int("*", "im_size", 1024);
     set_config_string("*", "im_file_path", "../misc/code.txt");
     
