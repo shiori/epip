@@ -9,58 +9,44 @@
 /// =============================================================================
 ///Log:
 ///Created by yajing yuan on July 20 2010
-/*
-parameter uchar index_ent   = 7 , /// entry bits
-                num_tlb_e   = 1 << index_ent,  ///128
-                vpn2_width  = 18,
-                mask_width  = 15,
-                type_width  = 3,  /// Page Size Type bit width
-                asid_width  = 8,
+
+parameter uchar INDEX_ENT   = 7 , /// entry bits
+                NUM_TLB_E   = 1 << INDEX_ENT,  ///128
+                VPN2_WIDTH  = 18,
+                MASK_WIDTH  = 15,
+                TYPE_WIDTH  = 3,  /// Page Size Type bit width
+                ASID_WIDTH  = 8,
                 IFE_REQ_BUF = 2,
-                RContent_NO = 6,
-                RIndex_NO = 7,
-                RRandom_NO = 8,
-                REntryLo0_NO = 9,
-                REntryLo1_NO = 10,
-                REntryHi_NO = 11,
-                RPageType_NO = 12;
+                SR_CONTENT  = 6,
+                SR_INDEX    = 7,
+                SR_RANDOM   = 8,
+                SR_ENTRY_L0 = 9,
+                SR_ENTRY_L1 = 10,
+                SR_ENTRY_HI = 11,
+                SR_PAGE_TYP = 12,
+                STAG_TLB_SPU = STAGE_RRF_SWBP - STAGE_RRF_EXS1 - 1 -1;
 
-parameter uchar   pagetype0 = 0,   /// 8K
-                  pagetype1 = 1,   /// 64K
-                  pagetype2 = 2,   /// 512k
-                  pagetype3 = 3,   /// 4M
-                  pagetype4 = 4,   /// 16M
-                  pagetype5 = 5,   /// 64M
-                  pagetype6 = 6;   /// 256M 
-                  
+typedef enum uchar {
+  page_8K   = 0,
+  page_64K  = 1,
+  page_512K = 2,
+  page_4M   = 3,
+  page_16M  = 4,
+  page_64M  = 5,
+  page_256M = 6
+} page_typ_e;
 
-
-typedef enum ushort {
-  pagemask0 = 15'b000000000000000,   /// 8K
-  pagemask1 = 15'b000000000000111,   /// 64K
-  pagemask2 = 15'b000000000111111,   /// 512k
-  pagemask3 = 15'b000000111111111,   /// 4M
-  pagemask4 = 15'b000011111111111,   /// 16M
-  pagemask5 = 15'b001111111111111,   /// 64M
-  pagemask6 = 15'b111111111111111;   /// 256M
-} page_mask_e;
-
-parameter page_mask_e page_mask_table[] = {
-  pagemask0,
-  pagemask1,
-  pagemask2,
-  pagemask3,
-  pagemask4,
-  pagemask5,
-  pagemask6,
+parameter ushort page_mask_table[] = {
+  15'b000000000000000,   /// 8K
+  15'b000000000000111,   /// 64K
+  15'b000000000111111,   /// 512k
+  15'b000000111111111,   /// 4M
+  15'b000011111111111,   /// 16M
+  15'b001111111111111,   /// 64M
+  15'b111111111111111    /// 256M
 };
 
-
-parameter uchar num_sstage = 2,
-                sstage_max = num_sstage - 1; /// spu pipeline in the tlb
-*/
 class ip4_tlm_tlb_vars extends ovm_component;
-/*  
   tr_dse2tlb fmDSE;
   tr_spu2tlb fmSPU;
   tr_ife2tlb fmIFE[IFE_REQ_BUF];
@@ -68,22 +54,22 @@ class ip4_tlm_tlb_vars extends ovm_component;
   
   tr_tlb2dse dse;
   tr_tlb2ife ife;
-  tr_tlb2spu spu[sstage_max:1];
+  tr_tlb2spu spu[STAG_TLB_SPU:1];
   
-  bit[vpn2_width-1:0] tlb_vpn2[num_tlb_e-1:0];
-  bit[type_width-1:0] tlb_ptype[num_tlb_e-1:0];
-  bit[NUM_THREAD-1:0][asid_width-1:0] tlb_asid[num_tlb_e-1:0];
-  bit                 tlb_G[num_tlb_e-1:0]; 
+  bit[VPN2_WIDTH-1:0] tlb_vpn2[NUM_TLB_E-1:0];
+  bit[TYPE_WIDTH-1:0] tlb_ptype[NUM_TLB_E-1:0];
+  bit[NUM_THREAD-1:0][ASID_WIDTH-1:0] tlb_asid[NUM_TLB_E-1:0];
+  bit                 tlb_G[NUM_TLB_E-1:0]; 
   
-  bit[PFN_width-1:0]  tlb_pfn20[num_tlb_e-1:0];
-  bit tlb_EX0[num_tlb_e-1:0], tlb_C0[num_tlb_e-1:0], tlb_K0[num_tlb_e-1:0];
-  bit tlb_E0[num_tlb_e-1:0], tlb_D0[num_tlb_e-1:0], tlb_V0[num_tlb_e-1:0];
-  bit                 tlb_G0[num_tlb_e-1:0]; 
+  bit[PFN_WIDTH-1:0]  tlb_pfn20[NUM_TLB_E-1:0];
+  bit tlb_EX0[NUM_TLB_E-1:0], tlb_C0[NUM_TLB_E-1:0], tlb_K0[NUM_TLB_E-1:0];
+  bit tlb_E0[NUM_TLB_E-1:0], tlb_D0[NUM_TLB_E-1:0], tlb_V0[NUM_TLB_E-1:0];
+  bit                 tlb_G0[NUM_TLB_E-1:0]; 
   
-  bit[PFN_width-1:0]  tlb_pfn21[num_tlb_e-1:0];
-  bit tlb_EX1[num_tlb_e-1:0], tlb_C1[num_tlb_e-1:0], tlb_K1[num_tlb_e-1:0];
-  bit tlb_E1[num_tlb_e-1:0], tlb_D1[num_tlb_e-1:0], tlb_V1[num_tlb_e-1:0];
-  bit                 tlb_G1[num_tlb_e-1:0]; 
+  bit[PFN_WIDTH-1:0]  tlb_pfn21[NUM_TLB_E-1:0];
+  bit tlb_EX1[NUM_TLB_E-1:0], tlb_C1[NUM_TLB_E-1:0], tlb_K1[NUM_TLB_E-1:0];
+  bit tlb_E1[NUM_TLB_E-1:0], tlb_D1[NUM_TLB_E-1:0], tlb_V1[NUM_TLB_E-1:0];
+  bit                 tlb_G1[NUM_TLB_E-1:0]; 
   
   word RIndex;
   word RRandom;
@@ -92,7 +78,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
   word REntryHi;
   word RPageType;
   word RContent;  
-*/    
+
   `ovm_component_utils_begin(ip4_tlm_tlb_vars)
 /*    `ovm_field_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE)
@@ -185,8 +171,8 @@ class ip4_tlm_tlb extends ovm_component;
     
   function void comb_proc();
 /*    uchar EvenOddBit; 
-    bit[mask_width-1:0] var_mask[num_tlb_e];
-    bit[PFN_width-1:0] var_pfn;
+    bit[MASK_WIDTH-1:0] var_mask[NUM_TLB_E];
+    bit[PFN_WIDTH-1:0] var_pfn;
     bit var_ex = 0, var_c = 0, var_k = 0;
     bit var_e = 0,  var_d = 0, var_v = 0, var_g = 0;  
     word i0, i1, i2;
@@ -204,9 +190,9 @@ class ip4_tlm_tlb extends ovm_component;
       rsp_ife = 1;
       if(v.fmIFE[0] != null) end_tr(v.fmIFE[0]);
       for(int i = 1; i < v.ife_buf_ptr; i++)
-        vn.fmIFE[i-1] = v.fmIFE[i];
+        vn.fmIFE[i - 1] = v.fmIFE[i];
       if(v.ife_buf_ptr > 0) begin
-        vn.fmIFE[v.ife_buf_ptr-1] = null;
+        vn.fmIFE[v.ife_buf_ptr - 1] = null;
         vn.ife_buf_ptr = v.ife_buf_ptr - 1;
       end
       else
@@ -215,11 +201,11 @@ class ip4_tlm_tlb extends ovm_component;
     else if(v.fmDSE != null)
       rsp_dse = 1;
       
-    for (int i = sstage_max; i > 1; i--)
+    for (int i = STAG_TLB_SPU; i > 1; i--)
       vn.spu[i] = v.spu[i-1];
     vn.spu[1] = null;
     
-      for (int i = 0; i < num_tlb_e; i++)begin
+      for (int i = 0; i < NUM_TLB_E; i++)begin
             /// the page type ---> mask
         case(v.tlb_ptype[i])
           pagetype0: var_mask[i] = pagemask0;
@@ -245,7 +231,7 @@ class ip4_tlm_tlb extends ovm_component;
         var_tid = v.fmDSE.tid;
       end
       
-      for (int i = 0; i < num_tlb_e; i++)begin
+      for (int i = 0; i < NUM_TLB_E; i++)begin
             case(v.tlb_ptype[i])
               pagetype0: EvenOddBit = 13;
               pagetype1: EvenOddBit = 16;
@@ -257,7 +243,7 @@ class ip4_tlm_tlb extends ovm_component;
               default:  ovm_report_warning("TLBPSize1_ILLEGAL", "No this type page size, and no evenoddbit!!!");              
             endcase
             if(((v.tlb_vpn2[i] && (!var_mask[i])) == (vir_adr[31:VADD_START] && (!var_mask[i]))) 
-                  && (v.tlb_G[i] || (v.tlb_asid[i][var_tid] == v.REntryHi[asid_width-1:0])))begin
+                  && (v.tlb_G[i] || (v.tlb_asid[i][var_tid] == v.REntryHi[ASID_WIDTH-1:0])))begin
                 if(vir_adr[EvenOddBit] == 0)begin
                   var_pfn = v.tlb_pfn20[i];
                   var_v   = v.tlb_V0[i];
@@ -328,9 +314,9 @@ class ip4_tlm_tlb extends ovm_component;
       case(v.fmSPU.op)
       /// TLBP
       op_tlbp:
-        for (int i = 0; i < num_tlb_e; i++)begin
-          if((v.tlb_vpn2[i] && (!var_mask[i])) == (v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-vpn2_width] && (!var_mask[i]))
-              && ((v.tlb_G[i] == 1) || (v.tlb_asid[i][v.fmDSE.tid] == v.REntryHi[asid_width-1:0])))
+        for (int i = 0; i < NUM_TLB_E; i++)begin
+          if((v.tlb_vpn2[i] && (!var_mask[i])) == (v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-VPN2_WIDTH] && (!var_mask[i]))
+              && ((v.tlb_G[i] == 1) || (v.tlb_asid[i][v.fmDSE.tid] == v.REntryHi[ASID_WIDTH-1:0])))
               vn.RIndex = i;
         end
       
@@ -338,8 +324,8 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbr:
       begin
         i0 = v.RIndex;
-        if(i0 < num_tlb_e) begin
-          vn.RPageType[type_width-1:0] = v.tlb_ptype[i0];
+        if(i0 < NUM_TLB_E) begin
+          vn.RPageType[TYPE_WIDTH-1:0] = v.tlb_ptype[i0];
           vn.REntryHi = {(v.tlb_vpn2[i0] && (!var_mask[i0])), 6'b0, v.tlb_asid[i0][v.fmDSE.tid]};
           vn.REntryLo1 = {(v.tlb_pfn21[i0] && (!var_mask[i0])), v.tlb_EX1[i0], 
                            v.tlb_C1[i0], v.tlb_K1[i0], v.tlb_E1[i0], v.tlb_D1[i0],
@@ -353,9 +339,9 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbwi:
       begin
         i1 = v.RIndex;
-        vn.tlb_ptype[i1] = v.RPageType[type_width-1:0];
-        vn.tlb_vpn2[i1] = v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-vpn2_width] && (!var_mask[i1]);
-        vn.tlb_asid[i1][v.fmDSE.tid] = v.REntryHi[asid_width-1:0];
+        vn.tlb_ptype[i1] = v.RPageType[TYPE_WIDTH-1:0];
+        vn.tlb_vpn2[i1] = v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-VPN2_WIDTH] && (!var_mask[i1]);
+        vn.tlb_asid[i1][v.fmDSE.tid] = v.REntryHi[ASID_WIDTH-1:0];
         vn.tlb_G[i1] = v.REntryLo1[0] && v.REntryLo0[0];
         vn.tlb_pfn21[i1] = v.REntryLo1[WORD_WIDTH-1:9] && (!var_mask[i1]);
         vn.tlb_EX1[i1] = v.REntryLo1[8]; vn.tlb_C1[i1] = v.REntryLo1[7:5]; vn.tlb_K1[i1] = v.REntryLo1[4];
@@ -368,9 +354,9 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbwr:
       begin
         i1 = v.RIndex;
-        vn.tlb_ptype[i2] = v.RPageType[type_width-1:0];
-        vn.tlb_vpn2[i2] = v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-vpn2_width] && (!var_mask[i1]);
-        vn.tlb_asid[i2][v.fmDSE.tid] = v.REntryHi[asid_width-1:0];
+        vn.tlb_ptype[i2] = v.RPageType[TYPE_WIDTH-1:0];
+        vn.tlb_vpn2[i2] = v.REntryHi[WORD_WIDTH-1:WORD_WIDTH-VPN2_WIDTH] && (!var_mask[i1]);
+        vn.tlb_asid[i2][v.fmDSE.tid] = v.REntryHi[ASID_WIDTH-1:0];
         vn.tlb_G[i2] = v.REntryLo1[0] && v.REntryLo0[0];
         vn.tlb_pfn21[i2] = v.REntryLo1[WORD_WIDTH-1:9] && (!var_mask[i1]);
         vn.tlb_EX1[i2] = v.REntryLo1[8]; vn.tlb_C1[i2] = v.REntryLo1[7:5]; vn.tlb_K1[i2] = v.REntryLo1[4];
@@ -382,13 +368,13 @@ class ip4_tlm_tlb extends ovm_component;
       /// GP2S
       op_gp2s:
         case(v.fmSPU.srAdr)
-        RContent_NO: vn.RContent = v.fmSPU.op0;
-        RIndex_NO: vn.RIndex = v.fmSPU.op0;
-        RRandom_NO: vn.RRandom = v.fmSPU.op0;
-        REntryLo0_NO: vn.REntryLo0 = v.fmSPU.op0;
-        REntryLo1_NO: vn.REntryLo1 = v.fmSPU.op0;
-        REntryHi_NO: vn.REntryHi = v.fmSPU.op0;
-        RPageType_NO: vn.RPageType = v.fmSPU.op0;
+        SR_CONTENT: vn.RContent = v.fmSPU.op0;
+        SR_INDEX: vn.RIndex = v.fmSPU.op0;
+        SR_RANDOM: vn.RRandom = v.fmSPU.op0;
+        SR_ENTRY_L0: vn.REntryLo0 = v.fmSPU.op0;
+        SR_ENTRY_L1: vn.REntryLo1 = v.fmSPU.op0;
+        SR_ENTRY_HI: vn.REntryHi = v.fmSPU.op0;
+        SR_PAGE_TYP: vn.RPageType = v.fmSPU.op0;
         default: ovm_report_warning("SPU_SRAD", "spu WRITE SR_ADDR IS ERROR!!!");
         endcase 
         
@@ -398,13 +384,13 @@ class ip4_tlm_tlb extends ovm_component;
         if(vn.spu[1] == null)
           vn.spu[1] = tr_tlb2spu::type_id::create("toSPU", this);
         case(v.fmSPU.srAdr)
-        RContent_NO: vn.spu[1].res = v.RContent;
-        RIndex_NO: vn.spu[1].res = v.RIndex;
-        RRandom_NO: vn.spu[1].res = v.RRandom;
-        REntryLo0_NO: vn.spu[1].res = v.REntryLo0;
-        REntryLo1_NO: vn.spu[1].res = v.REntryLo1;
-        REntryHi_NO: vn.spu[1].res = v.REntryHi;
-        RPageType_NO: vn.spu[1].res = v.RPageType;
+        SR_CONTENT: vn.spu[1].res = v.RContent;
+        SR_INDEX: vn.spu[1].res = v.RIndex;
+        SR_RANDOM: vn.spu[1].res = v.RRandom;
+        SR_ENTRY_L0: vn.spu[1].res = v.REntryLo0;
+        SR_ENTRY_L1: vn.spu[1].res = v.REntryLo1;
+        SR_ENTRY_HI: vn.spu[1].res = v.REntryHi;
+        SR_PAGE_TYP: vn.spu[1].res = v.RPageType;
         default: ovm_report_warning("SPU_SRAD", "spu READ SR_ADDR IS ERROR!!!");
         endcase 
       end
@@ -424,7 +410,7 @@ class ip4_tlm_tlb extends ovm_component;
     toDSE = v.dse;
     
     /// send to spu
-    toSPU = v.spu[sstage_max];     ///
+    toSPU = v.spu[STAG_TLB_SPU];     ///
    
     /// send to ife
     toIFE = v.ife;    
