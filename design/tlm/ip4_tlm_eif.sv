@@ -56,7 +56,7 @@ class ip4_tlm_eif extends ovm_component;
  
 
   function bit nb_transport_dse(input tr_dse2eif req, output tr_dse2eif rsp);
-    ovm_report_info("EIF_TR", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("eif_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -68,11 +68,11 @@ class ip4_tlm_eif extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();

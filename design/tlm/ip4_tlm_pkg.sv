@@ -74,9 +74,10 @@ parameter uchar CYC_VEC       = NUM_VEC/NUM_SP,     ///4
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
-dse:      | rrf | rrc0 |  ag  |  tag |  sel |  dc  | exg0 | exg1 | exg2 | exg3 |
+load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
+store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
-spu:      | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
+spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
@@ -85,8 +86,8 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
   */  
   
 parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
-                STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 1,             ///2
-                STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///3
+                STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
+                STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///4
                 STAGE_RRF_RRC     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
                 STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
                 STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///8

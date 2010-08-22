@@ -101,7 +101,7 @@ class ip4_tlm_dse extends ovm_component;
     word var_vadr[NUM_SP];
     word valva_adr;
     bit var_emsk[NUM_SP];
-    bit [PHY_width-1:0] phy_adr[NUM_SP];
+    bit [PHY_width-1:0] phyAdr[NUM_SP];
     bit [2:0] bank_check;
     bit [PHY_width-1:0] smadr_start;   /// pbId owns shared memory start address  
     bit [PHY_width-1:0] smadr_end;     /// pbId owns shared memory end address
@@ -173,48 +173,48 @@ class ip4_tlm_dse extends ovm_component;
           smadr_start = v.fmISE[STAGE_RRF_SEL].pbId * SM_SIZE;
           smadr_end = smadr_start + SM_SIZE - 1;
           if(v.fmTLB.hit) begin
-            /// gen the complete phy_adr
+            /// gen the complete phyAdr
             for(int i = 0; (i < NUM_SP)&&(var_emsk[i]==1); i++) begin
               for(int j = 0; j < v.fmTLB.eobit; j++)
-                phy_adr[i][j] = valva_adr[j];
+                phyAdr[i][j] = valva_adr[j];
               for(int m = v.fmTLB.eobit; m < PHY_width; m++)
-                phy_adr[i][m] = v.fmTLB.phy_adr[m];
+                phyAdr[i][m] = v.fmTLB.phyAdr[m];
             end
             
             for(int i = 0; (i < NUM_SP)&&(var_emsk[i]==1); i++) begin
-              bank_check = phy_adr[i][4:2];
+              bank_check = phyAdr[i][4:2];
               k = i;
             end
                 
             /// check the physical address whether match the op_code or not
             for(int i = 0; (i < NUM_SP)&&(var_emsk[i]==1); i++) begin
-              if((((v.fmISE[STAGE_RRF_SEL].op == op_lw) || (v.fmISE[STAGE_RRF_SEL].op == op_sw)) && (phy_adr[i][1:0] != 2'b00)) 
-                  ||(((v.fmISE[STAGE_RRF_SEL].op == op_lh) || (v.fmISE[STAGE_RRF_SEL].op == op_sh)) && (phy_adr[i][0] != 1'b0))) begin
+              if((((v.fmISE[STAGE_RRF_SEL].op == op_lw) || (v.fmISE[STAGE_RRF_SEL].op == op_sw)) && (phyAdr[i][1:0] != 2'b00)) 
+                  ||(((v.fmISE[STAGE_RRF_SEL].op == op_lh) || (v.fmISE[STAGE_RRF_SEL].op == op_sh)) && (phyAdr[i][0] != 1'b0))) begin
                 vn.ise.exp = 1;
                 ovm_report_warning("DSE_ILLEGAL0", "Phy ADR does not match with the op_code type!!!");
               end
             
               /// the shared memory or other PB shared memory will be access, so must judge which memory
               /// if the address is pb_self shared memory
-              if(smadr_start <= phy_adr[i] && phy_adr[i] <= smadr_end) begin
+              if(smadr_start <= phyAdr[i] && phyAdr[i] <= smadr_end) begin
                 if((v.fmISE[STAGE_RRF_SEL].op == op_lw) || (v.fmISE[STAGE_RRF_SEL].op == op_lh) || (v.fmISE[STAGE_RRF_SEL].op == op_lb)) begin  
                   /// the sm access will be execution, so must check if the sm bank conflict
-                  vn.eif[0].ld_adr[i] = phy_adr[i]- SM_BASE; /// real memory address
-                  if((phy_adr[i][4:2] == bank_check)&&(k!=i))
+                  vn.eif[0].ld_adr[i] = phyAdr[i]- SM_BASE; /// real memory address
+                  if((phyAdr[i][4:2] == bank_check)&&(k!=i))
                     var_emsk[i] = 0;             /// the second step emask modification
                 end
                 if((v.fmISE[STAGE_RRF_SEL].op == op_sw) || (v.fmISE[STAGE_RRF_SEL].op == op_sh) || (v.fmISE[STAGE_RRF_SEL].op == op_sb)) begin
-                  if((phy_adr[i][4:2] == bank_check)&&(k!=i))
+                  if((phyAdr[i][4:2] == bank_check)&&(k!=i))
                     var_emsk[i] = 0;             /// the second step emask modification
                   if(v.fmRFM != null) begin
-                    vn.eif[0].st_adr[i] = phy_adr[i]- SM_BASE; /// real memory address
+                    vn.eif[0].st_adr[i] = phyAdr[i]- SM_BASE; /// real memory address
                     vn.eif[0].st_dat[i] = v.fmRFM.op1[i];
                   end
                 end
               end
               else begin          /// access other pb share memory
                 if((v.fmISE[STAGE_RRF_SEL].op == op_lw) || (v.fmISE[STAGE_RRF_SEL].op == op_lh) || (v.fmISE[STAGE_RRF_SEL].op == op_lb)) begin  
-                  que_ld_adr[qld_adr_ptr] = phy_adr[i];
+                  que_ld_adr[qld_adr_ptr] = phyAdr[i];
                   que_ld_tid[qld_adr_ptr] = v.fmISE[STAGE_RRF_SEL].tid;
                   qld_adr_ptr = qld_adr_ptr + 1;
                 end
@@ -275,7 +275,7 @@ class ip4_tlm_dse extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_ise(input tr_ise2dse req, output tr_ise2dse rsp);
-    ovm_report_info("DSE_TR", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("dse_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -285,7 +285,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2dse req, output tr_rfm2dse rsp);
-    ovm_report_info("DSE_TR", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("dse_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -295,7 +295,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spu(input tr_spu2dse req, output tr_spu2dse rsp);
-    ovm_report_info("DSE_TR", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("dse_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -305,7 +305,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_spa(input tr_spa2dse req, output tr_spa2dse rsp);
-    ovm_report_info("DSE_TR", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("dse_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -315,7 +315,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_spa
 
   function bit nb_transport_tlb(input tr_tlb2dse req, output tr_tlb2dse rsp);
-    ovm_report_info("DSE_TR", $psprintf("Get TLB Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("dse_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -325,7 +325,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_tlb
 
   function bit nb_transport_eif(input tr_eif2dse req, output tr_eif2dse rsp);
-    ovm_report_info("DSE_TR", $psprintf("Get EIF Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("dse_tr", $psprintf("Get EIF Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -337,11 +337,11 @@ class ip4_tlm_dse extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();

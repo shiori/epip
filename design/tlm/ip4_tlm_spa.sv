@@ -273,20 +273,20 @@ class ip4_tlm_spa extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2spa req, output tr_ise2spa rsp);
-    ovm_report_info("SPA_TR", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("spa_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
     if(v.cancel[req.tid])
-      ovm_report_info("SPA_TR", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
+      ovm_report_info("spa_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
     else
       vn.fmISE[0] = req;
     return 1;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2spa req, output tr_rfm2spa rsp);
-    ovm_report_info("SPA_TR", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("spa_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -296,7 +296,7 @@ class ip4_tlm_spa extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spu(input tr_spu2spa req, output tr_spu2spa rsp);
-    ovm_report_info("SPA_TR", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("spa_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -306,7 +306,7 @@ class ip4_tlm_spa extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_dse(input tr_dse2spa req, output tr_dse2spa rsp);
-    ovm_report_info("SPA_TR", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("spa_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -318,11 +318,11 @@ class ip4_tlm_spa extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();

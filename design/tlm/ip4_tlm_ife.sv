@@ -88,7 +88,7 @@ class ip4_tlm_ife extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_ise(input tr_ise2ife req, output tr_ise2ife rsp);
-    ovm_report_info("IFE_TR", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("ife_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -98,7 +98,7 @@ class ip4_tlm_ife extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_tlb(input tr_tlb2ife req, output tr_tlb2ife rsp);
-    ovm_report_info("IFE_TR", $psprintf("Get TLB Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("ife_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -110,11 +110,11 @@ class ip4_tlm_ife extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("SYNC", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
        return;
      end
     stamp = $time;
-    ovm_report_info("SYNC", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();
