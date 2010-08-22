@@ -400,6 +400,8 @@ class ip4_printer extends ovm_table_printer;
   endfunction
 endclass
 
+`include "../misc/asm.sv"
+
 `include "ip4_tlm_tr.svh"  
 `include "ip4_tlm_inst.svh"
 `include "ip4_tlm_rfm.sv"

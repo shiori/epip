@@ -9,38 +9,27 @@
 /// =============================================================================
 ///Log:
 ///Created by yajing yuan on July 19 2010
-/*
-parameter uchar VADD_START = 14,  /// 8K 14BIT START for tlb and dse
-                PFN_width = 23,
-                PHY_width = VADD_START + PFN_width;
-parameter uchar rf_bank0 = 0,      /// NUM_SP register file bank in code  3bit
-                rf_bank1 = 1,      ///  unit : word 32bit
-                rf_bank2 = 2,      /// 
-                rf_bank3 = 3,
-                rf_bank4 = 4,
-                rf_bank5 = 5,
-                rf_bank6 = 6,
-                rf_bank7 = 7;
-parameter bit [PHY_width-1:0] SM_BASE   = 'h00_0000_0000,
-                              TFIF_BASE = 'h00_0020_0000,
-                              CTLR_BASE = 'h00_0024_0000,
-                              EJTG_BASE = 'h00_0024_1000,
-                              EBUS_BASE = 'h00_0024_2000;
+
+parameter uint SM_BASE   = 'h00_0000_0000,
+               TFIF_BASE = 'h00_0020_0000,
+               CTLR_BASE = 'h00_0024_0000,
+               EJTG_BASE = 'h00_0024_1000,
+               EBUS_BASE = 'h00_0024_2000;
                
 parameter uint SM_SIZE   = 2^16,/// shared memory size 64Kbyte
                MSG_SIZE  = 256, /// 256BYTE
                CTLR_SIZE = 128, /// each control register of pb 128byte
                EJTG_SIZE = 128; /// each ejtag of pb 128byte
+
 parameter QUEUE_SIZE = 256*2;  /// 32*8*2
-*/
+
 class ip4_tlm_dse_vars extends ovm_component;
-/*  
   tr_ise2dse fmISE[STAGE_RRF_VWB0:STAGE_RRF_RRC0];
   tr_spu2dse fmSPU;
   tr_rfm2dse fmRFM;
   tr_spa2dse fmSPA;
   tr_tlb2dse fmTLB;
-  tr_eif2dse fm_eif;    /// communication interfaces
+  tr_eif2dse fmEIF;    /// external interfaces
   
   tr_dse2ise ise;
   tr_dse2spu spu;
@@ -48,21 +37,21 @@ class ip4_tlm_dse_vars extends ovm_component;
   tr_dse2spa spa;
   tr_dse2tlb tlb;
   tr_dse2eif eif;
-*/    
+   
   `ovm_component_utils_begin(ip4_tlm_dse_vars)
-/*     `ovm_field_sarray_object(fmISE, OVM_ALL_ON + OVM_REFERENCE)
+     `ovm_field_sarray_object(fmISE, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fmRFM, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(fmTLB, OVM_ALL_ON + OVM_REFERENCE)  
-     `ovm_field_object(fm_eif, OVM_ALL_ON + OVM_REFERENCE)  
+     `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)  
      
      `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
-     `ovm_field_object(eif, OVM_ALL_ON + OVM_REFERENCE)*/
+     `ovm_field_object(eif, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
   function new (string name, ovm_component parent);
@@ -122,16 +111,16 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fmSPU != null) end_tr(v.fmSPU);
     if(v.fmSPA != null) end_tr(v.fmSPA);
     if(v.fmTLB != null) end_tr(v.fmTLB);
-    if(v.fm_eif != null) end_tr(v.fm_eif);
-    if(v.fm_eif  != null) end_tr(v.fm_eif);
+    if(v.fmEIF != null) end_tr(v.fmEIF);
+    if(v.fmEIF  != null) end_tr(v.fmEIF);
     
     vn.fmISE[STAGE_RRF_RRC0] = null;
     vn.fmRFM = null;
     vn.fmSPU = null;
     vn.fmSPA = null;
     vn.fmTLB = null;
-    vn.fm_eif = null;
-    vn.fm_eif  = null;
+    vn.fmEIF = null;
+    vn.fmEIF  = null;
     
     for (int i = STAGE_RRF_VWB0; i > STAGE_RRF_RRC0; i--) 
       vn.fmISE[i] = v.fmISE[i-1];
@@ -280,7 +269,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-///    vn.fmISE[STAGE_RRF_RRC0] = req;
+    vn.fmISE[STAGE_RRF_RRC0] = req;
     return 1;
   endfunction : nb_transport_ise
 
@@ -290,7 +279,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-///    vn.fmRFM = req;
+    vn.fmRFM = req;
     return 1;
   endfunction : nb_transport_rfm
 
@@ -300,7 +289,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-///    vn.fmSPU = req;
+    vn.fmSPU = req;
     return 1;
   endfunction : nb_transport_spu
 
@@ -310,7 +299,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-///    vn.fmSPA = req;
+    vn.fmSPA = req;
     return 1;
   endfunction : nb_transport_spa
 
@@ -320,7 +309,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-///    vn.fmTLB = req;
+    vn.fmTLB = req;
     return 1;
   endfunction : nb_transport_tlb
 
@@ -330,7 +319,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-///    vn.fm_eif = req;
+    vn.fmEIF = req;
     return 1;
   endfunction : nb_transport_eif
           

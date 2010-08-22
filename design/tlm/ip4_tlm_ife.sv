@@ -135,6 +135,7 @@ class ip4_tlm_ife extends ovm_component;
   virtual function void build();
     ovm_object tmp;
     tlm_vif_object vifCfg;
+    ip4_assembler asm;
     
     super.build();
     ise_tr_imp = new("ise_tr_imp", this);
@@ -149,9 +150,13 @@ class ip4_tlm_ife extends ovm_component;
     failed_convert_interface: assert($cast(vifCfg, tmp));
     sysif = vifCfg.get_vif();  
     stamp = 0ns;
-    
+
+    asm = new();
+    asm.i = imFilePath;
+    asm.o = "code.asm";
+    asm.translate();    
     im = new[imSize];
-    $readmemb(imFilePath, im);
+    $readmemb("code.asm", im);
   endfunction : build
 endclass : ip4_tlm_ife
 
