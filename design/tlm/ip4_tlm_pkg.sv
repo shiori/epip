@@ -86,8 +86,10 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
   */  
   
 parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
+                STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
                 STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
                 STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///4
+                STAGE_RRF_EXS3    = STAGE_RRF_EXS0 + 3,             ///6
                 STAGE_RRF_RRC     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
                 STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
                 STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///8
@@ -348,7 +350,7 @@ parameter opcode_e spu_ops[] = '{
 
 parameter opcode_e tlb_ops[] = '{
   op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr,   op_gp2s,    op_s2gp
+  op_tlbwr
 };
 
 parameter opcode_e spu_com_ops[] = '{
@@ -367,6 +369,25 @@ parameter opcode_e ise_ops[] = '{
   op_pint
 };
 
+parameter uchar INDEX_ENT    = 7 , /// entry bits
+                NUM_TLB_E    = 1 << INDEX_ENT,  ///128
+                VPN2_WIDTH   = 18,
+                TYPE_WIDTH   = 3,  /// Page Size Type bit width
+                ASID_WIDTH   = 8,
+                IFE_REQ_BUF  = 2,
+                SR_CONTENT   = 6,
+                SR_INDEX     = 7,
+                SR_RANDOM    = 8,
+                SR_ENTRY_L0  = 9,
+                SR_ENTRY_L1  = 10,
+                SR_ENTRY_HI  = 11,
+                SR_PAGE_TYP  = 12,
+                SR_ASID      = 13,
+                STAG_TLB_SPU = STAGE_RRF_SWBP - STAGE_RRF_EXS1 - 1 -1,
+                VADD_START   = 14,  /// 8K 14BIT START for tlb and dse
+                PFN_WIDTH    = 23,
+                PHY_WIDTH    = VADD_START + PFN_WIDTH;
+                
 class ip4_printer extends ovm_table_printer;
   virtual function void print_object (string name, ovm_object value, byte scope_separator=".");
     ovm_component comp; //only print components

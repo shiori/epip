@@ -350,7 +350,11 @@ class ise_thread_inf extends ovm_component;
           map_iadr(1, adrs[tmp], vrfGrp[i][j], vrfAdr[i][j]);
           tmp++;
         end
-
+        else if(j > 0) begin
+           vrfGrp[i][j] =  vrfGrp[i][j - 1];
+           vrfAdr[i][j] = vrfAdr[i][j - 1];
+        end
+          
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfRdEn[i][j]) begin
           map_iadr(0, adrs[tmp], srfGrp[i][j], srfAdr[i][j]);

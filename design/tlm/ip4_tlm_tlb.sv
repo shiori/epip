@@ -10,26 +10,6 @@
 ///Log:
 ///Created by yajing yuan on July 20 2010
 
-parameter uchar INDEX_ENT    = 7 , /// entry bits
-                NUM_TLB_E    = 1 << INDEX_ENT,  ///128
-                VPN2_WIDTH   = 18,
-///                MASK_WIDTH   = 15,
-                TYPE_WIDTH   = 3,  /// Page Size Type bit width
-                ASID_WIDTH   = 8,
-                IFE_REQ_BUF  = 2,
-                SR_CONTENT   = 6,
-                SR_INDEX     = 7,
-                SR_RANDOM    = 8,
-                SR_ENTRY_L0  = 9,
-                SR_ENTRY_L1  = 10,
-                SR_ENTRY_HI  = 11,
-                SR_PAGE_TYP  = 12,
-                SR_ASID      = 13,
-                STAG_TLB_SPU = STAGE_RRF_SWBP - STAGE_RRF_EXS1 - 1 -1,
-                VADD_START   = 14,  /// 8K 14BIT START for tlb and dse
-                PFN_WIDTH    = 23,
-                PHY_WIDTH    = VADD_START + PFN_WIDTH;
-
 typedef enum uchar {
   page_8K   = 0,
   page_64K  = 1,

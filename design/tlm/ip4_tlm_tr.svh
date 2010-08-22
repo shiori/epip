@@ -898,7 +898,7 @@ class tr_spu2tlb extends ovm_sequence_item;
   rand uchar tid, srAdr;
   
   constraint valid_var{
-    op inside {tlb_ops};
+    op inside {tlb_ops, op_gp2s, op_s2gp};
   }
   
 	`ovm_object_utils_begin(tr_spu2tlb)

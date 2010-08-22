@@ -743,12 +743,13 @@ class inst_c extends ovm_object;
       end
       icop_sra  :
       begin
-        op = inst.i.b.cop.code[0] ? op_s2gp : op_gp2s;
-        adrWr[0] = inst.i.b.ir2w1.rd;
         wrEn[0] = inst.i.b.cop.code[0];
+        op = wrEn[0] ? op_s2gp : op_gp2s;
+        adrWr[0] = inst.i.b.ir2w1.rd;
         if(!wrEn[0])
           set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-        imm = (inst.i.b.cop.code >> 2) & 9'b111111111;
+        rdBkSel[1] = selii;
+        imm = wrEn[0]? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;///(inst.i.b.cop.code >> 2) & 9'b111111111;
       end
       icop_eret :
       begin

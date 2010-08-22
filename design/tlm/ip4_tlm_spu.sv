@@ -89,6 +89,7 @@ class ip4_tlm_spu extends ovm_component;
     tr_spu2ise toISE;
     tr_spu2spa toSPA;
     tr_spu2dse toDSE;
+    tr_spu2tlb toTLB;
     
     ovm_report_info("spu", "req_proc procing...", OVM_FULL); 
     
@@ -146,11 +147,17 @@ class ip4_tlm_spu extends ovm_component;
     end
     
     ///processing normal spu instructions
-    if(v.fmISE[STAGE_RRF_EXS0] != null && v.fmRFM[STAGE_RRF_EXS0] != null) begin
+    if(v.fmISE[STAGE_RRF_EXS0] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS0];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_EXS0];
       bit[WORD_WIDTH:0] op0, op1, r0;
+      word o0, o1;
       bit prSPU = 0, prTmp[CYC_VEC][NUM_SP];
+      
+      if(rfm != null) begin
+        o0 = rfm.op0;
+        o1 = rfm.op1;
+      end
       
       if(ise.start) begin
         ovm_report_info("spu", "process spu inst", OVM_FULL);
@@ -163,8 +170,8 @@ class ip4_tlm_spu extends ovm_component;
           prSPU |= prTmp[i][j];
         end
 
-        op0 = {rfm.op0[WORD_WIDTH-1], rfm.op0};
-        op1 = {rfm.op1[WORD_WIDTH-1], rfm.op1};
+        op0 = {o0[WORD_WIDTH-1], o0};
+        op1 = {o1[WORD_WIDTH-1], o1};
         
         case(ise.op)
         op_nop,   
@@ -182,8 +189,8 @@ class ip4_tlm_spu extends ovm_component;
         op_srl:    r0 = op0 >> op1;
         op_sra:    r0 = op0 >>> op1;
         op_sll:    r0 = op0 << op1;
-        op_ror:    r0 = {rfm.op0, rfm.op0} >> rfm.op1;
-///        op_umul:   r0 = unsigned'(rfm.op0) * unsigned'(rfm.op1);
+        op_ror:    r0 = {o0, o0} >> o1;
+///        op_umul:   r0 = unsigned'(o0) * unsigned'(o1);
 ///        op_smul:   r0 = signed'(op0) * signed'(op1);
         op_clo:   ovm_report_warning("SPU_UNIMP", "clo is not implemented yet");
         op_clz:   ovm_report_warning("SPU_UNIMP", "clz is not implemented yet");
@@ -201,6 +208,30 @@ class ip4_tlm_spu extends ovm_component;
         vn.rfm[STAGE_RRF_EXS1].srfWrGrp  = ise.srfWrGrp;
         vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
       end
+    
+      ///redirect to tlb
+      if(ise.op inside {tlb_ops} && prSPU)
+        toTLB = tr_spu2tlb::type_id::create("toTLB", this);
+      
+      if(prSPU && rfm != null && ise.op inside {op_gp2s, op_s2gp}
+           && rfm.op1 inside {[SR_CONTENT:SR_ASID]}) begin
+        toTLB = tr_spu2tlb::type_id::create("toTLB", this);
+        toTLB.op0 = rfm.op0;
+        toTLB.srAdr = rfm.op1;
+      end
+      
+      if(toTLB != null) begin
+        toTLB.op = ise.op;
+        toTLB.req = 1;
+        toTLB.tid = ise.tid;
+      end
+    end
+    
+    if(v.fmTLB != null && v.fmTLB.rsp) begin
+      if(vn.rfm[STAGE_RRF_EXS3] == null) vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
+      vn.rfm[STAGE_RRF_EXS3].res = v.fmTLB.res;
+      if(v.fmISE[STAGE_RRF_EXS3] == null)
+        ovm_report_warning("spu", "tlb rsp without ise info");
     end
     
     ///check for valid branch
@@ -329,6 +360,7 @@ class ip4_tlm_spu extends ovm_component;
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
     if(toSPA != null) void'(spa_tr_port.nb_transport(toSPA, toSPA));
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
+    if(toTLB != null) void'(tlb_tr_port.nb_transport(toTLB, toTLB));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
