@@ -140,37 +140,37 @@ typedef longint STRH;
    *
    * Three levels of debug:
    *
-   *         OVM_tr_trACE_API - Trace the OVM calls
-   *  OVM_tr_trACE_API_DETAIL - Details in the OVM calls
-   *   OVM_tr_trACE_PLI_CALLS - Print the actual $ calls that will be made
+   *         OVM_TR_TRACE_API - Trace the OVM calls
+   *  OVM_TR_TRACE_API_DETAIL - Details in the OVM calls
+   *   OVM_TR_TRACE_PLI_CALLS - Print the actual $ calls that will be made
    *
    * Use with VSIM:
-   *   vsim +OVM_tr_trACE_API        -c top
-   *   vsim +OVM_tr_trACE_API_DETAIL -c top
-   *   vsim +OVM_tr_trACE_PLI_CALLS  -c top
+   *   vsim +OVM_TR_TRACE_API        -c top
+   *   vsim +OVM_TR_TRACE_API_DETAIL -c top
+   *   vsim +OVM_TR_TRACE_PLI_CALLS  -c top
    *
    */
 
-  static int OVM_tr_trACE_API = 0;
-  static int OVM_tr_trACE_API_DETAIL = 0;
-  static int OVM_tr_trACE_PLI_CALLS = 0;
+  static int OVM_TR_TRACE_API = 0;
+  static int OVM_TR_TRACE_API_DETAIL = 0;
+  static int OVM_TR_TRACE_PLI_CALLS = 0;
 
   static int ovm_tr_initialized = 0;
 
   function void ovm_tr_init();
 
-    OVM_tr_trACE_API = 0;
-    OVM_tr_trACE_API_DETAIL = 0;
-    OVM_tr_trACE_PLI_CALLS = 0;
+    OVM_TR_TRACE_API = 0;
+    OVM_TR_TRACE_API_DETAIL = 0;
+    OVM_TR_TRACE_PLI_CALLS = 0;
 
-    if ($test$plusargs("OVM_tr_trACE_API"))
-      OVM_tr_trACE_API = 1;
-    if ($test$plusargs("OVM_tr_trACE_API_DETAIL")) begin
-      OVM_tr_trACE_API = 1;
-      OVM_tr_trACE_API_DETAIL = 1;
+    if ($test$plusargs("OVM_TR_TRACE_API"))
+      OVM_TR_TRACE_API = 1;
+    if ($test$plusargs("OVM_TR_TRACE_API_DETAIL")) begin
+      OVM_TR_TRACE_API = 1;
+      OVM_TR_TRACE_API_DETAIL = 1;
     end
-    if ($test$plusargs("OVM_tr_trACE_PLI_CALLS"))
-      OVM_tr_trACE_PLI_CALLS = 1;
+    if ($test$plusargs("OVM_TR_TRACE_PLI_CALLS"))
+      OVM_TR_TRACE_PLI_CALLS = 1;
 
     ovm_tr_initialized = 1;
 
@@ -245,9 +245,9 @@ function STRH ovm_create_fiber (string name,
   if (!ovm_tr_initialized)
     ovm_tr_init();
 
-  if (OVM_tr_trACE_API)
+  if (OVM_TR_TRACE_API)
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display("--TR TRACE:         name='%s'",   name);
     $display("--TR TRACE:            t='%s'",      t);
     $display("--TR TRACE:        scope='%s'",  scope);
@@ -258,20 +258,20 @@ function STRH ovm_create_fiber (string name,
   if (!streamhandles.exists(path_legal_name)) begin
 
     // Only pass a legal name to the $ call.
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR @%0d: $create_transaction_stream(name='%s', t=%s (scope=%s))", 
         $time, path_legal_name, t, scope);
     h = $create_transaction_stream(path_legal_name, t/*Stream Kind*/);
 
     streamhandles[path_legal_name] = h;
     streamhandles_r[h] = path_legal_name;
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR   created streamh=%0d(%s)", 
         h, NameOfStream(h));
   end
   else begin
     h = streamhandles[path_legal_name];
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR   reusing streamh=%0d(%s)[looked up (%s)]", 
         h, NameOfStream(h), path_legal_name);
   end
@@ -402,10 +402,10 @@ function void ovm_set_attribute_by_name (TRH txh,
 	             end
 	  endcase
 
-  if (OVM_tr_trACE_API)
+  if (OVM_TR_TRACE_API)
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
   //TODO - 1024 bit vectors only?
-  if (OVM_tr_trACE_PLI_CALLS)
+  if (OVM_TR_TRACE_PLI_CALLS)
     $display(">>TR @%0d: $add_attribute(txh=%0d(%s), value='%0d', nm=%s, (radix=%s, numbits=%0d))", 
       $time, txh, NameOfTransaction(txh), value, nm, radix, numbits);
     $add_attribute(txh, str, nm);
@@ -427,7 +427,7 @@ function TRH ovm_check_handle_kind (string htype, TRH handle);
   string name;
 
   // Noisy.
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
     $display("--TR TRACE:  htype='%s'",   htype);
     $display("--TR TRACE: handle='%0x'", handle);
@@ -475,9 +475,9 @@ function TRH ovm_begin_transaction(string txtype,
   TRH h;
   string path_name;
 
-  if (OVM_tr_trACE_API)
+  if (OVM_TR_TRACE_API)
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display("--TR TRACE:     txtype='%s'",      txtype);
     $display("--TR TRACE:     stream='%0d'",     stream);
     $display("--TR TRACE:         nm='%s'",          nm);
@@ -492,13 +492,13 @@ function TRH ovm_begin_transaction(string txtype,
   if (!transactionhandles.exists(path_name)) begin
     // Only use the time if it is non-zero. (supplied)
     if (begin_time != 0) begin
-      if (OVM_tr_trACE_PLI_CALLS)
+      if (OVM_TR_TRACE_PLI_CALLS)
         $display(">>TR @%0d: $begin_transaction(stream='%0d(%s)', name='%s', begin_time=%0d)", 
           $time, stream, NameOfStream(stream), path_name, begin_time);
       h = $begin_transaction(stream, nm, begin_time);
     end
     else begin
-      if (OVM_tr_trACE_PLI_CALLS)
+      if (OVM_TR_TRACE_PLI_CALLS)
         $display(">>TR @%0d: $begin_transaction(stream='%0d(%s)', name='%s')", 
           $time, stream, NameOfStream(stream), nm);
       h = $begin_transaction(stream, nm);
@@ -506,16 +506,16 @@ function TRH ovm_begin_transaction(string txtype,
     transactionhandles[path_name] = h;  //TR RECORDING: This is wrong. There can be many
                                  //              of the same transcation type outstanding.
     transactionhandles_r[h] = path_name;
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR   created tr=%0d(%s)", h, NameOfTransaction(h));
   end
   else begin
     h = transactionhandles[path_name];
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR   reusing tr=%0d(%s)", h, NameOfTransaction(h));
   end
 
-  if (OVM_tr_trACE_API_DETAIL)
+  if (OVM_TR_TRACE_API_DETAIL)
     $display("         WLF tr_h='%0d'",  h);
 
   // UNUSED: txtype, label, desc,
@@ -533,21 +533,21 @@ endfunction
 //TODO: You cannot end a transaction at time 0.
 
 function void ovm_end_transaction (TRH handle, time end_time=0);
-  if (OVM_tr_trACE_API)
+  if (OVM_TR_TRACE_API)
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display("--TR TRACE:   handle='%0x'", handle);
     $display("--TR TRACE: end_time='%0d'", end_time);
   end
   // Only use the time if it is non-zero. (supplied)
   if (end_time != 0) begin
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR @%0d: $end_transaction(handle=%0x(%s), end_time=%0d)", 
         $time, handle, NameOfTransaction(handle), end_time);
     $end_transaction(handle, end_time);
   end
   else begin
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR @%0d: $end_transaction(handle=%0x(%s))", 
         $time, handle, NameOfTransaction(handle));
     $end_transaction(handle);
@@ -566,19 +566,19 @@ endfunction
 
 function void ovm_link_transaction(TRH h1, TRH h2,
                                    string relation="");
-  if (OVM_tr_trACE_API)
+  if (OVM_TR_TRACE_API)
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display("--TR TRACE:              h1='%0d'", h1);
     $display("--TR TRACE:              h2='%0d'", h2);
     $display("--TR TRACE: before relation='%s'", relation);
   end
   if (relation == "")
     relation = "successor";
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display("--TR TRACE:  after relation='%s'", relation);
   end
-  if (OVM_tr_trACE_PLI_CALLS)
+  if (OVM_TR_TRACE_PLI_CALLS)
     $display(">>TR @%0d: $add_relation(h1=%0d(%s), h2=%0d(%s), relation='%s')", 
       $time, h1, NameOfTransaction(h1), h2, NameOfTransaction(h2), relation);
   $add_relation(h1, h2, relation);
@@ -596,15 +596,15 @@ endfunction
 //         call the transaction handle is invalid.
 
 function void ovm_free_transaction_handle(TRH handle);
-  if (OVM_tr_trACE_API)
+  if (OVM_TR_TRACE_API)
     $display(">>TR TRACE: %m (%s:%0d)", `__FILE__, `__LINE__);
-  if (OVM_tr_trACE_API_DETAIL) begin
+  if (OVM_TR_TRACE_API_DETAIL) begin
     $display("           handle='%0x'", handle);
     $display("$free_transaction(0x%x=%0d);", handle, handle);
   end
   if (transactionhandles_r.exists(handle)) begin
     string name;
-    if (OVM_tr_trACE_PLI_CALLS)
+    if (OVM_TR_TRACE_PLI_CALLS)
       $display(">>TR @%0d: $free_transaction(handle=%0x(%s))", 
         $time, handle, NameOfTransaction(handle));
     $free_transaction(handle);
