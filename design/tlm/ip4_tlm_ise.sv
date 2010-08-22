@@ -250,7 +250,7 @@ class ise_thread_inf extends ovm_component;
     if(!grpStart.t) begin
       tmp = 1;
       offSet = 1;
-      if(adrPkgBytes != 0) adrPkgBytes --;
+///      if(adrPkgBytes != 0) adrPkgBytes --;???
       iSPU.setData(IBuf, offSet, 0, DSEVec);
       iDSE.setData(IBuf, offSet, 0, DSEVec);
       foreach(iFu[i])
@@ -261,12 +261,12 @@ class ise_thread_inf extends ovm_component;
       iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
       iSPU.analyze_fu(enSPU, enDSE, enFu);
       adrs[0] = grpStart.a;
-      if(adrPkgBytes) begin
-        i_ap0_t AdrPkg = IBuf[offSet];
-        foreach(adrs[i])
-          adrs[i] = AdrPkg.a[i];
-        offSet ++;
-      end
+///      if(adrPkgBytes) begin
+///        i_ap0_t AdrPkg = IBuf[offSet];
+///        foreach(AdrPkg.a[i])
+///          adrs[i] = AdrPkg.a[i];
+///        offSet ++;
+///      end
     end
     else begin
       i_gs1_u grpStart;
@@ -274,7 +274,7 @@ class ise_thread_inf extends ovm_component;
         grpStart.b[i] = IBuf[i];
       offSet = 2;
       tmp = 1;
-      if(adrPkgBytes != 0) adrPkgBytes --;
+///      if(adrPkgBytes != 0) adrPkgBytes --; why is this???
       
       if(enSPU) begin
         iSPU.setData(IBuf, offSet, 0, 0);
@@ -818,7 +818,7 @@ class ip4_tlm_ise extends ovm_component;
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdIssueLast;
-      tid = tid & ~('1 << bits_tid);
+      tid = tid & ~('1 << BITS_TID);
       
       ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(can_issue(tid)) begin
@@ -870,7 +870,7 @@ class ip4_tlm_ise extends ovm_component;
     ///ife req search
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdFetchLast;
-      tid = tid & ~('1 << bits_tid);
+      tid = tid & ~('1 << BITS_TID);
       if(thread[tid].can_req_ifetch()) begin
         toIFE = tr_ise2ife::type_id::create("toIFE", this);
         thread[tid].fill_ife(toIFE);

@@ -471,11 +471,11 @@ class inst_c extends ovm_object;
       set_rf_en(inst.i.b.ir1w1.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       rdBkSel[1] = selii;
       case(inst.i.op)
-      iop_addi  : begin op = op_add; end
+      iop_addi  : begin op = op_uadd; end
       iop_andi  : begin op = op_and; end
       iop_ori   : begin op = op_or; end
       iop_xori  : begin op = op_xor; end
-      iop_addsi : begin op = op_add; imm = imms; end
+      iop_addsi : begin op = op_uadd; imm = imms; end
       iop_andsi : begin op = op_and; imm = imms; end
       iop_orsi  : begin op = op_or; imm = imms; end
       iop_xorsi : begin op = op_xor; imm = imms; end

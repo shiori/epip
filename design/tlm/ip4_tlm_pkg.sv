@@ -154,7 +154,7 @@ endfunction
 
 parameter uchar BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
                 BITS_SRF_BKS    = n2w(NUM_SRF_BKS),
-                bits_tid        = n2w(NUM_THREAD),
+                BITS_TID        = n2w(NUM_THREAD),
                 BITS_IFET       = n2w(NUM_IFET_BYTES),
                 BITS_PRF_P_GRP  = n2w(NUM_PRF_P_GRP);
 
@@ -400,10 +400,10 @@ class ip4_printer extends ovm_table_printer;
   endfunction
 endclass
 
-`include "../misc/asm.sv"
-
 `include "ip4_tlm_tr.svh"  
 `include "ip4_tlm_inst.svh"
+`include "../misc/asm.sv"
+
 `include "ip4_tlm_rfm.sv"
 `include "ip4_tlm_spa.sv"
 `include "ip4_tlm_spu.sv"

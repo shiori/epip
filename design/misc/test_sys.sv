@@ -85,6 +85,7 @@ class test_sys_env extends ovm_env;
 endclass
 
 /// vsim +OVM_TESTNAME=ip4_sys_test work.top
+/// -novopt
 
 class ip4_sys_test extends ovm_test;
   test_sys_env env;
