@@ -31,13 +31,13 @@ parameter ushort page_mask_table[] = {
 };
 
 parameter uchar even_odd_bit_table[] = {
+  0,
+  3,
+  6,
+  9,
+  11,
   13,
-  16,
-  19,
-  22,
-  24,
-  26,
-  28
+  15
 };
 
 class ip4_tlm_tlb_vars extends ovm_component;
@@ -45,9 +45,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
   tr_spu2tlb fmSPU;
   tr_ife2tlb fmIFE[IFE_REQ_BUF];
   uchar ifeBufPtr;
-  
-  tr_tlb2dse dse;
-  tr_tlb2ife ife;
+
   tr_tlb2spu spu[STAG_TLB_SPU:1];
   
   uint vpn2[NUM_TLB_E];
@@ -55,7 +53,8 @@ class ip4_tlm_tlb_vars extends ovm_component;
   uchar asid[NUM_TLB_E];
   
   uint  pfn2e[NUM_TLB_E], pfn2o[NUM_TLB_E];
-  bit[NUM_TLB_E-1:0] ex[2], c[2], k[2], e[2], d[2], v[2], g[2];
+  bit[NUM_TLB_E-1:0] ex[2], k[2], e[2], d[2], v[2], g[2];
+  bit[NUM_TLB_E-1:0][2:0] c[2];
   
   word srIndex;
   word srRandom;
@@ -63,16 +62,14 @@ class ip4_tlm_tlb_vars extends ovm_component;
   word srEntryLo1;
   word srEntryHi;
   word srPageType;
-  word srContent;
+  word srContent[NUM_SP];
   uchar srASID[NUM_SP];
 
   `ovm_component_utils_begin(ip4_tlm_tlb_vars)
     `ovm_field_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fmIFE, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(dse, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_object(ife, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_int(vpn2, OVM_ALL_ON)
     `ovm_field_sarray_int(pageTyp, OVM_ALL_ON)
     `ovm_field_sarray_int(asid, OVM_ALL_ON)
@@ -91,7 +88,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
     `ovm_field_int(srEntryLo1, OVM_ALL_ON)
     `ovm_field_int(srEntryHi, OVM_ALL_ON)
     `ovm_field_int(srPageType, OVM_ALL_ON)
-    `ovm_field_int(srContent, OVM_ALL_ON)
+    `ovm_field_sarray_int(srContent, OVM_ALL_ON)
     `ovm_field_sarray_int(srASID, OVM_ALL_ON)
     `ovm_field_int(ifeBufPtr, OVM_ALL_ON)
   `ovm_component_utils_end
@@ -114,7 +111,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
     srEntryLo1 = 0;
     srEntryHi = 0;
     srPageType = 0;
-    srContent = 0;
+    srContent = '{default : 0};
     ifeBufPtr = 0;
   endfunction : new
 endclass : ip4_tlm_tlb_vars
@@ -126,7 +123,9 @@ class ip4_tlm_tlb extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
   local ip4_tlm_tlb_vars v, vn;
- 
+  local tr_tlb2ife toIFE;
+  local tr_tlb2dse toDSE;
+  
   `ovm_component_utils_begin(ip4_tlm_tlb)
   `ovm_component_utils_end
       
@@ -141,9 +140,9 @@ class ip4_tlm_tlb extends ovm_component;
   function void comb_proc();
     uchar evenOddBit; 
     ushort varMask; ///[NUM_TLB_E];
-    uchar varPFN;
-    bit varEx = 0, varC = 0, varK = 0;
-    bit varE = 0,  varD = 0, varV = 0, varG = 0;
+    uint varPFN;
+    bit varEx = 0, varK = 0, varE = 0, varD = 0, varV = 0, varG = 0;
+    bit [2:0] varC = 0;
     bit find = 0;
     uchar varTid;
     word virAdr;
@@ -183,7 +182,7 @@ class ip4_tlm_tlb extends ovm_component;
         varTid = v.fmIFE[0].tid;
       end
       else if(v.fmDSE != null) begin
-        virAdr = v.fmDSE.vAdrHi;
+        virAdr = v.fmDSE.vAdr;
         varTid = v.fmDSE.tid;
       end
       
@@ -191,7 +190,7 @@ class ip4_tlm_tlb extends ovm_component;
       for (int i = 0; i < NUM_TLB_E; i++) begin
         evenOddBit = even_odd_bit_table[v.pageTyp[i]];
         varMask = page_mask_table[v.pageTyp[i]];
-        if(((v.vpn2[i] & ~varMask) == (virAdr[WORD_WIDTH - 1 : VADD_START] & ~varMask)) 
+        if(((v.vpn2[i] & ~varMask) == (virAdr & ~varMask)) 
               && (v.g[i] || (v.asid[i] == v.srASID[varTid]))) begin
             ///match found, select even/odd page
             bit eosel = virAdr[evenOddBit];
@@ -203,24 +202,24 @@ class ip4_tlm_tlb extends ovm_component;
 
             if(varV == 0) begin
               ovm_report_info("TLB_Invalid", "tlb Invalid exception!!!", OVM_HIGH); 
-              vn.srContent[4:0] = 0;
-              vn.srContent[22:5] = v.vpn2[i];
+              vn.srContent[varTid][4:0] = 0;
+              vn.srContent[varTid][22:5] = v.vpn2[i];
               exp = 1;
               break;
             end
             
             if(rspDSE && varD == 0 && ((v.fmDSE.op == op_sw) || (v.fmDSE.op == op_sh) || (v.fmDSE.op == op_sb))) begin
               ovm_report_info("TLB_Modified", "tlb Modified exception!!!", OVM_HIGH); 
-              vn.srContent[4:0] = 0;
-              vn.srContent[22:5] = v.vpn2[i];
+              vn.srContent[varTid][4:0] = 0;
+              vn.srContent[varTid][22:5] = v.vpn2[i];
               exp = 1;
               break;
             end
 
             if(!varEx && rspIFE) begin
               ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
-              vn.srContent[4:0] = 0;
-              vn.srContent[22:5] = v.vpn2[i];
+              vn.srContent[varTid][4:0] = 0;
+              vn.srContent[varTid][22:5] = v.vpn2[i];
               exp = 1;
               break;
             end
@@ -230,21 +229,24 @@ class ip4_tlm_tlb extends ovm_component;
       end
       
       if(rspIFE && v.fmIFE[0] != null && v.fmIFE[0].req) begin
-        if(vn.ife == null) vn.ife = tr_tlb2ife::type_id::create("toIFE", this);
-        vn.ife.pAdr = varPFN;///varPAdr;
-        vn.ife.tid = v.fmIFE[0].tid;
-        vn.ife.rsp = 1;
-        vn.ife.hit = find;
-        vn.ife.exp = exp;
-        vn.ife.eobit = evenOddBit;
+        if(toIFE == null) toIFE = tr_tlb2ife::type_id::create("toIFE", this);
+        toIFE.pfn = varPFN;///varPAdr;
+        toIFE.tid = v.fmIFE[0].tid;
+        toIFE.rsp = 1;
+        toIFE.hit = find;
+        toIFE.exp = exp;
+        toIFE.eobit = evenOddBit;
       end
       
       if(rspDSE && v.fmDSE != null && v.fmDSE.req) begin
-        if(vn.dse == null) vn.dse = tr_tlb2dse::type_id::create("toDSE", this);
-        vn.dse.phyAdr = varPFN;///varPAdr;
-        vn.dse.eobit = evenOddBit;
-        vn.dse.hit = find;
-        vn.dse.exp = exp;
+        if(toDSE == null) toDSE = tr_tlb2dse::type_id::create("toDSE", this);
+        toDSE.pfn = varPFN;///varPAdr;
+        toDSE.eobit = evenOddBit;
+        toDSE.hit = find;
+        toDSE.exp = exp;
+        toDSE.c = varC;
+        toDSE.k = varK;
+        toDSE.e = varE;
       end   
     end   
     
@@ -316,7 +318,7 @@ class ip4_tlm_tlb extends ovm_component;
       /// GP2S
       op_gp2s:
         case(v.fmSPU.srAdr)
-        SR_CONTENT:   vn.srContent  = v.fmSPU.op0;
+        SR_CONTENT:   vn.srContent[v.fmSPU.tid]  = v.fmSPU.op0;
         SR_INDEX:     vn.srIndex    = v.fmSPU.op0;
         SR_RANDOM:    vn.srRandom   = v.fmSPU.op0;
         SR_ENTRY_L0:  vn.srEntryLo0 = v.fmSPU.op0;
@@ -333,7 +335,7 @@ class ip4_tlm_tlb extends ovm_component;
         if(vn.spu[1] == null)
           vn.spu[1] = tr_tlb2spu::type_id::create("toSPU", this);
         case(v.fmSPU.srAdr)
-        SR_CONTENT:   vn.spu[1].res = v.srContent;
+        SR_CONTENT:   vn.spu[1].res = v.srContent[v.fmSPU.tid];
         SR_INDEX:     vn.spu[1].res = v.srIndex;
         SR_RANDOM:    vn.spu[1].res = v.srRandom;
         SR_ENTRY_L0:  vn.spu[1].res = v.srEntryLo0;
@@ -350,20 +352,12 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction
   
   function void req_proc();
-    tr_tlb2dse toDSE;
     tr_tlb2spu toSPU;
-    tr_tlb2ife toIFE;
     
     ovm_report_info("tlb", "req_proc procing...", OVM_FULL); 
-   
-    /// send to dse
-    toDSE = v.dse;
     
     /// send to spu
-    toSPU = v.spu[STAG_TLB_SPU];     ///
-   
-    /// send to ife
-    toIFE = v.ife;    
+    toSPU = v.spu[STAG_TLB_SPU];
     
     /// req to other module
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));

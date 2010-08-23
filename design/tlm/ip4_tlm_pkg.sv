@@ -25,106 +25,7 @@ typedef shortint unsigned   ushort; /// 16bits
 typedef int unsigned        uint;
 typedef longint unsigned    ulong;
 
-parameter time CLK_P              = 2ns;
-parameter uchar WORD_WIDTH        = 32;
-parameter uchar NUM_WORD_BYTES    = WORD_WIDTH / 8;
 
-parameter uchar NUM_SP            = 8,
-                NUM_VEC           = 32,
-                NUM_SFU           = 2,
-                NUM_THREAD        = 4,
-                NUM_FU            = 3,
-                NUM_FU_RP         = 4,
-                NUM_PHY_VRF_GRP   = 64,
-                NUM_PHY_SRF_GRP   = 32,
-                NUM_PRF_P_GRP     = 8,
-                NUM_VRF_BKS       = 4,
-                NUM_SRF_BKS       = 2,
-                NUM_BP_IMM        = 1,
-                NUM_PR            = 7,
-                NUM_IFET_BYTES    = 16,
-                NUM_INST_VRF      = 32,
-                NUM_INST_SRF      = 16,
-                NUM_SMEM_BK       = NUM_SP,   /// register file bank number, default equal to NUM_SP
-                NUM_W_CNT         = 2;
-                
-parameter uchar LAT_MAC           = 5,
-                LAT_SFU           = 16,
-                LAT_RF            = 1,
-                LAT_RBP           = 1,
-                LAT_VWBP          = 1,    ///vector writeback bypass time
-                LAT_WB            = 4,
-                LAT_ISE           = 2,
-                LAT_IFE           = 2,
-                LAT_DSE           = 4,
-                LAT_DWBP          = 1;    ///dse writeback bypass time
-
-parameter uint CFG_START_ADR      = 'hf000_0000;
-
-parameter uchar CYC_VEC       = NUM_VEC/NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC/NUM_SFU,    ///16 
-                CYC_ISS_SFU   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_SFU + CYC_SFU_BUSY + LAT_VWBP,
-                CYC_ISS_SPU   = LAT_RF + LAT_RBP + LAT_DSE + LAT_DWBP,
-                CYC_ISS_DSE   = CYC_ISS_SPU,
-                CYC_ISS_VEC   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_MAC + LAT_DWBP;
-
-
-/*
-                                           pipeline stages:
-ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
-
-                                           pipeline stages:
-load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
-store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
-dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
-spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
-cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
-          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
-                                            0      1      2      3      4      5      6      7      8      9      10
-                       0      1      2      3      4      5      6    
-  */  
-  
-parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
-                STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
-                STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
-                STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///4
-                STAGE_RRF_EXS3    = STAGE_RRF_EXS0 + 3,             ///6
-                STAGE_RRF_RRC     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
-                STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
-                STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///8
-                STAGE_RRF_CMP     = STAGE_RRF_RRC + NUM_FU,         ///7
-                STAGE_RRF_CEM0    = STAGE_RRF_CMP + 1,              ///8
-                STAGE_RRF_DEM0    = STAGE_RRF_RRC0 + LAT_DSE,       ///5
-                STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///9
-                STAGE_RRF_SWBP    = STAGE_RRF_RRC0 + LAT_DSE + LAT_DWBP,      ///6
-                STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///7
-                STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///10
-                STAGE_EXE         = LAT_MAC - 1,                    ///3
-                STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
-                STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
-                STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
-                STAGE_EXE_SWBP    = LAT_DSE - CYC_VEC + LAT_DWBP,   ///1
-                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///2
-                STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY -CYC_VEC - 1,     ///27
-                STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
-                STAGE_EEX_VWB0    = STAGE_EEX_VWBP + 1,             ///29
-                STAGE_ISE         = LAT_ISE - 1,                    ///1
-                STAGE_IFE         = LAT_IFE - 1,                    ///1
-                STAGE_AG_SWB      = LAT_DSE + LAT_DWBP ,            ///5
-                STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
-                STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
-                STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_ISE_VWB     = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP + CYC_VEC - 1,  ///15
-                STAGE_ISE_VWBP    = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP - 1,            ///11
-                STAGE_ISE_DC      = LAT_ISE + LAT_RF + LAT_DSE;     ///7
-                                
-
-parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
-                CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
-                 
-typedef bit[WORD_WIDTH-1:0]     word;
-    
 ///Basic functions for parameters etc
   
 function automatic ulong clogb2(
@@ -152,11 +53,124 @@ function automatic ulong max2(
     max2 = a1;
 endfunction
 
-parameter uchar BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
+parameter time CLK_P              = 2ns;
+parameter uchar WORD_WIDTH        = 32;
+parameter uchar NUM_WORD_BYTES    = WORD_WIDTH / 8;
+
+parameter uint  NUM_SP            = 8,
+                NUM_VEC           = 32,
+                NUM_SFU           = 2,
+                NUM_THREAD        = 4,
+                NUM_FU            = 3,
+                NUM_FU_RP         = 4,
+                NUM_PHY_VRF_GRP   = 64,
+                NUM_PHY_SRF_GRP   = 32,
+                NUM_PRF_P_GRP     = 8,
+                NUM_VRF_BKS       = 4,
+                NUM_SRF_BKS       = 2,
+                NUM_BP_IMM        = 1,
+                NUM_PR            = 7,
+                NUM_IFET_BYTES    = 16,
+                NUM_INST_VRF      = 32,
+                NUM_INST_SRF      = 16,
+                NUM_SMEM_BK       = NUM_SP,   /// register file bank number, default equal to NUM_SP
+                NUM_SMEM_GRP      = 4,
+                NUM_SMEM_GRP_W    = 512,
+                NUM_DCHE_TAG      = NUM_SMEM_GRP_W,
+                NUM_DCHE_CL       = 2,
+                NUM_DCHE_ASS      = 2,
+                NUM_W_CNT         = 2,
+                NUM_BURST_LEN     = 8,
+                NUM_EBUS_WORDS    = 2;
+                
+parameter uchar LAT_MAC           = 5,
+                LAT_SFU           = 16,
+                LAT_RF            = 1,
+                LAT_RBP           = 1,
+                LAT_VWBP          = 1,    ///vector writeback bypass time
+                LAT_WB            = 4,
+                LAT_ISE           = 2,
+                LAT_IFE           = 2,
+                LAT_DSE           = 4,
+                LAT_DWBP          = 1;    ///dse writeback bypass time
+
+parameter uint CFG_START_ADR      = 'hf000_0000;
+
+parameter uchar BITS_WORD       = n2w(WORD_WIDTH / 8),
+                BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
                 BITS_SRF_BKS    = n2w(NUM_SRF_BKS),
                 BITS_TID        = n2w(NUM_THREAD),
                 BITS_IFET       = n2w(NUM_IFET_BYTES),
-                BITS_PRF_P_GRP  = n2w(NUM_PRF_P_GRP);
+                BITS_PRF_P_GRP  = n2w(NUM_PRF_P_GRP),
+                BITS_SMEM_BK    = n2w(NUM_SMEM_BK),
+                BITS_SMEM_ADR   = n2w(NUM_SMEM_GRP_W),
+                BITS_SMEM_GRP   = n2w(NUM_SMEM_GRP),
+                BITS_DCH_CL     = n2w(NUM_DCHE_CL),
+                BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL),
+                BITS_BURST      = n2w(NUM_BURST_LEN);
+
+parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU,    ///16 
+                CYC_ISS_SFU   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_SFU + CYC_SFU_BUSY + LAT_VWBP,
+                CYC_ISS_SPU   = LAT_RF + LAT_RBP + LAT_DSE + LAT_DWBP,
+                CYC_ISS_DSE   = CYC_ISS_SPU,
+                CYC_ISS_VEC   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_MAC + LAT_DWBP;
+
+/*
+                                           pipeline stages:
+ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
+
+                                           pipeline stages:
+load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
+store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
+dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
+spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
+exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
+cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
+          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
+                                            0      1      2      3      4      5      6      7      8      9      10
+                       0      1      2      3      4      5      6    
+  */  
+  
+parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
+                STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
+                STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
+                STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///4
+                STAGE_RRF_EXS3    = STAGE_RRF_EXS0 + 3,             ///6
+                STAGE_RRF_RRC     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
+                STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
+                STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///9
+                STAGE_RRF_CMP     = STAGE_RRF_RRC + NUM_FU,         ///7
+                STAGE_RRF_CEM0    = STAGE_RRF_CMP + 1,              ///8
+                STAGE_RRF_DEM0    = STAGE_RRF_RRC0 + LAT_DSE,       ///5
+                STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
+                STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
+                STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
+                STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
+                STAGE_RRF_SWBP    = STAGE_RRF_RRC0 + LAT_DSE + LAT_DWBP,      ///7
+                STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///8
+                STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///11
+                STAGE_EXE         = LAT_MAC - 1,                    ///3
+                STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
+                STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
+                STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
+                STAGE_EXE_SWBP    = LAT_DSE - CYC_VEC + LAT_DWBP,   ///1
+                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///2
+                STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY -CYC_VEC - 1,     ///27
+                STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
+                STAGE_EEX_VWB0    = STAGE_EEX_VWBP + 1,             ///29
+                STAGE_ISE         = LAT_ISE - 1,                    ///1
+                STAGE_IFE         = LAT_IFE - 1,                    ///1
+                STAGE_AG_SWB      = LAT_DSE + LAT_DWBP ,            ///5
+                STAGE_ISE_VWB     = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP + CYC_VEC - 1,  ///15
+                STAGE_ISE_VWBP    = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP - 1,            ///11
+                STAGE_ISE_DC      = LAT_ISE + LAT_RF + LAT_DSE;     ///7
+                                
+
+parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
+                CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
+                 
+typedef bit[WORD_WIDTH-1:0]     word;
 
 `ovm_nonblocking_transport_imp_decl(_rfm)
 `ovm_nonblocking_transport_imp_decl(_ise)
@@ -384,9 +398,11 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 SR_PAGE_TYP  = 12,
                 SR_ASID      = 13,
                 STAG_TLB_SPU = STAGE_RRF_SWBP - STAGE_RRF_EXS1 - 1 -1,
-                VADD_START   = 14,  /// 8K 14BIT START for tlb and dse
+                VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
                 PFN_WIDTH    = 23,
-                PHY_WIDTH    = VADD_START + PFN_WIDTH;
+                PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///37
+
+typedef bit[PADR_WIDTH-1:0]     padr_t;
                 
 class ip4_printer extends ovm_table_printer;
   virtual function void print_object (string name, ovm_object value, byte scope_separator=".");

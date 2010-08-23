@@ -360,7 +360,7 @@ class ip4_assembler;
             brk_token(tk, {" ", ".", "\t", "\n"}, opts);
             cur.op[icnt] = opts.pop_front();
             cur.op[icnt] = cur.op[icnt].tolower();
-            if(cur.op[icnt].tolower() != "options") begin
+            if(cur.op[icnt] != "options") begin
               cur.en[icnt] = 1;
               state ++;
               isInst = 1;

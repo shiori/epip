@@ -334,33 +334,27 @@ endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
 	rand word base[NUM_SP], op1[NUM_SP], op2;
-	rand uchar subVec;
-	
-	constraint valid_vars{
-	  subVec dist {0:=5, 1:=5};
-	}
 	
 	`ovm_object_utils_begin(tr_rfm2dse)
 		`ovm_field_sarray_int(base, OVM_ALL_ON)
 		`ovm_field_sarray_int(op1, OVM_ALL_ON)
 		`ovm_field_int(op2, OVM_ALL_ON)
-		`ovm_field_int(subVec, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2dse");
 		super.new(name);
 	endfunction : new
 
-	function void post_randomize();
-	  static uchar lastSubVec = 0;
-		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
-  			lastSubVec = subVec;
-  		end
-  		else begin
-  		  lastSubVec++;
-  			subVec = lastSubVec;
-  		end	    
-	endfunction : post_randomize	
+///	function void post_randomize();
+///	  static uchar lastSubVec = 0;
+///		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
+///  			lastSubVec = subVec;
+///  		end
+///  		else begin
+///  		  lastSubVec++;
+///  			subVec = lastSubVec;
+///  		end	    
+///	endfunction : post_randomize	
 endclass : tr_rfm2dse
 
 ///---------------------------trsaction spa_ise ise_spa------------------------
@@ -821,7 +815,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit vec, en, updateAdrWr;  ///bp_data
+  rand bit priv, vec, en, updateAdrWr;  ///bp_data
   rand opcode_e op;
   rand uchar vecMode, subVec;
   rand uchar pbId;
@@ -833,6 +827,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(updateAdrWrBk, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWrAdr, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWrGrp, OVM_ALL_ON)
+	  `ovm_field_int(priv, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
@@ -926,36 +921,49 @@ class tr_tlb2spu extends ovm_sequence_item;
 	  `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
+	function new (string name = "tr_tlb2spu");
+		super.new(name);
+	endfunction : new  
 endclass : tr_tlb2spu
 
 ///---------------------------trsaction dse_tlb tlb_dse------------------------
 
 class tr_dse2tlb extends ovm_sequence_item;
-  rand word vAdrHi;      /// vitrual address high phase
+  rand word vAdr;
   rand opcode_e op;
   rand uchar tid;
   rand bit req;
   
   `ovm_object_utils_begin(tr_dse2tlb)
-    `ovm_field_int(vAdrHi, OVM_ALL_ON);
+    `ovm_field_int(vAdr, OVM_ALL_ON);
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON);
     `ovm_field_int(req, OVM_ALL_ON);
   `ovm_object_utils_end  
-  
+
+	function new (string name = "tr_dse2tlb");
+		super.new(name);
+	endfunction : new  
 endclass : tr_dse2tlb
 
 class tr_tlb2dse extends ovm_sequence_item;
-  rand word phyAdr;
-  rand bit hit, exp;
+  rand word pfn;
+  rand bit e, k, hit, exp;
+  rand uchar c;
   rand uchar eobit;  /// evenoddbit
   
   `ovm_object_utils_begin(tr_tlb2dse)
-    `ovm_field_int(phyAdr, OVM_ALL_ON);
+    `ovm_field_int(pfn, OVM_ALL_ON);
     `ovm_field_int(hit, OVM_ALL_ON);
     `ovm_field_int(exp, OVM_ALL_ON);
+    `ovm_field_int(k, OVM_ALL_ON);
+    `ovm_field_int(e, OVM_ALL_ON);
+    `ovm_field_int(c, OVM_ALL_ON);
   `ovm_object_utils_end  
 
+	function new (string name = "tr_tlb2dse");
+		super.new(name);
+	endfunction : new
 endclass : tr_tlb2dse  
 
 ///---------------------------trsaction ife_tlb tlb_ife------------------------
@@ -971,15 +979,18 @@ class tr_ife2tlb extends ovm_sequence_item;
     `ovm_field_int(tid, OVM_ALL_ON);
   `ovm_object_utils_end  
 
+	function new (string name = "tr_ife2tlb");
+		super.new(name);
+	endfunction : new
 endclass : tr_ife2tlb  
 
 class tr_tlb2ife extends ovm_sequence_item;
-  rand word pAdr;
+  rand word pfn;
   rand bit rsp, hit, exp;
   rand uchar tid, eobit;
   
   `ovm_object_utils_begin(tr_tlb2ife)
-    `ovm_field_int(pAdr, OVM_ALL_ON);
+    `ovm_field_int(pfn, OVM_ALL_ON);
     `ovm_field_int(rsp, OVM_ALL_ON);
     `ovm_field_int(hit, OVM_ALL_ON);
     `ovm_field_int(exp, OVM_ALL_ON);
@@ -987,24 +998,20 @@ class tr_tlb2ife extends ovm_sequence_item;
     `ovm_field_int(eobit, OVM_ALL_ON);
   `ovm_object_utils_end  
 
+	function new (string name = "tr_tlb2ife");
+		super.new(name);
+	endfunction : new
 endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
-///  rand bit req;
-///  rand bit[PHY_width-1:0] ld_adr[NUM_SP];
-///  rand bit[PHY_width-1:0] st_adr[NUM_SP];
-///  rand word st_dat[NUM_SP];
-///  rand uchar tid;
-///  
-///  `ovm_object_utils_begin(tr_dse2eif)
-///    `ovm_field_int(req, OVM_ALL_ON);
-///    `ovm_field_sarray_int(ld_adr, OVM_ALL_ON);
-///    `ovm_field_sarray_int(st_adr, OVM_ALL_ON);
-///    `ovm_field_sarray_int(st_dat, OVM_ALL_ON);
-///    `ovm_field_int(tid, OVM_ALL_ON);
-///  `ovm_object_utils_end
 
+  `ovm_object_utils_begin(tr_dse2eif)
+  `ovm_object_utils_end
+
+	function new (string name = "tr_dse2eif");
+		super.new(name);
+	endfunction : new
 endclass : tr_dse2eif
 
 class tr_eif2dse extends ovm_sequence_item;
@@ -1014,4 +1021,7 @@ class tr_eif2dse extends ovm_sequence_item;
     `ovm_field_int(rsp, OVM_ALL_ON);
   `ovm_object_utils_end
 
+	function new (string name = "tr_eif2dse");
+		super.new(name);
+	endfunction : new
 endclass : tr_eif2dse
