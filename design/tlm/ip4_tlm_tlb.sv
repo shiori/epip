@@ -148,7 +148,6 @@ class ip4_tlm_tlb extends ovm_component;
     uchar varTid;
     word virAdr;
     bit rspDSE = 0, rspIFE = 0, exp = 0;
-///    word varPAdr;
     
     ovm_report_info("tlb", "comb_proc procing...", OVM_FULL);
      
@@ -159,7 +158,7 @@ class ip4_tlm_tlb extends ovm_component;
     
     ///serve dse or ife?
     if(v.fmDSE == null || (v.fmDSE != null && !v.fmDSE.req)) begin
-      rspIFE = 1;
+      rspIFE = v.fmIFE[0] != null && v.fmIFE[0].req;
       if(v.fmIFE[0] != null) end_tr(v.fmIFE[0]);
       for(int i = 1; i < v.ifeBufPtr; i++)
         vn.fmIFE[i - 1] = v.fmIFE[i];
@@ -176,20 +175,6 @@ class ip4_tlm_tlb extends ovm_component;
     for (int i = STAG_TLB_SPU; i > 1; i--)
       vn.spu[i] = v.spu[i-1];
     vn.spu[1] = null;
-    
-///      for (int i = 0; i < NUM_TLB_E; i++) begin
-///            /// the page type ---> mask
-///        case(v.pageTyp[i])
-///          pagetype0: varMask[i] = pagemask0;
-///          pagetype1: varMask[i] = pagemask1;
-///          pagetype2: varMask[i] = pagemask2;
-///          pagetype3: varMask[i] = pagemask3;
-///          pagetype4: varMask[i] = pagemask4;
-///          pagetype5: varMask[i] = pagemask5;
-///          pagetype6: varMask[i] = pagemask6;
-///          default: ovm_report_warning("TLBPSize0_ILLEGAL", "No this type page size, and no mask!!!");
-///        endcase   
-///      end
      
     ///tlb translation
     if(rspDSE || rspIFE) begin
@@ -206,16 +191,6 @@ class ip4_tlm_tlb extends ovm_component;
       for (int i = 0; i < NUM_TLB_E; i++) begin
         evenOddBit = even_odd_bit_table[v.pageTyp[i]];
         varMask = page_mask_table[v.pageTyp[i]];
-///        case(v.pageTyp[i])
-///          pagetype0: evenOddBit = 13;
-///          pagetype1: evenOddBit = 16;
-///          pagetype2: evenOddBit = 19;
-///          pagetype3: evenOddBit = 22;
-///          pagetype4: evenOddBit = 24;
-///          pagetype5: evenOddBit = 26;
-///          pagetype6: evenOddBit = 28;
-///          default:  ovm_report_warning("TLBPSize1_ILLEGAL", "No this type page size, and no evenOddBit!!!");          
-///        endcase
         if(((v.vpn2[i] & ~varMask) == (virAdr[WORD_WIDTH - 1 : VADD_START] & ~varMask)) 
               && (v.g[i] || (v.asid[i] == v.srASID[varTid]))) begin
             ///match found, select even/odd page
@@ -225,21 +200,7 @@ class ip4_tlm_tlb extends ovm_component;
             varC   = v.c[eosel];
             varEx  = v.ex[eosel];
             varD   = v.d[eosel];
-                          
-///            if(virAdr[evenOddBit] == 0) begin
-///              varPFN = v.pfn2[0][i];
-///              varV   = v.v[0][i];
-///              varC   = v.c[0][i];
-///              varEx  = v.ex[0][i];
-///              varD   = v.d[0][i];
-///            end
-///            else begin
-///              varPFN = v.pfn2Odd[i];
-///              varV   = v.vOdd[i];
-///              varC   = v.cOdd[i];
-///              varEx  = v.exOdd[i];
-///              varD   = v.dOdd[i];
-///            end
+
             if(varV == 0) begin
               ovm_report_info("TLB_Invalid", "tlb Invalid exception!!!", OVM_HIGH); 
               vn.srContent[4:0] = 0;
@@ -263,9 +224,6 @@ class ip4_tlm_tlb extends ovm_component;
               exp = 1;
               break;
             end
-                        
-///            for (int n = evenOddBit; n < PHY_WIDTH; n++)
-///              varPAdr[n] = varPFN[n-evenOddBit];      
             find = 1;
             break;
         end  

@@ -154,6 +154,7 @@ class ip4_tlm_ife extends ovm_component;
     asm = new();
     asm.i = imFilePath;
     asm.o = "code.asm";
+    asm.verb = OVM_HIGH;
     assert(asm.translate());
     im = new[imSize];
     $readmemb("code.asm", im);

@@ -1,84 +1,92 @@
 ///assembler for ip4
+`define asm_msg(s, i = OVM_LOW, d = display)\
+if(verb >= i)\
+$d(s);
 
-class ip4_assembler;
-  string i, o, tokens[$], opts[$], tag;
+`define asm_err(s) $display({"Err: ", string'(s)});
+
+function automatic int get_imm(string tk);
+  string tk0 = tk.substr(0, 0);
+  string tk1 = tk.substr(1, 1);
+  string tk1n = tk.substr(1, tk.len() - 1);
+  string tk2n = tk.substr(2, tk.len() - 1);
+  if(tk0.tolower() == "o")
+    get_imm = tk1n.atooct();
+  else if(tk0.tolower() == "h")
+    get_imm = tk1n.atohex();
+  else if(tk0 == "0" && tk1.tolower() == "x")
+    get_imm = tk2n.atohex();
+  else if(tk0.tolower() == "b")
+    get_imm = tk1n.atobin();
+  else if(tk0.tolower() == "d")
+    get_imm = tk1n.atoi();
+  else
+    get_imm = tk.atoi();
+endfunction
+
+function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
+  int cnt = 0, found = 1;
+  tokens = {};
+
+  ///break string into tokens
+  for(int i = cnt; i < s.len(); i++)
+    if(s[i] inside {sp}) begin
+      if(!found) begin
+        ///found a token end
+        found = 1;
+        tokens.push_back(s.substr(cnt, i - 1));
+        cnt = i + 1;
+      end
+      else begin
+        ///found, eating chars after
+        cnt = i + 1;
+      end
+    end
+    else if(i == (s.len() - 1))
+      tokens.push_back(s.substr(cnt, i));
+    else begin
+      if(found) begin
+        ///found next token start
+        cnt = i;
+        found = 0;
+      end
+    end
+endfunction
+
+class asmig;
   bit[4:0][3:0] vecOp, immOp, zeroOp, enOp;
   uchar adr[5][4], padr[5];
   int imm[5][4];
   string op[5];
   bit[4:0] en, s, si;
   uchar chkGrp;
-  int fi, fo;
-  
-  function void get_token(string s);
-    int cnt = 0, found = 1;
-    tokens = {};
-
-    ///break string into tokens
-    for(int i = cnt; i < s.len(); i++)
-      if(s[i] == " " || s[i] == "\t" || s[i] == "\n") begin
-        if(!found) begin
-          ///found a token end
-          found = 1;
-          tokens.push_back(s.substr(cnt, i - 1));
-          cnt = i + 1;
-        end
-        else begin
-          ///found, eating chars after
-          cnt = i + 1;
-        end
-      end
-      else if(i == (s.len() - 1))
-        tokens.push_back(s.substr(cnt, i));
-      else begin
-        if(found) begin
-          ///found next token start
-          cnt = i;
-          found = 0;
-        end
-      end
+  uchar grpsize;
+  uint pc;
+  uchar allAdr[64];
+  bit isVec[5]; 
+  uchar adrcnt;
+  i_gs0_t gs0;
+  i_gs1_u gs1;
+  inst_u inst[5];
+  bit vrfEn[CYC_VEC][NUM_VRF_BKS],
+      srfEn[CYC_VEC][NUM_SRF_BKS];
+  uchar vrfAdr[CYC_VEC][NUM_VRF_BKS],
+        srfAdr[CYC_VEC][NUM_VRF_BKS];
+          
+  function new();
+    vecOp = 0;
+    immOp = 0;
+    zeroOp = 0;
+    enOp = 0;
+    en = 0;
+    s = 0;
+    si = 0;
+    isVec = '{default : 0};
+    chkGrp = 0;
+    adrcnt = 0;
   endfunction
 
-  function void get_opts(string s);
-    int cnt = 0, found = 1;
-    opts = {};
-
-    ///break string into opts
-    for(int i = cnt; i < s.len(); i++)
-      if(s[i] == "." || s[i] == " " || s[i] == "\n") begin
-        if(!found) begin
-          ///found a token end
-          found = 1;
-          opts.push_back(s.substr(cnt, i - 1));
-          cnt = i + 1;
-        end
-        else begin
-          ///found, eating chars after
-          cnt = i + 1;
-        end
-      end
-      else if(i == (s.len() - 1))
-        opts.push_back(s.substr(cnt, i));
-      else begin
-        if(found) begin
-          ///found next token start
-          cnt = i;
-          found = 0;
-        end
-      end
-  endfunction
-  
-  function void finish_grp();
-    inst_u inst[5];
-    i_gs0_t gs0;
-    i_gs1_u gs1;
-    bit isVec[5];
-    bit vrfEn[CYC_VEC][NUM_VRF_BKS],
-        srfEn[CYC_VEC][NUM_SRF_BKS];
-    uchar vrfAdr[CYC_VEC][NUM_VRF_BKS],
-          srfAdr[CYC_VEC][NUM_VRF_BKS];
-    uchar allAdr[64], tmp = 0;
-    
+  function bit pack_grp(ovm_verbosity verb);
     ///assemble each inst
     foreach(inst[i]) begin
       uchar adru[3], bk[3];
@@ -86,18 +94,18 @@ class ip4_assembler;
       bit dual = 0, three = 0;
       
       if(!en[i]) break;
-      $display($psprintf("assemble inst %0d", i));
+      `asm_msg($psprintf("assemble inst %0d", i), OVM_HIGH);
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
       inst[i].i.b.ir3w1.rd = adr[i][0];
       
       ///set rs0 rs1
       foreach(bk[j]) begin
-        if(!enOp[i][1 + j]) continue;
+        if(!enOp[i][1 + j]) break;
         if(vecOp[i][1 + j]) begin
           if(adr[1 + j] > 31) begin
-            $display("Err: vec reg out of bound!");
-            continue;
+            `asm_err("vec reg out of bound!");
+            return 0;
           end
           adru[j] = adr[i][1 + j] >> BITS_VRF_BKS;
           bk[j] = adr[i][1 + j] & ~{'1 << BITS_VRF_BKS};
@@ -111,14 +119,16 @@ class ip4_assembler;
                 bksel[j] = 16 + k * NUM_VRF_BKS + bk[j];
                 break;
               end
-            if(failed)
-              $display("Err: vec reg alloc failed!");
+            if(failed) begin
+              `asm_err("vec reg alloc failed!");
+              return 0;
+            end
           end
         end
         else begin
           if(adr[1 + j] > 15) begin
-            $display("Err: scl reg out of bound!");
-            continue;
+            `asm_err("scl reg out of bound!");
+            return 0;
           end
           adru[j] = adr[i][1 + j] >> BITS_SRF_BKS;
           bk[j] = adr[i][1 + j] & ~{'1 << BITS_SRF_BKS};
@@ -132,8 +142,10 @@ class ip4_assembler;
                 bksel[j] = k * NUM_SRF_BKS + bk[j];
                 break;
               end
-            if(failed)
-              $display("Err: vec reg alloc failed!");
+            if(failed) begin
+              `asm_msg("vec reg alloc failed!");
+              return 0;
+            end
           end
         end
       end
@@ -164,7 +176,7 @@ class ip4_assembler;
               inst[i].i.b.ir2w1.fun = s[i] ? iop21_add : iop21_uadd;
             end
           end
-      default: $display("Err: op not understood!");
+      default: begin `asm_err("op not understood!"); return 0; end
       endcase
       
       ///alloc 3rd rs, should be vec
@@ -181,8 +193,10 @@ class ip4_assembler;
             bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
             break;
           end
-        if(failed)
-          $display("Err: vec reg alloc failed!");
+        if(failed) begin
+          `asm_err("vec reg alloc failed!");
+          return 0;
+        end
         inst[i].i.b.ir3w1.rs2 = bksel[3];
       end
       else if(three) begin
@@ -195,8 +209,10 @@ class ip4_assembler;
             bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
             break;
           end
-        if(failed)
-          $display("Err: vec reg alloc failed!");
+        if(failed) begin
+          `asm_err("Err: vec reg alloc failed!");
+          return 0;
+        end
         inst[i].i.b.ir3w1.rs2 = bksel[3];
       end
     end
@@ -205,23 +221,28 @@ class ip4_assembler;
     for(int i = 0; i < CYC_VEC; i++) begin
       for(int j = 0; j < NUM_VRF_BKS; j++)
         if(vrfEn[i][j] && vrfAdr[i][j] < 32) begin
-          allAdr[tmp] = vrfAdr[i][j];
-          tmp++;
+          allAdr[adrcnt] = vrfAdr[i][j];
+          adrcnt++;
         end
          
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfEn[i][j]) begin
-          allAdr[tmp] = srfAdr[i][j];
-          tmp++;
+          allAdr[adrcnt] = srfAdr[i][j];
+          adrcnt++;
         end
     end
     
+    `asm_msg("--------------------------------", OVM_HIGH);
+    return 1;
+  endfunction
+  
+  function void wirte_out(int fo, ovm_verbosity verb);
     if(en == 'b01) begin
       gs0.t = 0;
       gs0.chkGrp = chkGrp;
       gs0.unitEn = isVec[0];
       gs0.a = allAdr[0];
-      gs0.adrPkgB = (tmp - 1) * 3 / 8;
+      gs0.adrPkgB = (adrcnt - 1) * 3 / 8;
       $fwrite(fo, "%8b\n", gs0);
       
       if(gs0.adrPkgB > 0) begin
@@ -236,19 +257,18 @@ class ip4_assembler;
     end
     else begin
     end
-    
-    ///clean up
-    $display("--------------------------------");
     $fwrite(fo, "%s", "//--------------------------------\n");
-    vecOp = 0;
-    immOp = 0;
-    zeroOp = 0;
-    enOp = 0;
-    en = 0;
-    s = 0;
-    si = 0;
-    chkGrp = 0;
   endfunction
+endclass
+
+class ip4_assembler;
+  string i, o;
+  int fi, fo;
+  uint pc;
+  ovm_verbosity verb;
+  asmig tag2ig[string];
+  asmig cur;
+  asmig igs[$];
     
   function bit translate();
     string s;
@@ -257,22 +277,25 @@ class ip4_assembler;
     fo = $fopen(o, "w");
         
     if(fi == 0 || fo == 0) begin
-      $display("Open file failed.");
+      `asm_err("Open file failed.");
       return 0;
     end
     
-    $display("IP4 assembler translating...\nAsm code as follows:");
+    `asm_msg("IP4 assembler translating...", OVM_LOW);
     
     ///first pass, translate lines
     while($fgets(s, fi)) begin
+      string tokens[$];
       int state = 0, opcnt = 0;
-      bit isInst = 0;
-      $write(s);
-      get_token(s);
-      $display("Tokens:");
+      bit isInst = 0, hasTag = 0;
+      if(cur == null) cur  = new();
+      `asm_msg("@@Asm code as follows:", OVM_HIGH);
+      `asm_msg(s, OVM_HIGH, write);
+      brk_token(s, '{" ", "\t", "\n"}, tokens);
+      `asm_msg("@@Tokens:", OVM_MEDIUM);
       foreach(tokens[i])
-        $write({tokens[i], "||"});
-      $write("\n");
+        `asm_msg({tokens[i], "||"}, OVM_MEDIUM, write);
+      `asm_msg("\n", OVM_MEDIUM, write);
       
       for(int tid = 0; tokens.size() != 0; tid++) begin
         string tk = tokens.pop_front();
@@ -280,97 +303,98 @@ class ip4_assembler;
         string tk1 = tk.substr(1, 1);
         string tk1n = tk.substr(1, tk.len() - 1);
         string tk2n = tk.substr(2, tk.len() - 1);
-        $display({"read token ", tk});
+        `asm_msg({"@@read token ", tk}, OVM_HIGH);
         if(tk0 == "/") begin
-          $display("it's a comment.");
+          `asm_msg("it's a comment.", OVM_HIGH);
           if(tid != 0) begin
-            $display("ERR: comment not at begining");
+            `asm_err("comment not at begining");
             return 0;
           end
           $fwrite(fo, "%s", s);
           break;
         end
         else if(tk0 == ";") begin
-          $display("it's a group end.");
-          finish_grp();
+          `asm_msg("it's a group end.", OVM_HIGH);
+          if(!cur.pack_grp(verb)) begin
+            `asm_err("pack instruction grp failed");
+            return 0;
+          end
           icnt = 0;
           isInst = 0;
+          cur.pc = pc;
+          pc += cur.grpsize;
+          igs.push_back(cur);
+          cur = null;
           break;
         end
         else begin
           if(icnt >= 5) begin
-            $display("ERR: more than 5 inst in a group");
+            `asm_err("more than 5 inst in a group");
             return 0;
           end
           
           if(tk0 == "$") begin
-            $display($psprintf("it's a tag: %s.", tk1n));
+            `asm_msg($psprintf("it's a tag: %s.", tk1n), OVM_HIGH);
             if(tid != 0 || icnt != 0) begin
-              $display("ERR: tag not at begining");
+              `asm_err("tag not at begining");
               return 0;
             end
-            tag = tk1n;
+            if(tag2ig.exists(tk1n)) begin
+              `asm_err("tag exists.");
+              return 0;
+            end
+              tag2ig[tk1n] = cur;
+            hasTag = 1;
           end
           else if(tk0 == "(") begin
-            string t;
-            if(tid != 0) begin
-              $display("ERR: predication not at begining");
+            if((tid - hasTag) != 0) begin
+              `asm_err("predication not at begining");
               return 0;
             end
-            padr[icnt] = (tk1.tolower() == "p") ? tk2n.atoi() : tk1n.atoi();
-            $display($psprintf("it's a predication reg :%0d", padr[icnt]));
+            cur.padr[icnt] = (tk1.tolower() == "p") ? tk2n.atoi() : tk1n.atoi();
+            `asm_msg($psprintf("it's a predication reg :%0d", cur.padr[icnt]), OVM_HIGH);
           end
           else if(state == 0) begin
-            $display($psprintf("trying to get a op for inst%0d", icnt));
-            get_opts(tk);
-            op[icnt] = opts.pop_front();
-            if(op[icnt] != "options") begin
-              en[icnt] = 1;
+            string opts[$];
+            `asm_msg($psprintf("trying to get a op for inst%0d", icnt), OVM_HIGH);
+            brk_token(tk, {" ", ".", "\t", "\n"}, opts);
+            cur.op[icnt] = opts.pop_front();
+            if(cur.op[icnt] != "options") begin
+              cur.en[icnt] = 1;
               state ++;
               isInst = 1;
-              $display($psprintf("opcode set to %s", op[icnt]));
+              `asm_msg($psprintf("opcode set to %s", cur.op[icnt]), OVM_HIGH);
             end
             
             while(opts.size() > 0) begin
               string opt = opts.pop_front();
-              $display($psprintf("get option: %s", opt));
+              `asm_msg($psprintf("get option: %s", opt), OVM_HIGH);
               case(opt)
-              "s"   : s[icnt] = 1;
-              "u"   : s[icnt] = 0;
-              "si"  : si[icnt] = 1;
-              "i"   : si[icnt] = 0;
-              "g0"  : chkGrp = 0;
-              "g1"  : chkGrp = 1;
-              default : $display("Err, unkonwn options.");
+              "s"   : cur.s[icnt] = 1;
+              "u"   : cur.s[icnt] = 0;
+              "si"  : cur.si[icnt] = 1;
+              "i"   : cur.si[icnt] = 0;
+              "g0"  : cur.chkGrp = 0;
+              "g1"  : cur.chkGrp = 1;
+              default : begin `asm_err("unkonwn options."); return 0; end
               endcase
             end
           end        
           else if(state == 1) begin
             if(opcnt >= 4)
               continue;
-            $display($psprintf("trying to get a reg adr or imm for op%0d", opcnt));
-            enOp[icnt][opcnt] = 1;
-            vecOp[icnt][opcnt] = tk0.tolower() == "v";
-            zeroOp[icnt][opcnt] = tk.tolower() == "zero";
-            immOp[icnt][opcnt] = tk0.tolower() != "s" && !vecOp[icnt][opcnt] && !zeroOp[icnt][opcnt];
-            if(immOp[icnt][opcnt]) begin
-              if(tk0.tolower() == "o")
-                imm[icnt][opcnt] = tk1n.atooct();
-              else if(tk0.tolower() == "h")
-                imm[icnt][opcnt] = tk1n.atohex();
-              else if(tk0 == "0" && tk1.tolower() == "x")
-                imm[icnt][opcnt] = tk2n.atohex();
-              else if(tk0.tolower() == "b")
-                imm[icnt][opcnt] = tk1n.atobin();
-              else if(tk0.tolower() == "d")
-                imm[icnt][opcnt] = tk1n.atoi();
-              else
-                imm[icnt][opcnt] = tk.atoi();
-            end
-            else if(!zeroOp[icnt][opcnt])
-              adr[icnt][opcnt] = tk1n.atoi();
-            $display($psprintf("vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d", vecOp[icnt][opcnt],
-                      zeroOp[icnt][opcnt], immOp[icnt][opcnt], adr[icnt][opcnt], imm[icnt][opcnt]));
+            `asm_msg($psprintf("trying to get a reg adr or imm for op%0d", opcnt), OVM_HIGH);
+            cur.enOp[icnt][opcnt] = 1;
+            cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
+            cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
+            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt];
+            if(cur.immOp[icnt][opcnt])
+              cur.imm[icnt][opcnt] = get_imm(tk);
+            else if(!cur.zeroOp[icnt][opcnt])
+              cur.adr[icnt][opcnt] = tk1n.atoi();
+            `asm_msg($psprintf("vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d", cur.vecOp[icnt][opcnt],
+                      cur.zeroOp[icnt][opcnt], cur.immOp[icnt][opcnt], cur.adr[icnt][opcnt],
+                      cur.imm[icnt][opcnt]), OVM_HIGH);
             opcnt++;
           end
         end   
@@ -378,14 +402,19 @@ class ip4_assembler;
       icnt += isInst;
     end
     
+    ///second pass
+    for(int i = 0; i < igs.size(); i++)
+      igs[i].wirte_out(fo, verb);
+      
     $fclose(fi);
     $fclose(fo);
     fi = 0;
     fo = 0;
-    $display("Translate complete!");
+    `asm_msg("Translate complete!", OVM_LOW);
     return 1;
   endfunction
 
   function new();
+    verb = OVM_LOW;
   endfunction
 endclass
