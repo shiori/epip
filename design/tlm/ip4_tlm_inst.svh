@@ -823,7 +823,7 @@ class inst_c extends ovm_object;
 	    wCnt = t;
 	endfunction : set_wcnt
 		
-	function void setData(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
+	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
     fuid = id;
     isVec = vec;
     decoded = 0;
@@ -852,7 +852,7 @@ class inst_c extends ovm_object;
       enFu[fuid] = 1;
     else if(op inside {spu_only_ops, spu_com_ops})
       enSPU = 1;    
-	endfunction : setData
+	endfunction : set_data
 	
   function void analyze_rs(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrf, srf, dse);
     if(!decoded) decode();
@@ -892,7 +892,7 @@ class inst_c extends ovm_object;
         srf[bkRMsg[i]]++;
   endfunction : analyze_rd
   
-  ///reallocate en set by setData
+  ///reallocate en set by set_data
   function void analyze_fu(inout bit spu, dse, ref bit fu[NUM_FU]);
     enDSE = 0;
     enSPU = 0;
