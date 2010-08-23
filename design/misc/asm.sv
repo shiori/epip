@@ -359,7 +359,8 @@ class ip4_assembler;
             `asm_msg($psprintf("trying to get a op for inst%0d", icnt), OVM_HIGH);
             brk_token(tk, {" ", ".", "\t", "\n"}, opts);
             cur.op[icnt] = opts.pop_front();
-            if(cur.op[icnt] != "options") begin
+            cur.op[icnt] = cur.op[icnt].tolower();
+            if(cur.op[icnt].tolower() != "options") begin
               cur.en[icnt] = 1;
               state ++;
               isInst = 1;
@@ -369,7 +370,7 @@ class ip4_assembler;
             while(opts.size() > 0) begin
               string opt = opts.pop_front();
               `asm_msg($psprintf("get option: %s", opt), OVM_HIGH);
-              case(opt)
+              case(opt.tolower())
               "s"   : cur.s[icnt] = 1;
               "u"   : cur.s[icnt] = 0;
               "si"  : cur.si[icnt] = 1;
