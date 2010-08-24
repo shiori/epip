@@ -824,7 +824,7 @@ endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
   rand bit noLd, noSt, noSMsg, noRMsg,
-           rdy, exp, msgWait;   /// sync to dc stage
+           rdy, exp, msgWait;   /// sync to dem stage
   rand uchar tid;
   
   constraint dist_var {

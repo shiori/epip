@@ -91,7 +91,8 @@ parameter uchar LAT_MAC           = 5,
                 LAT_WB            = 4,
                 LAT_ISE           = 2,
                 LAT_IFE           = 2,
-                LAT_DSE           = 4,
+                LAT_DC            = 1,
+                LAT_XCHG          = 2,
                 LAT_DWBP          = 1;    ///dse writeback bypass time
 
 parameter uint CFG_START_ADR      = 'hf000_0000;
@@ -109,13 +110,6 @@ parameter uchar BITS_WORD       = n2w(WORD_WIDTH / 8),
                 BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL),
                 BITS_BURST      = n2w(NUM_BURST_LEN);
 
-parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU,    ///16 
-                CYC_ISS_SFU   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_SFU + CYC_SFU_BUSY + LAT_VWBP,
-                CYC_ISS_SPU   = LAT_RF + LAT_RBP + LAT_DSE + LAT_DWBP,
-                CYC_ISS_DSE   = CYC_ISS_SPU,
-                CYC_ISS_VEC   = LAT_RF + LAT_RBP + CYC_VEC -1 + LAT_MAC + LAT_DWBP;
-
 /*
                                            pipeline stages:
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
@@ -131,7 +125,9 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 |
                                             0      1      2      3      4      5      6      7      8      9      10
                        0      1      2      3      4      5      6    
   */  
-  
+parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
+                  
 parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
                 STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
@@ -142,31 +138,31 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///9
                 STAGE_RRF_CMP     = STAGE_RRF_RRC + NUM_FU,         ///7
                 STAGE_RRF_CEM0    = STAGE_RRF_CMP + 1,              ///8
-                STAGE_RRF_DEM0    = STAGE_RRF_RRC0 + LAT_DSE,       ///5
                 STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
-                STAGE_RRF_SWBP    = STAGE_RRF_RRC0 + LAT_DSE + LAT_DWBP,      ///7
+                STAGE_RRF_DEM0    = STAGE_RRF_SEL + 1,              ///5
+                STAGE_RRF_DEM     = STAGE_RRF_SEL + CYC_VEC,        ///8
+                STAGE_RRF_DC      = STAGE_RRF_SEL + LAT_XCHG,       ///6
+                STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///7
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///8
+                STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
                 STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///11
                 STAGE_EXE         = LAT_MAC - 1,                    ///3
                 STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
                 STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
                 STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
-                STAGE_EXE_SWBP    = LAT_DSE - CYC_VEC + LAT_DWBP,   ///1
-                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///2
-                STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY -CYC_VEC - 1,     ///27
+                STAGE_EXE_SWBP    = STAGE_RRF_SWBP - STAGE_RRF_EXE0,///2
+                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///3
+                STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY - CYC_VEC - 1,     ///27
                 STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
                 STAGE_EEX_VWB0    = STAGE_EEX_VWBP + 1,             ///29
                 STAGE_ISE         = LAT_ISE - 1,                    ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
-                STAGE_AG_SWB      = LAT_DSE + LAT_DWBP ,            ///5
-                STAGE_ISE_VWB     = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP + CYC_VEC - 1,  ///15
-                STAGE_ISE_VWBP    = LAT_ISE + LAT_RF + CYC_VEC + LAT_MAC + LAT_VWBP - 1,            ///11
-                STAGE_ISE_DC      = LAT_ISE + LAT_RF + LAT_DSE;     ///7
+                STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
+                STAGE_ISE_VWB     = STAGE_ISE_VWBP + CYC_VEC,       ///16
+                STAGE_ISE_DEM      = LAT_ISE + STAGE_RRF_DEM;       ///8
                                 
-
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
                  
@@ -272,10 +268,6 @@ typedef enum uchar {
   op_min,     op_umin,    op_umax,
   op_ext,     op_ins,     op_seb,     op_she,
   op_wsbh,
-///  op_gglw,    op_gglb,    op_gglh,    op_ggsw,
-///  op_ggsh,    op_ggsb,
-///  op_vror,    op_vroru,   op_vsr,     op_vsru,
-///  op_vsl,     op_vslu,
   ///sfu opcodes
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,

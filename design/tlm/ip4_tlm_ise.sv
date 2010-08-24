@@ -32,7 +32,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_rfm2ise fmRFM;
   tr_ife2ise fmIFE;
   tr_spa2ise fmSPA;
-  tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DC];
+  tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DEM];
   
   tr_ise2rfm rfm[STAGE_ISE:1];
   tr_ise2spa spa[STAGE_ISE:1];
@@ -91,7 +91,7 @@ class ise_thread_inf extends ovm_component;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
-  bit pendLoad, pendStore;
+  bit pendLoad, pendStore, loopRandMemMode;
   uchar pendIFetch, pendMemAcc, pendBr;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
@@ -670,35 +670,15 @@ class ip4_tlm_ise extends ovm_component;
         enter_exp(tid, exp_decode_err);
       return;
     end
-    
+      
     if(tInf.enSPU) begin
-      if(tInf.iSPU.is_unc_br())
+      if(tInf.iSPU.is_unc_br()) begin
         tInf.pc = tInf.pc + tInf.iSPU.offSet;
-      else if(tInf.iSPU.is_br()) begin
+        tInf.brPred = 1;
+      end
+      else if(tInf.iSPU.is_br())
         tInf.br_pred();
-
-        if(tInf.brPred && tInf.iSPU.offSet != 0) begin
-          tInf.flush();
-          tInf.cancel = 1;
-          tInf.decoded = 0;
-        end
-        else begin
-          tInf.pc += tInf.IGrpBytes;
-          tInf.decoded = 1;
-        end
-      end
-      else begin
-        tInf.pc += tInf.IGrpBytes;
-        tInf.decoded = 0;
-        tInf.iBuf = tInf.iBuf[tInf.IGrpBytes:$];
-        tInf.decodeErr = 0;
-      end
-    
-    ///rdy to issue the ig 
-    tInf.fill_issue(ciRFM, ciSPA, ciSPU, ciDSE); 
-
-    if(tInf.wCntNext > tInf.wCnt[tInf.wCntSel])
-      tInf.wCnt[tInf.wCntSel] = tInf.wCntNext;
+///        loopRandMemMode
       
     /// spu or scalar dse issue
       if(tInf.iSPU.is_priv()) begin
@@ -710,13 +690,26 @@ class ip4_tlm_ise extends ovm_component;
           enter_exp(tid, exp_priv_err);
       end
     end
+
+    ///branch taken
+    if(tInf.enSPU && tInf.iSPU.is_br() && tInf.brPred) begin
+      ///jmp to current?
+      if(tInf.iSPU.offSet == 0)
+        tInf.decoded = 1;
+      else begin
+        tInf.flush();
+        tInf.cancel = 1;
+        tInf.decoded = 0;
+      end
+    end
+    ///not branch or branch not taken
     else begin
       tInf.pc += tInf.IGrpBytes;
       tInf.decoded = 0;
       tInf.iBuf = tInf.iBuf[tInf.IGrpBytes:$];
       tInf.decodeErr = 0;
     end
-      
+            
     if(tInf.enDSE) begin
       cntDSERd = tInf.cntDSERd;
       tInf.pendMemAcc++;
@@ -725,7 +718,10 @@ class ip4_tlm_ise extends ovm_component;
       else if(tInf.iDSE.op inside {op_sw, op_sh, op_sb})
         tInf.pendStore = 1;
     end
-    
+
+    if(tInf.wCntNext > tInf.wCnt[tInf.wCntSel])
+      tInf.wCnt[tInf.wCntSel] = tInf.wCntNext;
+          
     cntSrfRd = tInf.cntSrfRd;
     cntVrfRd = tInf.cntVrfRd;
     cntDSERd = tInf.cntDSERd;
@@ -739,6 +735,9 @@ class ip4_tlm_ise extends ovm_component;
     
     if(tInf.enVec)
       cntVecProc = tInf.vecMode;
+
+    ///rdy to issue the ig 
+    tInf.fill_issue(ciRFM, ciSPA, ciSPU, ciDSE); 
   endfunction : issue
       
   function void comb_proc();
@@ -748,13 +747,13 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null) end_tr(v.fmSPA);
     if(v.fmRFM != null) end_tr(v.fmRFM);
     if(v.fmIFE != null) end_tr(v.fmIFE);
-    if(v.fmDSE[STAGE_ISE_DC] != null) end_tr(v.fmDSE[STAGE_ISE_DC]);
+    if(v.fmDSE[STAGE_ISE_DEM] != null) end_tr(v.fmDSE[STAGE_ISE_DEM]);
     
     vn.fmSPU = null;
     vn.fmSPA = null;
     vn.fmRFM = null;
     vn.fmIFE = null;
-    vn.fmDSE[STAGE_ISE_DC] = null;
+    vn.fmDSE[STAGE_ISE_DEM] = null;
     
     for(int i = STAGE_ISE; i > 1; i--) begin
       vn.rfm[i] = v.rfm[i - 1];  
@@ -804,7 +803,7 @@ class ip4_tlm_ise extends ovm_component;
     noSMsg = 0;
     noRMsg = 0;
 
-    for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DC; i--)
+    for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM; i--)
       vn.fmDSE[i] = v.fmDSE[i-1];  
           
     ///cancel condition 1 branch mispredication, msc overflow
@@ -825,8 +824,8 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     ///cancel condition 2 dse exp or cache miss
-    if(v.fmDSE[STAGE_ISE_DC] != null) begin
-      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DC];
+    if(v.fmDSE[STAGE_ISE_DEM] != null) begin
+      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
       if(!dse.rdy) begin
         thread[dse.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
         if(dse.exp)
@@ -841,8 +840,8 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null)
       noFu = v.fmSPA.noFu;
       
-    if(v.fmDSE[STAGE_ISE_DC] != null) begin
-      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DC];
+    if(v.fmDSE[STAGE_ISE_DEM] != null) begin
+      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
       noLd = dse.noLd;
       noSt = dse.noSt;
       noSMsg = dse.noSMsg;
@@ -986,7 +985,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fmDSE[STAGE_ISE_DC] = req;
+    vn.fmDSE[STAGE_ISE_DEM] = req;
     return 1;
   endfunction : nb_transport_dse
     
