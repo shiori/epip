@@ -68,7 +68,7 @@ parameter uint  NUM_SP            = 8,
                 NUM_PRF_P_GRP     = 8,
                 NUM_VRF_BKS       = 4,
                 NUM_SRF_BKS       = 2,
-                NUM_BP_IMM        = 1,
+                NUM_BP_CO         = 3,
                 NUM_PR            = 7,
                 NUM_IFET_BYTES    = 16,
                 NUM_INST_VRF      = 32,
@@ -208,12 +208,12 @@ class tlm_vif_object extends ovm_object;
 endclass : tlm_vif_object
   
 typedef enum uchar {
-  selv[0:127], sels[0:31], seli[0:7], selz, selii, selspu, seldse, selfu[0:15], selnull
+  selv[0:127], sels[0:31], selc[0:7], selz, selii, selspu, seldse, selfu[0:15], selnull
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
                     sels_e = rbk_sel_e'(sels0 + NUM_SRF_BKS - 1),
-                    seli_e = rbk_sel_e'(seli0 + NUM_BP_IMM - 1);
+                    selc_e = rbk_sel_e'(selc0 + NUM_BP_CO - 1);
 
 typedef enum uchar {
   mac, alu, dse, sfu, spu
@@ -253,8 +253,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled,    ts_rdy,     ts_w_ls,    ts_w_msg,
-  ts_w_b
+  ts_disabled,  ts_rdy,     ts_w_b,       ts_b_pred,    ts_b_self
 }ise_thread_state;
 
 typedef enum uchar {

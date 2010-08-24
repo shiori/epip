@@ -9,7 +9,7 @@ class ise2rfm_fu extends ovm_object;
   constraint valid_var {
     en dist {0:=1, 1:=9};
 	  foreach(rdBkSel[i])
-	    rdBkSel[i] inside {[selv0:selv_e], [sels0:sels_e], [seli0:seli_e], selz, selii};
+	    rdBkSel[i] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz, selii};
   }
   `ovm_object_utils_begin(ise2rfm_fu)
     `ovm_field_sarray_enum(rbk_sel_e, rdBkSel, OVM_ALL_ON)
@@ -29,7 +29,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	rand ise2rfm_fu fu[NUM_FU];
 	rand rbk_sel_e dseRdBk[3], spuRdBk[2];
 	rand bit vecEnd, sclEnd, start;
-	rand word bpImm[NUM_BP_IMM], dseImm, spuImm;
+	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
 	rand uchar cyc;
 	
@@ -43,11 +43,11 @@ class tr_ise2rfm extends ovm_sequence_item;
 			srfRdGrp[i] inside {[0:NUM_PHY_SRF_GRP-1]};
 			srfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_SRF_BKS-1]};
     }
-    dseRdBk[0] inside {[selv0:selv_e], [sels0:sels_e], [seli0:seli_e], selz};
-    dseRdBk[1] inside {[sels0:sels_e], [seli0:seli_e], selz};
-    dseRdBk[2] inside {[seli0:seli_e], selz};
+    dseRdBk[0] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
+    dseRdBk[1] inside {[sels0:sels_e], [selc0:selc_e], selz};
+    dseRdBk[2] inside {[selc0:selc_e], selz};
 	  foreach(spuRdBk[i])
-	    spuRdBk[i] inside {[sels0:sels_e], [seli0:seli_e], selz};
+	    spuRdBk[i] inside {[sels0:sels_e], [selc0:selc_e], selz};
 	}
 	
 	constraint dist_var {
@@ -74,7 +74,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 		`ovm_field_sarray_int(srfRdAdr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_enum(rbk_sel_e, dseRdBk, OVM_ALL_ON)
 		`ovm_field_sarray_enum(rbk_sel_e, spuRdBk, OVM_ALL_ON)
-		`ovm_field_sarray_int(bpImm, OVM_ALL_ON)
+		`ovm_field_sarray_int(bpCo, OVM_ALL_ON)
 		`ovm_field_int(dseImm, OVM_ALL_ON)
 		`ovm_field_int(spuImm, OVM_ALL_ON)
   `ovm_object_utils_end
@@ -580,8 +580,6 @@ class tr_ise2spu extends ovm_sequence_item;
   rand msc_opcode_e sop;
   rand msk_opcode_e mop;
   rand br_opcode_e bop;
-///  rand cmp_opcode_e cop;
-///  rand pr_merge_e prMerge;  
   rand opcode_e op;
   
   rand uchar tid, subVec, vecMode;
@@ -592,7 +590,6 @@ class tr_ise2spu extends ovm_sequence_item;
            brDepSPA,
            enFu[NUM_FU],
            enDSE;
-///  rand uchar pr_br_adr;
   
   rand uchar srfWrBk, srfWrGrp, srfWrAdr, srfWrDSel;
   rand uchar prWrAdr0, prWrAdr1, ///fu pr write adr
@@ -603,17 +600,12 @@ class tr_ise2spu extends ovm_sequence_item;
   rand bit prInv[NUM_FU], prInvDSE, prInvSPU,
            prNMsk[NUM_FU], prNMskDSE, prNMskSPU;
   
-///  rand bit pr_up_en_rot, pr_up_val_rot, pr_up_fnaz_rot;
-  
   constraint valid_data{
     tid < NUM_THREAD;
     brDep dist {0:=6, 1:=4};
     brDep -> brDepDSE || brDepSPA;
-///    pr_br_adr <= NUM_PR;
     subVec dist {0:=5, 1:=5};
     vecMode < CYC_VEC; ///inside {[1:CYC_VEC]};
-///    subs dist {0:=5, 1:=5};
-///    cycs inside {[1:CYC_VEC]};
     prRdAdrSPU == 0 -> brDep == 0;
     op inside {spu_ops, spu_com_ops};
     op != op_br -> sop == sop_nop && mop == mop_nop && bop == bop_az;
@@ -623,8 +615,6 @@ class tr_ise2spu extends ovm_sequence_item;
     prWrAdr1 <= NUM_PR;
     prWrAdr0 <= NUM_PR;
     prWrAdr1 <= NUM_PR;
-///    pr_up_adr <= NUM_PR;
-///    pr_up_adr_rot <= NUM_PR;
     prRdAdrSPU <= NUM_PR;
     prRdAdrDSE <= NUM_PR;
 		srfWrBk inside {[0:NUM_VRF_BKS-1]};
@@ -637,18 +627,6 @@ class tr_ise2spu extends ovm_sequence_item;
   
   function void post_randomize();
     static uchar last_cycs = 0, last_subs=0, lastSubVec = 0;
-///    static opcode_e last_op;
-///    if(last_subs == 0 || last_subs == (last_cycs-1)) begin
-///      last_cycs = cycs;
-///      last_subs = subs;
-///      last_op = op;
-///    end
-///    else begin
-///      last_subs++;
-///      cycs = last_cycs;
-///      subs = last_subs;
-///      op = last_op;
-///    end
 		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
 			lastSubVec = subVec;
 		end
@@ -664,19 +642,11 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_int(brDepDSE, OVM_ALL_ON)
 	  `ovm_field_int(brDepSPA, OVM_ALL_ON)
 	  `ovm_field_int(start, OVM_ALL_ON)
-///	  `ovm_field_int(pr_br_adr, OVM_ALL_ON)
-///	  `ovm_field_int(cycs, OVM_ALL_ON)
-///	  `ovm_field_int(subs, OVM_ALL_ON)
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr0, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr1, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr2, OVM_ALL_ON)
-///	  `ovm_field_int(pr_up_adr, OVM_ALL_ON)
-///	  `ovm_field_int(pr_up_adr_rot, OVM_ALL_ON)
-///	  `ovm_field_int(pr_up_en_rot, OVM_ALL_ON)
-///	  `ovm_field_int(pr_up_fnaz_rot, OVM_ALL_ON)
-///	  `ovm_field_int(pr_up_val_rot, OVM_ALL_ON)
     `ovm_field_sarray_int(prRdAdr, OVM_ALL_ON)
 	  `ovm_field_int(prRdAdrSPU, OVM_ALL_ON)
 	  `ovm_field_int(prRdAdrDSE, OVM_ALL_ON)
@@ -689,8 +659,6 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_enum(msc_opcode_e, sop, OVM_ALL_ON)
 	  `ovm_field_enum(msk_opcode_e, mop, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
-///	  `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
-///	  `ovm_field_enum(pr_merge_e, prMerge, OVM_ALL_ON)
 	  `ovm_field_enum(br_opcode_e, bop, OVM_ALL_ON)
 		`ovm_field_int(srfWrDSel, OVM_ALL_ON)
 		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
@@ -856,15 +824,15 @@ endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
   rand bit noLd, noSt, noSMsg, noRMsg,
-           cancel, exp, msgWait;   /// sync to dc stage
+           rdy, exp, msgWait;   /// sync to dc stage
   rand uchar tid;
   
   constraint dist_var {
-    cancel dist {0:=19, 1:=1};
+    rdy dist {0:=1, 1:=19};
   }
   
   constraint valid_var {
-    exp -> cancel;
+    exp -> !rdy;
   }
   
 	`ovm_object_utils_begin(tr_dse2ise)
@@ -872,7 +840,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(noSt, OVM_ALL_ON)
 	  `ovm_field_int(noSMsg, OVM_ALL_ON)
 	  `ovm_field_int(noRMsg, OVM_ALL_ON)
-	  `ovm_field_int(cancel, OVM_ALL_ON)
+	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_int(msgWait, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)

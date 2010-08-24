@@ -780,19 +780,19 @@ class inst_c extends ovm_object;
     
 	endfunction : decode
 	
-	function bit is_pd_br();
-	  if(!decoded) decode();
-    return brDep; /// && inst.i.op inside {iop_bs, iop_fcrs};
-	endfunction : is_pd_br
+///	function bit is_pd_br();
+///	  if(!decoded) decode();
+///    return brDep && prRdAdr != 0;
+///	endfunction : is_pd_br
 
 	function bit is_unc_br();
 	  if(!decoded) decode();
-    return (inst.i.op inside {iop_bs, iop_fcrs}) && (brOp == bop_naz && prRdAdr == 0);
+    return (inst.i.op inside {op_br, op_fcr}) && (brOp == bop_naz && prRdAdr == 0);
 	endfunction : is_unc_br
 
 	function bit is_br();
 	  if(!decoded) decode();
-    return inst.i.op inside {iop_bs, iop_fcrs};
+    return inst.i.op inside {op_br, op_fcr};
 	endfunction : is_br
 		
 	function bit is_priv();
@@ -966,7 +966,11 @@ class inst_c extends ovm_object;
       spu.sop = mscOp;
       spu.mop = mskOp;
       spu.bop = brOp;
-      spu.op = op;
+      ///unconditional branch is not issued
+      if(is_unc_br())
+        spu.op = op_bp1;
+      else
+        spu.op = op;
       spu.srfWrAdr = adrWr[0];
       spu.srfWrBk = bkWr[0];
       spu.prRdAdrSPU = prRdAdr;

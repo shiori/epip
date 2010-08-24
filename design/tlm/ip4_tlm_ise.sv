@@ -73,10 +73,10 @@ endclass : ip4_tlm_ise_vars
 class ise_thread_inf extends ovm_component;
   ise_thread_state threadState;
   uchar iBuf[$];
-  bit DSEVec;
+  bit dseVec;
   uchar IGrpBytes, adrPkgBytes, numImms,
         cntSrfRd, cntVrfRd, cntDSERd;
-  word imms[NUM_BP_IMM];
+  word co[NUM_BP_CO];
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS], vrfGrp[CYC_VEC][NUM_VRF_BKS],
         srfAdr[CYC_VEC][NUM_SRF_BKS], srfGrp[CYC_VEC][NUM_SRF_BKS];
   bit vrfRdEn[CYC_VEC][NUM_VRF_BKS], srfRdEn[CYC_VEC][NUM_SRF_BKS];
@@ -91,7 +91,8 @@ class ise_thread_inf extends ovm_component;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
-  uchar pendIFetch;
+  bit pendLoad, pendStore;
+  uchar pendIFetch, pendMemAcc, pendBr;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
   uint pc, pcBr;
@@ -111,7 +112,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(cntSrfRd, OVM_ALL_ON)
     `ovm_field_int(cntVrfRd, OVM_ALL_ON)
     `ovm_field_int(cntDSERd, OVM_ALL_ON)
-    `ovm_field_sarray_int(imms, OVM_ALL_ON)
+    `ovm_field_sarray_int(co, OVM_ALL_ON)
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
@@ -182,7 +183,21 @@ class ise_thread_inf extends ovm_component;
 
   function void exe_priv();
   endfunction : exe_priv
-  
+
+  function void br_pred();
+    pendBr++;
+    if(iSPU.offSet == 0) begin
+      pcBr = pc;
+      brPred = 1;
+      threadState = ts_b_self;
+    end
+    else begin
+      pcBr = pc + iSPU.offSet;
+      brPred = 0;
+      threadState = (threadState == ts_rdy) ? ts_w_b : ts_b_pred;
+    end
+  endfunction : br_pred
+    
   function void decode_igrp_start();
     i_gs0_t grpStart = iBuf[0];
     enSPU = 0;
@@ -194,7 +209,7 @@ class ise_thread_inf extends ovm_component;
       wCntSel = grpStart.chkGrp;
       adrPkgBytes = grpStart.adrPkgB;
       numImms = grpStart.immPkgW;
-      DSEVec = grpStart.unitEn;
+      dseVec = grpStart.unitEn;
       IGrpBytes = 1 + adrPkgBytes + numImms * NUM_WORD_BYTES + NUM_INST_BYTES;
     end
     else begin
@@ -214,7 +229,7 @@ class ise_thread_inf extends ovm_component;
       IGrpBytes = 2 + adrPkgBytes + numImms * NUM_WORD_BYTES + tmp * NUM_INST_BYTES;
       enSPU = grpStart.i.unitEn[0];
       enDSE = grpStart.i.unitEn[1];
-      DSEVec = grpStart.i.dv;
+      dseVec = grpStart.i.dv;
       foreach(enFu[i])
         enFu[i] = grpStart.i.unitEn[2+i];
     end
@@ -226,7 +241,7 @@ class ise_thread_inf extends ovm_component;
         
       ovm_report_info("decode_igrp_start",
         $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, adrPkgB:%0d, immPkgW:%0d", 
-                   IGrpBytes, enSPU, enDSE, enFuTmp, DSEVec, wCntSel, adrPkgBytes, numImms),
+                   IGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, adrPkgBytes, numImms),
         OVM_HIGH);
     end
   endfunction : decode_igrp_start
@@ -251,8 +266,8 @@ class ise_thread_inf extends ovm_component;
       tmp = 1;
       offSet = 1;
 ///      if(adrPkgBytes != 0) adrPkgBytes --;???
-      iSPU.set_data(iBuf, offSet, 0, DSEVec);
-      iDSE.set_data(iBuf, offSet, 0, DSEVec);
+      iSPU.set_data(iBuf, offSet, 0, dseVec);
+      iDSE.set_data(iBuf, offSet, 0, dseVec);
       foreach(iFu[i])
         iFu[i].set_data(iBuf, offSet, i, 1);
         
@@ -284,7 +299,7 @@ class ise_thread_inf extends ovm_component;
       end
       
       if(enDSE) begin
-        iDSE.set_data(iBuf, offSet, 0, DSEVec);
+        iDSE.set_data(iBuf, offSet, 0, dseVec);
         iDSE.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
         iDSE.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
         offSet += NUM_INST_BYTES;
@@ -337,7 +352,7 @@ class ise_thread_inf extends ovm_component;
     end
       
     for(int i = 0; i < numImms; i++) begin
-      imms[i] = {iBuf[i + 3], iBuf[i + 2], iBuf[i + 1], iBuf[i]};
+      co[i] = {iBuf[i + 3], iBuf[i + 2], iBuf[i + 1], iBuf[i]};
       offSet += NUM_WORD_BYTES;
     end
       
@@ -393,19 +408,20 @@ class ise_thread_inf extends ovm_component;
   function void msg_wait();
   endfunction : msg_wait
   
-  function bit br_pre_miss(input bit Br);
-    if(threadState == ts_w_b)
-      threadState = ts_rdy;
-    
-    if(Br != brPred) begin
-      flush();
-      pc = pcBr;
-      cancel = 1;
-      return 1;
+  function bit br_pred_miss(input bit br);
+    if(threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
+      if(pendBr > 0) pendBr--;
+      if(pendBr == 0)
+        threadState = ts_rdy;
+      if(br != brPred) begin
+        flush();
+        pc = pcBr;
+        cancel = 1;
+        return 1;
+      end
     end
-    else
-      return 0;
-  endfunction : br_pre_miss
+    return 0;
+  endfunction : br_pred_miss
 
   function bit can_req_ifetch();
     ovm_report_info("can_req_ifetch", $psprintf("threadState:%s, iBuf lv:%0d, pd:%0d", threadState.name, iBuf.size(), pendIFetch), OVM_HIGH);
@@ -503,7 +519,7 @@ class ise_thread_inf extends ovm_component;
           
     for(int i = 0; i <= cntSrfRd || i <= cntVrfRd; i++) begin
       if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      ciRFM[i].bpImm = imms;
+      ciRFM[i].bpCo = co;
       ciRFM[i].vrfRdGrp = vrfGrp[i];
       ciRFM[i].vrfRdAdr = vrfAdr[i];
       ciRFM[i].srfRdGrp = srfGrp[i];
@@ -607,7 +623,7 @@ class ip4_tlm_ise extends ovm_component;
       ovm_report_info("can_issue",
         $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
                    tInf.threadState.name, tInf.decoded, tInf.decodeErr, tInf.wCnt[tInf.wCntSel], tInf.pc, tInf.enSPU, tInf.enDSE,
-                   enFuTmp, tInf.DSEVec, tInf.wCntSel),
+                   enFuTmp, tInf.dseVec, tInf.wCntSel),
         OVM_HIGH);
     end
     
@@ -643,40 +659,48 @@ class ip4_tlm_ise extends ovm_component;
     foreach(cntSrfWr[i])
       if(cntSrfWr[i] + tInf.cntSrfWr[i] > CYC_VEC)
         return 0;
-    return tInf.decoded && (tInf.threadState == ts_rdy && tInf.wCnt[tInf.wCntSel] == 0);
+    return tInf.decoded && (tInf.threadState inside {ts_rdy, ts_w_b, ts_b_self} && tInf.wCnt[tInf.wCntSel] == 0);
   endfunction : can_issue
 
   function void issue(input uchar tid);
     ise_thread_inf tInf = thread[tid];
     vn.pcStages[1] = tInf.pc;
     if(tInf.decodeErr) begin
-      enter_exp(tid, exp_decode_err);
+      if(tInf.threadState == ts_rdy)
+        enter_exp(tid, exp_decode_err);
       return;
     end
     
-    tInf.iBuf = tInf.iBuf[tInf.IGrpBytes:$];
-    tInf.pc += tInf.IGrpBytes;
-    tInf.fill_issue(ciRFM, ciSPA, ciSPU, ciDSE);
-    tInf.decoded = 0;
-    tInf.decodeErr = 0;
+    if(tInf.enSPU) begin
+      if(tInf.iSPU.is_unc_br())
+        tInf.pc = tInf.pc + tInf.iSPU.offSet;
+      else if(tInf.iSPU.is_br()) begin
+        tInf.br_pred();
+
+        if(tInf.brPred && tInf.iSPU.offSet != 0) begin
+          tInf.flush();
+          tInf.cancel = 1;
+          tInf.decoded = 0;
+        end
+        else begin
+          tInf.pc += tInf.IGrpBytes;
+          tInf.decoded = 1;
+        end
+      end
+      else begin
+        tInf.pc += tInf.IGrpBytes;
+        tInf.decoded = 0;
+        tInf.iBuf = tInf.iBuf[tInf.IGrpBytes:$];
+        tInf.decodeErr = 0;
+      end
     
+    ///rdy to issue the ig 
+    tInf.fill_issue(ciRFM, ciSPA, ciSPU, ciDSE); 
+
     if(tInf.wCntNext > tInf.wCnt[tInf.wCntSel])
       tInf.wCnt[tInf.wCntSel] = tInf.wCntNext;
       
-    if(tInf.enSPU) 
-      if(tInf.iSPU.is_unc_br()) begin
-        tInf.pc = tInf.pc + tInf.iSPU.offSet;
-        tInf.flush();
-        tInf.cancel = 1;
-      end
-      else if(tInf.iSPU.is_br()) begin
-        tInf.threadState = ts_w_b;
-        tInf.pcBr = tInf.pc + tInf.iSPU.offSet;
-        tInf.brPred = 0;
-      end
-    
     /// spu or scalar dse issue
-    if(tInf.enSPU) begin
       if(tInf.iSPU.is_priv()) begin
         if(tInf.privMode) begin
           exe_priv(tInf.iSPU);
@@ -686,9 +710,20 @@ class ip4_tlm_ise extends ovm_component;
           enter_exp(tid, exp_priv_err);
       end
     end
-    
+    else begin
+      tInf.pc += tInf.IGrpBytes;
+      tInf.decoded = 0;
+      tInf.iBuf = tInf.iBuf[tInf.IGrpBytes:$];
+      tInf.decodeErr = 0;
+    end
+      
     if(tInf.enDSE) begin
       cntDSERd = tInf.cntDSERd;
+      tInf.pendMemAcc++;
+      if(tInf.iDSE.op inside {op_lw, op_lh, op_lhu, op_lb, op_lbu})
+        tInf.pendLoad = 1;
+      else if(tInf.iDSE.op inside {op_sw, op_sh, op_sb})
+        tInf.pendStore = 1;
     end
     
     cntSrfRd = tInf.cntSrfRd;
@@ -775,7 +810,7 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 1 branch mispredication, msc overflow
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       bit cancel;
-      cancel = thread[v.fmSPU.tid].br_pre_miss(v.fmSPU.brTaken);
+      cancel = thread[v.fmSPU.tid].br_pred_miss(v.fmSPU.brTaken);
       if(v.fmSPU.mscTopChg) begin
         cancel = 1;
         enter_exp(v.fmIFE.tid, exp_msc_err);
@@ -792,7 +827,7 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 2 dse exp or cache miss
     if(v.fmDSE[STAGE_ISE_DC] != null) begin
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_DC];
-      if(dse.cancel) begin
+      if(!dse.rdy) begin
         thread[dse.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
         if(dse.exp)
           enter_exp(dse.tid, exp_dse_err);
@@ -889,7 +924,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     
     ///send dse cancel to spa
-    if(v.fmDSE[STAGE_ISE_VWBP] != null && v.fmDSE[STAGE_ISE_VWBP].cancel) begin
+    if(v.fmDSE[STAGE_ISE_VWBP] != null && !v.fmDSE[STAGE_ISE_VWBP].rdy) begin
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_VWBP];
       if(toSPA == null) toSPA = tr_ise2spa::type_id::create("toSPA", this);
       toSPA.cancel[dse.tid] = 1;
