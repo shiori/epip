@@ -640,28 +640,31 @@ class inst_c extends ovm_object;
       mT = inst.i.b.ld.t;
       mUpdateAdr = inst.i.b.ld.ua;
       adrWr[0] = inst.i.b.ld.rd;
+      prWrAdr[0] = inst.i.p;
+      prWrEn[0] = (mT == 1 && prWrAdr[0] != 0);
+      if(!prWrEn[0]) prWrAdr[0] = 0;
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
         set_rf_en(inst.i.b.ld.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      case(inst.i.op)
-      iop_lw    : op = op_lw;
-      iop_lh    : op = op_lh;
-      iop_lb    : op = op_lb;
-      iop_ll    : op = op_ll;
-      iop_lhu   : op = op_lhu;
-      iop_lbu   : op = op_lbu;
-      endcase
+        case(inst.i.op)
+        iop_lw    : op = op_lw;
+        iop_lh    : op = op_lh;
+        iop_lb    : op = op_lb;
+        iop_ll    : op = op_ll;
+        iop_lhu   : op = op_lhu;
+        iop_lbu   : op = op_lbu;
+        endcase
       end
       else if(inst.i.op inside {iop_sw, iop_sh, iop_sb, iop_sc}) begin
         imm = {inst.i.b.st.os2, inst.i.b.st.os1, inst.i.b.st.os0};
         set_rf_en(inst.i.b.st.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
         set_rf_en(inst.i.b.st.rs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      case(inst.i.op)
-      iop_sw    : op = op_sw;
-      iop_sh    : op = op_sh;
-      iop_sb    : op = op_sb;
-      iop_sc    : op = op_sc;
-      endcase
+        case(inst.i.op)
+        iop_sw    : op = op_sw;
+        iop_sh    : op = op_sh;
+        iop_sb    : op = op_sb;
+        iop_sc    : op = op_sc;
+        endcase
       end
       else if(inst.i.op == iop_cmpxchg) begin
         op = op_cmpxchg;
@@ -671,7 +674,9 @@ class inst_c extends ovm_object;
       end
       else if(inst.i.op == iop_fetadd) begin
         op = op_fetadd;
-        imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
+        imm = {inst.i.b.st.os1, inst.i.b.st.os0};
+        set_rf_en(inst.i.b.cmpxchg.rs0, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+        rdBkSel[2] = selii;
       end
       else if(inst.i.op == iop_mctl) begin
         mFun = inst.i.b.mctl.fun;

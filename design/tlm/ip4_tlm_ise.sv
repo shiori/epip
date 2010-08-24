@@ -507,13 +507,15 @@ class ise_thread_inf extends ovm_component;
     
     if(enDSE) begin
       iDSE.map_wr_grp(vrfMap, srfMap);
-      ciDSE[0] = tr_ise2dse::type_id::create("toDSE", get_parent());
-      iDSE.fill_dse(ciDSE[0]);      
       for(int i = 0; i <= cntDSERd; i++) begin
         if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
         if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
+        if(ciDSE[i] == null) ciDSE[i] = tr_ise2dse::type_id::create("toDSE", get_parent());
+        iDSE.fill_dse(ciDSE[i]);
         iDSE.fill_rfm(ciRFM[i], i);
         iDSE.fill_spu(ciSPU[i]);
+        ciSPU[i].subVec = i;
+        ciSPU[i].vecMode = vecMode;
       end
     end
           
@@ -659,6 +661,10 @@ class ip4_tlm_ise extends ovm_component;
     foreach(cntSrfWr[i])
       if(cntSrfWr[i] + tInf.cntSrfWr[i] > CYC_VEC)
         return 0;
+    
+    if(!tInf.loopRandMemMode && tInf.pendMemAcc > 0)
+      return 0;
+      
     return tInf.decoded && (tInf.threadState inside {ts_rdy, ts_w_b, ts_b_self} && tInf.wCnt[tInf.wCntSel] == 0);
   endfunction : can_issue
 
@@ -678,7 +684,6 @@ class ip4_tlm_ise extends ovm_component;
       end
       else if(tInf.iSPU.is_br())
         tInf.br_pred();
-///        loopRandMemMode
       
     /// spu or scalar dse issue
       if(tInf.iSPU.is_priv()) begin
@@ -717,6 +722,9 @@ class ip4_tlm_ise extends ovm_component;
         tInf.pendLoad = 1;
       else if(tInf.iDSE.op inside {op_sw, op_sh, op_sb})
         tInf.pendStore = 1;
+      tInf.loopRandMemMode =  (tInf.iDSE.mT == 1 && tInf.enSPU && tInf.iSPU.is_br()
+        && tInf.threadState == ts_b_self && tInf.iSPU.prWrAdr[0] == tInf.iDSE.prRdAdr
+        && tInf.iDSE.prRdAdr != 0 && tInf.brPred);
     end
 
     if(tInf.wCntNext > tInf.wCnt[tInf.wCntSel])
@@ -826,7 +834,15 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 2 dse exp or cache miss
     if(v.fmDSE[STAGE_ISE_DEM] != null) begin
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
-      if(!dse.rdy) begin
+      if(dse.rdy) begin
+        if(thread[dse.tid].pendMemAcc > 0)
+          thread[dse.tid].pendMemAcc--;
+        if(thread[dse.tid].pendMemAcc == 0) begin
+          thread[dse.tid].pendLoad = 0;
+          thread[dse.tid].pendStore = 0;
+        end
+      end
+      else if(dse.cancel) begin
         thread[dse.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
         if(dse.exp)
           enter_exp(dse.tid, exp_dse_err);
@@ -923,7 +939,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     
     ///send dse cancel to spa
-    if(v.fmDSE[STAGE_ISE_VWBP] != null && !v.fmDSE[STAGE_ISE_VWBP].rdy) begin
+    if(v.fmDSE[STAGE_ISE_VWBP] != null && v.fmDSE[STAGE_ISE_VWBP].cancel) begin
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_VWBP];
       if(toSPA == null) toSPA = tr_ise2spa::type_id::create("toSPA", this);
       toSPA.cancel[dse.tid] = 1;

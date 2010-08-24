@@ -783,7 +783,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, updateAdrWr;  ///bp_data
+  rand bit priv, vec, en, updateAdrWr, nb;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   rand uchar pbId;
@@ -797,6 +797,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(updateAdrWrGrp, OVM_ALL_ON)
 	  `ovm_field_int(priv, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
+	  `ovm_field_int(nb, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
@@ -824,15 +825,15 @@ endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
   rand bit noLd, noSt, noSMsg, noRMsg,
-           rdy, exp, msgWait;   /// sync to dem stage
+           cancel, rdy, exp, msgWait;   /// sync to dem stage
   rand uchar tid;
   
   constraint dist_var {
-    rdy dist {0:=1, 1:=19};
+    cancel dist {0:=19, 1:=1};
   }
   
   constraint valid_var {
-    exp -> !rdy;
+    exp -> cancel;
   }
   
 	`ovm_object_utils_begin(tr_dse2ise)
@@ -840,6 +841,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(noSt, OVM_ALL_ON)
 	  `ovm_field_int(noSMsg, OVM_ALL_ON)
 	  `ovm_field_int(noRMsg, OVM_ALL_ON)
+	  `ovm_field_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_int(msgWait, OVM_ALL_ON)
