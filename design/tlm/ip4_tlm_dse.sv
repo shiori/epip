@@ -300,12 +300,12 @@ class ip4_tlm_dse extends ovm_component;
           case(ise.op)
           op_sw   : 
             for(int j = 0; j < WORD_WIDTH / 8; j++)
-              exStoreBuf[bk][ed ? j : (WORD_WIDTH / 8 - j)] = rfm.op1[i] >> j;
+              exStoreBuf[bk][ed ? j : (WORD_WIDTH / 8 - j)] = rfm.st[i] >> j;
           op_sh   :
             for(int j = adr; j < adr + WORD_WIDTH / 16; j++)
-              exStoreBuf[bk][ed ? j : (adr + WORD_WIDTH / 16 - j)] = rfm.op1[i] >> j;
+              exStoreBuf[bk][ed ? j : (adr + WORD_WIDTH / 16 - j)] = rfm.st[i] >> j;
           op_sb   :
-            exStoreBuf[bk][ed ? adr : (WORD_WIDTH / 8 - adr)] = rfm.op1[i][7:0];
+            exStoreBuf[bk][ed ? adr : (WORD_WIDTH / 8 - adr)] = rfm.st[i][7:0];
           endcase
         end
         
@@ -344,7 +344,7 @@ class ip4_tlm_dse extends ovm_component;
       
       foreach(spu.emsk[i])
         if(spu.emsk[i]) begin
-          rfm.base[i] = rfm.base[i] + rfm.op2;
+          rfm.base[i] = rfm.base[i] + rfm.os[i];
           if(rfm.base[i] >= VADR_MAPPED && rfm.base[i] < VADR_NMAPNC) begin
            found = 1;
            vadr = rfm.base[i];

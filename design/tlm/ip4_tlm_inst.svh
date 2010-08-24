@@ -131,6 +131,16 @@ typedef struct packed{
 }i_store;
 
 typedef struct packed{
+  irda_t rd;
+  irsa_t rb;
+  irsa_t rs;
+  bit[8:0] os1;
+  bit[2:0] os0;
+  bit[1:0] ua;
+  bit[1:0] t;
+}i_fetadd;
+
+typedef struct packed{
   bit[4:0] os1;
   isrsa_t rb;
   bit dummy;
@@ -141,11 +151,11 @@ typedef struct packed{
 }i_mctl;
 
 typedef struct packed{
-  bit[4:0] os1;
+  bit[4:0] os2;
   irsa_t rb;
-  irsa_t rs0, rs1;
+  irsa_t rs;
+  bit[8:0] os1;
   bit[2:0] os0;
-  bit[2:0] os2;
   bit[1:0] ua;
   bit[1:0] t;
 }i_cmpxchg;
@@ -225,6 +235,7 @@ typedef union packed{
   i_load ld;
   i_store st;
   i_mctl mctl;
+  i_fetadd fetadd;
   i_cmpxchg cmpxchg;
   i_smsg smsg;
   i_rmsg rmsg;
@@ -432,16 +443,6 @@ class inst_c extends ovm_object;
     else if(adr inside {[12:14]}) begin
       sel = rbk_sel_e'(selfu0 + adr - 12);
     end
-///    else if(adr == 14)
-///      sel = selspu;
-///    else if(adr == 13)
-///      sel = seldse;
-///    else if(adr == 12) begin
-///      if(fuid > 1)
-///        sel = rbk_sel_e'(selfu0 + fuid - 1);
-///      else
-///        sel = selfu0;
-///    end
   endfunction : set_rf_en
   
 	function void decode();
@@ -449,7 +450,6 @@ class inst_c extends ovm_object;
     rdBkSel = '{default : selnull};
     prRdAdr = inst.i.p;
     prRdEn = prRdAdr != 0;
-///    rfbp = '{default : fu_null};
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
@@ -643,6 +643,15 @@ class inst_c extends ovm_object;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = (mT == 1 && prWrAdr[0] != 0);
       if(!prWrEn[0]) prWrAdr[0] = 0;
+      if(mT == 0) begin
+        if(inst.i.op inside {iop_lw, iop_sw, iop_ll, iop_sc})
+          rdBkSel[2] = selb2;
+        else if(inst.i.op inside {iop_lh, iop_lhu, iop_sh})
+          rdBkSel[2] = selb1;
+        else if(inst.i.op inside {iop_lb, iop_lbu, iop_sb})
+          rdBkSel[2] = selb0;
+      end
+      
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
         set_rf_en(inst.i.b.ld.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
@@ -669,14 +678,14 @@ class inst_c extends ovm_object;
       else if(inst.i.op == iop_cmpxchg) begin
         op = op_cmpxchg;
         imm = {inst.i.b.cmpxchg.os2, inst.i.b.cmpxchg.os1, inst.i.b.cmpxchg.os0};
-        set_rf_en(inst.i.b.cmpxchg.rs0, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-        set_rf_en(inst.i.b.cmpxchg.rs1, rdBkSel[2], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+        set_rf_en(inst.i.b.cmpxchg.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+        set_rf_en(inst.i.b.cmpxchg.rs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       end
       else if(inst.i.op == iop_fetadd) begin
         op = op_fetadd;
-        imm = {inst.i.b.st.os1, inst.i.b.st.os0};
-        set_rf_en(inst.i.b.cmpxchg.rs0, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-        rdBkSel[2] = selii;
+        imm = {inst.i.b.fetadd.os1, inst.i.b.fetadd.os0};
+        set_rf_en(inst.i.b.fetadd.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+        set_rf_en(inst.i.b.fetadd.rs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       end
       else if(inst.i.op == iop_mctl) begin
         mFun = inst.i.b.mctl.fun;
@@ -933,9 +942,9 @@ class inst_c extends ovm_object;
     cvt_sel = s;
     if(s inside {[selv0:selv_e], [sels0:sels_e]})
       cvt_sel = selnull;
-    if(s inside {[selv0+i*NUM_VRF_BKS:selv0+(i+1)*NUM_VRF_BKS-1]})
+    if(s inside {[selv0 + i * NUM_VRF_BKS : selv0 + (i + 1) * NUM_VRF_BKS - 1]})
       cvt_sel = rbk_sel_e'(s - i * NUM_VRF_BKS);
-    if(s inside {[sels0+i*NUM_SRF_BKS:sels0+(i+1)*NUM_SRF_BKS-1]})
+    if(s inside {[sels0 + i * NUM_SRF_BKS : sels0 + (i + 1) * NUM_SRF_BKS - 1]})
       cvt_sel = rbk_sel_e'(s - i * NUM_SRF_BKS);
   endfunction
   
@@ -1011,7 +1020,6 @@ class inst_c extends ovm_object;
       dse.updateAdrWrBk = (rdBkSel[0] >= selv0 && rdBkSel[0] <= selv_e) ? rdBkSel[0] - selv0 : 0;
       dse.updateAdrWr = mUpdateAdr != 0 ? 1 : 0;
       dse.op = op;
-///      dse.bp_data = (rdBkSel[1] inside {selspu, [selfu0:selfu0+NUM_FU-1]}) ? 1 : 0;
     end
   endfunction : fill_dse
 

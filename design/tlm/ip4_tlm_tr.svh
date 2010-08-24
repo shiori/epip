@@ -27,7 +27,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	           vrfRdAdr[NUM_VRF_BKS], srfRdAdr[NUM_SRF_BKS];
 	
 	rand ise2rfm_fu fu[NUM_FU];
-	rand rbk_sel_e dseRdBk[3], spuRdBk[2];
+	rand rbk_sel_e dseRdBk[4], spuRdBk[2];
 	rand bit vecEnd, sclEnd, start;
 	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
@@ -44,8 +44,9 @@ class tr_ise2rfm extends ovm_sequence_item;
 			srfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_SRF_BKS-1]};
     }
     dseRdBk[0] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
-    dseRdBk[1] inside {[sels0:sels_e], [selc0:selc_e], selz};
-    dseRdBk[2] inside {[selc0:selc_e], selz};
+    dseRdBk[1] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
+    dseRdBk[2] inside {selii, [selb0:selb2], selz};
+    dseRdBk[3] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
 	  foreach(spuRdBk[i])
 	    spuRdBk[i] inside {[sels0:sels_e], [selc0:selc_e], selz};
 	}
@@ -333,12 +334,12 @@ class tr_dse2rfm extends ovm_sequence_item;
 endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
-	rand word base[NUM_SP], op1[NUM_SP], op2;
+	rand word base[NUM_SP], st[NUM_SP], os[NUM_SP];
 	
 	`ovm_object_utils_begin(tr_rfm2dse)
 		`ovm_field_sarray_int(base, OVM_ALL_ON)
-		`ovm_field_sarray_int(op1, OVM_ALL_ON)
-		`ovm_field_int(op2, OVM_ALL_ON)
+		`ovm_field_sarray_int(st, OVM_ALL_ON)
+		`ovm_field_sarray_int(os, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2dse");
@@ -802,7 +803,6 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(subVec, OVM_ALL_ON)
-///	  `ovm_field_int(bp_data, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pbId, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
@@ -810,11 +810,8 @@ class tr_ise2dse extends ovm_sequence_item;
   
   constraint valid_vars{
     en dist {0:=4, 1:=6};
-///    bp_data dist {0:=4, 1:=6};
     op inside {dse_ops};
-///    bp_data -> vec;
-    vecMode < CYC_VEC; ///inside {[1:CYC_VEC]};
-///    solve vec before bp_data;
+    vecMode < CYC_VEC;
   }
   
 	function new (string name = "tr_ise2dse");
@@ -995,3 +992,26 @@ class tr_eif2dse extends ovm_sequence_item;
 		super.new(name);
 	endfunction : new
 endclass : tr_eif2dse
+
+///---------------------------trsaction ise_eif eif_ise------------------------
+class tr_ise2eif extends ovm_sequence_item;
+
+  `ovm_object_utils_begin(tr_ise2eif)
+  `ovm_object_utils_end
+
+	function new (string name = "tr_ise2eif");
+		super.new(name);
+	endfunction : new
+endclass : tr_ise2eif
+
+class tr_eif2ise extends ovm_sequence_item;
+  rand bit rsp;
+  
+  `ovm_object_utils_begin(tr_eif2ise)
+    `ovm_field_int(rsp, OVM_ALL_ON);
+  `ovm_object_utils_end
+
+	function new (string name = "tr_eif2ise");
+		super.new(name);
+	endfunction : new
+endclass : tr_eif2ise

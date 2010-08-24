@@ -50,7 +50,7 @@ class ip4_tlm_rfm extends ovm_component;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
   local uchar srExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
-  local word dseOp1[2][CYC_VEC][NUM_SP];
+  local word dseSt[2][CYC_VEC][NUM_SP];
   
   `ovm_component_utils_begin(ip4_tlm_rfm)
   `ovm_component_utils_end
@@ -86,9 +86,7 @@ class ip4_tlm_rfm extends ovm_component;
   
     for(int i = STAGE_EEX_VWB0; i > 0; i--) 
       vn.fmISE[i] = v.fmISE[i - 1];
-///    for(int i = CYC_VEC - 1; i > 0; i--) 
-///      dseOp1[i] = dseOp1[i - 1];
-    dseOp1[1] = dseOp1[0];
+    dseSt[1] = dseSt[0];
     
     vn.spu[1] = vn.spu[0];
     vn.spu[0] = null;
@@ -178,9 +176,9 @@ class ip4_tlm_rfm extends ovm_component;
         if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
         foreach(toDSE.base[sp]) begin
           read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
-          read_rf(dseOp1[ise.cyc][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
+          read_rf(dseSt[ise.cyc][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
+          read_rf(toDSE.os[sp], ise.dseRdBk[2], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
         end
-        read_rf(toDSE.op2, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpCo, ise.dseImm);
       end
             
       if(ise.spuEn && subVec == 0) begin
@@ -200,7 +198,7 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmISE[STAGE_RRF_RRC1] != null && v.fmISE[STAGE_RRF_RRC1].dseEn) begin
       if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
-      toDSE.op1 = dseOp1[1][v.fmISE[STAGE_RRF_RRC1].cyc];
+      toDSE.st = dseSt[1][v.fmISE[STAGE_RRF_RRC1].cyc];
     end
     
 ///    if(v.fmISE[STAGE_RRF_RRC0] != null && v.fmISE[STAGE_RRF_RRC0].sclEnd) begin
@@ -316,6 +314,9 @@ endclass : ip4_tlm_rfm
     sels1:    res = csrf[1];
     selz:     res = 0;
     selc0:    res = bpCo[0];
+    selb0:    res = i;
+    selb1:    res = i << 1;
+    selb2:    res = i << 2;
     selii:    res = imm;
     endcase
   endfunction : read_rf
