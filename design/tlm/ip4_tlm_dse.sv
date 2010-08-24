@@ -202,7 +202,7 @@ class ip4_tlm_dse extends ovm_component;
         if(!selEMsk[i]) continue;
         
         ///align exp
-        if((ise.op inside {op_lw, op_sw} && selPAdr[1:0] != 2'b0)
+        if((ise.op inside {op_lw, op_sw} && selPAdr[i][1:0] != 2'b0)
           || (ise.op inside {op_lh, op_sh, op_lhu} && selPAdr[0] != 1'b0))
           selAlignExp = 1;
         

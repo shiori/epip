@@ -578,7 +578,7 @@ class asmig;
               endcase
               {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][2];
               inst[i].i.b.ld.ua = ldua;
-              inst[i].i.b.ld.b = ldbt;
+              inst[i].i.b.ld.t = ldbt;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -597,7 +597,7 @@ class asmig;
               endcase
               {inst[i].i.b.st.os2, inst[i].i.b.st.os1, inst[i].i.b.st.os0} = imm[i][1];
               inst[i].i.b.st.ua = stua;
-              inst[i].i.b.st.b = stbt;
+              inst[i].i.b.st.t = stbt;
             end
           else begin
             `asm_err("op number does not match with the op_code!");
@@ -610,7 +610,7 @@ class asmig;
               inst[i].i.op = iop_cmpxchg;
               {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][1];
               inst[i].i.b.cmpxchg.ua = cmpxua;
-              inst[i].i.b.cmpxchg.b = cmpxbt;
+              inst[i].i.b.cmpxchg.t = cmpxbt;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -732,7 +732,7 @@ class asmig;
     return 1;
   endfunction
   
-  function void wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
+  function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
     if(tagOp && tag2ig.exists(tag)) begin
       foreach(inst[i]) begin
         if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn})
@@ -741,9 +741,10 @@ class asmig;
           inst[i].i.b.b.offSet = pc - tag2ig[tag].pc;
       end
     end
-    else
+    else if(tagOp) begin
       `asm_err("tagOp and tag2ig does not match!");
-    
+      return 0;
+    end
         
     if(en == 'b01) begin
       gs0.t = 0;
@@ -767,6 +768,7 @@ class asmig;
       
     end
     $fwrite(fo, "%s", "//--------------------------------\n");
+    return 1;
   endfunction
 endclass
 
@@ -943,7 +945,8 @@ class ip4_assembler;
     
     ///second pass
     for(int i = 0; i < igs.size(); i++)
-      igs[i].wirte_out(fo, tag2ig, verb);
+      if(!igs[i].wirte_out(fo, tag2ig, verb))
+        return 0;
       
     $fclose(fi);
     $fclose(fo);

@@ -117,9 +117,9 @@ typedef struct packed{
 ///  bit os2;
   irsa_t rb;
   bit[14] os1;
-  bit[4] os0;
+  bit[3] os0;
   bit[2] ua;
-  bit b;
+  bit[2] t;
 }i_load;
 
 typedef struct packed{
@@ -127,9 +127,9 @@ typedef struct packed{
   irsa_t rb;
   irsa_t rs;
   bit[9] os1;
-  bit[4] os0;
+  bit[3] os0;
   bit[2] ua;
-  bit b;
+  bit[2] t;
 }i_store;
 
 typedef struct packed{
@@ -137,9 +137,9 @@ typedef struct packed{
   isrsa_t rb;
   bit dummy;
   bit[13] os0;
-  bit[5] fun;
+  bit[4] fun;
   bit c;
-  bit b;
+  bit[2] t;
 }i_mctl;
 
 typedef struct packed{
@@ -147,9 +147,9 @@ typedef struct packed{
   irsa_t rb;
   irsa_t rs0, rs1;
   bit[3] os0;
-  bit[4] os2;
+  bit[3] os2;
   bit[2] ua;
-  bit b;
+  bit[2] t;
 }i_cmpxchg;
 
 typedef struct packed{
@@ -343,7 +343,7 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mB, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos;
+  uchar mMT, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos;
   bit enSPU, enDSE, enFu[NUM_FU];
   
   `ovm_object_utils_begin(inst_c)
@@ -380,7 +380,7 @@ class inst_c extends ovm_object;
     `ovm_field_enum(msc_opcode_e, mscOp, OVM_ALL_ON)
     `ovm_field_enum(msk_opcode_e, mskOp, OVM_ALL_ON)
     `ovm_field_enum(br_opcode_e, brOp, OVM_ALL_ON)
-///    `ovm_field_int(mB, OVM_ALL_ON)
+///    `ovm_field_int(mMT, OVM_ALL_ON)
 ///    `ovm_field_int(mUpdateAdr, OVM_ALL_ON)
 ///    `ovm_field_int(mFun, OVM_ALL_ON)
 ///    `ovm_field_int(mS, OVM_ALL_ON)
@@ -393,7 +393,7 @@ class inst_c extends ovm_object;
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
 		if(enDSE) begin
-		  `PF(mB, OVM_BIN)
+		  `PF(mMT, OVM_BIN)
 		  `PF(mUpdateAdr, OVM_BIN)
 		  `PF(mFun, OVM_BIN)
 		  `PF(mS, OVM_BIN)
@@ -639,7 +639,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse}) begin
       rdBkSel[2] = selii;
-      mB = inst.i.b.ld.b;
+      mT = inst.i.b.ld.t;
       mUpdateAdr = inst.i.b.ld.ua;
       adrWr[0] = inst.i.b.ld.rd;
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
@@ -695,14 +695,14 @@ class inst_c extends ovm_object;
       set_rf_en(inst.i.b.smsg.rss, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       set_rf_en(inst.i.b.smsg.rvs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       mS = inst.i.b.smsg.s;
-      mT = inst.i.b.smsg.t;
-      mB = inst.i.b.smsg.b;
+      mMT = inst.i.b.smsg.t;
+      mT = inst.i.b.smsg.b;
       mMid = inst.i.b.smsg.mid;
     end
     else if(inst.i.op == iop_rmsg) begin
       op = op_rmsg;
       mMid = inst.i.b.rmsg.mid;
-      mB = inst.i.b.rmsg.b;
+      mT = inst.i.b.rmsg.b;
       mFifos = inst.i.b.rmsg.fifos;
       adrWr[0] = inst.i.b.rmsg.rvd;
       wrEn[0] = 1;
