@@ -514,8 +514,9 @@ class ise_thread_inf extends ovm_component;
         iDSE.fill_dse(ciDSE[i]);
         iDSE.fill_rfm(ciRFM[i], i);
         iDSE.fill_spu(ciSPU[i]);
-        ciSPU[i].subVec = i;
-        ciSPU[i].vecMode = vecMode;
+        ciDSE[i].subVec = i;
+        ciDSE[i].vecMode = vecMode;
+        ciDSE[i].nonBlock = loopRandMemMode;
       end
     end
           
