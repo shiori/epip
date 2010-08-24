@@ -784,7 +784,7 @@ class asmig;
             enOp[i][2] = 0;
             if(immOp[i][2]) begin
               inst[i].i.b.cop.code = imm[i][2];
-              bksel[0] = inst[i].i.b.cop.code[16:20];
+              bksel[0] = inst[i].i.b.cop.code[20:16];
               one = 1;
             end
           end

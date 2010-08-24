@@ -2,11 +2,11 @@
 parameter uchar NUM_MAX_IGRP_BYTES  = 44;
 parameter uchar NUM_IBUF_BYTES      = NUM_MAX_IGRP_BYTES + NUM_IFET_BYTES;
 
-typedef bit[5] irsa_t;
-typedef bit[5] irda_t;
-typedef bit[4] isrsa_t;
-typedef bit[4] isrda_t;
-typedef bit[3] ipra_t; 
+typedef bit[4:0] irsa_t;
+typedef bit[4:0] irda_t;
+typedef bit[3:0] isrsa_t;
+typedef bit[3:0] isrda_t;
+typedef bit[2:0] ipra_t; 
 
 typedef enum bit[5:0] {
   iop_lu  = 'b00000,        iop_li = 'b000001,      iop_addi = 'b011_0_00,    iop_andi = 'b011_0_01,
@@ -24,15 +24,15 @@ typedef enum bit[5:0] {
 
 typedef struct packed{
   irda_t rd;
-  bit[19] imm0;
-  bit[7] imm1;
+  bit[18:0] imm0;
+  bit[6:0] imm1;
 }i_i26;
 
 typedef struct packed{
   irsa_t rd;
   irsa_t rs;
-  bit[14] imm0;
-  bit[7] imm1;
+  bit[13:0] imm0;
+  bit[6:0] imm1;
 }i_r1w1;
 
 typedef enum bit[4:0] {
@@ -43,7 +43,7 @@ typedef enum bit[4:0] {
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1, rs2;
-  bit[4] dummy0;
+  bit[3:0] dummy0;
   iop_r3w1_e fun;
   bit s, d;
 }i_r3w1;
@@ -92,78 +92,76 @@ iop_r2w1_e iop11_ops[] = {
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1;
-  bit[9] imm;
+  bit[8:0] imm;
   iop_r2w1_e fun;
 }i_r2w1;
 
 typedef struct packed{
-  bit[6] os2;
+  bit[5:0] os2;
   isrsa_t ja;
-  bit[14] os1;
-  bit[4] os0;
+  bit[13:0] os1;
+  bit[3:0] os0;
   bit mu, su, l;
 }i_fcr;
 
 typedef struct packed{
-  bit[8] sc;
-  bit[18] offSet;
-  bit[2] sop;
-  bit[3] mop;
-///  bit[2] bt;
+  bit[7:0] sc;
+  bit[17:0] offSet;
+  bit[1:0] sop;
+  bit[2:0] mop;
 }i_b;
 
 typedef struct packed{
   irda_t rd;
-///  bit os2;
   irsa_t rb;
-  bit[14] os1;
-  bit[3] os0;
-  bit[2] ua;
-  bit[2] t;
+  bit[13:0] os1;
+  bit[2:0] os0;
+  bit[1:0] ua;
+  bit[1:0] t;
 }i_load;
 
 typedef struct packed{
-  bit[5] os2;
+  bit[4:0] os2;
   irsa_t rb;
   irsa_t rs;
-  bit[9] os1;
-  bit[3] os0;
-  bit[2] ua;
-  bit[2] t;
+  bit[8:0] os1;
+  bit[2:0] os0;
+  bit[1:0] ua;
+  bit[1:0] t;
 }i_store;
 
 typedef struct packed{
-  bit[5] os1;
+  bit[4:0] os1;
   isrsa_t rb;
   bit dummy;
-  bit[13] os0;
-  bit[4] fun;
+  bit[12:0] os0;
+  bit[3:0] fun;
   bit c;
-  bit[2] t;
+  bit[1:0] t;
 }i_mctl;
 
 typedef struct packed{
-  bit[5] os1;
+  bit[4:0] os1;
   irsa_t rb;
   irsa_t rs0, rs1;
-  bit[3] os0;
-  bit[3] os2;
-  bit[2] ua;
-  bit[2] t;
+  bit[2:0] os0;
+  bit[2:0] os2;
+  bit[1:0] ua;
+  bit[1:0] t;
 }i_cmpxchg;
 
 typedef struct packed{
   irda_t rd;
   bit dummy0;
   isrsa_t rss;
-  bit[2] dummy1;
-  bit[3] rt;
+  bit[1:0] dummy1;
+  bit[2:0] rt;
   irsa_t rvs;
   bit dummy2;
-  bit[5] s;
-  bit[2] t;
+  bit[4:0] s;
+  bit[1:0] t;
   bit b;
-  bit[2] mid;
+  bit[1:0] mid;
 }i_smsg;
 
 typedef struct packed{
@@ -172,28 +170,28 @@ typedef struct packed{
   bit dummy0;
   isrda_t rd;
   bit dummy1;
-  bit[8] fifos;
-  bit[4] dummy2;
+  bit[7:0] fifos;
+  bit[3:0] dummy2;
   bit b;
-  bit[2] mid;
+  bit[1:0] mid;
 }i_rmsg;
 
 typedef struct packed{
-  bit[5] dummy0;
+  bit[4:0] dummy0;
   irsa_t rs0, rs1;
-  bit[3] dummy;
+  bit[2:0] dummy;
   ipra_t pr0, pr1;
-  bit[3] ctyp;
-  bit[4] mtyp;
+  bit[2:0] ctyp;
+  bit[3:0] mtyp;
 }i_cmp;
 
 typedef struct packed{
-  bit[5] imm0;
+  bit[4:0] imm0;
   irsa_t rs;
-  bit[8] imm1;
+  bit[7:0] imm1;
   ipra_t pr0, pr1;
-  bit[3] ctyp;
-  bit[4] mtyp;
+  bit[2:0] ctyp;
+  bit[3:0] mtyp;
 }i_cmpi;
 
 typedef struct packed{
@@ -213,7 +211,7 @@ typedef enum bit[4:0] {
 } iop_cop_e;
 
 typedef struct packed{
-  bit[26] code;
+  bit[25:0] code;
   iop_cop_e fun;
 }i_cop;
 
@@ -248,13 +246,13 @@ typedef union packed{
   bit [4:0][7:0] b;
 } inst_u;
 
-typedef bit[3] iga_t;
+typedef bit[2:0] iga_t;
 
 typedef struct packed{
   bit t, chkGrp;
-  bit[5] unitEn;
-  bit[3] adrPkgB;
-  bit[2] immPkgW;
+  bit[4:0] unitEn;
+  bit[2:0] adrPkgB;
+  bit[1:0] immPkgW;
   bit dv;
   iga_t a;
 }i_gs1_t;
@@ -270,12 +268,12 @@ typedef struct packed{
 }i_gs0_t;
 
 typedef struct packed{
-  iga_t[2] a;
-  bit[2] dummy;
+  iga_t[1:0] a;
+  bit[1:0] dummy;
 }i_ap0_t;
 
 typedef struct packed{
-  iga_t[5] a;
+  iga_t[4:0] a;
   bit dummy;
 }i_ap1_t;
 
@@ -285,7 +283,7 @@ typedef union packed{
 } i_ap1_u;
 
 typedef struct packed{
-  iga_t[8] a;
+  iga_t[7:0] a;
 }i_ap2_t;
 
 typedef union packed{
