@@ -29,7 +29,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	rand ise2rfm_fu fu[NUM_FU];
 	rand rbk_sel_e dseRdBk[3], spuRdBk[2];
 	rand bit vecEnd, sclEnd, start;
-	rand word bpImm[NUM_BP_IMM], dseImm, spuImm;
+	rand word bpImm[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
 	rand uchar cyc;
 	

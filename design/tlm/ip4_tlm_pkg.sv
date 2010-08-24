@@ -40,7 +40,7 @@ parameter uchar NUM_SP            = 8,
                 NUM_PRF_P_GRP     = 8,
                 NUM_VRF_BKS       = 4,
                 NUM_SRF_BKS       = 2,
-                NUM_BP_IMM        = 1,
+                NUM_BP_CO         = 3,
                 NUM_PR            = 7,
                 NUM_IFET_BYTES    = 16,
                 NUM_INST_VRF      = 32,
@@ -199,7 +199,7 @@ typedef enum uchar {
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
                     sels_e = rbk_sel_e'(sels0 + NUM_SRF_BKS - 1),
-                    seli_e = rbk_sel_e'(seli0 + NUM_BP_IMM - 1);
+                    seli_e = rbk_sel_e'(seli0 + NUM_BP_CO - 1);
 
 typedef enum uchar {
   mac, alu, dse, sfu, spu

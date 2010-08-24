@@ -45,7 +45,7 @@ class ip4_tlm_rfm extends ovm_component;
   local word srf[NUM_PHY_SRF_GRP][NUM_PRF_P_GRP/NUM_VRF_BKS][NUM_SRF_BKS];
     
   local ip4_tlm_rfm_vars v, vn;
-  local word bpImmLast[NUM_BP_IMM];
+  local word bpImmLast[NUM_BP_CO];
   local tr_rfm2spa toSPA;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
@@ -65,7 +65,7 @@ class ip4_tlm_rfm extends ovm_component;
   ovm_nonblocking_transport_port #(tr_rfm2spu, tr_rfm2spu) spu_tr_port;
   
   extern function void read_rf(inout word, input rbk_sel_e, uchar, const ref word cvrf[NUM_VRF_BKS][NUM_SP],
-                                csrf[NUM_SRF_BKS], bpImm[NUM_BP_IMM], input word imm);
+                                csrf[NUM_SRF_BKS], bpImm[NUM_BP_CO], input word imm);
   //endfunction
   
   function void comb_proc();
@@ -306,7 +306,7 @@ endclass : ip4_tlm_rfm
 ///-------------------------------------other functions-----------------------------------------
   
   function void ip4_tlm_rfm::read_rf(inout word res, input rbk_sel_e s, uchar i, const ref word cvrf[NUM_VRF_BKS][NUM_SP], csrf[NUM_SRF_BKS], 
-                                      bpImm[NUM_BP_IMM], input word imm);
+                                      bpImm[NUM_BP_CO], input word imm);
     case(s)
     selv0:    res = cvrf[0][i];
     selv1:    res = cvrf[1][i];
