@@ -61,7 +61,6 @@ class ip4_tlm_tlb_vars extends ovm_component;
   word srEntryLo0;
   word srEntryLo1;
   word srEntryHi;
-  word srPageType;
   word srContent[NUM_SP];
   uchar srASID[NUM_SP];
 
@@ -87,7 +86,6 @@ class ip4_tlm_tlb_vars extends ovm_component;
     `ovm_field_int(srEntryLo0, OVM_ALL_ON)
     `ovm_field_int(srEntryLo1, OVM_ALL_ON)
     `ovm_field_int(srEntryHi, OVM_ALL_ON)
-    `ovm_field_int(srPageType, OVM_ALL_ON)
     `ovm_field_sarray_int(srContent, OVM_ALL_ON)
     `ovm_field_sarray_int(srASID, OVM_ALL_ON)
     `ovm_field_int(ifeBufPtr, OVM_ALL_ON)
@@ -110,7 +108,6 @@ class ip4_tlm_tlb_vars extends ovm_component;
     srEntryLo0 = 0;
     srEntryLo1 = 0;
     srEntryHi = 0;
-    srPageType = 0;
     srContent = '{default : 0};
     ifeBufPtr = 0;
   endfunction : new
@@ -272,15 +269,28 @@ class ip4_tlm_tlb extends ovm_component;
       begin
         int i = v.srIndex;
         if(i < NUM_TLB_E) begin
-          vn.srPageType[TYPE_WIDTH - 1:0] = v.pageTyp[i];
           varMask = page_mask_table[v.pageTyp[i]];
-          vn.srEntryHi = {(v.vpn2[i] & ~varMask), 6'b0, v.asid[i][v.fmDSE.tid]};
-          vn.srEntryLo1 = {(v.pfn2o[i] & ~varMask), v.ex[1][i], 
-                           v.c[1][i], v.k[1][i], v.e[1][i], v.d[1][i],
-                           v.v[1][i], v.g[1][i]};
-          vn.srEntryLo0 = {(v.pfn2e[i] & ~varMask), v.ex[0][i], 
-                           v.c[0][i], v.k[0][i], v.e[0][i], v.d[0][i],
-                           v.v[0][i], v.g[0][i]}; 
+          vn.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH] = v.pageTyp[i];
+          vn.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
+          vn.srEntryHi[ASID_WIDTH-1:0] = v.asid[i];
+          
+          vn.srEntryLo1[0] = v.g[i];
+          vn.srEntryLo1[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] = v.pfn2o[i];
+          vn.srEntryLo1[8] = v.ex[1][i];
+          vn.srEntryLo1[7:5] = v.c[1][i];
+          vn.srEntryLo1[4] = v.k[1][i];
+          vn.srEntryLo1[3] = v.e[1][i];
+          vn.srEntryLo1[2] = v.d[1][i];
+          vn.srEntryLo1[1] = v.v[1][i];
+          
+          vn.srEntryLo0[0] = v.g[i];
+          vn.srEntryLo0[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] = v.pfn2e[i];
+          vn.srEntryLo0[8] = v.ex[0][i];
+          vn.srEntryLo0[7:5] = v.c[0][i];
+          vn.srEntryLo0[4] = v.k[0][i];
+          vn.srEntryLo0[3] = v.e[0][i];
+          vn.srEntryLo0[2] = v.d[0][i];
+          vn.srEntryLo0[1] = v.v[0][i];
         end
      end   
      /// TLBWI
@@ -288,25 +298,33 @@ class ip4_tlm_tlb extends ovm_component;
       begin
         int i = v.srIndex;
         varMask = page_mask_table[v.pageTyp[i]];
-        vn.pageTyp[i] = v.srPageType[TYPE_WIDTH - 1 : 0];
+        vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
         vn.vpn2[i] = v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH-1:0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
-        vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : 9] & ~varMask;
-        vn.ex[1][i] = v.srEntryLo1[8]; vn.c[1][i] = v.srEntryLo1[7:5]; vn.k[1][i] = v.srEntryLo1[4];
-        vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2]; vn.v[1][i] = v.srEntryLo1[1];
-        vn.pfn2e[i] = v.srEntryLo0[WORD_WIDTH-1:9] & ~varMask;
-        vn.ex[0][i] = v.srEntryLo0[8]; vn.c[0][i] = v.srEntryLo0[7:5]; vn.k[0][i] = v.srEntryLo0[4];
-        vn.e[0][i] = v.srEntryLo0[3]; vn.d[0][i] = v.srEntryLo0[2]; vn.v[0][i] = v.srEntryLo0[1];
+        
+        vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] & ~varMask;
+        vn.ex[1][i] = v.srEntryLo1[8];
+        vn.c[1][i] = v.srEntryLo1[7:5];
+        vn.k[1][i] = v.srEntryLo1[4];
+        vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2];
+        vn.v[1][i] = v.srEntryLo1[1];
+        
+        vn.pfn2e[i] = v.srEntryLo0[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] & ~varMask;
+        vn.ex[0][i] = v.srEntryLo0[8];
+        vn.c[0][i] = v.srEntryLo0[7:5];
+        vn.k[0][i] = v.srEntryLo0[4];
+        vn.e[0][i] = v.srEntryLo0[3]; vn.d[0][i] = v.srEntryLo0[2];
+        vn.v[0][i] = v.srEntryLo0[1];
       end
       /// TLBWR
       op_tlbwr:
       begin
         int i = v.srIndex;
         varMask = page_mask_table[v.pageTyp[i]];
-        vn.pageTyp[i] = v.srPageType[TYPE_WIDTH - 1:0];
+        vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
         vn.vpn2[i] = v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask;
-        vn.asid[i][v.fmDSE.tid] = v.srEntryHi[ASID_WIDTH - 1 : 0];
+        vn.asid[i] = v.srEntryHi[ASID_WIDTH - 1 : 0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
         vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : 9] & ~varMask;
         vn.ex[1][i] = v.srEntryLo1[8]; vn.c[1][i] = v.srEntryLo1[7:5]; vn.k[1][i] = v.srEntryLo1[4];
@@ -324,8 +342,7 @@ class ip4_tlm_tlb extends ovm_component;
         SR_ENTRY_L0:  vn.srEntryLo0 = v.fmSPU.op0;
         SR_ENTRY_L1:  vn.srEntryLo1 = v.fmSPU.op0;
         SR_ENTRY_HI:  vn.srEntryHi  = v.fmSPU.op0;
-        SR_PAGE_TYP:  vn.srPageType = v.fmSPU.op0;
-        SR_ASID:      vn.srASID[v.fmSPU.tid] = v.fmSPU.op0;
+        SR_THD_CTL:   vn.srASID[v.fmSPU.tid] = v.fmSPU.op0 & `GM(ASID_WIDTH);
         default: ovm_report_warning("SPU_SRAD", "spu WRITE SR_ADDR IS ERROR!!!");
         endcase 
         
@@ -341,8 +358,7 @@ class ip4_tlm_tlb extends ovm_component;
         SR_ENTRY_L0:  vn.spu[1].res = v.srEntryLo0;
         SR_ENTRY_L1:  vn.spu[1].res = v.srEntryLo1;
         SR_ENTRY_HI:  vn.spu[1].res = v.srEntryHi;
-        SR_PAGE_TYP:  vn.spu[1].res = v.srPageType;
-        SR_ASID:      vn.spu[1].res = vn.srASID[v.fmSPU.tid];
+        SR_THD_CTL:   vn.spu[1].res = v.srASID[v.fmSPU.tid];
         default: ovm_report_warning("SPU_SRAD", "spu READ SR_ADDR IS ERROR!!!");
         endcase 
       end

@@ -10,24 +10,6 @@
 ///Log:
 ///Created by yajing yuan on July 19 2010
 
-parameter ulong IP4_BASE    = 'h00_0000_0000;
-
-parameter uint VADR_MAPPED = 'h0000_0000,
-               VADR_NMAPNC = 'hF000_0000,
-               VADR_EJTAGS = 'hF7F0_0000,
-               VADR_NMAPCH = 'hF800_0000,
-               SMEM_OFFSET = 'h00_0000,
-               TFIF_OFFSET = 'h20_0000,
-               CTLR_OFFSET = 'h24_0000,
-               EJTG_OFFSET = 'h24_1000,
-               EBUS_OFFSET = 'h24_2000;
-               
-parameter uint SGRP_SIZE = NUM_SMEM_BK * NUM_SMEM_GRP_W * 4,
-               SMEM_SIZE = SGRP_SIZE * NUM_SMEM_GRP,
-               MSGE_SIZE = 256, /// 256BYTE
-               CTLR_SIZE = 128, /// each control register of pb 128byte
-               EJTG_SIZE = 128; /// each ejtag of pb 128byte
-
 class ip4_tlm_dse_vars extends ovm_component;
   tr_ise2dse fmISE[STAGE_RRF_VWB0 : STAGE_RRF_RRC0];
   tr_spu2dse fmSPU[STAGE_RRF_SEL : STAGE_RRF_AG];

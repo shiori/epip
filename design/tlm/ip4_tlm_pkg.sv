@@ -205,7 +205,7 @@ endclass : tlm_vif_object
   
 typedef enum uchar {
   selv[0:127], sels[0:31], selc[0:7], selz, selii, selspu,
-  seldse, selfu[0:15], selb[0:7], selnull
+  seldse, selfu[0:15], selb[0:7], selsr[0:31], selnull
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
@@ -372,30 +372,55 @@ parameter opcode_e spu_com_ops[] = '{
 parameter opcode_e ise_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
-  op_pint
+  op_gp2s,    op_s2gp
 };
-
+parameter uchar SR_PROC_CTL   = 0,
+                SR_SUPMSG     = 1,
+                SR_EBASE      = 2,
+                SR_INDEX      = 3,
+                SR_RANDOM     = 4,
+                SR_ENTRY_L0   = 5,
+                SR_ENTRY_L1   = 6,
+                SR_ENTRY_HI   = 7,
+                SR_CONTENT    = 10,
+                SR_THD_CTL    = 11;
+                
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128
                 VPN2_WIDTH   = 18,
                 TYPE_WIDTH   = 3,  /// Page Size Type bit width
                 ASID_WIDTH   = 8,
                 IFE_REQ_BUF  = 2,
-                SR_CONTENT   = 6,
-                SR_INDEX     = 7,
-                SR_RANDOM    = 8,
-                SR_ENTRY_L0  = 9,
-                SR_ENTRY_L1  = 10,
-                SR_ENTRY_HI  = 11,
-                SR_PAGE_TYP  = 12,
-                SR_ASID      = 13,
                 STAG_TLB_SPU = STAGE_RRF_SWBP - STAGE_RRF_EXS1 - 1 -1,
                 VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
                 PFN_WIDTH    = 23,
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///37
 
+parameter uchar tlbsr[] = '{
+  SR_INDEX,     SR_RANDOM,    SR_ENTRY_L0,    SR_ENTRY_L1,
+  SR_ENTRY_HI,  SR_THD_CTL
+};
+
 typedef bit[PADR_WIDTH-1:0]     padr_t;
-                
+
+parameter ulong IP4_BASE    = 'h00_0000_0000;
+
+parameter uint VADR_MAPPED = 'h0000_0000,
+               VADR_NMAPNC = 'hF000_0000,
+               VADR_EJTAGS = 'hF7F0_0000,
+               VADR_NMAPCH = 'hF800_0000,
+               SMEM_OFFSET = 'h00_0000,
+               TFIF_OFFSET = 'h20_0000,
+               CTLR_OFFSET = 'h24_0000,
+               EJTG_OFFSET = 'h24_1000,
+               EBUS_OFFSET = 'h24_2000;
+               
+parameter uint SGRP_SIZE = NUM_SMEM_BK * NUM_SMEM_GRP_W * 4,
+               SMEM_SIZE = SGRP_SIZE * NUM_SMEM_GRP,
+               MSGE_SIZE = 256, /// 256BYTE
+               CTLR_SIZE = 128, /// each control register of pb 128byte
+               EJTG_SIZE = 128; /// each ejtag of pb 128byte
+                               
 class ip4_printer extends ovm_table_printer;
   virtual function void print_object (string name, ovm_object value, byte scope_separator=".");
     ovm_component comp; //only print components

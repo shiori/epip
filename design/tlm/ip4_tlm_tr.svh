@@ -31,7 +31,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	rand bit vecEnd, sclEnd, start;
 	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
-	rand uchar cyc;
+	rand uchar cyc, tid;
 	
 	constraint valid_var {
 	  cyc < CYC_VEC;
@@ -63,6 +63,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 	
 	`ovm_object_utils_begin(tr_ise2rfm)
 		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
+		`ovm_field_int(tid, OVM_ALL_ON)
 		`ovm_field_int(spuEn, OVM_ALL_ON)
 		`ovm_field_int(dseEn, OVM_ALL_ON)
 	  `ovm_field_int(vecEnd, OVM_ALL_ON)
@@ -366,12 +367,12 @@ class ise2spa_fu extends ovm_object;
   rand cmp_opcode_e cop;
   rand uchar vrfWrBk, vrfWrAdr, vrfWrGrp;
   rand rbk_sel_e bpSel[NUM_FU_RP];
-  uchar fu_id;
+  uchar fuId;
   
   constraint valid_opcodes{
-    fu_cfg[fu_id] ==  mac -> op inside {mac_ops};
-    fu_cfg[fu_id] ==  alu -> op inside {alu_ops};
-    fu_cfg[fu_id] ==  sfu -> op inside {sfu_ops};
+    fu_cfg[fuId] ==  mac -> op inside {mac_ops};
+    fu_cfg[fuId] ==  alu -> op inside {alu_ops};
+    fu_cfg[fuId] ==  sfu -> op inside {sfu_ops};
   }
 
   constraint valid_vars{
@@ -450,7 +451,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  
 	  foreach(fu[i]) begin
 	    unit_typ_e t = fu_cfg[i];
-	    fu[i].fu_id = i;
+	    fu[i].fuId = i;
 	    assert(fu[i].randomize());
 	  end
 	endfunction : post_randomize

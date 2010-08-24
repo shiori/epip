@@ -214,7 +214,7 @@ class ip4_tlm_spu extends ovm_component;
         toTLB = tr_spu2tlb::type_id::create("toTLB", this);
       
       if(prSPU && rfm != null && ise.op inside {op_gp2s, op_s2gp}
-           && rfm.op1 inside {[SR_CONTENT:SR_ASID]}) begin
+           && rfm.op1 inside {tlbsr}) begin
         toTLB = tr_spu2tlb::type_id::create("toTLB", this);
         toTLB.op0 = rfm.op0;
         toTLB.srAdr = rfm.op1;

@@ -724,6 +724,7 @@ class inst_c extends ovm_object;
       prWrEn[0] = prWrAdr[0] == 0;
     end    
     else if(inst.i.op == iop_cop) begin
+      imm = inst.i.b.cop.code;
       case(inst.i.b.cop.fun)
       icop_sysc  : op = op_sys;
       icop_wait  : op = op_wait;
@@ -732,7 +733,13 @@ class inst_c extends ovm_object;
       icop_tsync : op = op_tsync;
       icop_msync : op = op_msync;
       icop_alloc : op = op_alloc;
-      icop_pint  : op = op_pint;
+      icop_pint  :
+      begin
+        op = op_pint;
+        prWrAdr[0] = imm[4:2];
+        prWrEn[0] = prWrAdr[0] != 0;
+        imm = imm[5];
+      end
       icop_tlbp  :
       begin
         op = op_tlbp;
@@ -761,7 +768,7 @@ class inst_c extends ovm_object;
         if(!wrEn[0])
           set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
         rdBkSel[1] = selii;
-        imm = wrEn[0]? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;///(inst.i.b.cop.code >> 2) & 9'b111111111;
+        imm = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;///(inst.i.b.cop.code >> 2) & 9'b111111111;
       end
       icop_eret :
       begin
@@ -876,6 +883,8 @@ class inst_c extends ovm_object;
     
     if(CntSrfRd > srf)
       srf = CntSrfRd;
+    if(op == op_pint)
+      srf = CntVrfRd;
     if(CntVrfRd > vrf)
       vrf = CntVrfRd;
     if(vmode > vrf)

@@ -1,6 +1,8 @@
 
 `ifdef IP4_TLM_PKG
 
+`define GM(i) ~(-1 << i)
+
 `define PF(NM, F)  printer.print_field(`"NM`", NM, $bits(NM), F);
 `define PAF1(NM, F) foreach(NM[i])      printer.print_field($psprintf(`"  NM[%0d]`",i), NM[i], $bits(NM[i]), F);
 `define PAF2(NM, F) foreach(NM[i,j])    printer.print_field($psprintf(`"  NM[%0d][%0d]`",i,j), NM[i][j], $bits(NM[i][j]), F);
