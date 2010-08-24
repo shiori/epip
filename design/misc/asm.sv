@@ -54,11 +54,16 @@ function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
 endfunction
 
 class asmig;
-  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp;
-  uchar adr[5][4], padr[5];
-  int imm[5][4];
+  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp;  /// operation
+  bit tagOp;  /// operation
+  uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
+  int imm[5][4];  /// imm[i][0] = rd;
+  string tag;
   string op[5];
-  bit[4:0] en, s, si;
+  bit[4:0] en, s, si;  /// option
+  bit mu, su, fcrl, ldua, ldbt, stua, stbt, cmpxua, cmpxbt;  /// option
+  bit[2:0] mop;  /// option
+  bit[1:0] sop;  /// option
   uchar chkGrp;
   uchar grpsize;
   uint pc;
@@ -72,12 +77,14 @@ class asmig;
       srfEn[CYC_VEC][NUM_SRF_BKS];
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS],
         srfAdr[CYC_VEC][NUM_VRF_BKS];
+  uint co[NUM_BP_CO];
           
   function new();
     vecOp = 0;
     immOp = 0;
     zeroOp = 0;
     enOp = 0;
+    tagOp = 0;
     en = 0;
     s = 0;
     si = 0;
@@ -98,6 +105,557 @@ class asmig;
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
       inst[i].i.b.ir3w1.rd = adr[i][0];
+      
+      case(op[i])
+        "li"    :
+          begin
+            inst[i].i.op = iop_li;
+            {inst[i].i.b.i26.imm1, inst[i].i.b.i26.imm0} = imm[i][1]; 
+          end
+        "lu"    :
+          begin
+            inst[i].i.op = iop_lu;
+            {inst[i].i.b.i26.imm1, inst[i].i.b.i26.imm0} = imm[i][1]; 
+          end
+        "add"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = si[i] ? iop_addsi : iop_addi;
+              {inst[i].i.b.ir1w1.imm1, inst[i].i.b.ir1w1.imm0} = imm[i][2];
+            end
+            else if(enOp[i][3]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop31_add3;
+              inst[i].i.b.ir3w1.s = s[i];
+              three = 1;
+            end
+            else begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = s[i] ? iop21_add : iop21_uadd;
+            end
+          end
+        "and"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = si[i] ? iop_andsi : iop_andi;
+              {inst[i].i.b.ir1w1.imm1, inst[i].i.b.ir1w1.imm0} = imm[i][2];
+            end
+            else begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_and;
+            end
+          end
+        "or "   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = si[i] ? iop_orsi : iop_ori;
+              {inst[i].i.b.ir1w1.imm1, inst[i].i.b.ir1w1.imm0} = imm[i][2];
+            end
+            else begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_or;
+            end
+          end
+        "xor"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = si[i] ? iop_xorsi : iop_xori;
+              {inst[i].i.b.ir1w1.imm1, inst[i].i.b.ir1w1.imm0} = imm[i][2];
+            end
+            else begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_xor;
+            end
+          end
+        "mul"   :
+          begin
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop31_mul;
+              inst[i].i.b.ir3w1.s = s[i];
+              three = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "mad"   :
+          begin
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop31_mad;
+              inst[i].i.b.ir3w1.s = s[i];
+              three = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "msu"   :
+          begin
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop31_msu;
+              inst[i].i.b.ir3w1.s = s[i];
+              three = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "sub"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_sub;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "usub"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_usub;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end 
+          end
+        "srl"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_srl;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "srlv"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_srlv;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "sra"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_sra;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "srav"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_srav;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "nor"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_nor;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "div"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_div;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "udiv"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_udiv;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end   
+        "quo"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_quo;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "uquo"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_uquo;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "res"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_res;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "ures"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_ures;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "clo"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_clo;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end  
+        "clz"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_clz;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "ext"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_ext;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "ins"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_ins;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "sll"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_sll;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "sllv"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_sllv;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "rot"   :
+          begin
+            if(immOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_rot;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "rotv"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_rotv;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "seb"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_seb;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "she"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_she;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "wsbh"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_wsbh;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "mv2s"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_mv2s;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "max"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_max;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "umax"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_umax;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "min"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_min;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "umin"  :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_umin;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "fcr"   :
+          begin
+            case(inst[i].i.op[1:0])
+                2'b00 : inst[i].i.op = iop_fcr;
+                2'b01 : inst[i].i.op = iop_fcrn;
+                2'b10 : inst[i].i.op = iop_fcrp;
+                2'b11 : inst[i].i.op = iop_fcrpn;
+              endcase
+            inst[i].i.b.fcr.mu = mu;
+            inst[i].i.b.fcr.su = su;
+            inst[i].i.b.fcr.l  = fcrl; 
+            if(immOp[i][1] && !tagOp) 
+              {inst[i].i.b.fcr.os2, inst[i].i.b.fcr.os1, inst[i].i.b.fcr.os0} = imm[i][1];
+            else if(immOp[i][1] && tagOp) begin
+              `asm_err("fcr instruction format is illegal!");
+              return 0;
+            end
+          end
+        "b"     :
+          begin
+            if(tagOp) begin
+              case(inst[i].i.op[1:0])
+                2'b00 : inst[i].i.op = iop_b;
+                2'b01 : inst[i].i.op = iop_bn;
+                2'b10 : inst[i].i.op = iop_bp;
+                2'b11 : inst[i].i.op = iop_bpn;
+              endcase
+              inst[i].i.b.b.mop = mop;
+              inst[i].i.b.b.sop = sop;
+              if(immOp[i][1])
+                inst[i].i.b.b.sc  = imm[i][1];
+              else
+                inst[i].i.b.b.sc  = 0;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "ld"    :
+          begin
+            if(immOp[i][2]) begin
+              case(inst[i].i.op[3:0])
+                4'b0000 : inst[i].i.op = iop_lw;
+                4'b0010 : inst[i].i.op = iop_lh;
+                4'b0100 : inst[i].i.op = iop_lb;
+                4'b0110 : inst[i].i.op = iop_ll;
+                4'b1010 : inst[i].i.op = iop_lhu;
+                4'b1011 : inst[i].i.op = iop_lbu;
+                default: begin `asm_err("load op_code not understood!"); return 0; end
+              endcase
+              {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][2];
+              inst[i].i.b.ld.ua = ldua;
+              inst[i].i.b.ld.b = ldbt;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end 
+          end
+        "st"    :
+          begin
+            if(immOp[i][2]) begin
+              case(inst[i].i.op[2:0])
+                3'b001 : inst[i].i.op = iop_sw;
+                3'b011 : inst[i].i.op = iop_sh;
+                3'b101 : inst[i].i.op = iop_sb;
+                3'b111 : inst[i].i.op = iop_sc;
+                default: begin `asm_err("store op_code not understood!"); return 0; end
+              endcase
+              {inst[i].i.b.st.os2, inst[i].i.b.st.os1, inst[i].i.b.st.os0} = imm[i][1];
+              inst[i].i.b.st.ua = stua;
+              inst[i].i.b.st.b = stbt;
+            end
+          else begin
+            `asm_err("op number does not match with the op_code!");
+            return 0;
+          end
+         end
+        "cmpxchg":
+          begin
+            if(immOp[i][3]) begin
+              inst[i].i.op = iop_cmpxchg;
+              {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][1];
+              inst[i].i.b.cmpxchg.ua = cmpxua;
+              inst[i].i.b.cmpxchg.b = cmpxbt;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+      default: begin `asm_err("op not understood!"); return 0; end
+      endcase
+      
+      ///alloc 3rd rs, should be vec
+      if(three && dual) begin
+        bit failed = 1;
+        bk[3] = bk[3] & ('1 << 1);
+        for(int k = 0; k < CYC_VEC; k ++)
+          if(!vrfEn[k][bk[3]] && !vrfEn[k][bk[3] + 1]) begin
+            vrfEn[k][bk[3]] = 1;
+            vrfEn[k][bk[3] + 1] = 1;
+            vrfAdr[k][bk[3]] = adru[3];
+            vrfAdr[k][bk[3] + 1] = 255;
+            failed = 0;
+            bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
+            break;
+          end
+        if(failed) begin
+          `asm_err("vec reg alloc failed!");
+          return 0;
+        end
+        inst[i].i.b.ir3w1.rs2 = bksel[3];
+      end
+      else if(three) begin
+        bit failed = 1;
+        for(int k = 0; k < CYC_VEC; k++)
+          if(!vrfEn[k][bk[3]]) begin
+            vrfEn[k][bk[3]] = 1;
+            vrfAdr[k][bk[3]] = adru[3];
+            failed = 0;
+            bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
+            break;
+          end
+        if(failed) begin
+          `asm_err("Err: vec reg alloc failed!");
+          return 0;
+        end
+        inst[i].i.b.ir3w1.rs2 = bksel[3];
+      end
       
       ///set rs0 rs1
       foreach(bk[j]) begin
@@ -152,69 +710,7 @@ class asmig;
 
       inst[i].i.b.ir3w1.rs0 = bksel[0];
       inst[i].i.b.ir3w1.rs1 = bksel[1];
-      
-      case(op[i])
-      "li"      :
-        begin
-          inst[i].i.op = iop_li;
-          {inst[i].i.b.i26.imm1, inst[i].i.b.i26.imm0} = imm[i][1];
-        end
-        "add"   :
-          begin
-            if(immOp[i][2]) begin
-              inst[i].i.op = si[i] ? iop_addsi : iop_addi;
-              {inst[i].i.b.ir1w1.imm1, inst[i].i.b.ir1w1.imm0} = imm[i][2];
-            end
-            else if(enOp[i][3]) begin
-              inst[i].i.op = iop_r3w1;
-              inst[i].i.b.ir3w1.fun = iop31_add3;
-              inst[i].i.b.ir3w1.s = s[i];
-              three = 1;
-            end
-            else begin
-              inst[i].i.op = iop_r2w1;
-              inst[i].i.b.ir2w1.fun = s[i] ? iop21_add : iop21_uadd;
-            end
-          end
-      default: begin `asm_err("op not understood!"); return 0; end
-      endcase
-      
-      ///alloc 3rd rs, should be vec
-      if(three && dual) begin
-        bit failed = 1;
-        bk[3] = bk[3] & ('1 << 1);
-        for(int k = 0; k < CYC_VEC; k ++)
-          if(!vrfEn[k][bk[3]] && !vrfEn[k][bk[3] + 1]) begin
-            vrfEn[k][bk[3]] = 1;
-            vrfEn[k][bk[3] + 1] = 1;
-            vrfAdr[k][bk[3]] = adru[3];
-            vrfAdr[k][bk[3] + 1] = 255;
-            failed = 0;
-            bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
-            break;
-          end
-        if(failed) begin
-          `asm_err("vec reg alloc failed!");
-          return 0;
-        end
-        inst[i].i.b.ir3w1.rs2 = bksel[3];
-      end
-      else if(three) begin
-        bit failed = 1;
-        for(int k = 0; k < CYC_VEC; k++)
-          if(!vrfEn[k][bk[3]]) begin
-            vrfEn[k][bk[3]] = 1;
-            vrfAdr[k][bk[3]] = adru[3];
-            failed = 0;
-            bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
-            break;
-          end
-        if(failed) begin
-          `asm_err("Err: vec reg alloc failed!");
-          return 0;
-        end
-        inst[i].i.b.ir3w1.rs2 = bksel[3];
-      end
+    
     end
     
     ///collect all address
@@ -236,7 +732,19 @@ class asmig;
     return 1;
   endfunction
   
-  function void wirte_out(int fo, ovm_verbosity verb);
+  function void wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
+    if(tagOp && tag2ig.exists(tag)) begin
+      foreach(inst[i]) begin
+        if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn})
+          {inst[i].i.b.fcr.os2, inst[i].i.b.fcr.os1, inst[i].i.b.fcr.os0} = pc - tag2ig[tag].pc;
+        else if(inst[i].i.op inside {iop_b, iop_bn, iop_bp, iop_bpn})
+          inst[i].i.b.b.offSet = pc - tag2ig[tag].pc;
+      end
+    end
+    else
+      `asm_err("tagOp and tag2ig does not match!");
+    
+        
     if(en == 'b01) begin
       gs0.t = 0;
       gs0.chkGrp = chkGrp;
@@ -251,11 +759,12 @@ class asmig;
           AdrPkg.a[i] = allAdr[1 + i];
         $fwrite(fo, "%8b\n", AdrPkg);
       end
-      
+            
       for(int i = 0; i < 5; i++)
         $fwrite(fo, "%8b\n", inst[0].b[i]);
     end
     else begin
+      
     end
     $fwrite(fo, "%s", "//--------------------------------\n");
   endfunction
@@ -359,8 +868,7 @@ class ip4_assembler;
             `asm_msg($psprintf("trying to get a op for inst%0d", icnt), OVM_HIGH);
             brk_token(tk, {" ", ".", "\t", "\n"}, opts);
             cur.op[icnt] = opts.pop_front();
-            cur.op[icnt] = cur.op[icnt].tolower();
-            if(cur.op[icnt] != "options") begin
+            if(cur.op[icnt].tolower() != "options") begin
               cur.en[icnt] = 1;
               state ++;
               isInst = 1;
@@ -377,6 +885,33 @@ class ip4_assembler;
               "i"   : cur.si[icnt] = 0;
               "g0"  : cur.chkGrp = 0;
               "g1"  : cur.chkGrp = 1;
+              "mu0" : cur.mu = 0;
+              "mu1" : cur.mu = 1;
+              "su0" : cur.su = 0;
+              "su1" : cur.su = 1;
+              "fcrl1": cur.fcrl = 1;
+              "fcrl0": cur.fcrl = 0;
+              "mnop" : cur.mop= 0;
+              "bc"  : cur.mop = 1;
+              "rest": cur.mop = 2;
+              "lpgen": cur.mop = 3;
+              "elgen": cur.mop = 4;
+              "ctgen": cur.mop = 5;
+              "ifgen": cur.mop = 6;
+              "snop" : cur.sop = 0;
+              "pop2n": cur.sop = 1;
+              "store": cur.sop = 2;
+              "const0": cur.co[0] = get_imm(opts.pop_front());
+              "const1": cur.co[1] = get_imm(opts.pop_front());
+              "const2": cur.co[2] = get_imm(opts.pop_front());
+              "ldua1" : cur.ldua = 1;
+              "ldua0" : cur.ldua = 0;
+              "ldbt1" : cur.ldbt = 1;
+              "ldbt0" : cur.ldbt = 0;
+              "stua1" : cur.stua = 1;
+              "stua0" : cur.stua = 0;
+              "stbt1" : cur.stbt = 1;
+              "stbt0" : cur.stbt = 0;
               default : begin `asm_err("unkonwn options."); return 0; end
               endcase
             end
@@ -386,10 +921,13 @@ class ip4_assembler;
               continue;
             `asm_msg($psprintf("trying to get a reg adr or imm for op%0d", opcnt), OVM_HIGH);
             cur.enOp[icnt][opcnt] = 1;
+            cur.tagOp = tk0.tolower() == "$";
             cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
             cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
-            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt];
-            if(cur.immOp[icnt][opcnt])
+            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp;
+            if(cur.tagOp)
+              cur.tag = tk1n;
+            else if(cur.immOp[icnt][opcnt])
               cur.imm[icnt][opcnt] = get_imm(tk);
             else if(!cur.zeroOp[icnt][opcnt])
               cur.adr[icnt][opcnt] = tk1n.atoi();
@@ -405,7 +943,7 @@ class ip4_assembler;
     
     ///second pass
     for(int i = 0; i < igs.size(); i++)
-      igs[i].wirte_out(fo, verb);
+      igs[i].wirte_out(fo, tag2ig, verb);
       
     $fclose(fi);
     $fclose(fo);
