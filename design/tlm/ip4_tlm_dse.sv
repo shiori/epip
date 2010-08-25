@@ -104,7 +104,11 @@ class ip4_tlm_dse extends ovm_component;
     vn.fmTLB = null;
     vn.fmEIF = null;
     vn.fmEIF = null;
-    
+
+    for (int i = STAGE_RRF_SR0; i > STAGE_RRF_EXS2; i--)
+      vn.spu[i] = v.spu[i-1];
+    vn.spu[STAGE_RRF_EXS2] = null;
+        
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_TAG; i--) 
       tlbReqVAdr[i] = tlbReqVAdr[i - 1];
       
@@ -305,6 +309,20 @@ class ip4_tlm_dse extends ovm_component;
       end
     end
     
+    if(v.fmSPU[STAGE_RRF_AG] != null && v.fmSPU[STAGE_RRF_AG].srReq) begin
+      tr_spu2dse spu = v.fmSPU[STAGE_RRF_AG];
+      case(spu.op)
+      op_gp2s:
+        cacheGrp = spu.op0 & `GML(NUM_SMEM_GRP);
+      op_s2gp:
+      begin
+        if(vn.spu[STAGE_RRF_EXS2] == null)
+          vn.spu[STAGE_RRF_EXS2] = tr_dse2spu::type_id::create("toSPU", this);
+        vn.spu[STAGE_RRF_EXS2].srRes = cacheGrp;
+        vn.spu[STAGE_RRF_EXS2].rsp = 1;
+      end
+      endcase
+    end
     
   endfunction
   
@@ -341,6 +359,8 @@ class ip4_tlm_dse extends ovm_component;
         tlbReqVAdr[STAGE_RRF_TAG] = toTLB.vAdr;
       end
     end
+    
+    toSPU = v.spu[STAGE_RRF_SR0];
     
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));
