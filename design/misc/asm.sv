@@ -54,6 +54,7 @@ function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
 endfunction
 
 class asmig;
+  int ps; /// source operation point
   bit[4:0][3:0] vecOp, immOp, zeroOp, enOp;  /// operation
   bit tagOp;  /// operation
   uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
@@ -81,6 +82,7 @@ class asmig;
   uint co[NUM_BP_CO];
           
   function new();
+    ps = 1;
     vecOp = 0;
     immOp = 0;
     zeroOp = 0;
@@ -565,6 +567,7 @@ class asmig;
           end
         "fcr"   :
           begin
+            ps = 0;
             case(inst[i].i.op[1:0])
                 2'b00 : inst[i].i.op = iop_fcr;
                 2'b01 : inst[i].i.op = iop_fcrn;
@@ -625,6 +628,7 @@ class asmig;
           end
         "st"    :
           begin
+            ps = 0;
             if(immOp[i][2]) begin
               case(inst[i].i.op[2:0])
                 3'b001 : inst[i].i.op = iop_sw;
@@ -645,6 +649,7 @@ class asmig;
          end
         "cmpxchg":
           begin
+            ps = 0;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_cmpxchg;
               {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][1];
@@ -673,6 +678,7 @@ class asmig;
           end
         "cache" :
           begin
+            ps = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = {opcah, devcah};
@@ -686,6 +692,7 @@ class asmig;
           end
         "pref" :
           begin
+            ps = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = mcfun;
@@ -699,6 +706,7 @@ class asmig;
           end
         "sync" :
           begin
+            ps = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = mcfun;
@@ -712,6 +720,7 @@ class asmig;
           end
         "synci" :
           begin
+            ps = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = 13;
@@ -733,6 +742,7 @@ class asmig;
           end
         "cmp"  :
           begin
+            ps = 2;
             if(enOp[i][3]) begin
               inst[i].i.op = iop_cmp;
               inst[i].i.b.cmp.ctyp = ctyp;
@@ -746,6 +756,7 @@ class asmig;
           end
         "cmpu" :
           begin
+            ps = 2;
             if(enOp[i][3]) begin
               inst[i].i.op = iop_cmpu;
               inst[i].i.b.cmp.ctyp = ctyp;
@@ -759,6 +770,7 @@ class asmig;
           end
         "cmpi" :
           begin
+            ps = 2;
             if(immOp[i][3]) begin
               inst[i].i.op = iop_cmpi;
               inst[i].i.b.cmpi.ctyp = ctyp;
@@ -773,6 +785,7 @@ class asmig;
           end
         "cmpiu" :
           begin
+            ps = 2;
             if(immOp[i][3]) begin
               inst[i].i.op = iop_cmpiu;
               inst[i].i.b.cmpi.ctyp = ctyp;
@@ -793,10 +806,13 @@ class asmig;
           end
         "sysc"  : 
           begin
+            ps = 0;
             inst[i].i.b.cop.fun = icop_alloc;
             inst[i].i.op = iop_cop;
-            if(immOp[i][0])
+            if(immOp[i][0]) begin
+              ps = 0;
               inst[i].i.b.cop.code = imm[i][0];
+            end
             else begin
               `asm_err("op number does not match with the op_code!");
               return 0;
@@ -809,6 +825,7 @@ class asmig;
           end
         "ipexit" :
           begin 
+            ps = 0;
             inst[i].i.b.cop.fun = icop_exit;
             inst[i].i.op = iop_cop;
             if(immOp[i][0])
@@ -820,6 +837,7 @@ class asmig;
           end
         "ipbreak": 
           begin
+            ps = 0;
             inst[i].i.b.cop.fun = icop_brk;
             inst[i].i.op = iop_cop;
             if(immOp[i][0])
@@ -954,14 +972,18 @@ class asmig;
       
       ///set rs0 rs1
       foreach(bk[j]) begin
-        if(!enOp[i][1 + j]) break;
-        if(vecOp[i][1 + j]) begin
-          if(adr[1 + j] > 31) begin
+        if(zeroOp[i][ps + j]) begin
+          bksel[j] = 15;
+          break;
+        end
+        if(!enOp[i][ps + j]) break;
+        if(vecOp[i][ps + j]) begin
+          if(adr[ps + j] > 31) begin
             `asm_err("vec reg out of bound!");
             return 0;
           end
-          adru[j] = adr[i][1 + j] >> BITS_VRF_BKS;
-          bk[j] = adr[i][1 + j] & ~{'1 << BITS_VRF_BKS};
+          adru[j] = adr[i][ps + j] >> BITS_VRF_BKS;
+          bk[j] = adr[i][ps + j] & ~{'1 << BITS_VRF_BKS};
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
@@ -979,12 +1001,12 @@ class asmig;
           end
         end
         else begin
-          if(adr[1 + j] > 15) begin
+          if(adr[ps + j] > 15) begin
             `asm_err("scl reg out of bound!");
             return 0;
           end
-          adru[j] = adr[i][1 + j] >> BITS_SRF_BKS;
-          bk[j] = adr[i][1 + j] & ~{'1 << BITS_SRF_BKS};
+          adru[j] = adr[i][ps + j] >> BITS_SRF_BKS;
+          bk[j] = adr[i][ps + j] & ~{'1 << BITS_SRF_BKS};
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
@@ -1002,6 +1024,7 @@ class asmig;
           end
         end
       end
+      
       if(one)
         inst[i].i.b.ir3w1.rs0 = bksel[0];
       else if(two) begin
