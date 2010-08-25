@@ -56,7 +56,19 @@ endfunction
 parameter time CLK_P              = 2ns;
 parameter uchar WORD_WIDTH        = 32;
 parameter uchar NUM_WORD_BYTES    = WORD_WIDTH / 8;
-
+                
+parameter uchar LAT_MAC           = 5,
+                LAT_SFU           = 16,
+                LAT_RF            = 1,
+                LAT_RBP           = 1,
+                LAT_VWBP          = 1,    ///vector writeback bypass time
+                LAT_WB            = 4,
+                LAT_ISE           = 2,
+                LAT_IFE           = 2,
+                LAT_DC            = 1,
+                LAT_XCHG          = 2,
+                LAT_DWBP          = 1;    ///dse writeback bypass time
+                
 parameter uint  NUM_SP            = 8,
                 NUM_VEC           = 32,
                 NUM_SFU           = 2,
@@ -70,30 +82,21 @@ parameter uint  NUM_SP            = 8,
                 NUM_SRF_BKS       = 2,
                 NUM_BP_CO         = 4,
                 NUM_PR            = 7,
+                NUM_W_CNT         = 2,
                 NUM_IFET_BYTES    = 16,
                 NUM_INST_VRF      = 32,
                 NUM_INST_SRF      = 16,
                 NUM_SMEM_BK       = NUM_SP,   /// register file bank number, default equal to NUM_SP
                 NUM_SMEM_GRP      = 4,
                 NUM_SMEM_GRP_W    = 512,
+                NUM_DCHE_CL       = LAT_XCHG,
                 NUM_DCHE_TAG      = NUM_SMEM_GRP_W,
-                NUM_DCHE_CL       = 2,
                 NUM_DCHE_ASS      = 2,
-                NUM_W_CNT         = 2,
                 NUM_BURST_LEN     = 8,
-                NUM_EBUS_WORDS    = 2;
-                
-parameter uchar LAT_MAC           = 5,
-                LAT_SFU           = 16,
-                LAT_RF            = 1,
-                LAT_RBP           = 1,
-                LAT_VWBP          = 1,    ///vector writeback bypass time
-                LAT_WB            = 4,
-                LAT_ISE           = 2,
-                LAT_IFE           = 2,
-                LAT_DC            = 1,
-                LAT_XCHG          = 2,
-                LAT_DWBP          = 1;    ///dse writeback bypass time
+                NUM_EBUS_WORDS    = 2,
+                NUM_STBUF_LINE    = LAT_XCHG,
+                NUM_STQUE         = 8,
+                NUM_LDQUE         = 16;
 
 parameter uint CFG_START_ADR      = 'hf000_0000;
 
@@ -108,7 +111,8 @@ parameter uchar BITS_WORD       = n2w(WORD_WIDTH / 8),
                 BITS_SMEM_GRP   = n2w(NUM_SMEM_GRP),
                 BITS_DCH_CL     = n2w(NUM_DCHE_CL),
                 BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL),
-                BITS_BURST      = n2w(NUM_BURST_LEN);
+                BITS_BURST      = n2w(NUM_BURST_LEN),
+                BITS_STBUFL     = n2w(NUM_STBUF_LINE);
 
 /*
                                            pipeline stages:

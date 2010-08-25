@@ -11,16 +11,16 @@
 ///Created by yajing yuan on July 19 2010
 
 class ip4_tlm_dse_vars extends ovm_component;
-  tr_ise2dse fmISE[STAGE_RRF_VWB0 : STAGE_RRF_RRC0];
-  tr_spu2dse fmSPU[STAGE_RRF_SEL : STAGE_RRF_AG];
-  tr_rfm2dse fmRFM[STAGE_RRF_SEL : STAGE_RRF_AG];
+  tr_ise2dse fmISE[STAGE_RRF_VWB0:STAGE_RRF_RRC0];
+  tr_spu2dse fmSPU[STAGE_RRF_SEL:STAGE_RRF_AG];
+  tr_rfm2dse fmRFM[STAGE_RRF_SEL:STAGE_RRF_AG];
   tr_spa2dse fmSPA;
   tr_tlb2dse fmTLB;
   tr_eif2dse fmEIF;    /// external interfaces
   
   tr_dse2ise ise;
   tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
-  tr_dse2rfm rfm[STAGE_RRF_VWBP : STAGE_RRF_DEM0];
+  tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_DEM0];
   tr_dse2spa spa;
   tr_dse2tlb tlb;
   tr_dse2eif eif;
@@ -57,7 +57,7 @@ class ip4_tlm_dse extends ovm_component;
   local uint cacheTag[NUM_SMEM_GRP_W / NUM_DCHE_CL][NUM_DCHE_ASS];
   local bit cacheTagV[NUM_SMEM_GRP_W / NUM_DCHE_CL][NUM_DCHE_ASS];
   local bit cacheDirty[NUM_SMEM_GRP_W / NUM_DCHE_CL][NUM_DCHE_ASS];
-  local word tlbReqVAdr[STAGE_RRF_SEL : STAGE_RRF_TAG];
+  local word tlbReqVAdr[STAGE_RRF_SEL:STAGE_RRF_TAG];
   local bit seltlbExp;
   local bit selSMemBk[2][NUM_SMEM_BK], selCacheBk[2][NUM_SMEM_BK];
   local uint selSMemAdr[2][NUM_SMEM_BK];
@@ -65,6 +65,12 @@ class ip4_tlm_dse extends ovm_component;
   local bit[WORD_WIDTH / 8 - 1 : 0][7:0] exStoreBuf[NUM_BURST_LEN];
   local padr_t exAdr;
   local bit exRdy, exByte[NUM_BURST_LEN][WORD_WIDTH / 8];
+  local padr_t ldQuePAdr[NUM_LDQUE];
+  local uchar ldQueXhg[NUM_LDQUE][2][NUM_SMEM_BK];
+  local bit ldQueWrEn[NUM_LDQUE][2][NUM_SMEM_BK], ldQueEn[NUM_LDQUE];
+  local uchar ldQueGrp[NUM_LDQUE], ldQueAdr[NUM_LDQUE], ldQueSubVec[NUM_LDQUE];
+  local uchar stQueTid[NUM_STQUE];
+  local bit stQueEn[NUM_STQUE];
   
   `ovm_component_utils_begin(ip4_tlm_dse)
   `ovm_component_utils_end
