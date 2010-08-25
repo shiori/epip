@@ -70,7 +70,7 @@ class asmig;
   uchar chkGrp;
   uchar grpsize;
   uint pc;
-  uchar allAdr[64];
+  uchar allAdr[25];
   bit isVec[5]; 
   uchar adrcnt;
   i_gs0_t gs0;
@@ -80,7 +80,7 @@ class asmig;
       srfEn[CYC_VEC][NUM_SRF_BKS];
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS],
         srfAdr[CYC_VEC][NUM_VRF_BKS];
-  uint co[NUM_BP_CO];
+  bit[3:0][7:0] co[NUM_BP_CO];
   int contNum;
           
   function new();
@@ -950,6 +950,7 @@ class asmig;
               return 0;
             end
           end
+        "nop": nop[i] = 1;
       default: begin `asm_err("op not understood!"); return 0; end
       endcase
       
@@ -1006,7 +1007,7 @@ class asmig;
           break;
         end
         if(bp2Op[i][ps + j]) begin
-          bksel[j] = 13;
+          bksel[j] = 14;
           break;
         end
         if(tidOp[i][ps + j]) begin
@@ -1091,7 +1092,10 @@ class asmig;
   endfunction
   
   function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
-    bit[127:0] constPkg;
+    bit[7:0] constPkg[NUM_BP_CO][4];
+    uchar adrBytes = (adrcnt - 1) * 3 / 8;
+    bit[8:0][7:0] tmp0;
+    bit[23:0][2:0] tmp1;
     if(tagOp && tag2ig.exists(tag)) begin
       foreach(inst[i]) begin
         if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn})
@@ -1110,33 +1114,22 @@ class asmig;
       gs0.chkGrp = chkGrp;
       gs0.unitEn = isVec[0];
       gs0.a = allAdr[0];
-      gs0.adrPkgB = (adrcnt - 1) * 3 / 8;
+      gs0.adrPkgB = adrBytes;
       $fwrite(fo, "%8b\n", gs0);
-      
-      if(gs0.adrPkgB > 0) begin
-        i_ap0_t AdrPkg;
-        foreach(AdrPkg.a[i])
-          AdrPkg.a[i] = allAdr[1 + i];
-        $fwrite(fo, "%8b\n", AdrPkg);
-      end
-            
+           
       for(int i = 0; i < 5; i++)
         $fwrite(fo, "%8b\n", inst[0].b[i]);
     end
     else begin
-      for(int i = 0; i< 5; i++) begin
-        if(nop[i])
-          gs1.i.unitEn[i] = 1;
-        else
-          gs1.i.unitEn[i] = 0;
-      end
+      for(int i = 0; i< 5; i++)
+        gs1.i.unitEn[i] = !nop[i];
       
       if(contNum < 5)
         gs1.i.immPkgW = contNum;
       else
         `asm_err("Constant Package num out of bound!");
         
-      if(vecOp[4][0])
+      if(vecOp[3][0])
         gs1.i.dv = 1;
       else 
         gs1.i.dv = 0;
@@ -1144,27 +1137,33 @@ class asmig;
       gs1.i.t = 1;
       gs1.i.chkGrp = chkGrp;
       gs1.i.a = allAdr[0];
-      gs1.i.adrPkgB = (adrcnt - 1) * 3 / 8;
+      gs1.i.adrPkgB = adrBytes;
       $fwrite(fo, "%16b\n", gs1);
-      if(gs0.adrPkgB > 0) begin
-        i_ap1_t AdrPkg;
-        foreach(AdrPkg.a[i])
-          AdrPkg.a[i] = allAdr[1 + i];
-        $fwrite(fo, "%8b\n", AdrPkg);
-      end
+
       
       for(int i = 0; i < 5; i++)
         for(int j = 0; j < 5; j++)
           $fwrite(fo, "%8b\n", inst[i].b[j]);
-      
-       
-      int offset = 0;
-      for(int i = 0; i < contNum; i++) begin
-        offset = i*32;
-        constPkg[offset+32:offset] = co[i];
-      end
-      $fwrite(fo, "%32b\n",constPkg);
     end
+    
+    ///write out adr package
+    foreach(tmp1[i])
+      tmp1[i] = allAdr[1 + i];
+    tmp0 = tmp1;
+
+    foreach(tmp0[i])
+      if(adrBytes > i) begin
+        `asm_msg($psprintf("write out adr package %0d", i), OVM_HIGH);
+        $fwrite(fo, "%8b\n", tmp0[i]);
+      end
+    
+    ///write out Constant package
+    for(int i = 0; i < contNum; i++)
+      for(int j = 0; j < 4; j++) begin
+        `asm_msg($psprintf("write out Constant package %0d", i), OVM_HIGH);
+        $fwrite(fo, "%8b\n",co[i][j]);
+      end
+          
     $fwrite(fo, "%s", "//--------------------------------\n");
     return 1;
   endfunction
@@ -1279,7 +1278,6 @@ class ip4_assembler;
               string opt = opts.pop_front();
               `asm_msg($psprintf("get option: %s", opt), OVM_HIGH);
               case(opt.tolower())
-              "nop" : cur.nop[icnt] = 1;
               "s"   : cur.s[icnt] = 1;
               "u"   : cur.s[icnt] = 0;
               "si"  : cur.si[icnt] = 1;

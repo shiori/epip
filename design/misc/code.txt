@@ -1,4 +1,4 @@
 //test asm file
 options.g0
-$tag1 (p4) li v3 0x16526C9 ;
-add.i.u v2 v3 0x6a6b7 ;
+$tag1 (p0) li v3 0x16526C9 ;
+add.si v2 v3 0x6a6b7 ;
