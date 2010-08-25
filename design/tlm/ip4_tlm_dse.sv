@@ -19,7 +19,7 @@ class ip4_tlm_dse_vars extends ovm_component;
   tr_eif2dse fmEIF;    /// external interfaces
   
   tr_dse2ise ise;
-  tr_dse2spu spu;
+  tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
   tr_dse2rfm rfm[STAGE_RRF_VWBP : STAGE_RRF_DEM0];
   tr_dse2spa spa;
   tr_dse2tlb tlb;
@@ -33,13 +33,11 @@ class ip4_tlm_dse_vars extends ovm_component;
      `ovm_field_object(fmTLB, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
-     `ovm_field_object(spu, OVM_ALL_ON + OVM_REFERENCE)
+     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(eif, OVM_ALL_ON + OVM_REFERENCE)
-///     `ovm_field_int(tlbValidReq, OVM_ALL_ON)
-///     `ovm_field_int(seltlbExp, OVM_ALL_ON)
   `ovm_component_utils_end
   
   function new (string name, ovm_component parent);
@@ -313,6 +311,7 @@ class ip4_tlm_dse extends ovm_component;
   function void req_proc();
     tr_dse2rfm toRFM;
     tr_dse2tlb toTLB;
+    tr_dse2spu toSPU;
     
     ovm_report_info("dse", "req_proc procing...", OVM_FULL); 
     
@@ -344,6 +343,7 @@ class ip4_tlm_dse extends ovm_component;
     end
     
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
+    if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------

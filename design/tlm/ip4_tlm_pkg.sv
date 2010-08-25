@@ -119,6 +119,7 @@ load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 |
 store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
+spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | sr0  | sr1  |
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
@@ -132,6 +133,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
                 STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
                 STAGE_RRF_EXS1    = STAGE_RRF_EXS0 + 1,             ///4
+                STAGE_RRF_EXS2    = STAGE_RRF_EXS0 + 2,             ///5
                 STAGE_RRF_EXS3    = STAGE_RRF_EXS0 + 3,             ///6
                 STAGE_RRF_RRC     = STAGE_RRF_RRC0 + CYC_VEC - 1,   ///4
                 STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
@@ -148,6 +150,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///8
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
                 STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///11
+                STAGE_RRF_SR1     = STAGE_RRF_DC,                   ///6
+                STAGE_RRF_SR0     = STAGE_RRF_SR1 - 1,              ///6
                 STAGE_EXE         = LAT_MAC - 1,                    ///3
                 STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
                 STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
@@ -161,7 +165,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
                 STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
                 STAGE_ISE_VWB     = STAGE_ISE_VWBP + CYC_VEC,       ///16
-                STAGE_ISE_DEM      = LAT_ISE + STAGE_RRF_DEM;       ///8
+                STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM;        ///8
                                 
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
@@ -400,7 +404,6 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 TYPE_WIDTH   = 3,  /// Page Size Type bit width
                 ASID_WIDTH   = 8,
                 IFE_REQ_BUF  = 2,
-                STAG_TLB_SPU = STAGE_RRF_SWBP - STAGE_RRF_EXS1 - 1 -1,
                 VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
                 PFN_WIDTH    = 23,
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///37

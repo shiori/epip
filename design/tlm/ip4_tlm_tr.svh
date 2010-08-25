@@ -701,7 +701,7 @@ endclass : tr_spu2dse
 
 class tr_dse2spu extends ovm_sequence_item;
   rand uchar tid;
-  rand bit pres[NUM_SP], exp, rsp;
+  rand bit pres[NUM_SP], wrEn, rsp;
   rand word srRes;
   
   constraint valid_vars {
@@ -710,7 +710,7 @@ class tr_dse2spu extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_dse2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(exp, OVM_ALL_ON)
+	  `ovm_field_int(wrEn, OVM_ALL_ON)
 	  `ovm_field_sarray_int(pres, OVM_ALL_ON)
 	  `ovm_field_int(srRes, OVM_ALL_ON)
 	  `ovm_field_int(rsp, OVM_ALL_ON)

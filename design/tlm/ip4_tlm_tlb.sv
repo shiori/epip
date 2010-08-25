@@ -46,7 +46,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
   tr_ife2tlb fmIFE[IFE_REQ_BUF];
   uchar ifeBufPtr;
 
-  tr_tlb2spu spu[STAG_TLB_SPU:1];
+  tr_tlb2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
   
   uint vpn2[NUM_TLB_E];
   uchar pageTyp[NUM_TLB_E];
@@ -168,9 +168,9 @@ class ip4_tlm_tlb extends ovm_component;
     else if(v.fmDSE != null)
       rspDSE = 1;
      
-    for (int i = STAG_TLB_SPU; i > 1; i--)
+    for (int i = STAGE_RRF_SR0; i > STAGE_RRF_EXS2; i--)
       vn.spu[i] = v.spu[i-1];
-    vn.spu[1] = null;
+    vn.spu[STAGE_RRF_EXS2] = null;
      
     ///tlb translation
     if(rspDSE || rspIFE) begin
@@ -248,10 +248,10 @@ class ip4_tlm_tlb extends ovm_component;
     end   
     
     /// tlb support instruction  spu -> tlb
-    /// dse:    | rrf | rrc0 |  ag  |  tag |  sel |  dc  | dwbp |  dwb |
-    /// spu:    | rrf | rrc0 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-    ///                             |      |
-    ///                          request  respond 
+    /// dse:    | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
+    /// spu:    | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | sr   |
+    ///                                    |             |
+    ///                                    request       respond 
    
     if(v.fmSPU != null && v.fmSPU.req) begin
       case(v.fmSPU.op)
@@ -349,16 +349,16 @@ class ip4_tlm_tlb extends ovm_component;
     /// S2GP
       op_s2gp:
       begin
-        if(vn.spu[1] == null)
-          vn.spu[1] = tr_tlb2spu::type_id::create("toSPU", this);
+        if(vn.spu[STAGE_RRF_EXS2] == null)
+          vn.spu[STAGE_RRF_EXS2] = tr_tlb2spu::type_id::create("toSPU", this);
         case(v.fmSPU.srAdr)
-        SR_CONTENT:   vn.spu[1].res = v.srContent[v.fmSPU.tid];
-        SR_INDEX:     vn.spu[1].res = v.srIndex;
-        SR_RANDOM:    vn.spu[1].res = v.srRandom;
-        SR_ENTRY_L0:  vn.spu[1].res = v.srEntryLo0;
-        SR_ENTRY_L1:  vn.spu[1].res = v.srEntryLo1;
-        SR_ENTRY_HI:  vn.spu[1].res = v.srEntryHi;
-        SR_ASID:      vn.spu[1].res = v.srASID[v.fmSPU.tid];
+        SR_CONTENT:   vn.spu[STAGE_RRF_EXS2].res = v.srContent[v.fmSPU.tid];
+        SR_INDEX:     vn.spu[STAGE_RRF_EXS2].res = v.srIndex;
+        SR_RANDOM:    vn.spu[STAGE_RRF_EXS2].res = v.srRandom;
+        SR_ENTRY_L0:  vn.spu[STAGE_RRF_EXS2].res = v.srEntryLo0;
+        SR_ENTRY_L1:  vn.spu[STAGE_RRF_EXS2].res = v.srEntryLo1;
+        SR_ENTRY_HI:  vn.spu[STAGE_RRF_EXS2].res = v.srEntryHi;
+        SR_ASID:      vn.spu[STAGE_RRF_EXS2].res = v.srASID[v.fmSPU.tid];
         default: ovm_report_warning("SPU_SRAD", "spu READ SR_ADDR IS ERROR!!!");
         endcase 
       end
@@ -373,7 +373,7 @@ class ip4_tlm_tlb extends ovm_component;
     ovm_report_info("tlb", "req_proc procing...", OVM_FULL); 
     
     /// send to spu
-    toSPU = v.spu[STAG_TLB_SPU];
+    toSPU = v.spu[STAGE_RRF_SR0];
     
     /// req to other module
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));

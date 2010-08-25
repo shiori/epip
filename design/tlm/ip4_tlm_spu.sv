@@ -111,7 +111,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM0];
       tr_dse2spu dse = v.fmDSE;
       ovm_report_info("spu", "write back dse pres", OVM_FULL);
-      if(!dse.exp)
+      if(dse.wrEn)
         pr[ise.tid][ise.prWrAdr2][ise.subVec] = dse.pres;
     end
         
@@ -246,15 +246,15 @@ class ip4_tlm_spu extends ovm_component;
     end
     
     ///collect sr from dse & tlb
-    if(v.fmISE[STAGE_RRF_EXS3] != null) begin
-      tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS3];
+    if(v.fmISE[STAGE_RRF_SR1] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_SR1];
       if(v.fmTLB != null && v.fmTLB.rsp) begin
-        if(vn.rfm[STAGE_RRF_EXS3] == null) vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
-        vn.rfm[STAGE_RRF_EXS3].res = v.fmTLB.res;
+        if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
+        toRFM.res = v.fmTLB.res;
       end
       else if(v.fmDSE != null && v.fmDSE.rsp) begin
-        if(vn.rfm[STAGE_RRF_EXS3] == null) vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
-        vn.rfm[STAGE_RRF_EXS3].res = v.fmDSE.srRes;
+        if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
+        toRFM.res = v.fmDSE.srRes;
       end
     end
     
@@ -271,7 +271,7 @@ class ip4_tlm_spu extends ovm_component;
       end
       else if(v.fmISE[STAGE_RRF_DEM0] != null && v.fmDSE != null
                && v.fmISE[STAGE_RRF_DEM0].brDepDSE && v.fmISE[STAGE_RRF_DEM0].brEnd
-               && !v.fmDSE.exp) begin
+               && v.fmDSE.wrEn) begin
         ise = v.fmISE[STAGE_RRF_DEM0];
         rfm = v.fmRFM[STAGE_RRF_DEM0];
       end
