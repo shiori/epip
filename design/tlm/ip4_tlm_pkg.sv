@@ -374,16 +374,16 @@ parameter opcode_e ise_ops[] = '{
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_gp2s,    op_s2gp
 };
-parameter uchar SR_PROC_CTL   = 0,
-                SR_SUPMSG     = 1,
-                SR_EBASE      = 2,
-                SR_INDEX      = 3,
-                SR_RANDOM     = 4,
-                SR_ENTRY_L0   = 5,
-                SR_ENTRY_L1   = 6,
-                SR_ENTRY_HI   = 7,
-                SR_CONTENT    = 10,
-                SR_THD_CTL    = 11;
+
+typedef enum uchar {
+  SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
+  SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
+  SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
+  SR_IIDY,      SR_IIDZ,      SR_EXPF,      SR_THD_CTL,     SR_THD_ST,
+  SR_CONTENT,   SR_EPC,       SR_WIDX,      SR_WIDY,        SR_WIDZ,
+  SR_ILM,       SR_CM,        SR_MSCT,      SR_MSCC,        SR_UEPC,
+  SR_UEE,       SR_EXEM,      SR_ASID,      SR_MD[0:7],     SR_FIFOS
+  }special_regs;
                 
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128
@@ -396,9 +396,9 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 PFN_WIDTH    = 23,
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///37
 
-parameter uchar tlbsr[] = '{
+parameter special_regs tlbsr[] = '{
   SR_INDEX,     SR_RANDOM,    SR_ENTRY_L0,    SR_ENTRY_L1,
-  SR_ENTRY_HI,  SR_THD_CTL
+  SR_ENTRY_HI,  SR_ASID
 };
 
 typedef bit[PADR_WIDTH-1:0]     padr_t;

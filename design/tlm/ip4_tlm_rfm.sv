@@ -108,8 +108,8 @@ class ip4_tlm_rfm extends ovm_component;
       foreach(spa.fu[fid]) begin
         ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s...", fid, fu_cfg[fid].name), OVM_HIGH);
         srExpFlag[spa.fu[fid].tid][spa.fu[fid].subVec] = spa.fu[fid].expFlag;
-        bk0 = spa.fu[fid].vrfWrBk & ('1 - 'b01);
-        bk1 = spa.fu[fid].vrfWrBk & ('1 - 'b01) + 'b01;
+        bk0 = spa.fu[fid].vrfWrBk & `GMH(1);
+        bk1 = bk0 + 1;
         foreach(spa.fu[0].wrEn[sp])
           if(spa.fu[fid].wrEn[sp]) begin
             if(spa.fu[fid].dw) begin

@@ -342,7 +342,7 @@ class ip4_tlm_tlb extends ovm_component;
         SR_ENTRY_L0:  vn.srEntryLo0 = v.fmSPU.op0;
         SR_ENTRY_L1:  vn.srEntryLo1 = v.fmSPU.op0;
         SR_ENTRY_HI:  vn.srEntryHi  = v.fmSPU.op0;
-        SR_THD_CTL:   vn.srASID[v.fmSPU.tid] = v.fmSPU.op0 & `GM(ASID_WIDTH);
+        SR_ASID:      vn.srASID[v.fmSPU.tid] = v.fmSPU.op0 & `GML(ASID_WIDTH);
         default: ovm_report_warning("SPU_SRAD", "spu WRITE SR_ADDR IS ERROR!!!");
         endcase 
         
@@ -358,7 +358,7 @@ class ip4_tlm_tlb extends ovm_component;
         SR_ENTRY_L0:  vn.spu[1].res = v.srEntryLo0;
         SR_ENTRY_L1:  vn.spu[1].res = v.srEntryLo1;
         SR_ENTRY_HI:  vn.spu[1].res = v.srEntryHi;
-        SR_THD_CTL:   vn.spu[1].res = v.srASID[v.fmSPU.tid];
+        SR_ASID:      vn.spu[1].res = v.srASID[v.fmSPU.tid];
         default: ovm_report_warning("SPU_SRAD", "spu READ SR_ADDR IS ERROR!!!");
         endcase 
       end

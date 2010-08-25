@@ -163,7 +163,7 @@ class ise_thread_inf extends ovm_component;
  
   function void map_iadr(input bit v, uchar orgAdr, output uchar grp, adr);
     uchar adrBits =  v ? (BITS_PRF_P_GRP - BITS_VRF_BKS) : (BITS_PRF_P_GRP - BITS_SRF_BKS);
-    adr = orgAdr & ('1 << adrBits);
+    adr = orgAdr & `GML(adrBits);
     grp = orgAdr >> adrBits;
     grp = v ? vrfMap[grp] : srfMap[grp];
   endfunction : map_iadr
@@ -430,7 +430,7 @@ class ise_thread_inf extends ovm_component;
     if(LvlLast  >= NUM_MAX_IGRP_BYTES)
       ovm_report_warning("ise", "iBuf overflow!");
     if(LvlLast == 0) ///only calculate offSet when iBuf size is reset to 0
-      offSet = pc & ~{'1 << BITS_IFET};
+      offSet = pc & `GMH(BITS_IFET);
 
     if(pendIFetch > 0)
       pendIFetch--;
@@ -449,7 +449,7 @@ class ise_thread_inf extends ovm_component;
 
   function void fill_ife(input tr_ise2ife ife);
     ife.fetchReq = 1;
-    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & ~{'1 << BITS_IFET};
+    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GML(BITS_IFET);
     pendIFetch++;
   endfunction : fill_ife
   
@@ -652,9 +652,18 @@ class ip4_tlm_ise extends ovm_component;
     end
     op_alloc:
     begin
+      if(tInf.iSPU.imm[2])
+        tInf.vrfMap[tInf.iSPU.imm[24:21]] = tInf.iSPU.imm[19:16];
+      else
+        tInf.srfMap[tInf.iSPU.imm[24:21]] = tInf.iSPU.imm[19:16];
     end
     op_gp2s:
     begin
+      case(tInf.iSPU.adrWr[0])
+      SR_PROC_CTL : begin end
+      SR_EBASE    : begin end
+      SR_THD_CTL  : begin end
+      endcase
     end
     op_s2gp:
     begin
@@ -915,7 +924,7 @@ class ip4_tlm_ise extends ovm_component;
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdIssueLast;
-      tid = tid & ~('1 << BITS_TID);
+      tid = tid & `GMH(BITS_TID);
       
       ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(can_issue(tid)) begin
@@ -967,7 +976,7 @@ class ip4_tlm_ise extends ovm_component;
     ///ife req search
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdFetchLast;
-      tid = tid & ~('1 << BITS_TID);
+      tid = tid & `GMH(BITS_TID);
       if(thread[tid].can_req_ifetch()) begin
         toIFE = tr_ise2ife::type_id::create("toIFE", this);
         thread[tid].fill_ife(toIFE);

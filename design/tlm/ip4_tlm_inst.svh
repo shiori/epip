@@ -257,6 +257,7 @@ typedef union packed{
 } inst_u;
 
 typedef bit[2:0] iga_t;
+parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;
 
 typedef struct packed{
   bit t, chkGrp;
@@ -423,7 +424,7 @@ class inst_c extends ovm_object;
     uchar cyc, bk;
     if(adr < 8) begin
       cyc = adr >> BITS_SRF_BKS;
-      bk = adr & ~{'1 << BITS_SRF_BKS};
+      bk = adr & `GML(BITS_SRF_BKS);
       srf = (srf > cyc) ? vrf : cyc;
       srfEn[cyc][bk] = 1;
       sel = rbk_sel_e'(sels0 + cyc * NUM_SRF_BKS + bk);
@@ -431,7 +432,7 @@ class inst_c extends ovm_object;
     else if(adr > 15) begin
       adr -= 16;
       cyc = adr >> BITS_VRF_BKS;
-      bk = adr & ~{'1 << BITS_VRF_BKS};
+      bk = adr & `GML(BITS_VRF_BKS);
       vrf = (vrf > cyc) ? vrf : cyc;
       vrfEn[cyc][bk] = 1;
       hasVec = 1;
@@ -485,7 +486,7 @@ class inst_c extends ovm_object;
 
       if(inst.i.b.ir3w1.d) begin
         wrEn = '{default : 1};
-        adrWr[0] = inst.i.b.ir3w1.rd & ('1 << 1);
+        adrWr[0] = inst.i.b.ir3w1.rd & `GMH(1);
         adrWr[1] = adrWr[0] + 1;
         rdBkSel[3] = rbk_sel_e'(rdBkSel[2] + 1);
       end
@@ -507,7 +508,7 @@ class inst_c extends ovm_object;
         set_rf_en(inst.i.b.ir2w1.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
         wrEn = '{default : 1};
-        adrWr[0] = inst.i.b.ir2w1.rd & ('1 << 1);
+        adrWr[0] = inst.i.b.ir2w1.rd & `GMH(1);
         adrWr[1] = adrWr[0] + 1;
         rdBkSel[3] = rbk_sel_e'(rdBkSel[2] + 1);
       end
@@ -717,7 +718,7 @@ class inst_c extends ovm_object;
       mFifos = inst.i.b.rmsg.fifos;
       adrWr[0] = inst.i.b.rmsg.rvd;
       wrEn[0] = 1;
-      adrRMsg[0] = inst.i.b.rmsg.rd & ('1 << 1);
+      adrRMsg[0] = inst.i.b.rmsg.rd & `GMH(1);
       adrRMsg[1] = adrRMsg[0] + 1;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = prWrAdr[0] == 0;
@@ -772,21 +773,21 @@ class inst_c extends ovm_object;
     
 	  if(isVec)
 	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & ~{'1 << BITS_VRF_BKS};
+	      bkWr[i] = adrWr[i] & `GML(BITS_VRF_BKS);
 		    grpWr[i] = adrWr[i] >> BITS_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> BITS_VRF_BKS) & ~{'1 << (BITS_PRF_P_GRP - BITS_VRF_BKS)};
+		    adrWr[i] = (adrWr[i] >> BITS_VRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_VRF_BKS);
 		  end
 		else
 	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & ~{'1 << BITS_SRF_BKS};
+	      bkWr[i] = adrWr[i] & `GML(BITS_SRF_BKS);
 		    grpWr[i] = adrWr[i] >> BITS_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> BITS_SRF_BKS) & ~{'1 << (BITS_PRF_P_GRP - BITS_SRF_BKS)};
+		    adrWr[i] = (adrWr[i] >> BITS_SRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_SRF_BKS);
 		  end
 
    foreach(adrRMsg[i]) begin
-      bkRMsg[i] = adrRMsg[i] & ~{'1 << BITS_SRF_BKS};
+      bkRMsg[i] = adrRMsg[i] & `GML(BITS_SRF_BKS);
       grpRMsg[i] = adrRMsg[i] >> BITS_PRF_P_GRP;
-      adrRMsg[i] = (adrRMsg[i] >> BITS_SRF_BKS) & ~{'1 << (BITS_PRF_P_GRP - BITS_SRF_BKS)};
+      adrRMsg[i] = (adrRMsg[i] >> BITS_SRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_SRF_BKS);
     end
     
 	endfunction : decode
@@ -1091,5 +1092,3 @@ class inst_fg_c extends ovm_object;
 	  data = i;
 	endfunction : fill
 endclass
-
-parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;

@@ -195,7 +195,7 @@ class ip4_tlm_dse extends ovm_component;
           ///chk cache for match
           if(!selNoCache[i] && cacheGrp > 0) begin
             uint tag = selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK + clBits + BITS_DCH_IDX);
-            idx = selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK + clBits) & ~(-1 << BITS_DCH_IDX);
+            idx = selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK + clBits) & `GML(BITS_DCH_IDX);
             for(int asid = 0; asid < NUM_DCHE_ASS; asid++)
               if(!dcRdy && cacheTagV[idx][asid] && cacheTag[idx][asid] == tag) begin
                 ///cache hit
@@ -209,8 +209,8 @@ class ip4_tlm_dse extends ovm_component;
           
           ///cache hit
           if(hit) begin
-            bk = selPAdr[i] & ~(-1 << BITS_SMEM_BK);
-            grp = (selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK)) & ~(-1 << clBits);
+            bk = selPAdr[i] & `GML(BITS_SMEM_BK);
+            grp = (selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK)) & `GML(clBits);
             foreach(selSMemBk[j])
               if(!selSMemBk[j][bk] && !selCacheBk[j][bk]) begin
                 selCacheBk[j][bk] = 1;
@@ -221,8 +221,8 @@ class ip4_tlm_dse extends ovm_component;
           end
           ///external access
           else begin
-            bk = selPAdr[i] & ~(-1 << BITS_BURST);
-            adr = selPAdr[i] & ~(-1 << BITS_WORD);
+            bk = selPAdr[i] >> BITS_WORD & `GML(BITS_BURST);
+            adr = selPAdr[i] & `GML(BITS_WORD);
             if(!exRdy) begin
               exRdy = 1;
               ex = 1;
@@ -241,9 +241,9 @@ class ip4_tlm_dse extends ovm_component;
           end
           
           ///load req  
-          bk = selPAdr[i] & ~(-1 << BITS_SMEM_BK);
-          adr1 = (selPAdr[i] >> BITS_SMEM_BK) & ~(-1 << BITS_SMEM_ADR + BITS_SMEM_GRP);
-          adr = adr1 & ~(-1 << BITS_SMEM_ADR);
+          bk = selPAdr[i] & `GML(BITS_SMEM_BK);
+          adr1 = (selPAdr[i] >> BITS_SMEM_BK) & `GML(BITS_SMEM_ADR + BITS_SMEM_GRP);
+          adr = adr1 & `GML(BITS_SMEM_ADR);
           grp = adr1 >> BITS_SMEM_ADR;
           foreach(selSMemBk[j])
             if((!selSMemBk[j][bk] && !selCacheBk[j][bk]) 
