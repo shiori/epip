@@ -750,11 +750,6 @@ class asmig;
             inst[i].i.b.cop.fun = icop_msync;
             inst[i].i.op = iop_cop;
           end
-        "pint"  : 
-          begin
-            inst[i].i.b.cop.fun = icop_pint;
-            inst[i].i.op = iop_cop;
-          end
         "tlbp"  : 
           begin
             inst[i].i.b.cop.fun = icop_tlbp;
@@ -801,7 +796,8 @@ class asmig;
         bit failed = 1;
         bk[3] = bk[3] & ('1 << 1);
         for(int k = 0; k < CYC_VEC; k ++)
-          if(!vrfEn[k][bk[3]] && !vrfEn[k][bk[3] + 1]) begin
+          if((!vrfEn[k][bk[3]] || vrfAdr[k][bk[3]] == adru[3])
+              && (!vrfEn[k][bk[3] + 1] || vrfAdr[k][bk[3] + 1] == adru[3])) begin
             vrfEn[k][bk[3]] = 1;
             vrfEn[k][bk[3] + 1] = 1;
             vrfAdr[k][bk[3]] = adru[3];
@@ -819,7 +815,7 @@ class asmig;
       else if(three) begin
         bit failed = 1;
         for(int k = 0; k < CYC_VEC; k++)
-          if(!vrfEn[k][bk[3]]) begin
+          if(!vrfEn[k][bk[3]] || vrfAdr[k][bk[3]] == adru[3]) begin
             vrfEn[k][bk[3]] = 1;
             vrfAdr[k][bk[3]] = adru[3];
             failed = 0;
@@ -846,7 +842,7 @@ class asmig;
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
-              if(!vrfEn[k][bk[j]]) begin
+              if(!vrfEn[k][bk[j]] || vrfAdr[k][bk[j]] == adru[j]) begin
                 vrfEn[k][bk[j]] = 1;
                 vrfAdr[k][bk[j]] = adru[j];
                 failed = 0;
@@ -869,7 +865,7 @@ class asmig;
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
-              if(!srfEn[k][bk[j]]) begin
+              if(!srfEn[k][bk[j]] || srfAdr[k][bk[j]] == adru[j]) begin
                 srfEn[k][bk[j]] = 1;
                 srfAdr[k][bk[j]] = adru[j];
                 failed = 0;

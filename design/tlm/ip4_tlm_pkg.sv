@@ -283,8 +283,8 @@ typedef enum uchar {
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
-  op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr,   op_mvs
+  op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr,
+  op_mvs
 } opcode_e;
 
 parameter opcode_e bp_ops[] = '{
@@ -350,8 +350,8 @@ parameter opcode_e spu_ops[] = '{
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
-  op_pint,    op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr,   op_mvs
+  op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr,
+  op_mvs
 };
 
 parameter opcode_e tlb_ops[] = '{

@@ -653,9 +653,6 @@ class ip4_tlm_ise extends ovm_component;
     op_alloc:
     begin
     end
-    op_pint:
-    begin
-    end
     op_gp2s:
     begin
     end

@@ -215,7 +215,6 @@ typedef struct packed{
 typedef enum bit[4:0] {
   icop_sysc,    icop_eret,      icop_wait,      icop_exit,
   icop_brk,     icop_tsync,     icop_msync,     icop_alloc,
-  icop_pint,
   icop_tlbp = 'b10000,
   icop_tlbr,    icop_tlbwi,     icop_tlbwr,     icop_sra
 } iop_cop_e;
@@ -733,13 +732,6 @@ class inst_c extends ovm_object;
       icop_tsync : op = op_tsync;
       icop_msync : op = op_msync;
       icop_alloc : op = op_alloc;
-      icop_pint  :
-      begin
-        op = op_pint;
-        prWrAdr[0] = imm[4:2];
-        prWrEn[0] = prWrAdr[0] != 0;
-        imm = imm[5];
-      end
       icop_tlbp  :
       begin
         op = op_tlbp;
@@ -883,8 +875,6 @@ class inst_c extends ovm_object;
     
     if(CntSrfRd > srf)
       srf = CntSrfRd;
-    if(op == op_pint)
-      srf = CntVrfRd;
     if(CntVrfRd > vrf)
       vrf = CntVrfRd;
     if(vmode > vrf)
