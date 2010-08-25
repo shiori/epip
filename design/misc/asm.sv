@@ -55,14 +55,15 @@ endfunction
 
 class asmig;
   int ps; /// source operation point
-  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp;  /// operation
+  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bp0Op, bp1Op, bp2Op, tidOp;  /// operation
   bit tagOp;  /// operation
+  bit[4:0] nop;
   uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
   int imm[5][4];  /// imm[i][0] = rd;
   string tag;
   string op[5];
   bit[4:0] en, s, si;  /// option
-  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, emsk, vxup;  /// option
+  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, emsk, vxup, alocd, s2g;  /// option
   bit[1:0] sop, devcah, opcah;  /// option
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
@@ -80,9 +81,11 @@ class asmig;
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS],
         srfAdr[CYC_VEC][NUM_VRF_BKS];
   uint co[NUM_BP_CO];
+  int contNum;
           
   function new();
     ps = 1;
+    nop = 0;
     vecOp = 0;
     immOp = 0;
     zeroOp = 0;
@@ -94,6 +97,7 @@ class asmig;
     isVec = '{default : 0};
     chkGrp = 0;
     adrcnt = 0;
+    contNum = 0;
   endfunction
 
   function bit pack_grp(ovm_verbosity verb);
@@ -803,6 +807,22 @@ class asmig;
             inst[i].i.b.cop.fun = icop_alloc;
             inst[i].i.op =iop_cop;
             one = 1;
+            if(alocd) begin
+              inst[i].i.b.cop.code[0] = 1;
+              if(immOp[i][1]) 
+                inst[i].i.b.cop.code[19:16] = immOp[i][1];
+              else begin
+                `asm_err("op number does not match with the op_code!");
+                return 0;
+              end
+            end
+            else 
+              inst[i].i.b.cop.code[0] = 0;
+            
+            if(vecOp[i][0])
+              inst[i].i.b.cop.code[1] = 1;
+            else
+              inst[i].i.b.cop.code[1] = 0;
           end
         "sysc"  : 
           begin
@@ -881,11 +901,12 @@ class asmig;
           begin
             inst[i].i.b.cop.fun = icop_asr;
             inst[i].i.op = iop_cop;
+            inst[i].i.b.cop.code[0] = s2g;
             enOp[i][0] = 0;
             enOp[i][1] = 0;
             enOp[i][2] = 0;
             if(immOp[i][2]) begin
-              inst[i].i.b.cop.code = imm[i][2];
+              inst[i].i.b.cop.code[10:2] = imm[i][2];
               bksel[0] = inst[i].i.b.cop.code[20:16];
               one = 1;
             end
@@ -971,9 +992,25 @@ class asmig;
       end
       
       ///set rs0 rs1
-      foreach(bk[j]) begin
+      foreach(bk[j]) begin        
         if(zeroOp[i][ps + j]) begin
           bksel[j] = 15;
+          break;
+        end
+        if(bp0Op[i][ps + j]) begin
+          bksel[j] = 12;
+          break;
+        end
+        if(bp1Op[i][ps + j]) begin
+          bksel[j] = 13;
+          break;
+        end
+        if(bp2Op[i][ps + j]) begin
+          bksel[j] = 13;
+          break;
+        end
+        if(tidOp[i][ps + j]) begin
+          bksel[j] = 11;
           break;
         end
         if(!enOp[i][ps + j]) break;
@@ -1054,6 +1091,7 @@ class asmig;
   endfunction
   
   function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
+    bit[127:0] constPkg;
     if(tagOp && tag2ig.exists(tag)) begin
       foreach(inst[i]) begin
         if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn})
@@ -1086,7 +1124,46 @@ class asmig;
         $fwrite(fo, "%8b\n", inst[0].b[i]);
     end
     else begin
+      for(int i = 0; i< 5; i++) begin
+        if(nop[i])
+          gs1.i.unitEn[i] = 1;
+        else
+          gs1.i.unitEn[i] = 0;
+      end
       
+      if(contNum < 5)
+        gs1.i.immPkgW = contNum;
+      else
+        `asm_err("Constant Package num out of bound!");
+        
+      if(vecOp[4][0])
+        gs1.i.dv = 1;
+      else 
+        gs1.i.dv = 0;
+      
+      gs1.i.t = 1;
+      gs1.i.chkGrp = chkGrp;
+      gs1.i.a = allAdr[0];
+      gs1.i.adrPkgB = (adrcnt - 1) * 3 / 8;
+      $fwrite(fo, "%16b\n", gs1);
+      if(gs0.adrPkgB > 0) begin
+        i_ap1_t AdrPkg;
+        foreach(AdrPkg.a[i])
+          AdrPkg.a[i] = allAdr[1 + i];
+        $fwrite(fo, "%8b\n", AdrPkg);
+      end
+      
+      for(int i = 0; i < 5; i++)
+        for(int j = 0; j < 5; j++)
+          $fwrite(fo, "%8b\n", inst[i].b[j]);
+      
+       
+      int offset = 0;
+      for(int i = 0; i < contNum; i++) begin
+        offset = i*32;
+        constPkg[offset+32:offset] = co[i];
+      end
+      $fwrite(fo, "%32b\n",constPkg);
     end
     $fwrite(fo, "%s", "//--------------------------------\n");
     return 1;
@@ -1202,6 +1279,7 @@ class ip4_assembler;
               string opt = opts.pop_front();
               `asm_msg($psprintf("get option: %s", opt), OVM_HIGH);
               case(opt.tolower())
+              "nop" : cur.nop[icnt] = 1;
               "s"   : cur.s[icnt] = 1;
               "u"   : cur.s[icnt] = 0;
               "si"  : cur.si[icnt] = 1;
@@ -1224,9 +1302,22 @@ class ip4_assembler;
               "snop" : cur.sop = 0;
               "pop2n": cur.sop = 1;
               "store": cur.sop = 2;
-              "const0": cur.co[0] = get_imm(opts.pop_front());
-              "const1": cur.co[1] = get_imm(opts.pop_front());
-              "const2": cur.co[2] = get_imm(opts.pop_front());
+              "const0": begin
+                cur.co[0] = get_imm(opts.pop_front());
+                cur.contNum = cur.contNum + 1;
+              end
+              "const1": begin
+                cur.co[1] = get_imm(opts.pop_front());
+                cur.contNum = cur.contNum + 1;
+              end
+              "const2": begin
+                cur.co[2] = get_imm(opts.pop_front());
+                cur.contNum = cur.contNum + 1;
+              end
+              "const3": begin
+                cur.co[3] = get_imm(opts.pop_front());
+                cur.contNum = cur.contNum + 1;
+              end
               "ldua1" : cur.ldua = 1;
               "ldua0" : cur.ldua = 0;
               "ldbst" : cur.ldty = 0;
@@ -1247,6 +1338,9 @@ class ip4_assembler;
               "fetabst" : cur.fetaty = 0;
               "fetaran" : cur.fetaty = 1;
               "fetarnu" : cur.fetaty = 2;
+              "alocd" : cur.alocd = 1;
+              "s2g" : cur.s2g = 1;
+              "g2s" : cur.s2g = 0; 
               "icah" : cur.devcah = 0;
               "dcah" : cur.devcah = 1;
               "ihit" : cur.opcah  = 0;
@@ -1292,9 +1386,14 @@ class ip4_assembler;
             `asm_msg($psprintf("trying to get a reg adr or imm for op%0d", opcnt), OVM_HIGH);
             cur.enOp[icnt][opcnt] = 1;
             cur.tagOp = tk0.tolower() == "$";
+            cur.bp0Op[icnt][opcnt] = tk0.tolower() == "bp0";
+            cur.bp1Op[icnt][opcnt] = tk0.tolower() == "bp1";
+            cur.bp2Op[icnt][opcnt] = tk0.tolower() == "bp2";
+            cur.tidOp[icnt][opcnt] = tk0.tolower() == "tid";
             cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
             cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
-            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp;
+            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp
+                                     && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt] && !cur.tidOp[icnt][opcnt];
             if(cur.tagOp)
               cur.tag = tk1n;
             else if(cur.immOp[icnt][opcnt])
