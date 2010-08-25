@@ -352,7 +352,7 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mMT, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos;
+  uchar mMT, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos, srAdr;
   bit enSPU, enDSE, enFu[NUM_FU];
   
   `ovm_object_utils_begin(inst_c)
@@ -365,7 +365,7 @@ class inst_c extends ovm_object;
     `ovm_field_int(enSPU, OVM_ALL_ON)
     `ovm_field_int(enDSE, OVM_ALL_ON)
     `ovm_field_sarray_int(enFu, OVM_ALL_ON)
-    `ovm_field_int(priv, OVM_ALL_ON)
+///    `ovm_field_int(priv, OVM_ALL_ON)
     `ovm_field_sarray_enum(rbk_sel_e, rdBkSel, OVM_ALL_ON)
     `ovm_field_int(vecRd, OVM_ALL_ON)
     `ovm_field_int(CntVrfRd, OVM_ALL_ON)
@@ -374,7 +374,7 @@ class inst_c extends ovm_object;
     `ovm_field_int(prRdEn, OVM_ALL_ON)
     `ovm_field_sarray_int(prWrAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(prWrEn, OVM_ALL_ON)
-    `ovm_field_int(brDep, OVM_ALL_ON)
+///    `ovm_field_int(brDep, OVM_ALL_ON)
 ///    `ovm_field_sarray_int(grpWr, OVM_ALL_ON)
 ///    `ovm_field_sarray_int(adrWr, OVM_ALL_ON)
 ///    `ovm_field_sarray_int(bkWr, OVM_ALL_ON)
@@ -386,9 +386,9 @@ class inst_c extends ovm_object;
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
     `ovm_field_enum(cmp_opcode_e, cmpOp, OVM_ALL_ON)
     `ovm_field_enum(pr_merge_e, mergeOp, OVM_ALL_ON)
-    `ovm_field_enum(msc_opcode_e, mscOp, OVM_ALL_ON)
-    `ovm_field_enum(msk_opcode_e, mskOp, OVM_ALL_ON)
-    `ovm_field_enum(br_opcode_e, brOp, OVM_ALL_ON)
+///    `ovm_field_enum(msc_opcode_e, mscOp, OVM_ALL_ON)
+///    `ovm_field_enum(msk_opcode_e, mskOp, OVM_ALL_ON)
+///    `ovm_field_enum(br_opcode_e, brOp, OVM_ALL_ON)
 ///    `ovm_field_int(mMT, OVM_ALL_ON)
 ///    `ovm_field_int(mUpdateAdr, OVM_ALL_ON)
 ///    `ovm_field_int(mFun, OVM_ALL_ON)
@@ -410,6 +410,14 @@ class inst_c extends ovm_object;
 		  `PF(mT, OVM_BIN)
 		  `PF(mMid, OVM_BIN)
 		  `PF(mFifos, OVM_BIN)
+	  end
+	  if(enSPU) begin
+	    `PF(srAdr, OVM_DEC)
+	    `PF(priv, OVM_BIN)
+	    `PF(brDep, OVM_BIN)
+	    `PE(mscOp)
+	    `PE(mskOp)
+	    `PE(brOp)
 	  end
 	endfunction : do_print
 		  
@@ -758,10 +766,12 @@ class inst_c extends ovm_object;
         wrEn[0] = inst.i.b.cop.code[0];
         op = wrEn[0] ? op_s2gp : op_gp2s;
         adrWr[0] = inst.i.b.ir2w1.rd;
+        srAdr = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
         if(!wrEn[0])
           set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-        rdBkSel[1] = selii;
-        imm = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;///(inst.i.b.cop.code >> 2) & 9'b111111111;
+        else 
+          rdBkSel[0] = selii;
+        imm = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
       end
       icop_eret :
       begin
@@ -992,6 +1002,7 @@ class inst_c extends ovm_object;
       spu.srfWrDSel = 0;
       spu.srfWrAdr = adrWr[0];
       spu.srfWrBk = bkWr[0];
+      spu.srAdr = srAdr;
     end
     else if(enDSE) begin
       spu.prRdAdrDSE = prRdAdr;

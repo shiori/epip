@@ -17,7 +17,7 @@ class ip4_tlm_spu_vars extends ovm_component;
   tr_dse2spu fmDSE;
   tr_tlb2spu fmTLB;
   tr_spu2rfm rfm[STAGE_RRF_SWBP:STAGE_RRF_EXS1];
-    
+  
   `ovm_component_utils_begin(ip4_tlm_spu_vars)
     `ovm_field_sarray_object(fmISE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fmRFM, OVM_ALL_ON + OVM_REFERENCE)
@@ -44,6 +44,7 @@ class ip4_tlm_spu extends ovm_component;
   local bit cm[NUM_THREAD][CYC_VEC][NUM_SP];
   local word msc[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit pr[NUM_THREAD][NUM_PR:1][CYC_VEC][NUM_SP];
+  local bit[NUM_VEC - 1 : 0] srMSCO[NUM_THREAD],  srMSCU[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_spu)
   `ovm_component_utils_end
@@ -103,8 +104,6 @@ class ip4_tlm_spu extends ovm_component;
       ovm_report_info("spu", "write back spa pres", OVM_FULL);
       pr[ise.tid][ise.prWrAdr0][ise.subVec] = spa.presCmp0;
       pr[ise.tid][ise.prWrAdr1][ise.subVec] = spa.presCmp1;
-      if(v.fmDSE != null)
-        pr[ise.tid][ise.prWrAdr2][ise.subVec] = v.fmDSE.pres;
     end
     
     ///write back dse predication register results
@@ -197,6 +196,24 @@ class ip4_tlm_spu extends ovm_component;
         op_seb:   ovm_report_warning("SPU_UNIMP", "seb is not implemented yet");
         op_she:   ovm_report_warning("SPU_UNIMP", "she is not implemented yet");
         op_wsbh:  ovm_report_warning("SPU_UNIMP", "wsbh is not implemented yet");
+        op_s2gp:
+        begin
+          case(ise.srAdr)
+          SR_MSCT:
+            for(int i = 0; i < CYC_VEC; i++)
+              for(int j = 0; j < NUM_SP; j++)
+                vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j] = msc[ise.tid][i][j][WORD_WIDTH - 1];
+          SR_MSCO: vn.rfm[STAGE_RRF_EXS1].res = srMSCO[ise.tid];
+          SR_MSCU: vn.rfm[STAGE_RRF_EXS1].res = srMSCU[ise.tid];
+          endcase
+        end
+        op_gp2s:
+        begin
+          if(ise.srAdr == SR_MSCT)
+            for(int i = 0; i < CYC_VEC; i++)
+              for(int j = 0; j < NUM_SP; j++)
+                msc[ise.tid][i][j][WORD_WIDTH - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
+        end
         endcase
         vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
         vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_WIDTH-1:0];
@@ -207,29 +224,38 @@ class ip4_tlm_spu extends ovm_component;
         vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
       end
     
-      ///redirect to tlb
-      if(ise.op inside {tlb_ops} && prSPU)
-        toTLB = tr_spu2tlb::type_id::create("toTLB", this);
-      
-      if(prSPU && rfm != null && ise.op inside {op_gp2s, op_s2gp}
-           && rfm.op1 inside {tlbsr}) begin
-        toTLB = tr_spu2tlb::type_id::create("toTLB", this);
-        toTLB.op0 = rfm.op0;
-        toTLB.srAdr = rfm.op1;
-      end
-      
-      if(toTLB != null) begin
-        toTLB.op = ise.op;
-        toTLB.req = 1;
-        toTLB.tid = ise.tid;
+      ///redirect sr reqs
+      if(prSPU && rfm != null && ise.op inside {op_gp2s, op_s2gp}) begin
+        if(ise.srAdr inside {tlbsr}) begin
+          toTLB = tr_spu2tlb::type_id::create("toTLB", this);
+          toTLB.op0 = rfm.op0;
+          toTLB.op = ise.op;
+          toTLB.req = 1;
+          toTLB.tid = ise.tid;
+          toTLB.srAdr = ise.srAdr;
+        end
+        else if(ise.srAdr == SR_OCMC) begin
+          if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
+          toDSE.srReq = 1;
+          toDSE.op0 = rfm.op0;
+          toDSE.op = ise.op;
+          toDSE.tid = ise.tid;
+          toDSE.srAdr = ise.srAdr;
+        end
       end
     end
     
-    if(v.fmTLB != null && v.fmTLB.rsp) begin
-      if(vn.rfm[STAGE_RRF_EXS3] == null) vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
-      vn.rfm[STAGE_RRF_EXS3].res = v.fmTLB.res;
-      if(v.fmISE[STAGE_RRF_EXS3] == null)
-        ovm_report_warning("spu", "tlb rsp without ise info");
+    ///collect sr from dse & tlb
+    if(v.fmISE[STAGE_RRF_EXS3] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS3];
+      if(v.fmTLB != null && v.fmTLB.rsp) begin
+        if(vn.rfm[STAGE_RRF_EXS3] == null) vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_EXS3].res = v.fmTLB.res;
+      end
+      else if(v.fmDSE != null && v.fmDSE.rsp) begin
+        if(vn.rfm[STAGE_RRF_EXS3] == null) vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_EXS3].res = v.fmDSE.srRes;
+      end
     end
     
     ///check for valid branch
@@ -263,6 +289,7 @@ class ip4_tlm_spu extends ovm_component;
         bit b_inv = ise.prInvSPU, b_nmsk = ise.prNMskSPU;
         bit is_nop = ise.mop == mop_nop, emsk_az = 1, update_msc = 0;
         bit emsk[CYC_VEC][NUM_SP] = ise.prRdAdrSPU == 0 ? '{default:1} : pr[tid][ise.prRdAdrSPU];
+        bit exp = 0;
         
         ovm_report_info("spu", $psprintf("process branch for thread %0d", tid), OVM_HIGH);
         
@@ -339,17 +366,33 @@ class ip4_tlm_spu extends ovm_component;
         case(ise.sop)
         sop_pop2n :
           if(update_msc)
-            foreach(emsk[j,k])
+            foreach(emsk[j,k]) begin
+              bit top = msc[tid][j][k][WORD_WIDTH - 1];
               if(msc[tid][j][k] > (2*popcnt))
                 msc[tid][j][k] -= (2*popcnt);
               else
                 msc[tid][j][k] = 0;
+              if(top == 1 && msc[tid][j][k][WORD_WIDTH - 1] == 0) begin
+                srMSCU[tid][j * NUM_SP + k] = 1;
+                exp = 1;
+              end
+              else
+                srMSCU[tid][j * NUM_SP + k] = 0;
+            end
         sop_store :
           foreach(emsk[j,k]) begin
+            bit top = msc[tid][j][k][WORD_WIDTH - 1];
             msc[tid][j][k] += !ilm[tid][j][k];
             msc[tid][j][k] += !cm[tid][j][k];
+            if(top == 1 && msc[tid][j][k][WORD_WIDTH - 1] == 0) begin
+              srMSCO[tid][j * NUM_SP + k] = 1;
+              msc[tid][j][k][WORD_WIDTH - 1] = 1;
+              exp = 1;
+            end
+            else
+              srMSCO[tid][j * NUM_SP + k] = 0;
           end
-          endcase
+        endcase
       end
     end
     

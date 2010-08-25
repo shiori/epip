@@ -560,13 +560,13 @@ endclass : tr_spa2spu
 ///---------------------------trsaction ise_spu spu_ise------------------------
 
 class tr_spu2ise extends ovm_sequence_item;
-  rand bit brRsp, brTaken, mscTopChg;
+  rand bit brRsp, brTaken, mscExp;
   rand uchar tid;
   
 	`ovm_object_utils_begin(tr_spu2ise)
 	  `ovm_field_int(brRsp, OVM_ALL_ON)
 	  `ovm_field_int(brTaken, OVM_ALL_ON)
-	  `ovm_field_int(mscTopChg, OVM_ALL_ON)
+	  `ovm_field_int(mscExp, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -582,7 +582,7 @@ class tr_ise2spu extends ovm_sequence_item;
   rand br_opcode_e bop;
   rand opcode_e op;
   
-  rand uchar tid, subVec, vecMode;
+  rand uchar tid, subVec, vecMode, srAdr;
   rand bit start,   ///signal spu normal op to start
            brEnd,  ///signal the last subVec of a br
            brDep,
@@ -666,6 +666,7 @@ class tr_ise2spu extends ovm_sequence_item;
 		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(enDSE, OVM_ALL_ON + OVM_NOPRINT)
 		`ovm_field_sarray_int(enFu, OVM_ALL_ON + OVM_NOPRINT)
+		`ovm_field_int(srAdr, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2spu");
@@ -677,10 +678,19 @@ endclass : tr_ise2spu
 ///---------------------------trsaction dse_spu spu_dse------------------------
 
 class tr_spu2dse extends ovm_sequence_item;
-   rand bit emsk[NUM_SP];
-   
+  rand bit emsk[NUM_SP];
+  rand word op0;
+  rand bit srReq;
+  rand opcode_e op;
+  rand uchar tid, srAdr;
+     
 	`ovm_object_utils_begin(tr_spu2dse)
 	  `ovm_field_sarray_int(emsk, OVM_ALL_ON)
+	  `ovm_field_int(op0, OVM_ALL_ON)
+	  `ovm_field_int(srReq, OVM_ALL_ON)
+	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(srAdr, OVM_ALL_ON)
+	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2dse");
@@ -691,7 +701,8 @@ endclass : tr_spu2dse
 
 class tr_dse2spu extends ovm_sequence_item;
   rand uchar tid;
-  rand bit pres[NUM_SP], exp;
+  rand bit pres[NUM_SP], exp, rsp;
+  rand word srRes;
   
   constraint valid_vars {
     tid < NUM_THREAD;
@@ -701,6 +712,8 @@ class tr_dse2spu extends ovm_sequence_item;
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_sarray_int(pres, OVM_ALL_ON)
+	  `ovm_field_int(srRes, OVM_ALL_ON)
+	  `ovm_field_int(rsp, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2spu");

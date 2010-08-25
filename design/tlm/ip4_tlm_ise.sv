@@ -78,7 +78,7 @@ class ise_thread_inf extends ovm_component;
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   bit pendLoad, pendStore, loopRandMemMode;
   uchar pendIFetch, pendMemAcc, pendBr;
-  uchar srThreadGrp, srFIFOMask;
+  uchar srThreadGrp, srFIFOMask, srCause, srFIFOPend;
   round_mode srExeMode;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
@@ -582,7 +582,9 @@ class ip4_tlm_ise extends ovm_component;
   local ip4_printer printer;
   local uchar srPBId;
   local uint srExpBase;
-  local bit srSupMsg, srPerfCntMsk, srTimerMask, srReducePower, srDisableTimer;
+  local bit srSupMsgMask, srPerfCntMask, srTimerMask, srReducePower, srDisableTimer,
+            srTimerPend,  srSupMsgPend;
+  local bit[1:0] srPerfCntPend;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -674,10 +676,13 @@ class ip4_tlm_ise extends ovm_component;
         srDisableTimer = tInf.iSPU.imm[25];
         srReducePower = tInf.iSPU.imm[26];
         srTimerMask = tInf.iSPU.imm[27];
-        srPerfCntMsk = tInf.iSPU.imm[29:28];
-        srSupMsg = tInf.iSPU.imm[29];
+        srPerfCntMask = tInf.iSPU.imm[29:28];
+        srSupMsgMask = tInf.iSPU.imm[29];
       end
-      SR_EBASE    : begin end
+      SR_EBASE    :
+///      begin
+        srExpBase = tInf.iSPU.imm;
+///      end
       SR_THD_CTL  :
       begin
         tInf.privMode = tInf.iSPU.imm[0];
@@ -699,16 +704,25 @@ class ip4_tlm_ise extends ovm_component;
         tInf.iSPU.imm[25] = srDisableTimer;
         tInf.iSPU.imm[26] = srReducePower;
         tInf.iSPU.imm[27] = srTimerMask;
-        tInf.iSPU.imm[29:28] = srPerfCntMsk;
-        tInf.iSPU.imm[29] = srSupMsg;
+        tInf.iSPU.imm[29:28] = srPerfCntMask;
+        tInf.iSPU.imm[29] = srSupMsgMask;
       end
-      SR_EBASE    : begin end
+      SR_EBASE    :
+        tInf.iSPU.imm = srExpBase;
       SR_THD_CTL  :
       begin
         tInf.iSPU.imm[0] = tInf.privMode;
         tInf.iSPU.imm[2] = tInf.srThreadGrp;
         tInf.iSPU.imm[23:16] = tInf.srFIFOMask;
         tInf.iSPU.imm[26:24] = tInf.srExeMode;
+      end
+      SR_THD_ST   :
+      begin
+        tInf.iSPU.imm[4:0] = tInf.srCause;
+        tInf.iSPU.imm[5] = srSupMsgPend;
+        tInf.iSPU.imm[13:6] = tInf.srFIFOPend;
+        tInf.iSPU.imm[15:14] = srPerfCntPend;        
+        tInf.iSPU.imm[16] = srTimerPend;        
       end
       endcase
     end
@@ -914,11 +928,11 @@ class ip4_tlm_ise extends ovm_component;
     for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM; i--)
       vn.fmDSE[i] = v.fmDSE[i-1];  
           
-    ///cancel condition 1 branch mispredication, msc overflow
+    ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       bit cancel;
       cancel = thread[v.fmSPU.tid].br_pred_miss(v.fmSPU.brTaken);
-      if(v.fmSPU.mscTopChg) begin
+      if(v.fmSPU.mscExp) begin
         cancel = 1;
         enter_exp(v.fmIFE.tid, exp_msc_err);
       end
