@@ -404,6 +404,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   rand bit cancel[NUM_THREAD]; /// cancel is sync to vwb0 stage to fu & sfu
   rand uchar bpRfDSEWp;
   rand rbk_sel_e bpRfDSE;
+  rand round_mode rndMode;
   
 	`ovm_object_utils_begin(tr_ise2spa)
 	  `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
@@ -414,6 +415,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(bpRfDSEWp, OVM_ALL_ON)
 	  `ovm_field_enum(rbk_sel_e, bpRfDSE, OVM_ALL_ON)
+	  `ovm_field_enum(round_mode, rndMode, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	virtual function void do_print(ovm_printer printer);
@@ -500,13 +502,9 @@ endclass : spu2spa_fu
 
 class tr_spu2spa extends ovm_sequence_item;
   spu2spa_fu fu[NUM_FU];
-///  rand word res;     ///spu res bypass
-  rand uchar exeMode;
   
 	`ovm_object_utils_begin(tr_spu2spa)
 	  `ovm_field_sarray_object(fu, OVM_ALL_ON)
-///	  `ovm_field_int(res, OVM_ALL_ON)
-	  `ovm_field_int(exeMode, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2spa");

@@ -44,7 +44,6 @@ class ip4_tlm_spu extends ovm_component;
   local bit cm[NUM_THREAD][CYC_VEC][NUM_SP];
   local word msc[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit pr[NUM_THREAD][NUM_PR:1][CYC_VEC][NUM_SP];
-  local uchar srExeMode[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_spu)
   `ovm_component_utils_end
@@ -131,7 +130,6 @@ class ip4_tlm_spu extends ovm_component;
           foreach(toSPA.fu[fid].emsk[i])
             toSPA.fu[fid].emsk[i] = toSPA.fu[fid].emsk[i] && ilm[ise.tid][ise.subVec][i] && cm[ise.tid][ise.subVec][i];
       end
-      if(toSPA != null) toSPA.exeMode = srExeMode[ise.tid];
     end
     
     if(v.fmISE[STAGE_RRF_RRC0] != null && v.fmISE[STAGE_RRF_RRC0].enDSE) begin

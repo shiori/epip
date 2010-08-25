@@ -78,6 +78,8 @@ class ise_thread_inf extends ovm_component;
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   bit pendLoad, pendStore, loopRandMemMode;
   uchar pendIFetch, pendMemAcc, pendBr;
+  uchar srThreadGrp, srFIFOMask;
+  round_mode srExeMode;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
   uint pc, pcBr, pcEret;
@@ -541,6 +543,7 @@ class ise_thread_inf extends ovm_component;
       ciRFM[i].cyc = i;
       ciSPA[i].subVec = i;
       ciSPU[i].subVec = i;
+      ciSPA[i].rndMode = srExeMode;
     end
   endfunction : fill_issue
 
@@ -579,6 +582,7 @@ class ip4_tlm_ise extends ovm_component;
   local ip4_printer printer;
   local uchar srPBId;
   local uint srExpBase;
+  local bit srSupMsg, srPerfCntMsk, srTimerMask, srReducePower, srDisableTimer;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -594,6 +598,7 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
     `ovm_field_int(srPBId, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_int(srExpBase, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
   function void enter_exp_pc(input uchar tid, bit ejtag = 0);
@@ -660,13 +665,52 @@ class ip4_tlm_ise extends ovm_component;
     op_gp2s:
     begin
       case(tInf.iSPU.adrWr[0])
-      SR_PROC_CTL : begin end
+      SR_PROC_CTL :
+      begin
+        foreach(thread[i])
+          if(thread[i].threadState == ts_disabled && tInf.iSPU.imm[i])
+            thread[i].threadState = ts_rdy;
+        srPBId = tInf.iSPU.imm[19:16];
+        srDisableTimer = tInf.iSPU.imm[25];
+        srReducePower = tInf.iSPU.imm[26];
+        srTimerMask = tInf.iSPU.imm[27];
+        srPerfCntMsk = tInf.iSPU.imm[29:28];
+        srSupMsg = tInf.iSPU.imm[29];
+      end
       SR_EBASE    : begin end
-      SR_THD_CTL  : begin end
+      SR_THD_CTL  :
+      begin
+        tInf.privMode = tInf.iSPU.imm[0];
+        tInf.srThreadGrp = tInf.iSPU.imm[15];
+        tInf.srFIFOMask = tInf.iSPU.imm[23:16];
+        tInf.srExeMode = round_mode'(tInf.iSPU.imm[26:24]);
+      end
       endcase
     end
     op_s2gp:
     begin
+      case(tInf.iSPU.adrWr[0])
+      SR_PROC_CTL :
+      begin
+        foreach(thread[i])
+          tInf.iSPU.imm[i] = thread[i].threadState != ts_disabled;
+        tInf.iSPU.imm[19:16] = srPBId;
+        tInf.iSPU.imm[23:20] = tid;
+        tInf.iSPU.imm[25] = srDisableTimer;
+        tInf.iSPU.imm[26] = srReducePower;
+        tInf.iSPU.imm[27] = srTimerMask;
+        tInf.iSPU.imm[29:28] = srPerfCntMsk;
+        tInf.iSPU.imm[29] = srSupMsg;
+      end
+      SR_EBASE    : begin end
+      SR_THD_CTL  :
+      begin
+        tInf.iSPU.imm[0] = tInf.privMode;
+        tInf.iSPU.imm[2] = tInf.srThreadGrp;
+        tInf.iSPU.imm[23:16] = tInf.srFIFOMask;
+        tInf.iSPU.imm[26:24] = tInf.srExeMode;
+      end
+      endcase
     end
     endcase
   endfunction : exe_ise

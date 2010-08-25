@@ -158,7 +158,7 @@ class ip4_tlm_spa extends ovm_component;
           foreach(op[i])
             op[i] = rfm.fu[fid].rp[i].op;
             
-          proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, spu.exeMode, spu.fu[fid].emsk, op,
+          proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
                     vn.rfm[1].fu[fid].expFlag, exeExp);
         end
@@ -184,7 +184,7 @@ class ip4_tlm_spa extends ovm_component;
                   op[rp] = vn.rfm[1].fu[i].res0;
           end
           
-          proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, spu.exeMode, spu.fu[fid].emsk, op,
+          proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
                     vn.rfm[1].fu[fid].expFlag, exeExp);
         end

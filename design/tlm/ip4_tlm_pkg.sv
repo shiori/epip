@@ -382,9 +382,13 @@ typedef enum uchar {
   SR_IIDY,      SR_IIDZ,      SR_EXPF,      SR_THD_CTL,     SR_THD_ST,
   SR_CONTENT,   SR_EPC,       SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_MSCT,      SR_MSCC,        SR_UEPC,
-  SR_UEE,       SR_EXEM,      SR_ASID,      SR_MD[0:7],     SR_FIFOS
+  SR_UEE,       SR_ASID,      SR_MD[0:7],   SR_FIFOS
   }special_regs;
-                
+
+typedef enum uchar {
+  rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
+  }round_mode;
+  
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128
                 VPN2_WIDTH   = 18,
