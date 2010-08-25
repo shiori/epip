@@ -54,6 +54,7 @@ function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
 endfunction
 
 class asmig;
+  int ps; /// source operation point
   bit[4:0][3:0] vecOp, immOp, zeroOp, enOp;  /// operation
   bit tagOp;  /// operation
   uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
@@ -61,10 +62,10 @@ class asmig;
   string tag;
   string op[5];
   bit[4:0] en, s, si;  /// option
-  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty;  /// option
-  bit[2:0] mop;  /// option
-  bit[1:0] sop;  /// option
-  uchar cop_fun;
+  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, emsk, vxup;  /// option
+  bit[1:0] sop, devcah, opcah;  /// option
+  bit[2:0] mop, ctyp;  /// option 
+  bit[3:0] mcfun, mtyp;
   uchar chkGrp;
   uchar grpsize;
   uint pc;
@@ -81,6 +82,7 @@ class asmig;
   uint co[NUM_BP_CO];
           
   function new();
+    ps = 1;
     vecOp = 0;
     immOp = 0;
     zeroOp = 0;
@@ -565,6 +567,7 @@ class asmig;
           end
         "fcr"   :
           begin
+            ps = 0;
             case(inst[i].i.op[1:0])
                 2'b00 : inst[i].i.op = iop_fcr;
                 2'b01 : inst[i].i.op = iop_fcrn;
@@ -625,6 +628,7 @@ class asmig;
           end
         "st"    :
           begin
+            ps = 0;
             if(immOp[i][2]) begin
               case(inst[i].i.op[2:0])
                 3'b001 : inst[i].i.op = iop_sw;
@@ -645,12 +649,13 @@ class asmig;
          end
         "cmpxchg":
           begin
-            if(immOp[i][3]) begin
+            ps = 0;
+            if(immOp[i][2]) begin
               inst[i].i.op = iop_cmpxchg;
               {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][1];
               inst[i].i.b.cmpxchg.ua = cmpxua;
               inst[i].i.b.cmpxchg.t = cmpxty;
-              two = 1;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -659,24 +664,68 @@ class asmig;
           end
         "fetadd":
           begin
-            if(immOp[i][2]) begin
+            if(immOp[i][3]) begin
               inst[i].i.op = iop_fetadd;
               {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][2];
               inst[i].i.b.ld.ua = fetaua;
               inst[i].i.b.ld.t  = fetaty;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
               return 0;
             end
           end
-        "mctl" :
+        "cache" :
           begin
+            ps = 0;
             if(immOp[i][1]) begin
-///              inst[i].i.op = iop_mctl;
-///              inst[i].i.b.mctl.fun = ;
-///              inst[i].i.b.mctl.c = ;
-///              {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+              inst[i].i.op = iop_mctl;
+              inst[i].i.b.mctl.fun = {opcah, devcah};
+              inst[i].i.b.mctl.c = 1;
+              {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "pref" :
+          begin
+            ps = 0;
+            if(immOp[i][1]) begin
+              inst[i].i.op = iop_mctl;
+              inst[i].i.b.mctl.fun = mcfun;
+              inst[i].i.b.mctl.c = 0;
+              {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "sync" :
+          begin
+            ps = 0;
+            if(immOp[i][1]) begin
+              inst[i].i.op = iop_mctl;
+              inst[i].i.b.mctl.fun = mcfun;
+              inst[i].i.b.mctl.c = 0;
+              {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "synci" :
+          begin
+            ps = 0;
+            if(immOp[i][1]) begin
+              inst[i].i.op = iop_mctl;
+              inst[i].i.b.mctl.fun = 13;
+              inst[i].i.b.mctl.c = 0;
+              {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -693,19 +742,61 @@ class asmig;
           end
         "cmp"  :
           begin
-            
+            ps = 2;
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_cmp;
+              inst[i].i.b.cmp.ctyp = ctyp;
+              inst[i].i.b.cmp.mtyp = mtyp;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "cmpu" :
           begin
-            
+            ps = 2;
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_cmpu;
+              inst[i].i.b.cmp.ctyp = ctyp;
+              inst[i].i.b.cmp.mtyp = mtyp;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "cmpi" :
           begin
-            
+            ps = 2;
+            if(immOp[i][3]) begin
+              inst[i].i.op = iop_cmpi;
+              inst[i].i.b.cmpi.ctyp = ctyp;
+              inst[i].i.b.cmpi.mtyp = mtyp;
+              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+              one = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "cmpiu" :
           begin
-            
+            ps = 2;
+            if(immOp[i][3]) begin
+              inst[i].i.op = iop_cmpiu;
+              inst[i].i.b.cmpi.ctyp = ctyp;
+              inst[i].i.b.cmpi.mtyp = mtyp;
+              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+              one = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "alloc" :
           begin
@@ -715,10 +806,17 @@ class asmig;
           end
         "sysc"  : 
           begin
+            ps = 0;
             inst[i].i.b.cop.fun = icop_alloc;
             inst[i].i.op = iop_cop;
-            if(immOp[i][0])
+            if(immOp[i][0]) begin
+              ps = 0;
               inst[i].i.b.cop.code = imm[i][0];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "ipwait" : 
           begin
@@ -727,17 +825,26 @@ class asmig;
           end
         "ipexit" :
           begin 
+            ps = 0;
             inst[i].i.b.cop.fun = icop_exit;
             inst[i].i.op = iop_cop;
             if(immOp[i][0])
               inst[i].i.b.cop.code = imm[i][0];
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "ipbreak": 
           begin
+            ps = 0;
             inst[i].i.b.cop.fun = icop_brk;
             inst[i].i.op = iop_cop;
-            if(immOp[i][0]) begin
+            if(immOp[i][0])
               inst[i].i.b.cop.code = imm[i][0];
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
             end
           end
         "tsync" : 
@@ -772,7 +879,7 @@ class asmig;
           end
         "asr"   : 
           begin
-            inst[i].i.b.cop.fun = icop_sra;
+            inst[i].i.b.cop.fun = icop_asr;
             inst[i].i.op = iop_cop;
             enOp[i][0] = 0;
             enOp[i][1] = 0;
@@ -782,11 +889,45 @@ class asmig;
               bksel[0] = inst[i].i.b.cop.code[20:16];
               one = 1;
             end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "eret"  : 
           begin
             inst[i].i.b.cop.fun = icop_eret;
             inst[i].i.op = iop_cop;
+          end
+        "shuffle4" :
+          begin
+            if(immOp[i][3]) begin
+              inst[i].i.op = iop_vxchg;
+              inst[i].i.b.vxchg.fun = imm[i][3];
+              inst[i].i.b.vxchg.t = 0;
+              inst[i].i.b.vxchg.s = 0;
+              inst[i].i.b.vxchg.up = vxup;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "permute32" :
+          begin
+            if(immOp[i][3]) begin
+              inst[i].i.op = iop_vxchg;
+              inst[i].i.b.vxchg.fun = imm[i][3];
+              inst[i].i.b.vxchg.t = 1;
+              inst[i].i.b.vxchg.s = emsk;
+              inst[i].i.b.vxchg.up = vxup;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
       default: begin `asm_err("op not understood!"); return 0; end
       endcase
@@ -831,14 +972,18 @@ class asmig;
       
       ///set rs0 rs1
       foreach(bk[j]) begin
-        if(!enOp[i][1 + j]) break;
-        if(vecOp[i][1 + j]) begin
-          if(adr[1 + j] > 31) begin
+        if(zeroOp[i][ps + j]) begin
+          bksel[j] = 15;
+          break;
+        end
+        if(!enOp[i][ps + j]) break;
+        if(vecOp[i][ps + j]) begin
+          if(adr[ps + j] > 31) begin
             `asm_err("vec reg out of bound!");
             return 0;
           end
-          adru[j] = adr[i][1 + j] >> BITS_VRF_BKS;
-          bk[j] = adr[i][1 + j] & ~{'1 << BITS_VRF_BKS};
+          adru[j] = adr[i][ps + j] >> BITS_VRF_BKS;
+          bk[j] = adr[i][ps + j] & ~{'1 << BITS_VRF_BKS};
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
@@ -856,12 +1001,12 @@ class asmig;
           end
         end
         else begin
-          if(adr[1 + j] > 15) begin
+          if(adr[ps + j] > 15) begin
             `asm_err("scl reg out of bound!");
             return 0;
           end
-          adru[j] = adr[i][1 + j] >> BITS_SRF_BKS;
-          bk[j] = adr[i][1 + j] & ~{'1 << BITS_SRF_BKS};
+          adru[j] = adr[i][ps + j] >> BITS_SRF_BKS;
+          bk[j] = adr[i][ps + j] & ~{'1 << BITS_SRF_BKS};
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
@@ -879,6 +1024,7 @@ class asmig;
           end
         end
       end
+      
       if(one)
         inst[i].i.b.ir3w1.rs0 = bksel[0];
       else if(two) begin
@@ -1101,6 +1247,41 @@ class ip4_assembler;
               "fetabst" : cur.fetaty = 0;
               "fetaran" : cur.fetaty = 1;
               "fetarnu" : cur.fetaty = 2;
+              "icah" : cur.devcah = 0;
+              "dcah" : cur.devcah = 1;
+              "ihit" : cur.opcah  = 0;
+              "ihtw" : cur.opcah  = 1;
+              "hitw" : cur.opcah  = 2;
+              "felk" : cur.opcah  = 3;
+              "pfld" : cur.mcfun  = 0;
+              "pfst" : cur.mcfun  = 1;
+              "pflds" : cur.mcfun = 2;
+              "pfsts" : cur.mcfun = 3;
+              "pfldr" : cur.mcfun = 4;
+              "pfstr" : cur.mcfun = 5;
+              "pfiwb" : cur.mcfun = 6;
+              "syldst" : cur.mcfun = 7;
+              "syld" : cur.mcfun = 8;
+              "syst" : cur.mcfun = 9;
+              "syl2s" : cur.mcfun = 10;
+              "sys2l" : cur.mcfun = 11;
+              "=" : cur.ctyp = 0;
+              ">" : cur.ctyp = 1;
+              ">=" : cur.ctyp = 2;
+              "<" : cur.ctyp = 3;
+              "<=" : cur.ctyp = 4;
+              "mnop" : cur.mtyp = 0;
+              "unc" : cur.mtyp = 1;
+              "and" : cur.mtyp = 2;
+              "andcm" : cur.mtyp = 3;
+              "or" : cur.mtyp = 5;
+              "orcm" : cur.mtyp = 6;
+              "orandcm" : cur.mtyp = 7;
+              "andorcm" : cur.mtyp = 8;
+              "penmsk0" : cur.emsk = 0;
+              "penmsk1" : cur.emsk = 1;
+              "vxup0" : cur.vxup = 0;
+              "vxup1" : cur.vxup = 1;
               default : begin `asm_err("unkonwn options."); return 0; end
               endcase
             end

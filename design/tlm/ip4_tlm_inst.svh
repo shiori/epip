@@ -207,7 +207,7 @@ typedef struct packed{
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1;
-  bit[12] fun;
+  bit[11:0] fun;
   bit dummy;
   bit s, up, t;
 }i_vxchg;
@@ -216,7 +216,7 @@ typedef enum bit[4:0] {
   icop_sysc,    icop_eret,      icop_wait,      icop_exit,
   icop_brk,     icop_tsync,     icop_msync,     icop_alloc,
   icop_tlbp = 'b10000,
-  icop_tlbr,    icop_tlbwi,     icop_tlbwr,     icop_sra
+  icop_tlbr,    icop_tlbwi,     icop_tlbwr,     icop_asr
 } iop_cop_e;
 
 typedef struct packed{
@@ -761,7 +761,7 @@ class inst_c extends ovm_object;
         op = op_tlbwr;
         priv = 1;
       end
-      icop_sra  :
+      icop_asr  :
       begin
         wrEn[0] = inst.i.b.cop.code[0];
         op = wrEn[0] ? op_s2gp : op_gp2s;
