@@ -207,7 +207,7 @@ typedef struct packed{
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1;
-  bit[12] fun;
+  bit[11:0] fun;
   bit dummy;
   bit s, up, t;
 }i_vxchg;
