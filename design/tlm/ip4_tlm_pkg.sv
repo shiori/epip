@@ -54,9 +54,22 @@ function automatic ulong max2(
 endfunction
 
 parameter time CLK_P              = 2ns;
-parameter uchar WORD_WIDTH        = 32;
-parameter uchar NUM_WORD_BYTES    = WORD_WIDTH / 8;
-                
+parameter uchar WORD_BYTES        = 4,
+                HALF_BYTES        = WORD_BYTES / 2,
+                WORD_WIDTH        = WORD_BYTES * 8,
+                HALF_WIDTH        = HALF_BYTES * 8;
+
+typedef union packed{
+  bit[HALF_BYTES - 1 : 0][7:0] b;
+  bit [HALF_WIDTH - 1: 0] h;
+} half;
+
+typedef union packed{
+  bit[WORD_BYTES - 1 : 0][7:0] b;
+  bit [WORD_WIDTH - 1: 0] w;
+  half [1:0] h;
+} word;
+
 parameter uchar LAT_MAC           = 5,
                 LAT_SFU           = 16,
                 LAT_RF            = 1,
@@ -90,17 +103,19 @@ parameter uint  NUM_SP            = 8,
                 NUM_SMEM_GRP      = 4,
                 NUM_SMEM_GRP_W    = 512,
                 NUM_DCHE_CL       = LAT_XCHG,
-                NUM_DCHE_TAG      = NUM_SMEM_GRP_W,
-                NUM_DCHE_ASS      = 2,
-                NUM_BURST_LEN     = 8,
-                NUM_EBUS_WORDS    = 2,
-                NUM_STBUF_LINE    = LAT_XCHG,
+                NUM_DCHE_TAG      = NUM_SMEM_GRP_W / NUM_DCHE_CL,
+                NUM_DCHE_ASO      = 4,
+///                NUM_BURST_CL      = LAT_XCHG,
+///                NUM_BURST_LEN     = NUM_BURST_CL * NUM_SMEM_BK,
+///                NUM_EBUS_WORDS    = 2,
+///                NUM_STBUF_LINE    = LAT_XCHG,
                 NUM_STQUE         = 8,
                 NUM_LDQUE         = 16;
 
 parameter uint CFG_START_ADR      = 'hf000_0000;
 
-parameter uchar BITS_WORD       = n2w(WORD_WIDTH / 8),
+parameter uchar BITS_WORD       = n2w(WORD_BYTES),
+                BITS_HALF       = n2w(HALF_BYTES),
                 BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
                 BITS_SRF_BKS    = n2w(NUM_SRF_BKS),
                 BITS_TID        = n2w(NUM_THREAD),
@@ -110,9 +125,9 @@ parameter uchar BITS_WORD       = n2w(WORD_WIDTH / 8),
                 BITS_SMEM_ADR   = n2w(NUM_SMEM_GRP_W),
                 BITS_SMEM_GRP   = n2w(NUM_SMEM_GRP),
                 BITS_DCH_CL     = n2w(NUM_DCHE_CL),
-                BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL),
-                BITS_BURST      = n2w(NUM_BURST_LEN),
-                BITS_STBUFL     = n2w(NUM_STBUF_LINE);
+                BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL);
+///                BITS_BURST      = n2w(NUM_BURST_LEN),
+///                BITS_STBUFL     = n2w(NUM_STBUF_LINE);
 
 /*
                                            pipeline stages:
@@ -174,8 +189,6 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
                  
-typedef bit[WORD_WIDTH-1:0]     word;
-
 `ovm_nonblocking_transport_imp_decl(_rfm)
 `ovm_nonblocking_transport_imp_decl(_ise)
 `ovm_nonblocking_transport_imp_decl(_spu)
@@ -413,8 +426,6 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///37
 
 typedef bit[PADR_WIDTH-1:0]     padr_t;
-
-parameter ulong IP4_BASE    = 'h00_0000_0000;
 
 parameter uint VADR_MAPPED = 'h0000_0000,
                VADR_NMAPNC = 'hF000_0000,

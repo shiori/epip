@@ -202,7 +202,7 @@ class ise_thread_inf extends ovm_component;
       adrPkgBytes = grpStart.adrPkgB;
       numImms = grpStart.immPkgW;
       dseVec = grpStart.unitEn;
-      IGrpBytes = 1 + adrPkgBytes + numImms * NUM_WORD_BYTES + NUM_INST_BYTES;
+      IGrpBytes = 1 + adrPkgBytes + numImms * WORD_BYTES + NUM_INST_BYTES;
     end
     else begin
       i_gs1_u grpStart;
@@ -218,7 +218,7 @@ class ise_thread_inf extends ovm_component;
       wCntSel = grpStart.i.chkGrp;
       adrPkgBytes = grpStart.i.adrPkgB;
       numImms = grpStart.i.immPkgW;
-      IGrpBytes = 2 + adrPkgBytes + numImms * NUM_WORD_BYTES + tmp * NUM_INST_BYTES;
+      IGrpBytes = 2 + adrPkgBytes + numImms * WORD_BYTES + tmp * NUM_INST_BYTES;
       enSPU = grpStart.i.unitEn[0];
       enDSE = grpStart.i.unitEn[1];
       dseVec = grpStart.i.dv;
@@ -345,7 +345,7 @@ class ise_thread_inf extends ovm_component;
       
     for(int i = 0; i < numImms; i++) begin
       co[i] = {iBuf[i + 3], iBuf[i + 2], iBuf[i + 1], iBuf[i]};
-      offSet += NUM_WORD_BYTES;
+      offSet += WORD_BYTES;
     end
       
     ///allocate reg read address
@@ -432,7 +432,7 @@ class ise_thread_inf extends ovm_component;
     if(LvlLast  >= NUM_MAX_IGRP_BYTES)
       ovm_report_warning("ise", "iBuf overflow!");
     if(LvlLast == 0) ///only calculate offSet when iBuf size is reset to 0
-      offSet = pc & `GMH(BITS_IFET);
+      offSet = pc & `GML(BITS_IFET);
 
     if(pendIFetch > 0)
       pendIFetch--;
@@ -451,7 +451,7 @@ class ise_thread_inf extends ovm_component;
 
   function void fill_ife(input tr_ise2ife ife);
     ife.fetchReq = 1;
-    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GML(BITS_IFET);
+    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GMH(BITS_IFET);
     pendIFetch++;
   endfunction : fill_ife
   
@@ -607,7 +607,7 @@ class ip4_tlm_ise extends ovm_component;
     ise_thread_inf tInf = thread[tid];
     tInf.privMode = 1;
     if(tInf.ejtagMode || ejtag) begin
-      tInf.pc = IP4_BASE + VADR_EJTAGS + EJTG_SIZE * srPBId;
+      tInf.pc = VADR_EJTAGS;
       tInf.ejtagMode = 1;
     end
     else begin
@@ -982,7 +982,7 @@ class ip4_tlm_ise extends ovm_component;
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdIssueLast;
-      tid = tid & `GMH(BITS_TID);
+      tid = tid & `GML(BITS_TID);
       
       ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(can_issue(tid)) begin
@@ -1034,7 +1034,7 @@ class ip4_tlm_ise extends ovm_component;
     ///ife req search
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdFetchLast;
-      tid = tid & `GMH(BITS_TID);
+      tid = tid & `GML(BITS_TID);
       if(thread[tid].can_req_ifetch()) begin
         toIFE = tr_ise2ife::type_id::create("toIFE", this);
         thread[tid].fill_ife(toIFE);
