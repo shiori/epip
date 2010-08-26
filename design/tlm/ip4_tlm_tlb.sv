@@ -143,7 +143,8 @@ class ip4_tlm_tlb extends ovm_component;
     bit find = 0;
     uchar varTid;
     word virAdr;
-    bit rspDSE = 0, rspIFE = 0, exp = 0;
+    bit rspDSE = 0, rspIFE = 0, exp = 0, varKC = 0;
+    cause_typs cause;
     
     ovm_report_info("tlb", "comb_proc procing...", OVM_FULL);
      
@@ -177,10 +178,12 @@ class ip4_tlm_tlb extends ovm_component;
       if(rspIFE && v.fmIFE[0] != null) begin
         virAdr = v.fmIFE[0].vAdr;
         varTid = v.fmIFE[0].tid;
+        varKC = 1;
       end
       else if(v.fmDSE != null) begin
         virAdr = v.fmDSE.vAdr;
         varTid = v.fmDSE.tid;
+        varKC = v.fmDSE.k;
       end
       
       ///search for match
@@ -199,27 +202,31 @@ class ip4_tlm_tlb extends ovm_component;
 
             if(varV == 0) begin
               ovm_report_info("TLB_Invalid", "tlb Invalid exception!!!", OVM_HIGH); 
+              exp = 1;
+              cause = EC_TLBINV;
+            end
+            else if(rspDSE && varD == 0 && ((v.fmDSE.op == op_sw) || (v.fmDSE.op == op_sh) || (v.fmDSE.op == op_sb))) begin
+              ovm_report_info("TLB_Modified", "tlb Modified exception!!!", OVM_HIGH); 
+              exp = 1;
+              cause = EC_TLBMOD;
+            end
+            else if(!varEx && rspIFE) begin
+              ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
+              exp = 1;
+              cause = EC_NOTEXE;
+            end
+            else if(!varK && varKC) begin
+              ovm_report_info("TLB_EX", "tlb PRIVILEGE exception!!!", OVM_HIGH); 
+              exp = 1;
+              cause = EC_LSPRIV;
+            end
+            
+            if(exp) begin
               vn.srContent[varTid][4:0] = 0;
               vn.srContent[varTid][22:5] = v.vpn2[i];
-              exp = 1;
               break;
             end
             
-            if(rspDSE && varD == 0 && ((v.fmDSE.op == op_sw) || (v.fmDSE.op == op_sh) || (v.fmDSE.op == op_sb))) begin
-              ovm_report_info("TLB_Modified", "tlb Modified exception!!!", OVM_HIGH); 
-              vn.srContent[varTid][4:0] = 0;
-              vn.srContent[varTid][22:5] = v.vpn2[i];
-              exp = 1;
-              break;
-            end
-
-            if(!varEx && rspIFE) begin
-              ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
-              vn.srContent[varTid][4:0] = 0;
-              vn.srContent[varTid][22:5] = v.vpn2[i];
-              exp = 1;
-              break;
-            end
             find = 1;
             break;
         end  
@@ -232,6 +239,7 @@ class ip4_tlm_tlb extends ovm_component;
         toIFE.rsp = 1;
         toIFE.hit = find;
         toIFE.exp = exp;
+        toIFE.k = varK;
         toIFE.eobit = evenOddBit;
       end
       
@@ -242,7 +250,6 @@ class ip4_tlm_tlb extends ovm_component;
         toDSE.hit = find;
         toDSE.exp = exp;
         toDSE.c = varC;
-        toDSE.k = varK;
         toDSE.e = varE;
       end   
     end   

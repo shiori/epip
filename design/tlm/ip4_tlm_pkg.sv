@@ -412,10 +412,10 @@ parameter special_regs tlbsr[] = '{
 };
 
 typedef enum uchar {
-  EC_SUPMSG,    EC_TLBMOD,    EC_TLBLOAD,     EC_TLBSTOR,
-  EC_ADRALG,    EC_NOTEXE,    EC_INSTBUS,     EC_LSBUS,
-  EC_SYSCAL,    EC_BREAK,     EC_EXEPRIV,     EC_DECODE,
-  EC_FFERR
+  EC_SUPMSG,    EC_TLBINV,    EC_TLBMOD,    EC_TLBLOAD,
+  EC_TLBSTOR,   EC_ADRALG,    EC_NOTEXE,    EC_IFACC,
+  EC_LSACC,     EC_SYSCAL,    EC_BREAK,     EC_EXEPRIV,
+  EC_LSPRIV,    EC_DECODE,    EC_FFERR,     EC_MSC
 }cause_typs;
 
 typedef enum uchar {
