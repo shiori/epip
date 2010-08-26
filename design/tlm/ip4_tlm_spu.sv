@@ -234,13 +234,21 @@ class ip4_tlm_spu extends ovm_component;
           toTLB.tid = ise.tid;
           toTLB.srAdr = ise.srAdr;
         end
-        else if(ise.srAdr == SR_OCMC) begin
+        else if(ise.srAdr inside {SR_OCMC, SR_MBASE}) begin
           if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
           toDSE.srReq = 1;
           toDSE.op0 = rfm.op0;
           toDSE.op = ise.op;
           toDSE.tid = ise.tid;
           toDSE.srAdr = ise.srAdr;
+        end
+        else begin
+          if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
+          toISE.srReq = 1;
+          toISE.op0 = rfm.op0;
+          toISE.op = ise.op;
+          toISE.tid = ise.tid;
+          toISE.srAdr = ise.srAdr;
         end
       end
     end
@@ -255,6 +263,10 @@ class ip4_tlm_spu extends ovm_component;
       else if(v.fmDSE != null && v.fmDSE.rsp) begin
         if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
         toRFM.res = v.fmDSE.srRes;
+      end
+      else if(v.fmISE[0] != null && v.fmISE[0].srRsp) begin
+        if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
+        toRFM.res = v.fmISE[0].srRes;
       end
     end
     

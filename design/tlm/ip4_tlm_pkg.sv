@@ -403,7 +403,7 @@ typedef enum uchar {
   SR_IIDY,      SR_IIDZ,      SR_EXPF,      SR_THD_CTL,     SR_THD_ST,
   SR_CONTENT,   SR_EPC,       SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_MSCT,      SR_MSCO,        SR_MSCU,
-  SR_UEPC,      SR_UEE,       SR_ASID,      SR_MD[0:7],     SR_FIFOS
+  SR_UEE,       SR_UER,       SR_ASID,      SR_MD[0:7],     SR_FIFOS
   }special_regs;
 
 parameter special_regs tlbsr[] = '{
@@ -412,8 +412,19 @@ parameter special_regs tlbsr[] = '{
 };
 
 typedef enum uchar {
+  EC_SUPMSG,    EC_TLBINV,    EC_TLBMOD,    EC_TLBLOAD,
+  EC_TLBSTOR,   EC_ADRALG,    EC_NOTEXE,    EC_IFACC,
+  EC_LSACC,     EC_SYSCAL,    EC_BREAK,     EC_EXEPRIV,
+  EC_LSPRIV,    EC_DECODE,    EC_FFERR,     EC_MSC
+}cause_typs;
+
+typedef enum uchar {
+  UE_FFCLN,     UE_FFRCV[0:7],  UE_FFSEND[0:7]
+}user_event_typs;
+  
+typedef enum uchar {
   rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
-  }round_mode;
+}round_mode;
   
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128

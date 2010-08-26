@@ -11,7 +11,8 @@
 ///Created by Andy Chen on Mar 16 2010
 
 typedef enum uchar {
-  exp_decode_err,   exp_dse_err,    exp_priv_err,     exp_msc_err
+  exp_decode_err,   exp_dse_err,    exp_priv_err,     exp_msc_err,
+  exp_ife_err
 }ise_exp_t;
 
 class ip4_tlm_ise_vars extends ovm_component;
@@ -58,7 +59,7 @@ class ise_thread_inf extends ovm_component;
   ise_thread_state threadState;
   uchar iBuf[$];
   bit dseVec;
-  uchar IGrpBytes, adrPkgBytes, numImms,
+  uchar iGrpBytes, adrPkgBytes, numImms,
         cntSrfRd, cntVrfRd, cntDSERd;
   word co[NUM_BP_CO];
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS], vrfGrp[CYC_VEC][NUM_VRF_BKS],
@@ -76,13 +77,14 @@ class ise_thread_inf extends ovm_component;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
-  bit pendLoad, pendStore, loopRandMemMode;
+  bit pendLoad, pendStore, lpRndMemMode, pendIFetchExp, IFetchExp;
   uchar pendIFetch, pendMemAcc, pendBr;
-  uchar srThreadGrp, srFIFOMask, srCause, srFIFOPend;
+  uchar srThreadGrp, srFIFOMask, srCause, srUserEvent, srFIFOPend;
   round_mode srExeMode;
+  cause_typs pendIFetchCause;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
-  uint pc, pcBr, pcEret;
+  uint pc, pcBr, pcEret, pcUEret, srUEE;
   bit brPred;
     
   `ovm_component_utils_begin(ise_thread_inf)
@@ -94,7 +96,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(ejtagMode, OVM_ALL_ON)
     `ovm_field_queue_int(iBuf, OVM_ALL_ON)
     `ovm_field_int(wCntSel, OVM_ALL_ON)
-    `ovm_field_int(IGrpBytes, OVM_ALL_ON)
+    `ovm_field_int(iGrpBytes, OVM_ALL_ON)
     `ovm_field_int(adrPkgBytes, OVM_ALL_ON)
     `ovm_field_int(numImms, OVM_ALL_ON)
     `ovm_field_int(cntSrfRd, OVM_ALL_ON)
@@ -118,7 +120,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(brPred, OVM_ALL_ON)
     `ovm_field_int(pendLoad, OVM_ALL_ON)
     `ovm_field_int(pendStore, OVM_ALL_ON)
-    `ovm_field_int(loopRandMemMode, OVM_ALL_ON)
+    `ovm_field_int(lpRndMemMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
     `ovm_field_int(pendMemAcc, OVM_ALL_ON)
     `ovm_field_int(pendBr, OVM_ALL_ON)
@@ -160,6 +162,8 @@ class ise_thread_inf extends ovm_component;
     vecMode = CYC_VEC - 1;
     decoded = 0;
     decodeErr = 0;
+    pendIFetchExp = 0;
+    IFetchExp = 0;
     print_enabled = 0;
   endfunction : new
  
@@ -202,7 +206,7 @@ class ise_thread_inf extends ovm_component;
       adrPkgBytes = grpStart.adrPkgB;
       numImms = grpStart.immPkgW;
       dseVec = grpStart.unitEn;
-      IGrpBytes = 1 + adrPkgBytes + numImms * WORD_BYTES + NUM_INST_BYTES;
+      iGrpBytes = 1 + adrPkgBytes + numImms * WORD_BYTES + NUM_INST_BYTES;
     end
     else begin
       i_gs1_u grpStart;
@@ -218,7 +222,7 @@ class ise_thread_inf extends ovm_component;
       wCntSel = grpStart.i.chkGrp;
       adrPkgBytes = grpStart.i.adrPkgB;
       numImms = grpStart.i.immPkgW;
-      IGrpBytes = 2 + adrPkgBytes + numImms * WORD_BYTES + tmp * NUM_INST_BYTES;
+      iGrpBytes = 2 + adrPkgBytes + numImms * WORD_BYTES + tmp * NUM_INST_BYTES;
       enSPU = grpStart.i.unitEn[0];
       enDSE = grpStart.i.unitEn[1];
       dseVec = grpStart.i.dv;
@@ -233,7 +237,7 @@ class ise_thread_inf extends ovm_component;
         
       ovm_report_info("decode_igrp_start",
         $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, adrPkgB:%0d, immPkgW:%0d", 
-                   IGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, adrPkgBytes, numImms),
+                   iGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, adrPkgBytes, numImms),
         OVM_HIGH);
     end
   endfunction : decode_igrp_start
@@ -384,12 +388,14 @@ class ise_thread_inf extends ovm_component;
 
   function void flush();
     iBuf = {};
-    IGrpBytes = 0;
+    iGrpBytes = 0;
     decoded = 0;
     decodeErr = 0;
     pendIFetch = 0;
     threadState = ts_rdy;
     cancel = 1;
+    pendIFetchExp = 0;
+    IFetchExp = 0;
   endfunction : flush
   
   function void retrieve_pc(uint adr);
@@ -420,9 +426,9 @@ class ise_thread_inf extends ovm_component;
       return 0;
     if(iBuf.size() + pendIFetch * NUM_IFET_BYTES >=  NUM_IBUF_BYTES)
       return 0;
-    if(IGrpBytes == 0)
+    if(iGrpBytes == 0)
       return 1;
-    if(iBuf.size() < IGrpBytes)
+    if(iBuf.size() < iGrpBytes)
       return 1;
     return 0;
   endfunction : can_req_ifetch
@@ -441,7 +447,23 @@ class ise_thread_inf extends ovm_component;
       ovm_report_info("update_inst", $psprintf("cancel, pc:0x%0h, offSet:%0h, pd:%0d", pc, offSet, pendIFetch), OVM_HIGH);
       return;
     end
-      
+    
+    if(fetchGrp.exp) begin
+      pendIFetchCause = EC_TLBLOAD;
+      pendIFetchExp = 1;
+      return;
+    end
+    else if(fetchGrp.accErr) begin
+      pendIFetchCause = EC_IFACC;
+      pendIFetchExp = 1;
+      return;
+    end
+    else if(fetchGrp.k && !privMode) begin
+      pendIFetchCause = EC_EXEPRIV;
+      pendIFetchExp = 1;
+      return;
+    end
+    
     foreach(fetchGrp.data[i])
       if(i >= offSet)
         iBuf.push_back(fetchGrp.data[i]);
@@ -509,7 +531,7 @@ class ise_thread_inf extends ovm_component;
         iDSE.fill_spu(ciSPU[i]);
         ciDSE[i].subVec = i;
         ciDSE[i].vecMode = vecMode;
-        ciDSE[i].nonBlock = loopRandMemMode;
+        ciDSE[i].nonBlock = lpRndMemMode;
         ciDSE[i].tid = tid;
         ciDSE[i].pbId = pbId;
       end
@@ -603,7 +625,7 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(srExpBase, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
-  function void enter_exp_pc(input uchar tid, bit ejtag = 0);
+  function void enter_exp_pc(input uchar tid, uint os, bit ejtag = 0);
     ise_thread_inf tInf = thread[tid];
     tInf.privMode = 1;
     if(tInf.ejtagMode || ejtag) begin
@@ -611,35 +633,42 @@ class ip4_tlm_ise extends ovm_component;
       tInf.ejtagMode = 1;
     end
     else begin
-      tInf.pcEret = tInf.pc;
+      tInf.pcEret = tInf.pc + os;
       tInf.pc = srExpBase;
     end
   endfunction
   
-  function void enter_exp(input uchar tid, ise_exp_t Err);
+  function void enter_exp(input uchar tid, ise_exp_t expType, cause_typs cause = EC_DECODE);
     ise_thread_inf tInf = thread[tid];
-    enter_exp_pc(tid); 
-    case(Err)
-    exp_decode_err  : begin end
-    exp_dse_err     : begin end
-    exp_priv_err    : begin end
-    exp_msc_err     : begin end
+    enter_exp_pc(tid, 0);
+    case(expType)
+    exp_decode_err:
+      tInf.srCause = EC_DECODE;
+    exp_dse_err:
+      tInf.srCause = cause;
+    exp_priv_err:
+      tInf.srCause = EC_EXEPRIV;
+    exp_msc_err:
+      tInf.srCause = EC_MSC;
+    exp_ife_err:
+      tInf.srCause = tInf.pendIFetchCause;
     endcase
     tInf.flush();
   endfunction : enter_exp
 
-  function void exe_ise(input uchar tid);
+  function word exe_ise(input uchar tid, opcode_e op, word op0 = 0, uchar sr = 0);
     ise_thread_inf tInf = thread[tid];
-    case(tInf.iSPU.op)
+    word res;
+    case(op)
     op_exit,
     op_sys: 
     begin
-      enter_exp_pc(tid); 
+      enter_exp_pc(tid, tInf.iGrpBytes); 
       tInf.flush();     
     end
     op_brk  :
     begin
-      enter_exp_pc(tid, 1); 
+      enter_exp_pc(tid, 0, 1); 
       tInf.flush();     
     end
     op_wait:
@@ -659,74 +688,80 @@ class ip4_tlm_ise extends ovm_component;
     end
     op_alloc:
     begin
-      if(tInf.iSPU.imm[2])
-        tInf.vrfMap[tInf.iSPU.imm[24:21]] = tInf.iSPU.imm[19:16];
+      if(op0[2])
+        tInf.vrfMap[op0[24:21]] = op0[19:16];
       else
-        tInf.srfMap[tInf.iSPU.imm[24:21]] = tInf.iSPU.imm[19:16];
+        tInf.srfMap[op0[24:21]] = op0[19:16];
     end
     op_gp2s:
     begin
-      case(tInf.iSPU.adrWr[0])
+      case(sr)
       SR_PROC_CTL :
       begin
         foreach(thread[i])
-          if(thread[i].threadState == ts_disabled && tInf.iSPU.imm[i])
+          if(thread[i].threadState == ts_disabled && op0[i])
             thread[i].threadState = ts_rdy;
-        srPBId = tInf.iSPU.imm[19:16];
-        srDisableTimer = tInf.iSPU.imm[25];
-        srReducePower = tInf.iSPU.imm[26];
-        srTimerMask = tInf.iSPU.imm[27];
-        srPerfCntMask = tInf.iSPU.imm[29:28];
-        srSupMsgMask = tInf.iSPU.imm[29];
+        srPBId = op0[19:16];
+        srDisableTimer = op0[25];
+        srReducePower = op0[26];
+        srTimerMask = op0[27];
+        srPerfCntMask = op0[29:28];
+        srSupMsgMask = op0[29];
       end
       SR_EBASE    :
 ///      begin
-        srExpBase = tInf.iSPU.imm;
+        srExpBase = op0;
 ///      end
       SR_THD_CTL  :
       begin
-        tInf.privMode = tInf.iSPU.imm[0];
-        tInf.srThreadGrp = tInf.iSPU.imm[15];
-        tInf.srFIFOMask = tInf.iSPU.imm[23:16];
-        tInf.srExeMode = round_mode'(tInf.iSPU.imm[26:24]);
+        tInf.privMode = op0[0];
+        tInf.srThreadGrp = op0[15];
+        tInf.srFIFOMask = op0[23:16];
+        tInf.srExeMode = round_mode'(op0[26:24]);
       end
+      SR_UEE    :
+        tInf.srUEE = op0;
+      SR_UER    :
+        tInf.srUEE = op0;
       endcase
     end
     op_s2gp:
     begin
-      case(tInf.iSPU.adrWr[0])
+      case(sr)
       SR_PROC_CTL :
       begin
         foreach(thread[i])
-          tInf.iSPU.imm[i] = thread[i].threadState != ts_disabled;
-        tInf.iSPU.imm[19:16] = srPBId;
-        tInf.iSPU.imm[23:20] = tid;
-        tInf.iSPU.imm[25] = srDisableTimer;
-        tInf.iSPU.imm[26] = srReducePower;
-        tInf.iSPU.imm[27] = srTimerMask;
-        tInf.iSPU.imm[29:28] = srPerfCntMask;
-        tInf.iSPU.imm[29] = srSupMsgMask;
+          res[i] = thread[i].threadState != ts_disabled;
+        res[19:16] = srPBId;
+        res[23:20] = tid;
+        res[25] = srDisableTimer;
+        res[26] = srReducePower;
+        res[27] = srTimerMask;
+        res[29:28] = srPerfCntMask;
+        res[29] = srSupMsgMask;
       end
       SR_EBASE    :
-        tInf.iSPU.imm = srExpBase;
+        res = srExpBase;
       SR_THD_CTL  :
       begin
-        tInf.iSPU.imm[0] = tInf.privMode;
-        tInf.iSPU.imm[2] = tInf.srThreadGrp;
-        tInf.iSPU.imm[23:16] = tInf.srFIFOMask;
-        tInf.iSPU.imm[26:24] = tInf.srExeMode;
+        res[0] = tInf.privMode;
+        res[2] = tInf.srThreadGrp;
+        res[23:16] = tInf.srFIFOMask;
+        res[26:24] = tInf.srExeMode;
       end
       SR_THD_ST   :
       begin
-        tInf.iSPU.imm[4:0] = tInf.srCause;
-        tInf.iSPU.imm[5] = srSupMsgPend;
-        tInf.iSPU.imm[13:6] = tInf.srFIFOPend;
-        tInf.iSPU.imm[15:14] = srPerfCntPend;        
-        tInf.iSPU.imm[16] = srTimerPend;        
+        res[4:0] = tInf.srUserEvent;
+        res[8:5] = tInf.srCause;
+        res[9] = srSupMsgPend;
+        res[17:10] = tInf.srFIFOPend;
+        res[19:18] = srPerfCntPend;        
+        res[20] = srTimerPend;        
       end
       endcase
     end
     endcase
+    return res;
   endfunction : exe_ise
 
   function bit can_issue(input uchar tid);
@@ -777,7 +812,7 @@ class ip4_tlm_ise extends ovm_component;
       if(cntSrfWr[i] + tInf.cntSrfWr[i] > CYC_VEC)
         return 0;
     
-    if(!tInf.loopRandMemMode && tInf.pendMemAcc > 0)
+    if(!tInf.lpRndMemMode && tInf.pendMemAcc > 0)
       return 0;
       
     return tInf.decoded && (tInf.threadState inside {ts_rdy, ts_w_b, ts_b_self} && tInf.wCnt[tInf.wCntSel] == 0);
@@ -791,7 +826,12 @@ class ip4_tlm_ise extends ovm_component;
         enter_exp(tid, exp_decode_err);
       return;
     end
-      
+    else if(tInf.IFetchExp) begin
+      if(tInf.threadState == ts_rdy)
+        enter_exp(tid, exp_ife_err);
+      return;
+    end
+    
     if(tInf.enSPU) begin
       if(tInf.iSPU.is_unc_br()) begin
         tInf.pc = tInf.pc + tInf.iSPU.offSet;
@@ -803,12 +843,12 @@ class ip4_tlm_ise extends ovm_component;
     /// spu or scalar dse issue
       if(tInf.iSPU.is_priv()) begin
         if(tInf.privMode)
-          exe_ise(tid);
+          void'(exe_ise(tid, tInf.iSPU.op));
         else
           enter_exp(tid, exp_priv_err);
       end
       else if(tInf.iSPU.is_ise_inst())
-        exe_ise(tid);
+        void'(exe_ise(tid, tInf.iSPU.op));
     end
 
     ///branch taken
@@ -823,9 +863,9 @@ class ip4_tlm_ise extends ovm_component;
     end
     ///not branch or branch not taken
     else begin
-      tInf.pc += tInf.IGrpBytes;
+      tInf.pc += tInf.iGrpBytes;
       tInf.decoded = 0;
-      tInf.iBuf = tInf.iBuf[tInf.IGrpBytes:$];
+      tInf.iBuf = tInf.iBuf[tInf.iGrpBytes:$];
       tInf.decodeErr = 0;
     end
             
@@ -836,7 +876,7 @@ class ip4_tlm_ise extends ovm_component;
         tInf.pendLoad = 1;
       else if(tInf.iDSE.op inside {op_sw, op_sh, op_sb})
         tInf.pendStore = 1;
-      tInf.loopRandMemMode =  (tInf.iDSE.mT == 1 && tInf.enSPU && tInf.iSPU.is_br()
+      tInf.lpRndMemMode =  (tInf.iDSE.mT == 1 && tInf.enSPU && tInf.iSPU.is_br()
         && tInf.threadState == ts_b_self && tInf.iSPU.prWrAdr[0] == tInf.iDSE.prRdAdr
         && tInf.iDSE.prRdAdr != 0 && tInf.brPred);
     end
@@ -927,7 +967,14 @@ class ip4_tlm_ise extends ovm_component;
 
     for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM; i--)
       vn.fmDSE[i] = v.fmDSE[i-1];  
-          
+    
+    ///SR Requests
+    if(v.fmSPU != null && v.fmSPU.srReq) begin
+      uchar stage = STAGE_RRF_SR0 - STAGE_RRF_EXS2 + 1;
+      if(ciSPU[stage] != null) ciSPU[stage] = tr_ise2spu::type_id::create("toSPU", this);
+      ciSPU[stage].srRes = exe_ise(v.fmSPU.tid, v.fmSPU.op, v.fmSPU.op0, v.fmSPU.srAdr);
+    end
+    
     ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       bit cancel;
@@ -959,7 +1006,7 @@ class ip4_tlm_ise extends ovm_component;
       else if(dse.cancel) begin
         thread[dse.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
         if(dse.exp)
-          enter_exp(dse.tid, exp_dse_err);
+          enter_exp(dse.tid, exp_dse_err, dse.cause);
       end
       if(dse.msgWait) begin
         thread[dse.tid].msg_wait();
@@ -1005,9 +1052,13 @@ class ip4_tlm_ise extends ovm_component;
     foreach(thread[i])
       if(thread[i].threadState != ts_disabled && thread[i].iBuf.size() > 1 && !thread[i].decoded) begin
         thread[i].decode_igrp_start();
-        if(thread[i].iBuf.size() >= thread[i].IGrpBytes) begin
+        if(thread[i].iBuf.size() >= thread[i].iGrpBytes) begin
           thread[i].decode_igrp();
           break;
+        end
+        else if(thread[i].pendIFetchExp) begin
+          thread[i].IFetchExp = 1;
+          thread[i].decoded = 1;
         end
       end
   endfunction
