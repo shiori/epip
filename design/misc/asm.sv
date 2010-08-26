@@ -63,10 +63,11 @@ class asmig;
   string tag;
   string op[5];
   bit[4:0] en, s, si;  /// option
-  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, emsk, vxup, alocd, s2g;  /// option
+  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, emsk, vxup, alocd, s2g, r3w1d;  /// option
   bit[1:0] sop, devcah, opcah;  /// option
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
+  
   uchar chkGrp;
   uchar grpsize;
   uint pc;
@@ -91,6 +92,7 @@ class asmig;
     zeroOp = 0;
     enOp = 0;
     tagOp = 0;
+    r3w1d = 0;
     en = 0;
     s = 0;
     si = 0;
@@ -135,7 +137,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_add3;
               inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = r3w1d;
               three = 1;
+              if(r3w1d) dual = 1;
             end
             else begin
               inst[i].i.op = iop_r2w1;
@@ -188,7 +192,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mul;
               inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = r3w1d;
               three = 1;
+              if(r3w1d) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -201,7 +207,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mad;
               inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = r3w1d;
               three = 1;
+              if(r3w1d) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -214,7 +222,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_msu;
               inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = r3w1d;
               three = 1;
+              if(r3w1d) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -250,6 +260,7 @@ class asmig;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_srl;
+              inst[i].i.b.ir2w1.imm = imm[i][2];
               two = 1;
             end
             else begin
@@ -274,6 +285,7 @@ class asmig;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_sra;
+              inst[i].i.b.ir2w1.imm = imm[i][2];
               two = 1;
             end
             else begin
@@ -430,6 +442,7 @@ class asmig;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_sll;
+              inst[i].i.b.ir2w1.imm = imm[i][2];
               two = 1;
             end
             else begin
@@ -454,6 +467,7 @@ class asmig;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_rot;
+              inst[i].i.b.ir2w1.imm = imm[i][2];
               two = 1;
             end
             else begin
@@ -957,39 +971,47 @@ class asmig;
       ///alloc 3rd rs, should be vec
       if(three && dual) begin
         bit failed = 1;
-        bk[3] = bk[3] & ('1 << 1);
+        adru[2] = adr[i][3] >> BITS_VRF_BKS;
+        bk[2] = adr[i][3] & ~{'1 << BITS_VRF_BKS};
+        bk[2] = bk[2] & ('1 << 1);
         for(int k = 0; k < CYC_VEC; k ++)
-          if((!vrfEn[k][bk[3]] || vrfAdr[k][bk[3]] == adru[3])
-              && (!vrfEn[k][bk[3] + 1] || vrfAdr[k][bk[3] + 1] == adru[3])) begin
-            vrfEn[k][bk[3]] = 1;
-            vrfEn[k][bk[3] + 1] = 1;
-            vrfAdr[k][bk[3]] = adru[3];
-            vrfAdr[k][bk[3] + 1] = 255;
+          if((!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2])
+              && (!vrfEn[k][bk[2] + 1] || vrfAdr[k][bk[2] + 1] == adru[2])) begin
+            vrfEn[k][bk[2]] = 1;
+            vrfEn[k][bk[2] + 1] = 1;
+            vrfAdr[k][bk[2]] = adru[2];
+            vrfAdr[k][bk[2] + 1] = 255;
             failed = 0;
-            bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
+            bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
             break;
           end
         if(failed) begin
           `asm_err("vec reg alloc failed!");
           return 0;
         end
-        inst[i].i.b.ir3w1.rs2 = bksel[3];
+        inst[i].i.b.ir3w1.rs2 = bksel[2];
       end
       else if(three) begin
         bit failed = 1;
+        `asm_msg($psprintf("printf out adr[3] of r3w1 %0d", adr[i][3]), OVM_HIGH);
+        adru[2] = adr[i][3] >> BITS_VRF_BKS;
+        `asm_msg($psprintf("printf out adru[2] of r3w1 %0d", adru[2]), OVM_HIGH);
+        bk[2] = adr[i][3] & ~{'1 << BITS_VRF_BKS};
         for(int k = 0; k < CYC_VEC; k++)
-          if(!vrfEn[k][bk[3]] || vrfAdr[k][bk[3]] == adru[3]) begin
-            vrfEn[k][bk[3]] = 1;
-            vrfAdr[k][bk[3]] = adru[3];
+          if(!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2]) begin
+            vrfEn[k][bk[2]] = 1;
+            vrfAdr[k][bk[2]] = adru[2];
             failed = 0;
-            bksel[3] = 16 + k * NUM_VRF_BKS + bk[3];
+            `asm_msg($psprintf("printf out bk 2 of r3w1 %0d", bk[2]), OVM_HIGH);
+            bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
             break;
           end
         if(failed) begin
           `asm_err("Err: vec reg alloc failed!");
           return 0;
         end
-        inst[i].i.b.ir3w1.rs2 = bksel[3];
+        `asm_msg($psprintf("printf out bksel 3 of r3w1 %0d", bksel[2]), OVM_HIGH);
+        inst[i].i.b.ir3w1.rs2 = bksel[2];
       end
       
       ///set rs0 rs1
@@ -1056,7 +1078,7 @@ class asmig;
                 break;
               end
             if(failed) begin
-              `asm_msg("vec reg alloc failed!");
+              `asm_msg("scalar reg alloc failed!");
               return 0;
             end
           end
@@ -1065,7 +1087,7 @@ class asmig;
       
       if(one)
         inst[i].i.b.ir3w1.rs0 = bksel[0];
-      else if(two) begin
+      else if(two || three) begin
         inst[i].i.b.ir3w1.rs0 = bksel[0];
         inst[i].i.b.ir3w1.rs1 = bksel[1];
       end
@@ -1284,6 +1306,7 @@ class ip4_assembler;
               "i"   : cur.si[icnt] = 0;
               "g0"  : cur.chkGrp = 0;
               "g1"  : cur.chkGrp = 1;
+              "r3w1d" : cur.r3w1d = 1; 
               "mu0" : cur.mu = 0;
               "mu1" : cur.mu = 1;
               "su0" : cur.su = 0;
@@ -1398,9 +1421,9 @@ class ip4_assembler;
               cur.imm[icnt][opcnt] = get_imm(tk);
             else if(!cur.zeroOp[icnt][opcnt])
               cur.adr[icnt][opcnt] = tk1n.atoi();
-            `asm_msg($psprintf("vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d", cur.vecOp[icnt][opcnt],
+            `asm_msg($psprintf("vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d", cur.vecOp[icnt][opcnt],
                       cur.zeroOp[icnt][opcnt], cur.immOp[icnt][opcnt], cur.adr[icnt][opcnt],
-                      cur.imm[icnt][opcnt]), OVM_HIGH);
+                      cur.imm[icnt][opcnt], opcnt), OVM_HIGH);
             opcnt++;
           end
         end   

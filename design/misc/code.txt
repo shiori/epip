@@ -2,3 +2,15 @@
 options.g0
 $tag1 (p0) li v3 0x16526C9 ;
 add.si v2 v3 0x6a6b7 ;
+lu v2 0x16526C9 ;
+//7+3=10 2r1w noimm
+lu s0 0x380000 ;
+lu s1 0x180000 ;
+add.s s3 s0 s1 ;
+//2r1w1imm shift right 3
+srl v3 v1 0x3 ;
+//2r1w shift right 3
+srlv s4 s3 s1 ;
+//3r1w mad 7*3+8
+lu v5 0x400000 ;
+mad.s v6 v3 v1 v5 ;
