@@ -845,8 +845,7 @@ class tr_ise2dse extends ovm_sequence_item;
 endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
-  rand bit noLd, noSt, noSMsg, noRMsg,
-           cancel, rdy, exp, msgWait;   /// sync to dem stage
+  rand bit cancel, rdy, exp, msgWait;   /// sync to dem stage
   rand uchar tid;
   rand cause_typs cause;
   
@@ -859,10 +858,6 @@ class tr_dse2ise extends ovm_sequence_item;
   }
   
 	`ovm_object_utils_begin(tr_dse2ise)
-	  `ovm_field_int(noLd, OVM_ALL_ON)
-	  `ovm_field_int(noSt, OVM_ALL_ON)
-	  `ovm_field_int(noSMsg, OVM_ALL_ON)
-	  `ovm_field_int(noRMsg, OVM_ALL_ON)
 	  `ovm_field_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
@@ -1041,8 +1036,10 @@ endclass : tr_eif2dse
 
 ///---------------------------trsaction ise_eif eif_ise------------------------
 class tr_ise2eif extends ovm_sequence_item;
-  
+  rand bit rsp;
+    
   `ovm_object_utils_begin(tr_ise2eif)
+    `ovm_field_int(rsp, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_ise2eif");
@@ -1051,10 +1048,20 @@ class tr_ise2eif extends ovm_sequence_item;
 endclass : tr_ise2eif
 
 class tr_eif2ise extends ovm_sequence_item;
-  rand bit rsp;
-  
+  rand uchar noLd, noSt, noSMsg, noRMsg;
+
+  constraint valid_var {
+    noLd <= CYC_VEC;
+    noSt <= CYC_VEC;
+    noSMsg <= CYC_VEC;
+    noRMsg <= CYC_VEC;
+  }
+    
   `ovm_object_utils_begin(tr_eif2ise)
-    `ovm_field_int(rsp, OVM_ALL_ON);
+	  `ovm_field_int(noLd, OVM_ALL_ON)
+	  `ovm_field_int(noSt, OVM_ALL_ON)
+	  `ovm_field_int(noSMsg, OVM_ALL_ON)
+	  `ovm_field_int(noRMsg, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2ise");

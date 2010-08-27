@@ -73,7 +73,7 @@ typedef union packed{
 typedef union packed{
   bit[WORD_BYTES - 1 : 0][7:0] b;
   bit [WORD_BITS - 1: 0] w;
-  half [1:0] h;
+  halfu [1:0] h;
 } wordu;
 
 parameter uchar LAT_MAC           = 5,
@@ -131,7 +131,8 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
                 WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),
                 WID_DCH_CL      = n2w(NUM_DCHE_CL),
-                WID_DCH_IDX     = n2w(NUM_SMEM_GRP / NUM_DCHE_CL);
+                WID_DCH_IDX     = n2w(NUM_DCHE_TAG),
+                WID_DCHE_STAG   = 2;
 ///                WID_BURST      = n2w(NUM_BURST_LEN),
 ///                WID_STBUFL     = n2w(NUM_STBUF_LINE);
 

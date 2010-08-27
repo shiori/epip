@@ -20,6 +20,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_rfm2ise fmRFM;
   tr_ife2ise fmIFE;
   tr_spa2ise fmSPA;
+  tr_eif2ise fmEIF, pendEIF;
   tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DEM];
   
   tr_ise2rfm rfm[STAGE_ISE:1];
@@ -36,6 +37,8 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmRFM, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmIFE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_object(pendEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -61,7 +64,7 @@ class ise_thread_inf extends ovm_component;
   bit dseVec;
   uchar iGrpBytes, adrPkgBytes, numImms,
         cntSrfRd, cntVrfRd, cntDSERd;
-  word co[NUM_BP_CO];
+  wordu co[NUM_BP_CO];
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS], vrfGrp[CYC_VEC][NUM_VRF_BKS],
         srfAdr[CYC_VEC][NUM_SRF_BKS], srfGrp[CYC_VEC][NUM_SRF_BKS];
   bit vrfRdEn[CYC_VEC][NUM_VRF_BKS], srfRdEn[CYC_VEC][NUM_SRF_BKS];
@@ -348,7 +351,8 @@ class ise_thread_inf extends ovm_component;
     end
       
     for(int i = 0; i < numImms; i++) begin
-      co[i] = {iBuf[i + 3], iBuf[i + 2], iBuf[i + 1], iBuf[i]};
+      for(int j = 0; j < WORD_BYTES; j++)
+        co[i].b[j] = iBuf[i + j];
       offSet += WORD_BYTES;
     end
       
@@ -580,7 +584,8 @@ class ip4_tlm_ise extends ovm_component;
   local uchar cntVrfRd, cntSrfRd, cntDSERd, cntVecProc,
               cntPRWr, cntSrfWr[NUM_SRF_BKS], cntVrfWr[NUM_VRF_BKS];
         
-  local bit noLd, noSt, noSMsg, noRMsg, noFu[NUM_FU];
+  local bit noFu[NUM_FU];
+  local uchar noLd, noSt, noSMsg, noRMsg;
   
   local tr_ise2rfm ciRFM[CYC_VEC];
   local tr_ise2spa ciSPA[CYC_VEC];
@@ -609,6 +614,7 @@ class ip4_tlm_ise extends ovm_component;
   local bit srSupMsgMask, srPerfCntMask, srTimerMask, srReducePower, srDisableTimer,
             srTimerPend,  srSupMsgPend;
   local bit[1:0] srPerfCntPend;
+  local tr_ise2eif toEIF;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -918,6 +924,7 @@ class ip4_tlm_ise extends ovm_component;
     vn.fmRFM = null;
     vn.fmIFE = null;
     vn.fmDSE[STAGE_ISE_DEM] = null;
+    toEIF = null;
     
     for(int i = STAGE_ISE; i > 1; i--) begin
       vn.rfm[i] = v.rfm[i - 1];  
@@ -962,10 +969,10 @@ class ip4_tlm_ise extends ovm_component;
       if(cntVrfWr[i] != 0) cntVrfWr[i]--;
     
     noFu = '{default: 0};
-    noLd = 0;
-    noSt = 0;
-    noSMsg = 0;
-    noRMsg = 0;
+    if(noLd > 0) noLd--;
+    if(noSt > 0) noSt--;
+    if(noSMsg > 0) noSMsg--;
+    if(noRMsg > 0) noRMsg--;
 
     for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM; i--)
       vn.fmDSE[i] = v.fmDSE[i-1];  
@@ -1019,12 +1026,25 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null)
       noFu = v.fmSPA.noFu;
       
-    if(v.fmDSE[STAGE_ISE_DEM] != null) begin
-      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
-      noLd = dse.noLd;
-      noSt = dse.noSt;
-      noSMsg = dse.noSMsg;
-      noRMsg = dse.noRMsg;
+    if(v.pendEIF != null || v.fmEIF != null) begin
+      tr_eif2ise eif;
+      if(v.pendEIF != null) begin
+        eif = v.pendEIF;
+        vn.pendEIF = null;
+      end
+      else
+        eif = v.fmEIF;
+      if(ciDSE[0] == null || !ciDSE[0].en) begin
+        noLd += eif.noLd;
+        noSt += eif.noSt;
+        noSMsg += eif.noSMsg;
+        noRMsg += eif.noRMsg;
+        vn.pendEIF = null;
+        if(toEIF == null) toEIF = tr_ise2eif::type_id::create("toEIF", this);
+          toEIF.rsp = 1;
+      end
+      else
+        vn.pendEIF = eif;
     end
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch
@@ -1118,6 +1138,7 @@ class ip4_tlm_ise extends ovm_component;
     if(toSPA != null) void'(spa_tr_port.nb_transport(toSPA, toSPA));
     if(toIFE != null) void'(ife_tr_port.nb_transport(toIFE, toIFE));
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
+    if(toEIF != null) void'(eif_tr_port.nb_transport(toEIF, toEIF));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
@@ -1178,6 +1199,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
+    vn.fmEIF = req;
     return 1;
   endfunction : nb_transport_eif
       

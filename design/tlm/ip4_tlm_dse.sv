@@ -52,23 +52,24 @@ class ip4_tlm_dse extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
   local ip4_tlm_dse_vars v, vn;  
-  local word sharedMem[NUM_SMEM_GRP][NUM_SMEM_GRP_W][NUM_SMEM_BK];
-  local uint cacheTag[NUM_SMEM_GRP_W / NUM_DCHE_CL][NUM_DCHE_ASO];
-  local bit cacheTagV[NUM_SMEM_GRP_W / NUM_DCHE_CL][NUM_DCHE_ASO];
-  local bit cacheDirty[NUM_SMEM_GRP_W / NUM_DCHE_CL][NUM_DCHE_ASO];
+  local wordu sharedMem[NUM_SMEM_GRP][NUM_SMEM_GRP_W][NUM_SMEM_BK];
+  local uint cacheTagHi[NUM_DCHE_TAG][NUM_DCHE_ASO],
+             cacheTagLo[NUM_DCHE_TAG][NUM_DCHE_ASO][NUM_SMEM_GRP];
+  local bit cacheTagV[NUM_DCHE_TAG][NUM_DCHE_ASO][NUM_SMEM_GRP];
+  local bit cacheDirty[NUM_DCHE_TAG][NUM_DCHE_ASO][NUM_SMEM_GRP];
   local word tlbReqVAdr[STAGE_RRF_SEL:STAGE_RRF_TAG];
   local bit selFndValid;
   local bit selSMemBk[LAT_XCHG][NUM_SMEM_BK], selXchgBk[LAT_XCHG][NUM_SMEM_BK];
   local uint selSMemAdr[LAT_XCHG][NUM_SMEM_BK];
-  local bit selAlignExp, selSMemBoundExp;
   local padr_t exAdr;
   local bit exRdy, exAccEn[LAT_XCHG][NUM_SMEM_BK][WORD_BYTES];
   local wordu stXchgBuf[LAT_XCHG][NUM_SMEM_BK],
               ldXchgBuf[LAT_XCHG][NUM_SMEM_BK],
               exStBuf[LAT_XCHG][NUM_SMEM_BK];
+  local uchar ldXchgCtl[LAT_XCHG][NUM_SMEM_BK];
              
   local padr_t ldQuePAdr[NUM_LDQUE];
-  local uchar ldQueXhg[NUM_LDQUE][LAT_XCHG][NUM_SMEM_BK];
+  local uchar ldQueXhgCtl[NUM_LDQUE][LAT_XCHG][NUM_SMEM_BK];
   local bit ldQueWrEn[NUM_LDQUE][LAT_XCHG][NUM_SMEM_BK], ldQueEn[NUM_LDQUE];
   local uchar ldQueGrp[NUM_LDQUE], ldQueAdr[NUM_LDQUE], ldQueSubVec[NUM_LDQUE];
   local uchar stQueTid[NUM_STQUE];
@@ -76,6 +77,7 @@ class ip4_tlm_dse extends ovm_component;
 
   local uchar srCacheGrp;
   local uint srMapBase;
+  local bit cacheGrpEn[NUM_SMEM_GRP];
     
   `ovm_component_utils_begin(ip4_tlm_dse)
   `ovm_component_utils_end
@@ -98,7 +100,7 @@ class ip4_tlm_dse extends ovm_component;
     padr_t selPAdr[NUM_SP];
     bit selEMsk[NUM_SP];
     bit selNoCache[NUM_SP];
-    bit selExp[NUM_SP];
+    bit selTLBExp[NUM_SP], selAlignExp[NUM_SP], selSMemBoundExp[NUM_SP];
     
     ovm_report_info("dse", "comb_proc procing...", OVM_FULL); 
    
@@ -147,11 +149,11 @@ class ip4_tlm_dse extends ovm_component;
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL];
       tr_tlb2dse tlb = v.fmTLB;
-      uchar pbId = ise.pbId;
+      uchar pbId = ise.pbId, cyc = ise.subVec & `GML(WID_DCH_CL);
       uint vAdrHi;
       uint dcIdx, dcRdy = 0;
       bit ed = 0;
-      uchar clBits = n2w(NUM_DCHE_CL + srCacheGrp - 1);
+///      uchar clBits = n2w(NUM_DCHE_CL + srCacheGrp - 1);
 
       if(ise.subVec & 2'b01 == 0) begin
         selSMemBk = '{default : 0};
@@ -176,12 +178,11 @@ class ip4_tlm_dse extends ovm_component;
               selPAdr[i] = srMapBase + EJTG_OFFSET + pbId * EJTG_SIZE + rfm.base[i] - VADR_EJTAGS;
           end
         end
-        else if(tlb != null && tlb.hit && !tlb.exp
-            && (rfm.base[i] >> (VADR_START + tlb.eobit)) == vAdrHi) begin
+        else if(tlb != null && tlb.hit && (rfm.base[i] >> (VADR_START + tlb.eobit)) == vAdrHi) begin
           selEMsk[i] = spu.emsk[i];
           selPAdr[i] = rfm.base[i];
-          selExp[i] = tlb.exp;
           if(!selEMsk[i]) continue;
+          selTLBExp[i] = tlb.exp;
           selNoCache[i] = tlb.c == 0;
           for(int j = (VADR_START + tlb.eobit); j < PADR_WIDTH; j++)
             selPAdr[i][j] = tlb.pfn[j - VADR_START];
@@ -200,36 +201,39 @@ class ip4_tlm_dse extends ovm_component;
         if(!selEMsk[i]) continue;
         
         ///align exp
-        selAlignExp = selAlignExp
-                      || (ise.op inside {op_lw, op_sw, op_ll, op_sc, op_fetadd} && selPAdr[i][1:0] != 2'b0)
-                      || (ise.op inside {op_lh, op_sh, op_lhu, op_cmpxchg} && selPAdr[0] != 1'b0);
+        selAlignExp[i] = (ise.op inside {op_lw, op_sw, op_ll, op_sc, op_fetadd} && selPAdr[i][1:0] != 2'b0)
+                         || (ise.op inside {op_lh, op_sh, op_lhu, op_cmpxchg} && selPAdr[0] != 1'b0);
         
         ///external mem
-        ///cache address:   | tag | idx | cl | bk | offset |
+        ///cache address:   | taghi | taglo | idx | cl | bk | offset |
         if(selPAdr[i] < smStart && selPAdr[i] >= smEnd2) begin
           bit hit = 0;
           uint idx;
           ///chk cache for match
-          if(!selNoCache[i] && srCacheGrp > 0) begin
-            uint tag = selPAdr[i] >> (WID_WORD + WID_SMEM_BK + clBits + WID_DCH_IDX);
-            idx = selPAdr[i] >> (WID_WORD + WID_SMEM_BK + clBits) & `GML(WID_DCH_IDX);
+          if(!selNoCache[i] && cacheGrpEn[i]) begin
+            uint taglo = selPAdr[i] >> (WID_WORD + WID_SMEM_BK + WID_DCH_CL + WID_DCH_IDX),
+                 taghi = taglo >> WID_DCHE_STAG;
+            taglo = taglo & `GML(WID_DCHE_STAG);
+            idx = selPAdr[i] >> (WID_WORD + WID_SMEM_BK + WID_DCH_CL) & `GML(WID_DCH_IDX);
             adr = selPAdr[i] >> (WID_WORD + WID_SMEM_BK) & `GML(WID_DCH_CL);
-            for(int aid = 0; aid < NUM_DCHE_ASO; aid++)
-              if(!dcRdy) begin
-                ///cache hit
-                hit = cacheTagV[idx][aid] && cacheTag[idx][aid] == tag;
-                dcRdy = 1;
-                dcIdx = idx;
-              end
-              else if(dcRdy && dcIdx == idx && cacheTagV[idx][aid] && cacheTag[idx][aid] == tag)
-                hit = 1;
+            for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++)
+              for(int loTagIdx = 0; loTagIdx < NUM_SMEM_GRP; loTagIdx++)
+                if(!dcRdy || dcIdx == idx) begin
+                  dcRdy = 1;
+                  dcIdx = idx;
+                  hit = cacheTagV[idx][hiTagIdx][loTagIdx] && cacheTagHi[idx][hiTagIdx] == taghi && 
+                        cacheTagLo[idx][hiTagIdx][loTagIdx] == taglo;
+                  dcRdy = 1;
+                  dcIdx = idx;
+                  grp = loTagIdx;
+                end
           end
 
           bk = (selPAdr[i] >> WID_WORD) & `GML(WID_SMEM_BK);
                       
           ///cache hit
           if(hit) begin
-            grp = (selPAdr[i] >> (WID_WORD + WID_SMEM_BK)) & `GML(clBits);
+///            grp = (selPAdr[i] >> (WID_WORD + WID_SMEM_BK)) & `GML(clBits);
             foreach(selXchgBk[j])
               if(!selXchgBk[j][bk]) begin
                 selXchgBk[j][bk] = 1;
@@ -240,7 +244,7 @@ class ip4_tlm_dse extends ovm_component;
           end
           ///external access
           else begin
-            grp = (selPAdr[i] >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_WORD);
+            grp = (selPAdr[i] >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_DCH_CL);
             adr = selPAdr[i] & `GML(WID_WORD);
 
             ///a external store still need xchg network            
@@ -252,8 +256,10 @@ class ip4_tlm_dse extends ovm_component;
                   break;
                 end
             end
-            else
+            else begin
+              ldXchgCtl[cyc][i] = (selPAdr[i] >> WID_WORD) & `GML(WID_DCH_CL + WID_SMEM_BK);
               ex = 1;
+            end
               
             if(!exRdy && ex) begin
               exRdy = 1;
@@ -267,7 +273,7 @@ class ip4_tlm_dse extends ovm_component;
         else begin
           uint adr1;
           if(selPAdr[i] >= smEnd) begin
-            selSMemBoundExp = 1;
+            selSMemBoundExp[i] = 1;
             continue;
           end
           
@@ -292,10 +298,10 @@ class ip4_tlm_dse extends ovm_component;
         if(oc) begin
           res = sharedMem[grp][adr][bk];
           case(ise.op)
-          op_lbu  : res = {'0, res[7:0]};
-          op_lb   : res = {{WORD_BITS{res.b[0][7]}}, res.b[0]};
-          op_lhu  : res = {'0, res.h[0]};
-          op_lh   : res = {{WORD_BITS{res.h[0][HALF_BITS - 1]}}, res.h[0]};
+          op_lbu  : res = {'0, res.b[adr]};
+          op_lb   : res = {{WORD_BITS{res.b[adr][7]}}, res.b[adr]};
+          op_lhu  : res = {'0, res.h[adr >> WID_HALF]};
+          op_lh   : res = {{WORD_BITS{res.h[adr >> WID_HALF].b[HALF_BYTES - 1][7]}}, res.h[adr >> WID_HALF]};
           endcase
           vn.rfm[STAGE_RRF_DEM0].res[i] = res;
         end
@@ -338,8 +344,8 @@ class ip4_tlm_dse extends ovm_component;
         selSMemBk = '{default : 0};
         selXchgBk = '{default : 0};
         selSMemAdr = '{default : 0};
-        selAlignExp = 0;
-        selSMemBoundExp = 0;
+///        selAlignExp = '{default : 0};
+///        selSMemBoundExp = '{default : 0};
         exRdy = 0;
         exStBuf = '{default : 0};
       end
@@ -352,7 +358,13 @@ class ip4_tlm_dse extends ovm_component;
       op_gp2s:
         case(spu.srAdr)
         SR_MBASE: srMapBase = spu.op0;
-        SR_OCMC:  srCacheGrp = spu.op0 & `GML(NUM_SMEM_GRP);
+        SR_OCMC:
+        begin
+          srCacheGrp = spu.op0 & `GML(NUM_SMEM_GRP);
+          foreach(cacheGrpEn[i])
+            if(i >= (NUM_SMEM_GRP - srCacheGrp))
+              cacheGrpEn[i] = 1;
+        end
         endcase
       op_s2gp:
       begin

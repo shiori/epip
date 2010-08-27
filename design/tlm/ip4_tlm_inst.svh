@@ -1056,16 +1056,16 @@ class inst_c extends ovm_object;
     end
   endfunction : fill_spa
 
-  function bit dse_block(input bit noLd, noSt, noSMsg, noRMsg);
+  function bit dse_block(input uchar noLd, noSt, noSMsg, noRMsg);
     if(!decoded) decode();
     if(enSPU) begin
-      if(noLd && op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu})
+      if(noLd > 0 && op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu})
         return 1;
-      if(noSt && op inside {iop_sw, iop_sh, iop_sb, iop_sc})
+      if(noSt > 0 && op inside {iop_sw, iop_sh, iop_sb, iop_sc})
         return 1;
-      if(noSMsg && op == op_smsg)
+      if(noSMsg > 0 && op == op_smsg)
         return 1;
-      if(noRMsg && op == op_rmsg)
+      if(noRMsg > 0 && op == op_rmsg)
         return 1;
     end
     return 0;
