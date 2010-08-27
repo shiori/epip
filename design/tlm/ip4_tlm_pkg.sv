@@ -374,6 +374,15 @@ parameter opcode_e dse_ops[] = '{
   op_smsg,    op_rmsg
 };
 
+parameter opcode_e ld_ops[] = '{
+  op_lw,      op_lh,      op_lb,      op_ll,
+  op_lhu,     op_lbu
+};
+
+parameter opcode_e st_ops[] = '{
+  op_sw,      op_sh,      op_sb,      op_sc
+};
+
 parameter opcode_e spu_ops[] = '{
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
@@ -420,9 +429,10 @@ parameter special_regs tlbsr[] = '{
 
 typedef enum uchar {
   EC_SUPMSG,    EC_TLBINV,    EC_TLBMOD,    EC_TLBLOAD,
-  EC_TLBSTOR,   EC_ADRALG,    EC_NOTEXE,    EC_IFACC,
-  EC_LSACC,     EC_SYSCAL,    EC_BREAK,     EC_EXEPRIV,
-  EC_LSPRIV,    EC_DECODE,    EC_FFERR,     EC_MSC
+  EC_TLBSTOR,   EC_ADRALG,    EC_SMBOND,    EC_NOTEXE,
+  EC_IFACC,     EC_LSACC,     EC_SYSCAL,    EC_BREAK,
+  EC_EXEPRIV,   EC_LSPRIV,    EC_DECODE,    EC_FFERR,
+  EC_MSC
 }cause_typs;
 
 typedef enum uchar {

@@ -996,7 +996,8 @@ endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
-  rand bit req, isLoad;
+  rand bit req;
+  rand opcode_e op;
   rand uchar id;
   rand padr_t pAdr;
   rand word data[NUM_SMEM_BK];
@@ -1004,7 +1005,7 @@ class tr_dse2eif extends ovm_sequence_item;
   
   `ovm_object_utils_begin(tr_dse2eif)
     `ovm_field_int(req, OVM_ALL_ON)
-    `ovm_field_int(isLoad, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(pAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
