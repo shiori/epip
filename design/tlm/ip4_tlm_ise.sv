@@ -592,12 +592,14 @@ class ip4_tlm_ise extends ovm_component;
   ovm_nonblocking_transport_imp_rfm #(tr_rfm2ise, tr_rfm2ise, ip4_tlm_ise) rfm_tr_imp;
   ovm_nonblocking_transport_imp_ife #(tr_ife2ise, tr_ife2ise, ip4_tlm_ise) ife_tr_imp;
   ovm_nonblocking_transport_imp_dse #(tr_dse2ise, tr_dse2ise, ip4_tlm_ise) dse_tr_imp;
+  ovm_nonblocking_transport_imp_eif #(tr_eif2ise, tr_eif2ise, ip4_tlm_ise) eif_tr_imp;
   
   ovm_nonblocking_transport_port #(tr_ise2rfm, tr_ise2rfm) rfm_tr_port;
   ovm_nonblocking_transport_port #(tr_ise2spu, tr_ise2spu) spu_tr_port;
   ovm_nonblocking_transport_port #(tr_ise2spa, tr_ise2spa) spa_tr_port;
   ovm_nonblocking_transport_port #(tr_ise2ife, tr_ise2ife) ife_tr_port;
   ovm_nonblocking_transport_port #(tr_ise2dse, tr_ise2dse) dse_tr_port;
+  ovm_nonblocking_transport_port #(tr_ise2eif, tr_ise2eif) eif_tr_port;
 
   local ip4_tlm_ise_vars v, vn;
   local ise_thread_inf thread[NUM_THREAD];
@@ -1039,7 +1041,7 @@ class ip4_tlm_ise extends ovm_component;
         break;
       end
     end
-
+    
     ///cancel from one cycle delayed
     if(v.fmIFE != null && v.cancel[v.fmIFE.tid])
       v.fmIFE = null;
@@ -1169,7 +1171,16 @@ class ip4_tlm_ise extends ovm_component;
     vn.fmDSE[STAGE_ISE_DEM] = req;
     return 1;
   endfunction : nb_transport_dse
-    
+
+  function bit nb_transport_eif(input tr_eif2ise req, output tr_eif2ise rsp);
+    ovm_report_info("ise_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    return 1;
+  endfunction : nb_transport_eif
+      
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time==stamp) begin
@@ -1205,13 +1216,15 @@ class ip4_tlm_ise extends ovm_component;
     spa_tr_imp = new("spa_tr_imp", this);
     rfm_tr_imp = new("rfm_tr_imp", this);
     dse_tr_imp = new("dse_tr_imp", this);
-        
+    eif_tr_imp = new("eif_tr_imp", this);
+    
     ife_tr_port = new("ife_tr_port", this);
     rfm_tr_port = new("rfm_tr_port", this);
     spu_tr_port = new("spu_tr_port", this);
     spa_tr_port = new("spa_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
-        
+    eif_tr_port = new("eif_tr_port", this);
+    
     v = new("v", this);
     vn = new("vn", this);
     

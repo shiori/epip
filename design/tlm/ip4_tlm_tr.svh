@@ -812,7 +812,6 @@ class tr_ise2dse extends ovm_sequence_item;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   rand uchar pbId;
-  rand uchar vrfCnt[CYC_VEC], srfCnt[CYC_VEC];
   
 	`ovm_object_utils_begin(tr_ise2dse)
 	  `ovm_field_int(wrBk, OVM_ALL_ON)
@@ -830,8 +829,6 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(subVec, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pbId, OVM_ALL_ON)
-	  `ovm_field_sarray_int(vrfCnt, OVM_ALL_ON)
-	  `ovm_field_sarray_int(srfCnt, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
