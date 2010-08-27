@@ -81,11 +81,13 @@ class ip4_tlm_dse extends ovm_component;
   local uint srMapBase;
   local bit cacheGrpEn[NUM_SMEM_GRP];
   local bit selExp;
-  local uchar expTid;
+  local uchar expVid;
   local cause_typs expCause;
 
   local tr_dse2eif eifTr[LAT_XCHG];
   local tr_dse2rfm rfmTr[LAT_XCHG];
+  local tr_dse2tlb toTLB;
+  local tr_dse2ise toISE;
   
   `ovm_component_utils_begin(ip4_tlm_dse)
   `ovm_component_utils_end
@@ -153,9 +155,10 @@ class ip4_tlm_dse extends ovm_component;
     end
     eifTr[0] = null;
     rfmTr[0] = null;
+    toTLB = null;
+    toISE = null;
     
-    if(v.fmSPU[STAGE_RRF_SEL] != null
-      && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
+    if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL];
@@ -187,7 +190,7 @@ class ip4_tlm_dse extends ovm_component;
           if(!spu.emsk[i]) continue;
           if(!selExp) begin
             selExp = tlb.exp;
-            expTid = ise.subVec * NUM_SP + i;
+            expVid = ise.subVec * NUM_SP + i;
             expCause = tlb.cause;
             selOcEMsk[cyc][i] = spu.emsk[i];
             selExEMsk[cyc][i] = spu.emsk[i];
@@ -214,7 +217,7 @@ class ip4_tlm_dse extends ovm_component;
            || (ise.op inside {op_lh, op_sh, op_lhu, op_cmpxchg} && selPAdr[0] != 1'b0)) begin
           if(!selExp) begin
             expCause = EC_ADRALG;
-            expTid = ise.subVec * NUM_SP + i;
+            expVid = ise.subVec * NUM_SP + i;
             selExp = 1;
           end
         end
@@ -289,7 +292,7 @@ class ip4_tlm_dse extends ovm_component;
           if(selPAdr[i] >= smEnd) begin
             if(!selExp) expCause = EC_SMBOND;
             selExp = 1;
-            expTid = ise.subVec * NUM_SP + i;
+            expVid = ise.subVec * NUM_SP + i;
             continue;
           end
           
@@ -431,6 +434,12 @@ class ip4_tlm_dse extends ovm_component;
         exRdy = 0;
         exStBuf = '{default : 0};
       end
+      else if(ise.subVec == ise.vecMode) begin
+        ///scl inst only!!
+        selExp = 0;
+        toISE = tr_dse2ise::type_id::create("toISE", this);
+        toISE.exp = !selExp || ise.nonBlock;
+      end
     end
     
     ///spu ops
@@ -465,7 +474,6 @@ class ip4_tlm_dse extends ovm_component;
   
   function void req_proc();
     tr_dse2rfm toRFM;
-    tr_dse2tlb toTLB;
     tr_dse2spu toSPU;
     tr_dse2eif toEIF;
     
@@ -505,6 +513,8 @@ class ip4_tlm_dse extends ovm_component;
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));
     if(toEIF != null) void'(eif_tr_port.nb_transport(toEIF, toEIF));
+    if(toTLB != null) void'(tlb_tr_port.nb_transport(toTLB, toTLB));
+    if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------

@@ -12,7 +12,7 @@
 
 typedef enum uchar {
   exp_decode_err,   exp_dse_err,    exp_priv_err,     exp_msc_err,
-  exp_ife_err
+  exp_ife_err,      exp_fu_err
 }ise_exp_t;
 
 class ip4_tlm_ise_vars extends ovm_component;
@@ -21,7 +21,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ife2ise fmIFE;
   tr_spa2ise fmSPA;
   tr_eif2ise fmEIF, pendEIF;
-  tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DEM];
+  tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DEM0];
   
   tr_ise2rfm rfm[STAGE_ISE:1];
   tr_ise2spa spa[STAGE_ISE:1];
@@ -31,7 +31,9 @@ class ip4_tlm_ise_vars extends ovm_component;
   uchar TIdIssueLast, TIdFetchLast;
   bit cancel[NUM_THREAD];
   uint pcStages[STAGE_ISE_VWB:1];
-    
+  uint igSizeStages[STAGE_ISE_VWB:1];
+  bit privStages[STAGE_ISE_VWB:1];
+  
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -48,6 +50,8 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_int(TIdFetchLast, OVM_ALL_ON)
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
     `ovm_field_sarray_int(pcStages, OVM_ALL_ON)
+    `ovm_field_sarray_int(igSizeStages, OVM_ALL_ON)
+    `ovm_field_sarray_int(privStages, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function new(string name, ovm_component parent);
@@ -87,8 +91,8 @@ class ise_thread_inf extends ovm_component;
   cause_typs pendIFetchCause;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
-  uint pc, pcBr, pcEret, pcUEret, srUEE;
-  bit brPred;
+  uint pc, pcEret, pcUEret, srUEE;
+  bit brPred, brPrivMode;
     
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, threadState, OVM_ALL_ON)
@@ -118,7 +122,6 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
-    `ovm_field_int(pcBr, OVM_ALL_ON)
     `ovm_field_int(pcEret, OVM_ALL_ON)
     `ovm_field_int(brPred, OVM_ALL_ON)
     `ovm_field_int(pendLoad, OVM_ALL_ON)
@@ -161,7 +164,6 @@ class ise_thread_inf extends ovm_component;
     threadState = ts_disabled;
     privMode = 0;
     pc = CFG_START_ADR;
-    pcBr = CFG_START_ADR;
     vecMode = CYC_VEC - 1;
     decoded = 0;
     decodeErr = 0;
@@ -185,13 +187,12 @@ class ise_thread_inf extends ovm_component;
 
   function void br_pred();
     pendBr++;
+    brPrivMode = privMode;
     if(iSPU.offSet == 0) begin
-      pcBr = pc;
       brPred = 1;
       threadState = ts_b_self;
     end
     else begin
-      pcBr = pc + iSPU.offSet;
       brPred = 0;
       threadState = (threadState == ts_rdy) ? ts_w_b : ts_b_pred;
     end
@@ -401,28 +402,6 @@ class ise_thread_inf extends ovm_component;
     pendIFetchExp = 0;
     IFetchExp = 0;
   endfunction : flush
-  
-  function void retrieve_pc(uint adr);
-    flush();
-    pc = adr;
-   endfunction : retrieve_pc
-
-  function void msg_wait();
-  endfunction : msg_wait
-  
-  function bit br_pred_miss(input bit br);
-    if(threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
-      if(pendBr > 0) pendBr--;
-      if(pendBr == 0)
-        threadState = ts_rdy;
-      if(br != brPred) begin
-        flush();
-        pc = pcBr;
-        return 1;
-      end
-    end
-    return 0;
-  endfunction : br_pred_miss
 
   function bit can_req_ifetch();
     ovm_report_info("can_req_ifetch", $psprintf("threadState:%s, iBuf lv:%0d, pd:%0d", threadState.name, iBuf.size(), pendIFetch), OVM_HIGH);
@@ -633,22 +612,27 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(srExpBase, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
-  function void enter_exp_pc(input uchar tid, uint os, bit ejtag = 0);
+  function void changePC(input uchar tid, bit nxt = 0, uchar stage = 0, ejtag = 0);
     ise_thread_inf tInf = thread[tid];
-    tInf.privMode = 1;
+    uint target = stage == 0 ? tInf.pc : v.pcStages[stage],
+         offSet = stage == 0 ? tInf.iGrpBytes : v.igSizeStages[stage];
+    bit priv = stage == 0 ? tInf.privMode : v.privStages[stage];
+    
+    tInf.privMode = priv;
     if(tInf.ejtagMode || ejtag) begin
       tInf.pc = VADR_EJTAGS;
       tInf.ejtagMode = 1;
     end
     else begin
-      tInf.pcEret = tInf.pc + os;
+      tInf.pcEret = target + offSet;
       tInf.pc = srExpBase;
     end
   endfunction
   
-  function void enter_exp(input uchar tid, ise_exp_t expType, cause_typs cause = EC_DECODE);
+  function void enter_exp(input uchar tid, ise_exp_t expType, uchar stage = 0, cause_typs cause = EC_DECODE);
     ise_thread_inf tInf = thread[tid];
-    enter_exp_pc(tid, 0);
+    tInf.privMode = 1;
+    changePC(tid, 0, stage);
     case(expType)
     exp_decode_err:
       tInf.srCause = EC_DECODE;
@@ -657,13 +641,41 @@ class ip4_tlm_ise extends ovm_component;
     exp_priv_err:
       tInf.srCause = EC_EXEPRIV;
     exp_msc_err:
+    begin
       tInf.srCause = EC_MSC;
+      changePC(tid, 1, stage);
+    end
     exp_ife_err:
       tInf.srCause = tInf.pendIFetchCause;
+    exp_fu_err:
+      tInf.srCause = EC_FUEXP;
     endcase
     tInf.flush();
   endfunction : enter_exp
 
+  function void dse_wait(input uchar tid);
+    ise_thread_inf tInf = thread[tid];
+    ///its possible a previous blocking mem access followed by nonBlock access
+    tInf.pendMemAcc = 0;
+    tInf.pendLoad = 0;
+    tInf.pendStore = 0;    
+    changePC(tid, 1, STAGE_ISE_DEM0);
+  endfunction : dse_wait
+
+  function void resolve_br(input uchar tid, bit br, uchar stage);
+    ise_thread_inf tInf = thread[tid];
+    if(tInf.threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
+      if(tInf.pendBr > 0) tInf.pendBr--;
+      if(tInf.pendBr == 0)
+        tInf.threadState = ts_rdy;
+      if(br != tInf.brPred) begin
+        tInf.flush();
+        changePC(tid, 1, stage);
+        tInf.cancel = 1;
+      end
+    end
+  endfunction : resolve_br
+    
   function word exe_ise(input uchar tid, opcode_e op, word op0 = 0, uchar sr = 0);
     ise_thread_inf tInf = thread[tid];
     word res;
@@ -671,12 +683,16 @@ class ip4_tlm_ise extends ovm_component;
     op_exit,
     op_sys: 
     begin
-      enter_exp_pc(tid, tInf.iGrpBytes); 
+      changePC(tid); ///, tInf.iGrpByte); 
+      tInf.privMode = 1;
+      tInf.srCause = EC_SYSCAL;
       tInf.flush();     
     end
     op_brk  :
     begin
-      enter_exp_pc(tid, 0, 1); 
+      changePC(tid, 0, 0, 1); 
+      tInf.privMode = 1;
+      tInf.srCause = EC_BREAK;
       tInf.flush();     
     end
     op_wait:
@@ -829,6 +845,9 @@ class ip4_tlm_ise extends ovm_component;
   function void issue(input uchar tid, pbId);
     ise_thread_inf tInf = thread[tid];
     vn.pcStages[1] = tInf.pc;
+    vn.igSizeStages[1] = tInf.iGrpBytes;
+    vn.privStages[1] = tInf.privMode;
+    
     if(tInf.decodeErr) begin
       if(tInf.threadState == ts_rdy)
         enter_exp(tid, exp_decode_err);
@@ -917,13 +936,13 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null) end_tr(v.fmSPA);
     if(v.fmRFM != null) end_tr(v.fmRFM);
     if(v.fmIFE != null) end_tr(v.fmIFE);
-    if(v.fmDSE[STAGE_ISE_DEM] != null) end_tr(v.fmDSE[STAGE_ISE_DEM]);
+    if(v.fmDSE[STAGE_ISE_DEM0] != null) end_tr(v.fmDSE[STAGE_ISE_DEM0]);
     
     vn.fmSPU = null;
     vn.fmSPA = null;
     vn.fmRFM = null;
     vn.fmIFE = null;
-    vn.fmDSE[STAGE_ISE_DEM] = null;
+    vn.fmDSE[STAGE_ISE_DEM0] = null;
     toEIF = null;
     
     for(int i = STAGE_ISE; i > 1; i--) begin
@@ -937,8 +956,14 @@ class ip4_tlm_ise extends ovm_component;
     vn.spu[1] = null;
     vn.dse[1] = null;
     
-    for(int i = STAGE_ISE_VWB; i > 1; i--)
+    for(int i = STAGE_ISE_VWB; i > 1; i--) begin
       vn.pcStages[i] = v.pcStages[i - 1];
+      vn.igSizeStages[i] = v.igSizeStages[i - 1];
+      vn.privStages[i] = v.privStages[i - 1];
+    end
+    vn.pcStages[1] = v.pcStages[1];
+    vn.igSizeStages[1] = v.igSizeStages[1];
+    vn.privStages[1] = v.privStages[1];
       
     foreach(thread[i])
       thread[i].cyc_new();
@@ -974,7 +999,7 @@ class ip4_tlm_ise extends ovm_component;
     if(noSMsg > 0) noSMsg--;
     if(noRMsg > 0) noRMsg--;
 
-    for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM; i--)
+    for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM0; i--)
       vn.fmDSE[i] = v.fmDSE[i-1];  
     
     ///SR Requests
@@ -986,25 +1011,23 @@ class ip4_tlm_ise extends ovm_component;
     
     ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
-      bit cancel;
-      cancel = thread[v.fmSPU.tid].br_pred_miss(v.fmSPU.brTaken);
-      if(v.fmSPU.mscExp) begin
-        cancel = 1;
-        enter_exp(v.fmIFE.tid, exp_msc_err);
-      end
-      if(v.fmIFE != null && cancel && v.fmIFE.tid == v.fmSPU.tid)
-        v.fmIFE.instEn = 0;
+      tr_spu2ise spu = v.fmSPU;
+      resolve_br(spu.tid, spu.brTaken, spu.brStage);
+      if(spu.mscExp)
+        enter_exp(spu.tid, exp_msc_err, spu.brStage);
     end
     
     ///cancel condition 2, spa exp
     if(v.fmSPA != null && v.fmSPA.exp) begin
-      thread[v.fmSPA.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
+      enter_exp(v.fmSPA.tid, exp_fu_err, STAGE_ISE_VWBP);
     end
     
-    ///cancel condition 2 dse exp or cache miss
-    if(v.fmDSE[STAGE_ISE_DEM] != null) begin
-      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
-      if(dse.rdy) begin
+    ///cancel condition 3 dse exp or cache miss
+    if(v.fmDSE[STAGE_ISE_DEM0] != null) begin
+      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM0];
+      if(dse.cancel)
+        dse_wait(dse.tid);
+      else begin
         if(thread[dse.tid].pendMemAcc > 0)
           thread[dse.tid].pendMemAcc--;
         if(thread[dse.tid].pendMemAcc == 0) begin
@@ -1012,14 +1035,8 @@ class ip4_tlm_ise extends ovm_component;
           thread[dse.tid].pendStore = 0;
         end
       end
-      else if(dse.cancel) begin
-        thread[dse.tid].retrieve_pc(v.pcStages[STAGE_ISE_VWB]);
-        if(dse.exp)
-          enter_exp(dse.tid, exp_dse_err, dse.cause);
-      end
-      if(dse.msgWait) begin
-        thread[dse.tid].msg_wait();
-      end
+      if(dse.exp)
+        enter_exp(dse.tid, exp_dse_err, STAGE_ISE_DEM0, dse.cause);
     end
     
     ///update no_* for issue & check
@@ -1189,7 +1206,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fmDSE[STAGE_ISE_DEM] = req;
+    vn.fmDSE[STAGE_ISE_DEM0] = req;
     return 1;
   endfunction : nb_transport_dse
 

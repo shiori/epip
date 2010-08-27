@@ -561,7 +561,7 @@ endclass : tr_spa2spu
 
 class tr_spu2ise extends ovm_sequence_item;
   rand bit brRsp, brTaken, mscExp;
-  rand uchar tid;
+  rand uchar tid, brStage;
   rand word op0;
   rand bit srReq;
   rand opcode_e op;
@@ -570,6 +570,7 @@ class tr_spu2ise extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_spu2ise)
 	  `ovm_field_int(brRsp, OVM_ALL_ON)
 	  `ovm_field_int(brTaken, OVM_ALL_ON)
+	  `ovm_field_int(brStage, OVM_ALL_ON)
 	  `ovm_field_int(mscExp, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(srReq, OVM_ALL_ON)
@@ -845,8 +846,11 @@ class tr_ise2dse extends ovm_sequence_item;
 endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
-  rand bit cancel, rdy, exp, msgWait;   /// sync to dem stage
-  rand uchar tid;
+  /// sync to dem0 stage
+  rand bit rsp,     ///the whole req finished
+           cancel,  ///cancel the following insts
+           exp;     ///the whole req has exception
+  rand uchar tid, vidExp;
   rand cause_typs cause;
   
   constraint dist_var {
@@ -859,10 +863,10 @@ class tr_dse2ise extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_dse2ise)
 	  `ovm_field_int(cancel, OVM_ALL_ON)
-	  `ovm_field_int(rdy, OVM_ALL_ON)
+	  `ovm_field_int(rsp, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
-	  `ovm_field_int(msgWait, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(vidExp, OVM_ALL_ON)
 	  `ovm_field_enum(cause_typs, cause, OVM_ALL_ON)
   `ovm_object_utils_end
   

@@ -191,7 +191,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
                 STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
                 STAGE_ISE_VWB     = STAGE_ISE_VWBP + CYC_VEC,       ///16
-                STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM;        ///8
+                STAGE_ISE_DEM0    = LAT_ISE + STAGE_RRF_DEM0;        ///8
                                 
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
@@ -431,7 +431,7 @@ typedef enum uchar {
   EC_SUPMSG,    EC_TLBINV,    EC_TLBMOD,    EC_TLBLOAD,
   EC_TLBSTOR,   EC_ADRALG,    EC_SMBOND,    EC_NOTEXE,
   EC_IFACC,     EC_LSACC,     EC_SYSCAL,    EC_BREAK,
-  EC_EXEPRIV,   EC_LSPRIV,    EC_DECODE,    EC_FFERR,
+  EC_EXEPRIV,   EC_LSPRIV,    EC_DECODE,    EC_FUEXP,
   EC_MSC
 }cause_typs;
 

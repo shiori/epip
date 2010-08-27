@@ -195,6 +195,7 @@ class ip4_tlm_spa extends ovm_component;
         end
       end
       
+      ///signal exp when whole request finished
       if(ise.subVec == ise.vecMode) begin
         if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("toISE", this);
         vn.ise[1].exp = exeExp;
