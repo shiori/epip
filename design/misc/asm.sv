@@ -971,8 +971,8 @@ class asmig;
       ///alloc 3rd rs, should be vec
       if(three && dual) begin
         bit failed = 1;
-        adru[2] = adr[i][3] >> BITS_VRF_BKS;
-        bk[2] = adr[i][3] & ~{'1 << BITS_VRF_BKS};
+        adru[2] = adr[i][3] >> WID_VRF_BKS;
+        bk[2] = adr[i][3] & ~{'1 << WID_VRF_BKS};
         bk[2] = bk[2] & ('1 << 1);
         for(int k = 0; k < CYC_VEC; k ++)
           if((!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2])
@@ -994,9 +994,9 @@ class asmig;
       else if(three) begin
         bit failed = 1;
         `asm_msg($psprintf("printf out adr[3] of r3w1 %0d", adr[i][3]), OVM_HIGH);
-        adru[2] = adr[i][3] >> BITS_VRF_BKS;
+        adru[2] = adr[i][3] >> WID_VRF_BKS;
         `asm_msg($psprintf("printf out adru[2] of r3w1 %0d", adru[2]), OVM_HIGH);
-        bk[2] = adr[i][3] & ~{'1 << BITS_VRF_BKS};
+        bk[2] = adr[i][3] & ~{'1 << WID_VRF_BKS};
         for(int k = 0; k < CYC_VEC; k++)
           if(!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2]) begin
             vrfEn[k][bk[2]] = 1;
@@ -1042,8 +1042,8 @@ class asmig;
             `asm_err("vec reg out of bound!");
             return 0;
           end
-          adru[j] = adr[i][ps + j] >> BITS_VRF_BKS;
-          bk[j] = adr[i][ps + j] & ~{'1 << BITS_VRF_BKS};
+          adru[j] = adr[i][ps + j] >> WID_VRF_BKS;
+          bk[j] = adr[i][ps + j] & ~{'1 << WID_VRF_BKS};
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
@@ -1065,8 +1065,8 @@ class asmig;
             `asm_err("scl reg out of bound!");
             return 0;
           end
-          adru[j] = adr[i][ps + j] >> BITS_SRF_BKS;
-          bk[j] = adr[i][ps + j] & ~{'1 << BITS_SRF_BKS};
+          adru[j] = adr[i][ps + j] >> WID_SRF_BKS;
+          bk[j] = adr[i][ps + j] & ~{'1 << WID_SRF_BKS};
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)

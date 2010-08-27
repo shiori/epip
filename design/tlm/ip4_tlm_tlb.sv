@@ -266,7 +266,7 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbp:
         for (int i = 0; i < NUM_TLB_E; i++) begin
           varMask = page_mask_table[v.pageTyp[i]];
-          if((v.vpn2[i] & ~varMask) == (v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask)
+          if((v.vpn2[i] & ~varMask) == (v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask)
               && ((v.g[i] == 1) || (v.asid[i] == v.srEntryHi[ASID_WIDTH-1:0])))
             vn.srIndex = i;
         end
@@ -278,11 +278,11 @@ class ip4_tlm_tlb extends ovm_component;
         if(i < NUM_TLB_E) begin
           varMask = page_mask_table[v.pageTyp[i]];
           vn.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH] = v.pageTyp[i];
-          vn.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
+          vn.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
           vn.srEntryHi[ASID_WIDTH-1:0] = v.asid[i];
           
           vn.srEntryLo1[0] = v.g[i];
-          vn.srEntryLo1[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] = v.pfn2o[i];
+          vn.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2o[i];
           vn.srEntryLo1[8] = v.ex[1][i];
           vn.srEntryLo1[7:5] = v.c[1][i];
           vn.srEntryLo1[4] = v.k[1][i];
@@ -291,7 +291,7 @@ class ip4_tlm_tlb extends ovm_component;
           vn.srEntryLo1[1] = v.v[1][i];
           
           vn.srEntryLo0[0] = v.g[i];
-          vn.srEntryLo0[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] = v.pfn2e[i];
+          vn.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2e[i];
           vn.srEntryLo0[8] = v.ex[0][i];
           vn.srEntryLo0[7:5] = v.c[0][i];
           vn.srEntryLo0[4] = v.k[0][i];
@@ -306,18 +306,18 @@ class ip4_tlm_tlb extends ovm_component;
         int i = v.srIndex;
         varMask = page_mask_table[v.pageTyp[i]];
         vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
-        vn.vpn2[i] = v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask;
+        vn.vpn2[i] = v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH-1:0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
         
-        vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] & ~varMask;
+        vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
         vn.ex[1][i] = v.srEntryLo1[8];
         vn.c[1][i] = v.srEntryLo1[7:5];
         vn.k[1][i] = v.srEntryLo1[4];
         vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2];
         vn.v[1][i] = v.srEntryLo1[1];
         
-        vn.pfn2e[i] = v.srEntryLo0[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] & ~varMask;
+        vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
         vn.ex[0][i] = v.srEntryLo0[8];
         vn.c[0][i] = v.srEntryLo0[7:5];
         vn.k[0][i] = v.srEntryLo0[4];
@@ -330,13 +330,13 @@ class ip4_tlm_tlb extends ovm_component;
         int i = v.srIndex;
         varMask = page_mask_table[v.pageTyp[i]];
         vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
-        vn.vpn2[i] = v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask;
+        vn.vpn2[i] = v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH - 1 : 0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
-        vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : 9] & ~varMask;
+        vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : 9] & ~varMask;
         vn.ex[1][i] = v.srEntryLo1[8]; vn.c[1][i] = v.srEntryLo1[7:5]; vn.k[1][i] = v.srEntryLo1[4];
         vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2]; vn.v[1][i] = v.srEntryLo1[1];
-        vn.pfn2e[i] = v.srEntryLo0[WORD_WIDTH - 1 : 9] & ~varMask;
+        vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : 9] & ~varMask;
         vn.ex[0][i] = v.srEntryLo0[8]; vn.c[0][i] = v.srEntryLo0[7:5]; vn.k[0][i] = v.srEntryLo0[4];
         vn.e[0][i] = v.srEntryLo0[3]; vn.d[0][i] = v.srEntryLo0[2]; vn.v[0][i] = v.srEntryLo0[1];
       end

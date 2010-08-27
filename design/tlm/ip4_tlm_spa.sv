@@ -373,13 +373,13 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
                                     ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
                                     inout uchar expFlag[NUM_SP], bit exp);
   bit pres[NUM_SP];
-  bit[WORD_WIDTH:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
+  bit[WORD_BITS:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
   
   foreach(op0[i]) begin
-    op0[i] = {o[0][i][WORD_WIDTH-1], o[0][i]};
-    op1[i] = {o[1][i][WORD_WIDTH-1], o[1][i]};
-    op2[i] = {o[2][i][WORD_WIDTH-1], o[2][i]};
-    op3[i] = {o[3][i][WORD_WIDTH-1], o[3][i]};
+    op0[i] = {o[0][i][WORD_BITS-1], o[0][i]};
+    op1[i] = {o[1][i][WORD_BITS-1], o[1][i]};
+    op2[i] = {o[2][i][WORD_BITS-1], o[2][i]};
+    op3[i] = {o[3][i][WORD_BITS-1], o[3][i]};
   end
   
   case(op)
@@ -424,14 +424,14 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   op_umin:  foreach(r0[i]) r0[i] = o[0][i] > o[1][i] ? o[1][i] : o[0][i];
   op_clo:   
     foreach(r0[i])
-      for(int j=WORD_WIDTH-1; j>=0; j--)
+      for(int j=WORD_BITS-1; j>=0; j--)
         if(o[0][i][j])
           r0[i]++;
         else
           break;
   op_clz:
     foreach(r0[i])
-      for(int j=WORD_WIDTH-1; j>=0; j--)
+      for(int j=WORD_BITS-1; j>=0; j--)
         if(!o[0][i][j])
           r0[i]++;
         else
@@ -455,7 +455,7 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   endcase
   
   foreach(res0[i])
-    res0[i] = r0[i][WORD_WIDTH-1:0];
+    res0[i] = r0[i][WORD_BITS-1:0];
     
   if(op == op_cmp)
     case(cop)

@@ -63,9 +63,9 @@ class ip4_tlm_dse extends ovm_component;
   local bit selAlignExp, selSMemBoundExp;
   local padr_t exAdr;
   local bit exRdy, exAccEn[LAT_XCHG][NUM_SMEM_BK][WORD_BYTES];
-  local word stXchgBuf[LAT_XCHG][NUM_SMEM_BK],
-             ldXchgBuf[LAT_XCHG][NUM_SMEM_BK],
-             exStBuf[LAT_XCHG][NUM_SMEM_BK];
+  local wordu stXchgBuf[LAT_XCHG][NUM_SMEM_BK],
+              ldXchgBuf[LAT_XCHG][NUM_SMEM_BK],
+              exStBuf[LAT_XCHG][NUM_SMEM_BK];
              
   local padr_t ldQuePAdr[NUM_LDQUE];
   local uchar ldQueXhg[NUM_LDQUE][LAT_XCHG][NUM_SMEM_BK];
@@ -194,7 +194,7 @@ class ip4_tlm_dse extends ovm_component;
                smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_BK - srCacheGrp) * SGRP_SIZE,
                smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;
         uchar bk, grp, adr;
-        word res;
+        wordu res;
         bit oc = 0, ex = 0;
         
         if(!selEMsk[i]) continue;
@@ -211,9 +211,9 @@ class ip4_tlm_dse extends ovm_component;
           uint idx;
           ///chk cache for match
           if(!selNoCache[i] && srCacheGrp > 0) begin
-            uint tag = selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK + clBits + BITS_DCH_IDX);
-            idx = selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK + clBits) & `GML(BITS_DCH_IDX);
-            adr = selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK) & `GML(BITS_DCH_CL);
+            uint tag = selPAdr[i] >> (WID_WORD + WID_SMEM_BK + clBits + WID_DCH_IDX);
+            idx = selPAdr[i] >> (WID_WORD + WID_SMEM_BK + clBits) & `GML(WID_DCH_IDX);
+            adr = selPAdr[i] >> (WID_WORD + WID_SMEM_BK) & `GML(WID_DCH_CL);
             for(int aid = 0; aid < NUM_DCHE_ASO; aid++)
               if(!dcRdy) begin
                 ///cache hit
@@ -225,23 +225,23 @@ class ip4_tlm_dse extends ovm_component;
                 hit = 1;
           end
 
-          bk = (selPAdr[i] >> BITS_WORD) & `GML(BITS_SMEM_BK);
+          bk = (selPAdr[i] >> WID_WORD) & `GML(WID_SMEM_BK);
                       
           ///cache hit
           if(hit) begin
-            grp = (selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK)) & `GML(clBits);
+            grp = (selPAdr[i] >> (WID_WORD + WID_SMEM_BK)) & `GML(clBits);
             foreach(selXchgBk[j])
               if(!selXchgBk[j][bk]) begin
                 selXchgBk[j][bk] = 1;
                 oc = 1;
                 break;
               end
-            adr += idx << BITS_DCH_CL;
+            adr += idx << WID_DCH_CL;
           end
           ///external access
           else begin
-            grp = (selPAdr[i] >> (BITS_WORD + BITS_SMEM_BK)) & `GML(BITS_WORD);
-            adr = selPAdr[i] & `GML(BITS_WORD);
+            grp = (selPAdr[i] >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_WORD);
+            adr = selPAdr[i] & `GML(WID_WORD);
 
             ///a external store still need xchg network            
             if(ise.op inside {op_sw, op_sh, op_sb, op_sc}) begin
@@ -257,9 +257,9 @@ class ip4_tlm_dse extends ovm_component;
               
             if(!exRdy && ex) begin
               exRdy = 1;
-              exAdr = selPAdr[i] >> (BITS_DCH_CL + BITS_SMEM_BK + BITS_WORD);
+              exAdr = selPAdr[i] >> (WID_DCH_CL + WID_SMEM_BK + WID_WORD);
             end
-            else if(exAdr != (selPAdr[i] >> (BITS_DCH_CL + BITS_SMEM_BK + BITS_WORD)))
+            else if(exAdr != (selPAdr[i] >> (WID_DCH_CL + WID_SMEM_BK + WID_WORD)))
               ex = 0;
           end
         end
@@ -272,10 +272,10 @@ class ip4_tlm_dse extends ovm_component;
           end
           
           ///load req  
-          bk = (selPAdr[i] >> BITS_WORD) & `GML(BITS_SMEM_BK);
-          adr1 = (selPAdr[i] >> (BITS_SMEM_BK + BITS_WORD)) & `GML(BITS_SMEM_ADR + BITS_SMEM_GRP);
-          adr = adr1 & `GML(BITS_SMEM_ADR);
-          grp = adr1 >> BITS_SMEM_ADR;
+          bk = (selPAdr[i] >> WID_WORD) & `GML(WID_SMEM_BK);
+          adr1 = (selPAdr[i] >> (WID_SMEM_BK + WID_WORD)) & `GML(WID_SMEM_ADR + WID_SMEM_GRP);
+          adr = adr1 & `GML(WID_SMEM_ADR);
+          grp = adr1 >> WID_SMEM_ADR;
           foreach(selXchgBk[j])
             if((selSMemAdr[j][bk] == adr1 && selSMemBk[j][bk]) || !selXchgBk[j][bk]) begin
               selSMemBk[j][bk] = 1;
@@ -293,18 +293,19 @@ class ip4_tlm_dse extends ovm_component;
           res = sharedMem[grp][adr][bk];
           case(ise.op)
           op_lbu  : res = {'0, res[7:0]};
-          op_lb   : res = {{WORD_WIDTH{res.b[0][7]}}, res.b[0]};
+          op_lb   : res = {{WORD_BITS{res.b[0][7]}}, res.b[0]};
           op_lhu  : res = {'0, res.h[0]};
-          op_lh   : res = {{WORD_WIDTH{res.h[0][HALF_WIDTH - 1]}}, res.h[0]};
+          op_lh   : res = {{WORD_BITS{res.h[0][HALF_BITS - 1]}}, res.h[0]};
           endcase
           vn.rfm[STAGE_RRF_DEM0].res[i] = res;
         end
         
         if(ex) begin
+          wordu st = rfm.st[i];
           if(ise.op inside {op_lbu, op_lb, op_sb})
             exAccEn[grp][bk][ed ? adr : (WORD_BYTES - 1 - adr)] = 1;
           else if(ise.op inside {op_lhu, op_lh, op_sh}) begin
-            int adr2 = adr & `GMH(BITS_HALF - 1);
+            int adr2 = adr & `GMH(WID_HALF - 1);
             adr2 = ed ? adr2 : (HALF_BYTES - adr2);
             for(int j = 0; j < HALF_BYTES; j++)
               exAccEn[grp][bk][j] = 1;
@@ -316,15 +317,15 @@ class ip4_tlm_dse extends ovm_component;
           case(ise.op)
           op_sw   : 
             for(int j = 0; j < WORD_BYTES; j++)
-              stXchgBuf[grp][bk].b[j] = rfm.st[i].b[ed ? j : (WORD_BYTES - 1 - j)];
+              stXchgBuf[grp][bk].b[j] = st.b[ed ? j : (WORD_BYTES - 1 - j)];
           op_sh   : begin
-            int adr2 = adr & `GMH(BITS_HALF - 1);
+            int adr2 = adr & `GMH(WID_HALF - 1);
             adr2 = ed ? adr2 : (HALF_BYTES - adr2);
             for(int j = 0; j < HALF_BYTES; j++)
-              stXchgBuf[grp][bk].b[adr2 + j] = rfm.st[i].b[ed ? (adr2 + j) : (adr2 + HALF_BYTES - 1 - j)];
+              stXchgBuf[grp][bk].b[adr2 + j] = st.b[ed ? (adr2 + j) : (adr2 + HALF_BYTES - 1 - j)];
           end
           op_sb   :
-            stXchgBuf[grp][bk].b[ed ? adr : (WORD_BYTES - 1 - adr)] = rfm.st[i].b[adr];
+            stXchgBuf[grp][bk].b[ed ? adr : (WORD_BYTES - 1 - adr)] = st.b[adr];
           endcase
         end
         

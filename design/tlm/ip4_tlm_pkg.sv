@@ -56,19 +56,25 @@ endfunction
 parameter time CLK_P              = 2ns;
 parameter uchar WORD_BYTES        = 4,
                 HALF_BYTES        = WORD_BYTES / 2,
-                WORD_WIDTH        = WORD_BYTES * 8,
-                HALF_WIDTH        = HALF_BYTES * 8;
+                WORD_BITS         = WORD_BYTES * 8,
+                HALF_BITS         = HALF_BYTES * 8;
+
+typedef bit[HALF_BYTES - 1 : 0][7:0] halfb;
+typedef bit [HALF_BITS - 1: 0] half;
+typedef bit[WORD_BYTES - 1 : 0][7:0] word;
+typedef bit [WORD_BITS - 1: 0] wordb;
+typedef bit [1:0][HALF_BITS - 1: 0] wordh;
 
 typedef union packed{
   bit[HALF_BYTES - 1 : 0][7:0] b;
-  bit [HALF_WIDTH - 1: 0] h;
-} half;
+  bit [HALF_BITS - 1: 0] h;
+} halfu;
 
 typedef union packed{
   bit[WORD_BYTES - 1 : 0][7:0] b;
-  bit [WORD_WIDTH - 1: 0] w;
+  bit [WORD_BITS - 1: 0] w;
   half [1:0] h;
-} word;
+} wordu;
 
 parameter uchar LAT_MAC           = 5,
                 LAT_SFU           = 16,
@@ -114,20 +120,20 @@ parameter uint  NUM_SP            = 8,
 
 parameter uint CFG_START_ADR      = 'hf000_0000;
 
-parameter uchar BITS_WORD       = n2w(WORD_BYTES),
-                BITS_HALF       = n2w(HALF_BYTES),
-                BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
-                BITS_SRF_BKS    = n2w(NUM_SRF_BKS),
-                BITS_TID        = n2w(NUM_THREAD),
-                BITS_IFET       = n2w(NUM_IFET_BYTES),
-                BITS_PRF_P_GRP  = n2w(NUM_PRF_P_GRP),
-                BITS_SMEM_BK    = n2w(NUM_SMEM_BK),
-                BITS_SMEM_ADR   = n2w(NUM_SMEM_GRP_W),
-                BITS_SMEM_GRP   = n2w(NUM_SMEM_GRP),
-                BITS_DCH_CL     = n2w(NUM_DCHE_CL),
-                BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL);
-///                BITS_BURST      = n2w(NUM_BURST_LEN),
-///                BITS_STBUFL     = n2w(NUM_STBUF_LINE);
+parameter uchar WID_WORD        = n2w(WORD_BYTES),
+                WID_HALF        = n2w(HALF_BYTES),
+                WID_VRF_BKS     = n2w(NUM_VRF_BKS),
+                WID_SRF_BKS     = n2w(NUM_SRF_BKS),
+                WID_TID         = n2w(NUM_THREAD),
+                WID_IFET        = n2w(NUM_IFET_BYTES),
+                WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
+                WID_SMEM_BK     = n2w(NUM_SMEM_BK),
+                WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
+                WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),
+                WID_DCH_CL      = n2w(NUM_DCHE_CL),
+                WID_DCH_IDX     = n2w(NUM_SMEM_GRP / NUM_DCHE_CL);
+///                WID_BURST      = n2w(NUM_BURST_LEN),
+///                WID_STBUFL     = n2w(NUM_STBUF_LINE);
 
 /*
                                            pipeline stages:

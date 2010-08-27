@@ -168,7 +168,7 @@ class ise_thread_inf extends ovm_component;
   endfunction : new
  
   function void map_iadr(input bit v, uchar orgAdr, output uchar grp, adr);
-    uchar adrBits =  v ? (BITS_PRF_P_GRP - BITS_VRF_BKS) : (BITS_PRF_P_GRP - BITS_SRF_BKS);
+    uchar adrBits =  v ? (WID_PRF_P_GRP - WID_VRF_BKS) : (WID_PRF_P_GRP - WID_SRF_BKS);
     adr = orgAdr & `GML(adrBits);
     grp = orgAdr >> adrBits;
     grp = v ? vrfMap[grp] : srfMap[grp];
@@ -438,7 +438,7 @@ class ise_thread_inf extends ovm_component;
     if(LvlLast  >= NUM_MAX_IGRP_BYTES)
       ovm_report_warning("ise", "iBuf overflow!");
     if(LvlLast == 0) ///only calculate offSet when iBuf size is reset to 0
-      offSet = pc & `GML(BITS_IFET);
+      offSet = pc & `GML(WID_IFET);
 
     if(pendIFetch > 0)
       pendIFetch--;
@@ -473,7 +473,7 @@ class ise_thread_inf extends ovm_component;
 
   function void fill_ife(input tr_ise2ife ife);
     ife.fetchReq = 1;
-    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GMH(BITS_IFET);
+    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GMH(WID_IFET);
     pendIFetch++;
   endfunction : fill_ife
   
@@ -1031,7 +1031,7 @@ class ip4_tlm_ise extends ovm_component;
     ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdIssueLast;
-      tid = tid & `GML(BITS_TID);
+      tid = tid & `GML(WID_TID);
       
       ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(can_issue(tid)) begin
@@ -1087,7 +1087,7 @@ class ip4_tlm_ise extends ovm_component;
     ///ife req search
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdFetchLast;
-      tid = tid & `GML(BITS_TID);
+      tid = tid & `GML(WID_TID);
       if(thread[tid].can_req_ifetch()) begin
         toIFE = tr_ise2ife::type_id::create("toIFE", this);
         thread[tid].fill_ife(toIFE);

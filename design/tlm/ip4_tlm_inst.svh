@@ -431,16 +431,16 @@ class inst_c extends ovm_object;
                           inout uchar vrf, srf);
     uchar cyc, bk;
     if(adr < 8) begin
-      cyc = adr >> BITS_SRF_BKS;
-      bk = adr & `GML(BITS_SRF_BKS);
+      cyc = adr >> WID_SRF_BKS;
+      bk = adr & `GML(WID_SRF_BKS);
       srf = (srf > cyc) ? vrf : cyc;
       srfEn[cyc][bk] = 1;
       sel = rbk_sel_e'(sels0 + cyc * NUM_SRF_BKS + bk);
     end
     else if(adr > 15) begin
       adr -= 16;
-      cyc = adr >> BITS_VRF_BKS;
-      bk = adr & `GML(BITS_VRF_BKS);
+      cyc = adr >> WID_VRF_BKS;
+      bk = adr & `GML(WID_VRF_BKS);
       vrf = (vrf > cyc) ? vrf : cyc;
       vrfEn[cyc][bk] = 1;
       hasVec = 1;
@@ -465,12 +465,12 @@ class inst_c extends ovm_object;
       wrEn[0] = 1;
       rdBkSel[1] = selii;
       case(inst.i.op)
-      iop_lu    : begin op = op_bp1; imm = imm << (WORD_WIDTH / 2); end
+      iop_lu    : begin op = op_bp1; imm = imm << (WORD_BITS / 2); end
       iop_li    : begin op = op_bp1; end
       endcase
     end
     else if(inst.i.op inside {iop_r1w1i}) begin
-      uint imms = {{WORD_WIDTH{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
+      uint imms = {{WORD_BITS{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
       imm = {inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
       adrWr[0] = inst.i.b.i26.rd;
       wrEn[0] = 1;
@@ -564,7 +564,7 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
-      offSet = {{WORD_WIDTH{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
+      offSet = {{WORD_BITS{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       set_rf_en(inst.i.b.fcr.ja, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       op = op_fcr;
       case(inst.i.op)
@@ -580,7 +580,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_bs}) begin
       imm = inst.i.b.b.sc;
-      offSet = {{WORD_WIDTH{inst.i.b.b.offSet[$bits(inst.i.b.b.offSet)-1]}}, inst.i.b.b.offSet};
+      offSet = {{WORD_BITS{inst.i.b.b.offSet[$bits(inst.i.b.b.offSet)-1]}}, inst.i.b.b.offSet};
       op = op_br;
       case(inst.i.op)
       iop_b   : begin brDep = 0; brOp = bop_az; end
@@ -783,21 +783,21 @@ class inst_c extends ovm_object;
     
 	  if(isVec)
 	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & `GML(BITS_VRF_BKS);
-		    grpWr[i] = adrWr[i] >> BITS_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> BITS_VRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_VRF_BKS);
+	      bkWr[i] = adrWr[i] & `GML(WID_VRF_BKS);
+		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+		    adrWr[i] = (adrWr[i] >> WID_VRF_BKS) & `GML(WID_PRF_P_GRP - WID_VRF_BKS);
 		  end
 		else
 	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & `GML(BITS_SRF_BKS);
-		    grpWr[i] = adrWr[i] >> BITS_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> BITS_SRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_SRF_BKS);
+	      bkWr[i] = adrWr[i] & `GML(WID_SRF_BKS);
+		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+		    adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
 		  end
 
    foreach(adrRMsg[i]) begin
-      bkRMsg[i] = adrRMsg[i] & `GML(BITS_SRF_BKS);
-      grpRMsg[i] = adrRMsg[i] >> BITS_PRF_P_GRP;
-      adrRMsg[i] = (adrRMsg[i] >> BITS_SRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_SRF_BKS);
+      bkRMsg[i] = adrRMsg[i] & `GML(WID_SRF_BKS);
+      grpRMsg[i] = adrRMsg[i] >> WID_PRF_P_GRP;
+      adrRMsg[i] = (adrRMsg[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
     end
     
 	endfunction : decode

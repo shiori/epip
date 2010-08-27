@@ -147,7 +147,7 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_EXS0] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS0];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_EXS0];
-      bit[WORD_WIDTH:0] op0, op1, r0;
+      bit[WORD_BITS:0] op0, op1, r0;
       word o0, o1;
       bit prSPU = 0, prTmp[CYC_VEC][NUM_SP];
       
@@ -167,8 +167,8 @@ class ip4_tlm_spu extends ovm_component;
           prSPU |= prTmp[i][j];
         end
 
-        op0 = {o0[WORD_WIDTH-1], o0};
-        op1 = {o1[WORD_WIDTH-1], o1};
+        op0 = {o0[WORD_BITS-1], o0};
+        op1 = {o1[WORD_BITS-1], o1};
         
         case(ise.op)
         op_nop,   
@@ -202,7 +202,7 @@ class ip4_tlm_spu extends ovm_component;
           SR_MSCT:
             for(int i = 0; i < CYC_VEC; i++)
               for(int j = 0; j < NUM_SP; j++)
-                vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j] = msc[ise.tid][i][j][WORD_WIDTH - 1];
+                vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j] = msc[ise.tid][i][j][WORD_BITS - 1];
           SR_MSCO: vn.rfm[STAGE_RRF_EXS1].res = srMSCO[ise.tid];
           SR_MSCU: vn.rfm[STAGE_RRF_EXS1].res = srMSCU[ise.tid];
           endcase
@@ -212,11 +212,11 @@ class ip4_tlm_spu extends ovm_component;
           if(ise.srAdr == SR_MSCT)
             for(int i = 0; i < CYC_VEC; i++)
               for(int j = 0; j < NUM_SP; j++)
-                msc[ise.tid][i][j][WORD_WIDTH - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
+                msc[ise.tid][i][j][WORD_BITS - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
         end
         endcase
         vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
-        vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_WIDTH-1:0];
+        vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_BITS-1:0];
         vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU;
         vn.rfm[STAGE_RRF_EXS1].srfWrDSel = ise.srfWrDSel;
         vn.rfm[STAGE_RRF_EXS1].srfWrBk   = ise.srfWrBk;
@@ -379,12 +379,12 @@ class ip4_tlm_spu extends ovm_component;
         sop_pop2n :
           if(update_msc)
             foreach(emsk[j,k]) begin
-              bit top = msc[tid][j][k][WORD_WIDTH - 1];
+              bit top = msc[tid][j][k][WORD_BITS - 1];
               if(msc[tid][j][k] > (2*popcnt))
                 msc[tid][j][k] -= (2*popcnt);
               else
                 msc[tid][j][k] = 0;
-              if(top == 1 && msc[tid][j][k][WORD_WIDTH - 1] == 0) begin
+              if(top == 1 && msc[tid][j][k][WORD_BITS - 1] == 0) begin
                 srMSCU[tid][j * NUM_SP + k] = 1;
                 exp = 1;
               end
@@ -393,12 +393,12 @@ class ip4_tlm_spu extends ovm_component;
             end
         sop_store :
           foreach(emsk[j,k]) begin
-            bit top = msc[tid][j][k][WORD_WIDTH - 1];
+            bit top = msc[tid][j][k][WORD_BITS - 1];
             msc[tid][j][k] += !ilm[tid][j][k];
             msc[tid][j][k] += !cm[tid][j][k];
-            if(top == 1 && msc[tid][j][k][WORD_WIDTH - 1] == 0) begin
+            if(top == 1 && msc[tid][j][k][WORD_BITS - 1] == 0) begin
               srMSCO[tid][j * NUM_SP + k] = 1;
-              msc[tid][j][k][WORD_WIDTH - 1] = 1;
+              msc[tid][j][k][WORD_BITS - 1] = 1;
               exp = 1;
             end
             else
