@@ -19,7 +19,7 @@ class ip4_tlm_dse_vars extends ovm_component;
   tr_eif2dse fmEIF;    /// external interfaces
   
   tr_dse2ise ise;
-  tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
+///  tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
   tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_DEM0];
   tr_dse2spa spa;
   tr_dse2tlb tlb;
@@ -33,7 +33,7 @@ class ip4_tlm_dse_vars extends ovm_component;
      `ovm_field_object(fmTLB, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
-     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
+///     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
@@ -58,7 +58,7 @@ class ip4_tlm_dse extends ovm_component;
   local bit cacheTagV[NUM_DCHE_TAG][NUM_DCHE_ASO][NUM_SMEM_GRP];
   local bit cacheDirty[NUM_DCHE_TAG][NUM_DCHE_ASO][NUM_SMEM_GRP];
   local word tlbReqVAdr[STAGE_RRF_SEL:STAGE_RRF_TAG];
-  local bit selOcValid, selExValid;
+  local bit selOcValid, selExValid, reqHasEx;
   local bit selOcEMsk[LAT_XCHG][NUM_SP], selExEMsk[LAT_XCHG][NUM_SP];
   local bit selSMemBk[LAT_XCHG][NUM_SMEM_BK], selXchgBk[LAT_XCHG][NUM_SMEM_BK];
   local uint selSMemAdr[LAT_XCHG][NUM_SMEM_BK];
@@ -87,6 +87,7 @@ class ip4_tlm_dse extends ovm_component;
   local tr_dse2eif eifTr[LAT_XCHG];
   local tr_dse2rfm rfmTr[LAT_XCHG];
   local tr_dse2ise iseTr[LAT_XCHG];
+  local tr_dse2spu spuTr[LAT_XCHG];
   
   `ovm_component_utils_begin(ip4_tlm_dse)
   `ovm_component_utils_end
@@ -126,9 +127,9 @@ class ip4_tlm_dse extends ovm_component;
     vn.fmEIF = null;
     vn.fmEIF = null;
 
-    for (int i = STAGE_RRF_SR0; i > STAGE_RRF_EXS2; i--)
-      vn.spu[i] = v.spu[i-1];
-    vn.spu[STAGE_RRF_EXS2] = null;
+///    for (int i = STAGE_RRF_SR0; i > STAGE_RRF_EXS2; i--)
+///      vn.spu[i] = v.spu[i-1];
+///    vn.spu[STAGE_RRF_EXS2] = null;
         
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_TAG; i--) 
       tlbReqVAdr[i] = tlbReqVAdr[i - 1];
@@ -152,10 +153,12 @@ class ip4_tlm_dse extends ovm_component;
       eifTr[i] = eifTr[i - 1];
       rfmTr[i] = rfmTr[i - 1];
       iseTr[i] = iseTr[i - 1];
+      spuTr[i] = spuTr[i - 1];
     end
     eifTr[0] = null;
     rfmTr[0] = null;
     iseTr[0] = null;
+    spuTr[0] = null;
     
     if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
@@ -365,11 +368,12 @@ class ip4_tlm_dse extends ovm_component;
         ///is ex?
         if(selExValid && (!selExp || ise.nonBlock)) begin
           uchar ldQueFreeId, stQueFreeId;
-          ///possible que out run
+          bit fndLdQue = 0, fndStQue = 0;
           foreach(stQueEn[i])
             if(!stQueEn[i]) begin
               stQueEn[i] = 1;
               stQueFreeId = i;
+              fndStQue = 1;
               break;
             end
       
@@ -377,6 +381,7 @@ class ip4_tlm_dse extends ovm_component;
             if(!ldQueEn[i]) begin
               ldQueEn[i] = 1;
               ldQueFreeId = i;
+              fndLdQue = 1;
               break;
             end
             
@@ -432,12 +437,19 @@ class ip4_tlm_dse extends ovm_component;
         
         ///whole request finished
         if((ise.subVec == ise.vecMode) || !ise.vec) begin
-          selExp = 0;
           if(iseTr[0] == null) iseTr[0] = tr_dse2ise::type_id::create("toISE", this);
-          iseTr[0].exp = !selExp || ise.nonBlock;
+          iseTr[0].exp = selExp && !ise.nonBlock;
+          iseTr[0].ext = reqHasEx && !ise.nonBlock;
           iseTr[0].rstCnt = ise.rstCnt;
+          iseTr[0].rsp = 1;
+          iseTr[0].pendExLoad = 1;
+          iseTr[0].pendExStore = 1;
+          selExp = 0;
+          reqHasEx = 0;
         end
-              
+        else
+          reqHasEx = reqHasEx || selExValid;
+          
         selOcValid = 0;
         selExValid = 0;
         selSMemBk = '{default : 0};
@@ -465,12 +477,12 @@ class ip4_tlm_dse extends ovm_component;
         endcase
       op_s2gp:
       begin
-        if(vn.spu[STAGE_RRF_EXS2] == null)
-          vn.spu[STAGE_RRF_EXS2] = tr_dse2spu::type_id::create("toSPU", this);
-        vn.spu[STAGE_RRF_EXS2].rsp = 1;
+        if(spuTr[0] == null)
+          spuTr[0] = tr_dse2spu::type_id::create("toSPU", this);
+        spuTr[0].rsp = 1;
         case(spu.srAdr)
-        SR_MBASE: vn.spu[STAGE_RRF_EXS2].srRes = srMapBase;
-        SR_OCMC:  vn.spu[STAGE_RRF_EXS2].srRes = srCacheGrp;
+        SR_MBASE: spuTr[0].srRes = srMapBase;
+        SR_OCMC:  spuTr[0].srRes = srCacheGrp;
         endcase
       end
       endcase
@@ -488,6 +500,7 @@ class ip4_tlm_dse extends ovm_component;
     
     ovm_report_info("dse", "req_proc procing...", OVM_FULL); 
     
+    ///select vadr from ise req to tlb for translation
     if(v.fmISE[STAGE_RRF_AG] != null && v.fmRFM[STAGE_RRF_AG] != null
        && v.fmSPU[STAGE_RRF_AG] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_AG];
@@ -505,7 +518,7 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
         
-      if(found) begin
+      if(found && ise.en) begin
         toTLB = tr_dse2tlb::type_id::create("toTLB", this);
         toTLB.vAdr = vadr >> VADR_START;
         toTLB.op = ise.op;
@@ -515,7 +528,7 @@ class ip4_tlm_dse extends ovm_component;
       end
     end
     
-    toSPU = v.spu[STAGE_RRF_SR0];
+    toSPU = spuTr[LAT_XCHG - 1];
     toRFM = rfmTr[LAT_XCHG - 1];
     toEIF = eifTr[LAT_XCHG - 1];
     toISE = iseTr[LAT_XCHG - 1];

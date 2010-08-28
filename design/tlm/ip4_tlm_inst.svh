@@ -827,20 +827,33 @@ class inst_c extends ovm_object;
     return op inside {ise_ops};
 	endfunction : is_ise_inst
 		
-	function void set_wcnt(inout uchar wCnt);
-	  uchar t;
-	  if(isVec) begin
-	    if(op inside {spu_only_ops}) begin
-	      t = STAGE_RRF_RRC + STAGE_EEX_VWBP;
-	    end
-	    else begin
-	      t = STAGE_RRF_VWBP;
-	    end
-	  end
-	  else if(op inside {ise_ops})
+	function void set_wcnt(inout uchar wCnt, input bit nb = 0, ld = 0, st = 0, vec = 1);
+	  uchar t = 0;
+	  if(!decoded) decode();
+	  ///long cyc instructions
+    if(op inside {spu_only_ops})
+      t = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+    ///instructions for ise only
+	  else if(!(op inside {op_gp2s, op_s2gp}) && op inside {ise_ops})
 	    t = 0;
+	  ///branchs are predicted, no need to wait
+	  else if(op inside {op_fcr, op_br})
+	    t = 0;
+	  ///non blocking dse, only need to resolve pr dependency
+	  else if(nb && op inside {dse_ops})
+	    t = STAGE_RRF_DEM0;
+	  ///store are non blocking, ld -> st need to resolve gpr dependency
+	  else if(op inside {st_ops}) begin
+	    ///no gpr dependency?
+	    if(isVec ^ vec)
+	      t = STAGE_RRF_DEM0;
+	    else ///gpr dependent
+	      t = ld ? (vec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP) : STAGE_RRF_DEM0;
+	  end
+	  else if(isVec)
+	    t = STAGE_RRF_VWBP;
 	  else
-	    t = STAGE_RRF_SWB;
+	    t = STAGE_RRF_SWBP;
 	  if(wCnt < t)
 	    wCnt = t;
 	endfunction : set_wcnt

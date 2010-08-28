@@ -254,19 +254,22 @@ class ip4_tlm_spu extends ovm_component;
     end
     
     ///collect sr from dse & tlb
-    if(v.fmISE[STAGE_RRF_SR1] != null) begin
-      tr_ise2spu ise = v.fmISE[STAGE_RRF_SR1];
+    if(v.fmISE[STAGE_RRF_EXS2] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS2];
       if(v.fmTLB != null && v.fmTLB.rsp) begin
-        if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
-        toRFM.res = v.fmTLB.res;
+        if(vn.rfm[STAGE_RRF_EXS3] == null)
+          vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_EXS3].res = v.fmTLB.res;
       end
       else if(v.fmDSE != null && v.fmDSE.rsp) begin
-        if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
-        toRFM.res = v.fmDSE.srRes;
+        if(vn.rfm[STAGE_RRF_EXS3] == null)
+          vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_EXS3].res = v.fmDSE.srRes;
       end
       else if(v.fmISE[0] != null && v.fmISE[0].srRsp) begin
-        if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
-        toRFM.res = v.fmISE[0].srRes;
+        if(vn.rfm[STAGE_RRF_EXS3] == null)
+          vn.rfm[STAGE_RRF_EXS3] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_EXS3].res = v.fmISE[0].srRes;
       end
     end
     

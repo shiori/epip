@@ -853,30 +853,34 @@ endclass : tr_ise2dse
 
 class tr_dse2ise extends ovm_sequence_item;
   /// sync to dem0 stage
-  rand bit rsp,     ///the whole req finished
-           cancel,  ///cancel the following insts
-           exp;     ///the whole req has exception
-  rand uchar tid, vidExp, rstCnt;///, pendMemAcc;
+  rand bit rsp,     ///respond
+           ext,     ///this req generate a external transaction
+           exp,     ///the whole req has exception
+           rdy;     ///one external access finished
+  rand uchar tid, vidExp, rstCnt, pendExLoad, pendExStore;
   rand cause_typs cause;
 ///  rand bit pendLoad, pendStore;
   
   constraint dist_var {
-    cancel dist {0:=19, 1:=1};
+    ext dist {0:=19, 1:=1};
   }
   
   constraint valid_var {
-    exp -> cancel;
+    exp -> rsp;
+    ext -> rsp;
+    rdy -> rsp;
   }
   
 	`ovm_object_utils_begin(tr_dse2ise)
-	  `ovm_field_int(cancel, OVM_ALL_ON)
+	  `ovm_field_int(ext, OVM_ALL_ON)
 	  `ovm_field_int(rsp, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
+	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(vidExp, OVM_ALL_ON)
 	  `ovm_field_int(rstCnt, OVM_ALL_ON)
-///	  `ovm_field_int(pendLoad, OVM_ALL_ON)
-///	  `ovm_field_int(pendStore, OVM_ALL_ON)
+	  `ovm_field_int(pendExLoad, OVM_ALL_ON)
+	  `ovm_field_int(pendExStore, OVM_ALL_ON)
 ///	  `ovm_field_int(pendMemAcc, OVM_ALL_ON)
 	  `ovm_field_enum(cause_typs, cause, OVM_ALL_ON)
   `ovm_object_utils_end
