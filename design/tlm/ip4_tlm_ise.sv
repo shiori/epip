@@ -87,7 +87,7 @@ class ise_thread_inf extends ovm_component;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
-  bit pendLoad, pendStore, lpRndMemMode, pendIFetchExp, IFetchExp;
+  bit pendLoad, pendStore, lpRndMemMode, pendIFetchExp, iFetchExp;
   uchar pendIFetch, pendMemAcc, pendBr;
   uchar srThreadGrp, srFIFOMask, srCause, srUserEvent, srFIFOPend;
   round_mode srExeMode;
@@ -171,7 +171,7 @@ class ise_thread_inf extends ovm_component;
     decoded = 0;
     decodeErr = 0;
     pendIFetchExp = 0;
-    IFetchExp = 0;
+    iFetchExp = 0;
     print_enabled = 0;
   endfunction : new
  
@@ -402,7 +402,7 @@ class ise_thread_inf extends ovm_component;
     threadState = ts_rdy;
     cancel = 1;
     pendIFetchExp = 0;
-    IFetchExp = 0;
+    iFetchExp = 0;
   endfunction : flush
 
   function bit can_req_ifetch();
@@ -563,7 +563,7 @@ class ip4_tlm_ise extends ovm_component;
     t.flush();
   endfunction : enter_exp
 
-  function void dse_wait(input uchar tid);
+  function void dse_wait(input uchar tid, stage);
     ise_thread_inf t = thread[tid];
     ///its possible a previous blocking mem access followed by nonBlock access
     t.pendMemAcc = 0;
@@ -571,7 +571,7 @@ class ip4_tlm_ise extends ovm_component;
     t.pendStore = 0; 
     t.threadState = ts_rdy;
     t.cancel = 1;   
-    restorePC(tid, 1, STAGE_ISE_DEM0);
+    restorePC(tid, 1, stage);
   endfunction : dse_wait
 
   function void resolve_br(input uchar tid, bit br, uchar stage);
@@ -595,7 +595,7 @@ class ip4_tlm_ise extends ovm_component;
     op_exit,
     op_sys: 
     begin
-      restorePC(tid); ///, t.iGrpByte); 
+      restorePC(tid);
       t.privMode = 1;
       t.srCause = EC_SYSCAL;
       t.flush();     
@@ -861,7 +861,7 @@ class ip4_tlm_ise extends ovm_component;
         enter_exp(tid, exp_decode_err);
       return;
     end
-    else if(t.IFetchExp) begin
+    else if(t.iFetchExp) begin
       if(t.threadState == ts_rdy)
         enter_exp(tid, exp_ife_err);
       return;
@@ -1037,7 +1037,7 @@ class ip4_tlm_ise extends ovm_component;
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM0];
       ise_thread_inf t = thread[dse.tid];
       if(dse.cancel)
-        dse_wait(dse.tid);
+        dse_wait(dse.tid, dse.rstCnt);
       else begin
         if(t.pendMemAcc > 0)
           t.pendMemAcc--;
@@ -1047,9 +1047,10 @@ class ip4_tlm_ise extends ovm_component;
         end
       end
       if(dse.exp) begin
-        t.pendStore = dse.pendStore;
-        t.pendLoad = dse.pendLoad;
-        t.pendMemAcc = dse.pendMemAcc;
+        ///its safe to not modify pendxxx because no following reqs is in pip
+///        t.pendStore = dse.pendStore;
+///        t.pendLoad = dse.pendLoad;
+///        t.pendMemAcc = dse.pendMemAcc;
         enter_exp(dse.tid, exp_dse_err, dse.rstCnt, dse.cause);
       end
     end
@@ -1097,7 +1098,19 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel from one cycle delayed
     if(v.fmIFE != null && v.cancel[v.fmIFE.tid])
       v.fmIFE = null;
-      
+    
+///    foreach(ciDSE[i]) begin
+///      ///dse & spu need cancel pip, because they support outstanding exe
+///      if(ciDSE[i] != null && v.cancel[ciDSE[i].tid])
+///        ciDSE[i] = null;
+///      if(ciRFM[i] != null && v.cancel[ciRFM[i].tid])
+///        ciRFM[i] = null;
+///      if(ciSPU[i] != null && v.cancel[ciSPU[i].tid])
+///        ciSPU[i] = null;
+///      if(ciSPA[i] != null && v.cancel[ciSPA[i].tid])
+///        ciSPA[i] = null;
+///    end
+    
     ///update ife data into thread
     if(v.fmIFE != null && v.fmIFE.instEn)
       thread[v.fmIFE.tid].update_inst(v.fmIFE.fetchGrp);
@@ -1111,7 +1124,7 @@ class ip4_tlm_ise extends ovm_component;
           break;
         end
         else if(thread[i].pendIFetchExp) begin
-          thread[i].IFetchExp = 1;
+          thread[i].iFetchExp = 1;
           thread[i].decoded = 1;
         end
       end

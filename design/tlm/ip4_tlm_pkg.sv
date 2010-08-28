@@ -53,6 +53,14 @@ function automatic ulong max2(
     max2 = a1;
 endfunction
 
+function automatic ulong min2(
+  input ulong a0, a1
+);
+  min2 = a0;
+  if (a0 > a1)
+    min2 = a1;
+endfunction
+
 parameter time CLK_P              = 2ns;
 parameter uchar WORD_BYTES        = 4,
                 HALF_BYTES        = WORD_BYTES / 2,

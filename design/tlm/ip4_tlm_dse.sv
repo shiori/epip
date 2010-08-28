@@ -86,8 +86,7 @@ class ip4_tlm_dse extends ovm_component;
 
   local tr_dse2eif eifTr[LAT_XCHG];
   local tr_dse2rfm rfmTr[LAT_XCHG];
-  local tr_dse2tlb toTLB;
-  local tr_dse2ise toISE;
+  local tr_dse2ise iseTr[LAT_XCHG];
   
   `ovm_component_utils_begin(ip4_tlm_dse)
   `ovm_component_utils_end
@@ -152,11 +151,11 @@ class ip4_tlm_dse extends ovm_component;
     for(int i = LAT_XCHG; i > 0; i--) begin
       eifTr[i] = eifTr[i - 1];
       rfmTr[i] = rfmTr[i - 1];
+      iseTr[i] = iseTr[i - 1];
     end
     eifTr[0] = null;
     rfmTr[0] = null;
-    toTLB = null;
-    toISE = null;
+    iseTr[0] = null;
     
     if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
@@ -358,8 +357,11 @@ class ip4_tlm_dse extends ovm_component;
         end
       end
       
-      ///finish one half wrap
-      if(((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0) begin
+      ///finish one half wrap or whole request
+      if((((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0)
+          || (ise.subVec == ise.vecMode) || !ise.vec) begin
+        uchar lvl = ise.subVec & `GML(WID_DCH_CL);
+        lvl = ise.vec ? lvl : (LAT_XCHG - 1);
         ///is ex?
         if(selExValid && (!selExp || ise.nonBlock)) begin
           uchar ldQueFreeId, stQueFreeId;
@@ -379,6 +381,7 @@ class ip4_tlm_dse extends ovm_component;
             end
             
           foreach(eifTr[i]) begin
+            if(i < lvl) continue;
             if(eifTr[i] == null) eifTr[i] = tr_dse2eif::type_id::create("toEIF", this);
             eifTr[i].op = ise.op;
             eifTr[i].id = ldQueFreeId;
@@ -409,6 +412,7 @@ class ip4_tlm_dse extends ovm_component;
           foreach(rfmTr[i]) begin
             tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + i];
             tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL + i];
+            if(i < lvl) continue;
             if(rfmTr[i] == null) rfmTr[i] = tr_dse2rfm::type_id::create("toRFM", this);
             if(rfm == null || ise == null) begin
               ovm_report_warning("dse", "ise or rfm req missing");
@@ -426,6 +430,14 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
         
+        ///whole request finished
+        if((ise.subVec == ise.vecMode) || !ise.vec) begin
+          selExp = 0;
+          if(iseTr[0] == null) iseTr[0] = tr_dse2ise::type_id::create("toISE", this);
+          iseTr[0].exp = !selExp || ise.nonBlock;
+          iseTr[0].rstCnt = ise.rstCnt;
+        end
+              
         selOcValid = 0;
         selExValid = 0;
         selSMemBk = '{default : 0};
@@ -433,13 +445,6 @@ class ip4_tlm_dse extends ovm_component;
         selSMemAdr = '{default : 0};
         exRdy = 0;
         exStBuf = '{default : 0};
-      end
-      else if(ise.subVec == ise.vecMode) begin
-        ///scl inst only!!
-        selExp = 0;
-        toISE = tr_dse2ise::type_id::create("toISE", this);
-        toISE.exp = !selExp || ise.nonBlock;
-        toISE.rstCnt = ise.rstCnt;
       end
     end
     
@@ -470,13 +475,16 @@ class ip4_tlm_dse extends ovm_component;
       end
       endcase
     end
-    
+    vn.rfm[STAGE_RRF_DEM0] = rfmTr[LAT_XCHG - 1];
+
   endfunction
   
   function void req_proc();
     tr_dse2rfm toRFM;
     tr_dse2spu toSPU;
     tr_dse2eif toEIF;
+    tr_dse2ise toISE;
+    tr_dse2tlb toTLB;
     
     ovm_report_info("dse", "req_proc procing...", OVM_FULL); 
     
@@ -508,8 +516,9 @@ class ip4_tlm_dse extends ovm_component;
     end
     
     toSPU = v.spu[STAGE_RRF_SR0];
-    toRFM = rfmTr[0];
-    toEIF = eifTr[0];
+    toRFM = rfmTr[LAT_XCHG - 1];
+    toEIF = eifTr[LAT_XCHG - 1];
+    toISE = iseTr[LAT_XCHG - 1];
     
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));
