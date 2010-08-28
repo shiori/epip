@@ -154,6 +154,7 @@ store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
 spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | sr   |
+spu br:   | br0 | br1  | br2  | br3  |
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15

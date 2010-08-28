@@ -275,7 +275,7 @@ class ip4_tlm_spu extends ovm_component;
     
     ///check for valid branch
     begin
-      uchar found = 0;
+      uchar found = 1;
       tr_ise2spu ise;
       tr_rfm2spu rfm;
       
@@ -283,21 +283,20 @@ class ip4_tlm_spu extends ovm_component;
           && v.fmISE[STAGE_RRF_CEM0].brDepSPA && v.fmISE[STAGE_RRF_CEM0].brEnd) begin
         ise = v.fmISE[STAGE_RRF_CEM0];
         rfm = v.fmRFM[STAGE_RRF_CEM0];
-        found = STAGE_RRF_CEM0 + 1 + LAT_ISE;
       end
       else if(v.fmISE[STAGE_RRF_DEM0] != null && v.fmDSE != null
                && v.fmISE[STAGE_RRF_DEM0].brDepDSE && v.fmISE[STAGE_RRF_DEM0].brEnd
                && v.fmDSE.wrEn) begin
         ise = v.fmISE[STAGE_RRF_DEM0];
         rfm = v.fmRFM[STAGE_RRF_DEM0];
-        found = STAGE_RRF_DEM0 + 1 + LAT_ISE;
       end
-      else if(v.fmISE[STAGE_RRF_EXS0] != null && v.fmISE[STAGE_RRF_EXS0].op inside {op_br, op_fcr}
-               && v.fmISE[STAGE_RRF_EXS0].brEnd && !v.fmISE[STAGE_RRF_EXS0].brDep) begin
-        ise = v.fmISE[STAGE_RRF_EXS0];
-        rfm = v.fmRFM[STAGE_RRF_EXS0];        
-        found = STAGE_RRF_EXS0 + 1 + LAT_ISE;
+      else if(v.fmISE[0] != null && v.fmISE[0].op inside {op_br, op_fcr}
+               && v.fmISE[0].brEnd && !v.fmISE[0].brDep) begin
+        ise = v.fmISE[0];
+        rfm = v.fmRFM[0];        
       end
+      else
+        found = 0;
       
       if(found) begin
         uchar tid = ise.tid;
@@ -328,7 +327,7 @@ class ip4_tlm_spu extends ovm_component;
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
         toISE.tid = tid;
         toISE.mscExp = 0;
-        toISE.rstCnt = found;
+        toISE.rstCnt = ise.rstCnt;
         
         foreach(emsk[j,k]) 
           if(emsk[j][k] == 1 && j <= ise.vecMode) begin
