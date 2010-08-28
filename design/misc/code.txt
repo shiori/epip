@@ -14,3 +14,27 @@ srlv s4 s3 s1 ;
 //3r1w mad 7*3+8
 lu v5 0x400000 ;
 mad.s v6 v3 v1 v5 ;
+// FCR os = 11
+fcr.jc.su.mu s4 0xb ;
+// Branch tag1
+b.bpb.pop2n $tag1 0x5 ;
+//FCR tag1 
+fcr.jc.su.mu rpc $tag1 ; 
+// load lb
+ld.lb.lprua.ldran s7 s3 0x12 ;
+// load lw
+ld.lprua.ldran s7 s3 0x12 ;
+// store sth
+st.sh.sptua.stbst s7 s4 0x12 ;
+// cmpxchg
+cmpxchg.cmpxrnu.cmpxpua s7 s4 0x12 ;
+// fetadd
+fetadd.fetarnu.fetapua s5 s7 s4 0x12 ;
+// Cache
+cache.icah.ihit.mctbst s3 0x12 ;
+// SYNC
+sync.mctbst.syldst s3 0x12 ;
+// CMP
+cmp.unc.>= p0 p1 s5 s2 ; 
+// TLBWR
+tlbwr ;

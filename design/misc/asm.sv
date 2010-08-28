@@ -55,19 +55,22 @@ endfunction
 
 class asmig;
   int ps; /// source operation point
-  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bp0Op, bp1Op, bp2Op, tidOp;  /// operation
-  bit tagOp;  /// operation
+  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bp0Op, bp1Op, bp2Op, tidOp, pdrOp;  /// operation
+  bit[3:0] tagOp;  /// operation
   bit[4:0] nop;
   uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
   int imm[5][4];  /// imm[i][0] = rd;
   string tag;
   string op[5];
   bit[4:0] en, s, si;  /// option
-  bit mu, su, fcrl, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, emsk, vxup, alocd, s2g, r3w1d;  /// option
-  bit[1:0] sop, devcah, opcah;  /// option
+  bit mu, su, fcrl, emsk, vxup, alocd, s2g, r3w1d;  /// option
+  bit fcrPc, fcrPb, fcrJc, bPb, bBc;
+  bit ldH, ldB, ldLk, ldHu, ldBu;
+  bit stH, stB, stCn;
+  bit[1:0] sop, devcah, opcah, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, mcty;  /// option
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
-  
+  uchar icnt;  
   uchar chkGrp;
   uchar grpsize;
   uint pc;
@@ -82,7 +85,9 @@ class asmig;
   uchar vrfAdr[CYC_VEC][NUM_VRF_BKS],
         srfAdr[CYC_VEC][NUM_VRF_BKS];
   bit[3:0][7:0] co[NUM_BP_CO];
-  int contNum;
+  int contNum;  
+  uint adrBits;
+  
           
   function new();
     ps = 1;
@@ -93,6 +98,22 @@ class asmig;
     enOp = 0;
     tagOp = 0;
     r3w1d = 0;
+    fcrPc = 0;
+    fcrPb = 0;
+    fcrJc = 0;
+    bPb = 0;
+    bBc = 0;
+    mu = 0;
+    su = 0;
+    fcrl = 0;
+    ldH = 0;
+    ldB = 0;
+    ldHu = 0;
+    ldBu = 0;
+    ldLk = 0;
+    stH = 0;
+    stB = 0;
+    stCn = 0;
     en = 0;
     s = 0;
     si = 0;
@@ -586,7 +607,7 @@ class asmig;
         "fcr"   :
           begin
             ps = 0;
-            case(inst[i].i.op[1:0])
+            case({fcrPb, fcrJc})
                 2'b00 : inst[i].i.op = iop_fcr;
                 2'b01 : inst[i].i.op = iop_fcrn;
                 2'b10 : inst[i].i.op = iop_fcrp;
@@ -594,23 +615,31 @@ class asmig;
               endcase
             inst[i].i.b.fcr.mu = mu;
             inst[i].i.b.fcr.su = su;
-            inst[i].i.b.fcr.l  = fcrl; 
-            if(immOp[i][1] && !tagOp) 
+            inst[i].i.b.fcr.l  = fcrl;
+            `asm_msg($psprintf("fcr pc: %0d", fcrPc), OVM_HIGH); 
+            if(fcrPc) begin              
+              inst[i].i.b.fcr.ja = 14;
+              `asm_msg($psprintf("fcr ja: %0d", inst[i].i.b.fcr.ja), OVM_HIGH);
+            end
+            else one = 1;
+            if(immOp[i][1] && !tagOp[1]) 
               {inst[i].i.b.fcr.os2, inst[i].i.b.fcr.os1, inst[i].i.b.fcr.os0} = imm[i][1];
-            else if(immOp[i][1] && tagOp) begin
+            else if(immOp[i][1] && tagOp[1]) begin
               `asm_err("fcr instruction format is illegal!");
               return 0;
             end
           end
         "b"     :
           begin
-            if(tagOp) begin
-              case(inst[i].i.op[1:0])
+            `asm_msg($psprintf("branch tagop: %0d", tagOp[0]), OVM_HIGH);
+            if(tagOp[0]) begin
+              case({bPb, bBc})
                 2'b00 : inst[i].i.op = iop_b;
                 2'b01 : inst[i].i.op = iop_bn;
                 2'b10 : inst[i].i.op = iop_bp;
                 2'b11 : inst[i].i.op = iop_bpn;
               endcase
+              `asm_msg($psprintf("branch op: %0d.", inst[i].i.op), OVM_HIGH);
               inst[i].i.b.b.mop = mop;
               inst[i].i.b.b.sop = sop;
               if(immOp[i][1])
@@ -626,18 +655,16 @@ class asmig;
         "ld"    :
           begin
             if(immOp[i][2]) begin
-              case(inst[i].i.op[3:0])
-                4'b0000 : inst[i].i.op = iop_lw;
-                4'b0010 : inst[i].i.op = iop_lh;
-                4'b0100 : inst[i].i.op = iop_lb;
-                4'b0110 : inst[i].i.op = iop_ll;
-                4'b1010 : inst[i].i.op = iop_lhu;
-                4'b1011 : inst[i].i.op = iop_lbu;
-                default: begin `asm_err("load op_code not understood!"); return 0; end
-              endcase
+              if(ldH) inst[i].i.op = iop_lh;
+              else if(ldB) inst[i].i.op = iop_lb;
+              else if(ldLk) inst[i].i.op = iop_ll;
+              else if(ldHu) inst[i].i.op = iop_lhu;
+              else if(ldBu) inst[i].i.op = iop_lbu;
+              else inst[i].i.op = iop_lw;
               {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][2];
               inst[i].i.b.ld.ua = ldua;
               inst[i].i.b.ld.t = ldty;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -648,17 +675,14 @@ class asmig;
           begin
             ps = 0;
             if(immOp[i][2]) begin
-              case(inst[i].i.op[2:0])
-                3'b001 : inst[i].i.op = iop_sw;
-                3'b011 : inst[i].i.op = iop_sh;
-                3'b101 : inst[i].i.op = iop_sb;
-                3'b111 : inst[i].i.op = iop_sc;
-                default: begin `asm_err("store op_code not understood!"); return 0; end
-              endcase
-              {inst[i].i.b.st.os2, inst[i].i.b.st.os1, inst[i].i.b.st.os0} = imm[i][1];
+              if(stH) inst[i].i.op = iop_sh;
+              else if(stB) inst[i].i.op = iop_sb;
+              else if(stCn) inst[i].i.op = iop_sc;
+              else inst[i].i.op = iop_sw;
+              {inst[i].i.b.st.os2, inst[i].i.b.st.os1, inst[i].i.b.st.os0} = imm[i][2];
               inst[i].i.b.st.ua = stua;
               inst[i].i.b.st.t = stty;
-              one = 1;
+              two = 1;
             end
           else begin
             `asm_err("op number does not match with the op_code!");
@@ -670,10 +694,10 @@ class asmig;
             ps = 0;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_cmpxchg;
-              {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][1];
+              {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][2];
               inst[i].i.b.cmpxchg.ua = cmpxua;
               inst[i].i.b.cmpxchg.t = cmpxty;
-              one = 1;
+              two = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -684,10 +708,10 @@ class asmig;
           begin
             if(immOp[i][3]) begin
               inst[i].i.op = iop_fetadd;
-              {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][2];
+              {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][3];
               inst[i].i.b.ld.ua = fetaua;
               inst[i].i.b.ld.t  = fetaty;
-              one = 1;
+              two = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -702,6 +726,8 @@ class asmig;
               inst[i].i.b.mctl.fun = {opcah, devcah};
               inst[i].i.b.mctl.c = 1;
               {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+              inst[i].i.b.mctl.t = mcty;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -716,6 +742,8 @@ class asmig;
               inst[i].i.b.mctl.fun = mcfun;
               inst[i].i.b.mctl.c = 0;
               {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+              inst[i].i.b.mctl.t = mcty;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -730,6 +758,8 @@ class asmig;
               inst[i].i.b.mctl.fun = mcfun;
               inst[i].i.b.mctl.c = 0;
               {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+              inst[i].i.b.mctl.t = mcty;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -744,6 +774,8 @@ class asmig;
               inst[i].i.b.mctl.fun = 13;
               inst[i].i.b.mctl.c = 0;
               {inst[i].i.b.mctl.os1, inst[i].i.b.mctl.os0} = imm[i][1];
+              inst[i].i.b.mctl.t = mcty;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -761,10 +793,12 @@ class asmig;
         "cmp"  :
           begin
             ps = 2;
-            if(enOp[i][3]) begin
+            if(enOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmp;
               inst[i].i.b.cmp.ctyp = ctyp;
               inst[i].i.b.cmp.mtyp = mtyp;
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr0 = adr[i][1];
               two = 1;
             end
             else begin
@@ -775,10 +809,12 @@ class asmig;
         "cmpu" :
           begin
             ps = 2;
-            if(enOp[i][3]) begin
+             if(enOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmpu;
               inst[i].i.b.cmp.ctyp = ctyp;
               inst[i].i.b.cmp.mtyp = mtyp;
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr0 = adr[i][1];
               two = 1;
             end
             else begin
@@ -789,11 +825,13 @@ class asmig;
         "cmpi" :
           begin
             ps = 2;
-            if(immOp[i][3]) begin
+            if(immOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmpi;
               inst[i].i.b.cmpi.ctyp = ctyp;
               inst[i].i.b.cmpi.mtyp = mtyp;
               {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr0 = adr[i][1];
               one = 1;
             end
             else begin
@@ -804,11 +842,13 @@ class asmig;
         "cmpiu" :
           begin
             ps = 2;
-            if(immOp[i][3]) begin
+            if(immOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmpiu;
               inst[i].i.b.cmpi.ctyp = ctyp;
               inst[i].i.b.cmpi.mtyp = mtyp;
               {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr0 = adr[i][1];
               one = 1;
             end
             else begin
@@ -909,7 +949,7 @@ class asmig;
         "tlbwr" : 
           begin
             inst[i].i.b.cop.fun = icop_tlbwr;
-            inst[i].i.op = iop_cop;
+            inst[i].i.op = iop_cop;            
           end
         "asr"   : 
           begin
@@ -972,8 +1012,8 @@ class asmig;
       if(three && dual) begin
         bit failed = 1;
         adru[2] = adr[i][3] >> BITS_VRF_BKS;
-        bk[2] = adr[i][3] & ~{'1 << BITS_VRF_BKS};
-        bk[2] = bk[2] & ('1 << 1);
+        bk[2] = adr[i][3] & `GML(BITS_VRF_BKS);
+        bk[2] = bk[2] & `GMH(1);
         for(int k = 0; k < CYC_VEC; k ++)
           if((!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2])
               && (!vrfEn[k][bk[2] + 1] || vrfAdr[k][bk[2] + 1] == adru[2])) begin
@@ -996,7 +1036,7 @@ class asmig;
         `asm_msg($psprintf("printf out adr[3] of r3w1 %0d", adr[i][3]), OVM_HIGH);
         adru[2] = adr[i][3] >> BITS_VRF_BKS;
         `asm_msg($psprintf("printf out adru[2] of r3w1 %0d", adru[2]), OVM_HIGH);
-        bk[2] = adr[i][3] & ~{'1 << BITS_VRF_BKS};
+        bk[2] = adr[i][3] & `GML(BITS_VRF_BKS);
         for(int k = 0; k < CYC_VEC; k++)
           if(!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2]) begin
             vrfEn[k][bk[2]] = 1;
@@ -1066,7 +1106,7 @@ class asmig;
             return 0;
           end
           adru[j] = adr[i][ps + j] >> BITS_SRF_BKS;
-          bk[j] = adr[i][ps + j] & ~{'1 << BITS_SRF_BKS};
+          bk[j] = adr[i][ps + j] & `GML(BITS_SRF_BKS);
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
@@ -1109,6 +1149,18 @@ class asmig;
         end
     end
     
+    /// calculate the group size
+    adrBits = (adrcnt - 1) * 3;
+    if(en == 'b01) begin
+      grpsize = (8 + icnt * 40 +  adrBits + contNum * 32) / 8; 
+      `asm_msg($psprintf("gs0 icnt grpsize %0d", icnt), OVM_HIGH);
+      `asm_msg($psprintf("gs0 grpsize %0d", grpsize), OVM_HIGH);
+    end
+    else begin
+      grpsize = (16 + icnt * 40 +  adrBits + contNum * 32) / 8 ;
+      `asm_msg($psprintf("gs1 grpsize %0d", grpsize), OVM_HIGH);
+    end
+    
     `asm_msg("--------------------------------", OVM_HIGH);
     return 1;
   endfunction
@@ -1118,15 +1170,22 @@ class asmig;
     uchar adrBytes = (adrcnt - 1) * 3 / 8;
     bit[8:0][7:0] tmp0;
     bit[23:0][2:0] tmp1;
-    if(tagOp && tag2ig.exists(tag)) begin
+
+    if(tagOp[0] && tag2ig.exists(tag)) begin
       foreach(inst[i]) begin
-        if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn})
-          {inst[i].i.b.fcr.os2, inst[i].i.b.fcr.os1, inst[i].i.b.fcr.os0} = pc - tag2ig[tag].pc;
-        else if(inst[i].i.op inside {iop_b, iop_bn, iop_bp, iop_bpn})
-          inst[i].i.b.b.offSet = pc - tag2ig[tag].pc;
+        if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn}) begin
+          {inst[i].i.b.fcr.os2, inst[i].i.b.fcr.os1, inst[i].i.b.fcr.os0} = tag2ig[tag].pc - pc;
+          `asm_msg($psprintf("fcr current pc %0d", pc), OVM_HIGH);
+          `asm_msg($psprintf("fcr tag pc %0d", tag2ig[tag].pc), OVM_HIGH);
+        end
+        else if(inst[i].i.op inside {iop_b, iop_bn, iop_bp, iop_bpn}) begin
+          `asm_msg($psprintf("b current pc %0d", pc), OVM_HIGH);
+          `asm_msg($psprintf("b tag pc %0d", tag2ig[tag].pc), OVM_HIGH);
+          inst[i].i.b.b.offSet = tag2ig[tag].pc - pc;
+        end
       end
     end
-    else if(tagOp) begin
+    else if(tagOp[0]) begin
       `asm_err("tagOp and tag2ig does not match!");
       return 0;
     end
@@ -1137,6 +1196,12 @@ class asmig;
       gs0.unitEn = isVec[0];
       gs0.a = allAdr[0];
       gs0.adrPkgB = adrBytes;
+      
+      if(contNum < 5)
+        gs1.i.immPkgW = contNum;
+      else
+        `asm_err("Constant Package num out of bound!");
+        
       $fwrite(fo, "%8b\n", gs0);
            
       for(int i = 0; i < 5; i++)
@@ -1217,7 +1282,7 @@ class ip4_assembler;
     while($fgets(s, fi)) begin
       string tokens[$];
       int state = 0, opcnt = 0;
-      bit isInst = 0, hasTag = 0;
+      bit isInst = 0;///, hasTag = 0;
       if(cur == null) cur  = new();
       `asm_msg("@@Asm code as follows:", OVM_HIGH);
       `asm_msg(s, OVM_HIGH, write);
@@ -1244,7 +1309,7 @@ class ip4_assembler;
           break;
         end
         else if(tk0 == ";") begin
-          `asm_msg("it's a group end.", OVM_HIGH);
+          `asm_msg("it's a group end.", OVM_HIGH);          
           if(!cur.pack_grp(verb)) begin
             `asm_err("pack instruction grp failed");
             return 0;
@@ -1252,7 +1317,9 @@ class ip4_assembler;
           icnt = 0;
           isInst = 0;
           cur.pc = pc;
+          `asm_msg($psprintf("first current pc %0d", pc), OVM_HIGH);
           pc += cur.grpsize;
+          `asm_msg($psprintf("second current pc %0d", pc), OVM_HIGH);
           igs.push_back(cur);
           cur = null;
           break;
@@ -1263,7 +1330,7 @@ class ip4_assembler;
             return 0;
           end
           
-          if(tk0 == "$") begin
+          if((tk0 == "$") && !state) begin
             `asm_msg($psprintf("it's a tag: %s.", tk1n), OVM_HIGH);
             if(tid != 0 || icnt != 0) begin
               `asm_err("tag not at begining");
@@ -1274,15 +1341,18 @@ class ip4_assembler;
               return 0;
             end
               tag2ig[tk1n] = cur;
-            hasTag = 1;
+///            hasTag = 1;
           end
-          else if(tk0 == "(") begin
-            if((tid - hasTag) != 0) begin
-              `asm_err("predication not at begining");
-              return 0;
-            end
+          else if((tk0 == "(") && !state) begin
+///            if((tid - hasTag) != 0) begin
+///              `asm_err("predication not at begining");
+///              return 0;
+///            end
             cur.padr[icnt] = (tk1.tolower() == "p") ? tk2n.atoi() : tk1n.atoi();
             `asm_msg($psprintf("it's a predication reg :%0d", cur.padr[icnt]), OVM_HIGH);
+          end
+          else if(tk0 == "r") begin
+            cur.fcrPc = 1;
           end
           else if(state == 0) begin
             string opts[$];
@@ -1307,12 +1377,13 @@ class ip4_assembler;
               "g0"  : cur.chkGrp = 0;
               "g1"  : cur.chkGrp = 1;
               "r3w1d" : cur.r3w1d = 1; 
-              "mu0" : cur.mu = 0;
-              "mu1" : cur.mu = 1;
-              "su0" : cur.su = 0;
-              "su1" : cur.su = 1;
-              "fcrl1": cur.fcrl = 1;
-              "fcrl0": cur.fcrl = 0;
+              "pb" : cur.fcrPb = 1;
+              "jc" : cur.fcrJc = 1;
+              "mu" : cur.mu = 1;
+              "su" : cur.su = 1;
+              "fcrl": cur.fcrl = 1;
+              "bpb" : cur.bPb = 1;
+              "bbc" : cur.bBc = 1;
               "mnop" : cur.mop= 0;
               "bc"  : cur.mop = 1;
               "rest": cur.mop = 2;
@@ -1339,23 +1410,35 @@ class ip4_assembler;
                 cur.co[3] = get_imm(opts.pop_front());
                 cur.contNum = cur.contNum + 1;
               end
-              "ldua1" : cur.ldua = 1;
-              "ldua0" : cur.ldua = 0;
+              "lh" : cur.ldH = 1;
+              "lb" : cur.ldB = 1;
+              "lhu" : cur.ldHu = 1;
+              "lbu" : cur.ldBu = 1;
+              "ldl" : cur.ldLk = 1;
+              "lprua" : cur.ldua = 1;
+              "lnua" : cur.ldua = 0;
+              "lptua" : cur.ldua = 2;
               "ldbst" : cur.ldty = 0;
               "ldran" : cur.ldty = 1;
               "ldrnu" : cur.ldty = 2;
-              "stua1" : cur.stua = 1;
-              "stua0" : cur.stua = 0;
+              "sh" : cur.stH = 1;
+              "sb" : cur.stB = 1;
+              "sc" : cur.stCn = 1;
+              "sprua" : cur.stua = 1;
+              "snua" : cur.stua = 0;
+              "sptua" : cur.stua = 2;
               "stbst" : cur.stty = 0;
               "stran" : cur.stty = 1;
               "strnu" : cur.stty = 2;
-              "cmpxua1" : cur.cmpxua = 1;
-              "cmpxua0" : cur.cmpxua = 0;
+              "cmpxpua" : cur.cmpxua = 1;
+              "cmpxnua" : cur.cmpxua = 0;
+              "cmpxtua" : cur.cmpxua = 2;
               "cmpxbst" : cur.cmpxty = 0;
               "cmpxran" : cur.cmpxty = 1;
               "cmpxrnu" : cur.cmpxty = 2;
-              "fetaua1" : cur.fetaua = 1;
-              "fetaua0" : cur.fetaua = 0;
+              "fetapua" : cur.fetaua = 1;
+              "fetanua" : cur.fetaua = 0;
+              "fetatua" : cur.fetaua = 2;
               "fetabst" : cur.fetaty = 0;
               "fetaran" : cur.fetaty = 1;
               "fetarnu" : cur.fetaty = 2;
@@ -1368,6 +1451,9 @@ class ip4_assembler;
               "ihtw" : cur.opcah  = 1;
               "hitw" : cur.opcah  = 2;
               "felk" : cur.opcah  = 3;
+              "mctbst" : cur.mcty = 0;
+              "mctran" : cur.mcty = 1;
+              "mctrnu" : cur.mcty = 2;              
               "pfld" : cur.mcfun  = 0;
               "pfst" : cur.mcfun  = 1;
               "pflds" : cur.mcfun = 2;
@@ -1375,11 +1461,11 @@ class ip4_assembler;
               "pfldr" : cur.mcfun = 4;
               "pfstr" : cur.mcfun = 5;
               "pfiwb" : cur.mcfun = 6;
-              "syldst" : cur.mcfun = 7;
-              "syld" : cur.mcfun = 8;
-              "syst" : cur.mcfun = 9;
-              "syl2s" : cur.mcfun = 10;
-              "sys2l" : cur.mcfun = 11;
+              "syldst" : cur.mcfun = 8;
+              "syld" : cur.mcfun = 9;
+              "syst" : cur.mcfun = 10;
+              "syl2s" : cur.mcfun = 11;
+              "sys2l" : cur.mcfun = 12;
               "=" : cur.ctyp = 0;
               ">" : cur.ctyp = 1;
               ">=" : cur.ctyp = 2;
@@ -1402,26 +1488,30 @@ class ip4_assembler;
             end
           end        
           else if(state == 1) begin
+            cur.icnt = icnt + 1;
             if(opcnt >= 4)
               continue;
             `asm_msg($psprintf("trying to get a reg adr or imm for op%0d", opcnt), OVM_HIGH);
             cur.enOp[icnt][opcnt] = 1;
-            cur.tagOp = tk0.tolower() == "$";
+            cur.pdrOp[icnt][opcnt] = tk0.tolower() == "p";
+            cur.tagOp[opcnt] = tk0.tolower() == "$";
             cur.bp0Op[icnt][opcnt] = tk0.tolower() == "bp0";
             cur.bp1Op[icnt][opcnt] = tk0.tolower() == "bp1";
             cur.bp2Op[icnt][opcnt] = tk0.tolower() == "bp2";
             cur.tidOp[icnt][opcnt] = tk0.tolower() == "tid";
             cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
             cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
-            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp
-                                     && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt] && !cur.tidOp[icnt][opcnt];
-            if(cur.tagOp)
+            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
+                                     && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt] && !cur.tidOp[icnt][opcnt]
+                                     && !cur.pdrOp[icnt][opcnt];
+            if(cur.tagOp[opcnt])
               cur.tag = tk1n;
             else if(cur.immOp[icnt][opcnt])
               cur.imm[icnt][opcnt] = get_imm(tk);
-            else if(!cur.zeroOp[icnt][opcnt])
+            else if(!cur.zeroOp[icnt][opcnt] && !cur.pdrOp[icnt][opcnt])
               cur.adr[icnt][opcnt] = tk1n.atoi();
-            `asm_msg($psprintf("vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d", cur.vecOp[icnt][opcnt],
+            `asm_msg($psprintf("tag branch %s", cur.tag), OVM_HIGH);
+            `asm_msg($psprintf("tagOp:%0d, vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d", cur.tagOp[opcnt], cur.vecOp[icnt][opcnt],
                       cur.zeroOp[icnt][opcnt], cur.immOp[icnt][opcnt], cur.adr[icnt][opcnt],
                       cur.imm[icnt][opcnt], opcnt), OVM_HIGH);
             opcnt++;
@@ -1433,8 +1523,9 @@ class ip4_assembler;
     
     ///second pass
     for(int i = 0; i < igs.size(); i++)
-      if(!igs[i].wirte_out(fo, tag2ig, verb))
+      if(!igs[i].wirte_out(fo, tag2ig, verb)) begin
         return 0;
+      end
       
     $fclose(fi);
     $fclose(fo);
