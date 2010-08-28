@@ -405,6 +405,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   rand uchar bpRfDSEWp;
   rand rbk_sel_e bpRfDSE;
   rand round_mode rndMode;
+  rand uchar rstCnt;
   
 	`ovm_object_utils_begin(tr_ise2spa)
 	  `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
@@ -416,6 +417,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  `ovm_field_int(bpRfDSEWp, OVM_ALL_ON)
 	  `ovm_field_enum(rbk_sel_e, bpRfDSE, OVM_ALL_ON)
 	  `ovm_field_enum(round_mode, rndMode, OVM_ALL_ON)
+	  `ovm_field_int(rstCnt, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	virtual function void do_print(ovm_printer printer);
@@ -464,12 +466,13 @@ class tr_spa2ise extends ovm_sequence_item;
   ///syn to vwb0
   rand bit noFu[NUM_FU];
   rand bit exp;
-  rand uchar tid;
+  rand uchar tid, rstCnt;
   
 	`ovm_object_utils_begin(tr_spa2ise)
 	  `ovm_field_sarray_int(noFu, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(rstCnt, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spa2ise");
@@ -561,7 +564,7 @@ endclass : tr_spa2spu
 
 class tr_spu2ise extends ovm_sequence_item;
   rand bit brRsp, brTaken, mscExp;
-  rand uchar tid, brStage;
+  rand uchar tid, rstCnt;
   rand word op0;
   rand bit srReq;
   rand opcode_e op;
@@ -570,7 +573,7 @@ class tr_spu2ise extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_spu2ise)
 	  `ovm_field_int(brRsp, OVM_ALL_ON)
 	  `ovm_field_int(brTaken, OVM_ALL_ON)
-	  `ovm_field_int(brStage, OVM_ALL_ON)
+	  `ovm_field_int(rstCnt, OVM_ALL_ON)
 	  `ovm_field_int(mscExp, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(srReq, OVM_ALL_ON)
@@ -610,6 +613,7 @@ class tr_ise2spu extends ovm_sequence_item;
   
   rand bit srRsp;
   rand word srRes;
+  rand uchar rstCnt;
   
   constraint valid_data{
     tid < NUM_THREAD;
@@ -680,6 +684,7 @@ class tr_ise2spu extends ovm_sequence_item;
 		`ovm_field_int(srAdr, OVM_ALL_ON)
 		`ovm_field_int(srRsp, OVM_ALL_ON)
 		`ovm_field_int(srRes, OVM_ALL_ON)
+		`ovm_field_int(rstCnt, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2spu");
@@ -812,7 +817,7 @@ class tr_ise2dse extends ovm_sequence_item;
   rand bit priv, vec, en, updateAdrWr, nonBlock;
   rand opcode_e op;
   rand uchar vecMode, subVec;
-  rand uchar pbId;
+  rand uchar pbId, rstCnt;
   
 	`ovm_object_utils_begin(tr_ise2dse)
 	  `ovm_field_int(wrBk, OVM_ALL_ON)
@@ -831,6 +836,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(pbId, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+	  `ovm_field_int(rstCnt, OVM_ALL_ON)
   `ovm_object_utils_end
   
   constraint valid_vars{
@@ -850,8 +856,9 @@ class tr_dse2ise extends ovm_sequence_item;
   rand bit rsp,     ///the whole req finished
            cancel,  ///cancel the following insts
            exp;     ///the whole req has exception
-  rand uchar tid, vidExp;
+  rand uchar tid, vidExp, rstCnt, pendMemAcc;
   rand cause_typs cause;
+  rand bit pendLoad, pendStore;
   
   constraint dist_var {
     cancel dist {0:=19, 1:=1};
@@ -867,6 +874,10 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(vidExp, OVM_ALL_ON)
+	  `ovm_field_int(rstCnt, OVM_ALL_ON)
+	  `ovm_field_int(pendLoad, OVM_ALL_ON)
+	  `ovm_field_int(pendStore, OVM_ALL_ON)
+	  `ovm_field_int(pendMemAcc, OVM_ALL_ON)
 	  `ovm_field_enum(cause_typs, cause, OVM_ALL_ON)
   `ovm_object_utils_end
   

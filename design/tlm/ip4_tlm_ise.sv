@@ -30,9 +30,12 @@ class ip4_tlm_ise_vars extends ovm_component;
   
   uchar TIdIssueLast, TIdFetchLast;
   bit cancel[NUM_THREAD];
-  uint pcStages[STAGE_ISE_VWB:1];
-  uint igSizeStages[STAGE_ISE_VWB:1];
-  bit privStages[STAGE_ISE_VWB:1];
+  uint pcRst[STAGE_ISE_VWB:1];
+  uint igSizeRst[STAGE_ISE_VWB:1];
+  uchar pdMemAccRst[STAGE_ISE_VWB:1];
+  bit privRst[STAGE_ISE_VWB:1];
+///      pdLdRst[STAGE_ISE_VWB:1],
+///      pdStRst[STAGE_ISE_VWB:1];
   
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -49,9 +52,9 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_int(TIdIssueLast, OVM_ALL_ON)
     `ovm_field_int(TIdFetchLast, OVM_ALL_ON)
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
-    `ovm_field_sarray_int(pcStages, OVM_ALL_ON)
-    `ovm_field_sarray_int(igSizeStages, OVM_ALL_ON)
-    `ovm_field_sarray_int(privStages, OVM_ALL_ON)
+    `ovm_field_sarray_int(pcRst, OVM_ALL_ON)
+    `ovm_field_sarray_int(igSizeRst, OVM_ALL_ON)
+    `ovm_field_sarray_int(privRst, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function new(string name, ovm_component parent);
@@ -92,7 +95,7 @@ class ise_thread_inf extends ovm_component;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
   uint pc, pcEret, pcUEret, srUEE;
-  bit brPred, brPrivMode;
+  bit brPred;
     
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(ise_thread_state, threadState, OVM_ALL_ON)
@@ -187,7 +190,6 @@ class ise_thread_inf extends ovm_component;
 
   function void br_pred();
     pendBr++;
-    brPrivMode = privMode;
     if(iSPU.offSet == 0) begin
       brPred = 1;
       threadState = ts_b_self;
@@ -460,98 +462,6 @@ class ise_thread_inf extends ovm_component;
     pendIFetch++;
   endfunction : fill_ife
   
-  function void fill_issue(ref tr_ise2rfm ciRFM[CYC_VEC], tr_ise2spa ciSPA[CYC_VEC], 
-                               tr_ise2spu ciSPU[CYC_VEC], tr_ise2dse ciDSE[CYC_VEC],
-                           input uchar tid, pbId);
-    
-    if(ciRFM[0] == null) ciRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-    if(ciRFM[cntVrfRd] == null) ciRFM[cntVrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-    ciRFM[0].start = 1;
-    ciRFM[cntVrfRd].vecEnd = 1;
-
-    foreach(iFu[i])
-      iFu[i].map_wr_grp(vrfMap, srfMap);
-
-    /// spu or scalar dse issue
-    if(enSPU) begin
-      bit brDepDSE = 0, brDepSPA = 0;
-      iSPU.map_wr_grp(vrfMap, srfMap);
-      if(ciRFM[0] == null) ciRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      if(ciRFM[cntSrfRd] == null) ciRFM[cntSrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      if(ciSPU[cntSrfRd] == null) ciSPU[cntSrfRd] = tr_ise2spu::type_id::create("toSPU", get_parent());
-      ciRFM[0].start = 1;
-      ciRFM[cntSrfRd].sclEnd = 1;
-      ciSPU[cntSrfRd].start = 1;
-      if(iSPU.is_br() && !iSPU.is_unc_br()) begin ///a conditional branch need vecMode cycles
-        cntSrfRd = vecMode;
-        ///find what br is depend on
-        foreach(enFu[fid])
-          if(enFu[fid] && iFu[fid].op inside {op_cmp, op_ucmp})
-            brDepSPA = 1;
-        if(enDSE)
-          brDepDSE = !brDepSPA;
-      end
-      ciSPU[cntSrfRd].brEnd = iSPU.is_br();
-      for(int i = 0; i <= cntSrfRd; i++) begin
-        if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-        if(ciSPA[i] == null) ciSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
-        iSPU.fill_rfm(ciRFM[i], i);
-        iSPU.fill_spu(ciSPU[i]);
-        ciSPU[i].brDepSPA = brDepSPA;
-        ciSPU[i].brDepDSE = brDepDSE;
-        ciSPU[i].tid = pbId;
-      end
-    end
-    
-    if(enDSE) begin
-      iDSE.map_wr_grp(vrfMap, srfMap);
-      for(int i = 0; i <= cntDSERd; i++) begin
-        if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-        if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
-        if(ciDSE[i] == null) ciDSE[i] = tr_ise2dse::type_id::create("toDSE", get_parent());
-        iDSE.fill_dse(ciDSE[i]);
-        iDSE.fill_rfm(ciRFM[i], i);
-        iDSE.fill_spu(ciSPU[i]);
-        ciDSE[i].subVec = i;
-        ciDSE[i].vecMode = vecMode;
-        ciDSE[i].nonBlock = lpRndMemMode;
-        ciDSE[i].tid = tid;
-        ciDSE[i].pbId = pbId;
-      end
-    end
-          
-    for(int i = 0; i <= cntSrfRd || i <= cntVrfRd; i++) begin
-      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      ciRFM[i].bpCo = co;
-      ciRFM[i].vrfRdGrp = vrfGrp[i];
-      ciRFM[i].vrfRdAdr = vrfAdr[i];
-      ciRFM[i].srfRdGrp = srfGrp[i];
-      ciRFM[i].srfRdAdr = srfAdr[i];
-    end
-    
-    for(int i = 0; i <= cntVrfRd; i++) begin
-      if(ciSPA[i] == null) ciSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
-      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
-      if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
-      if(enDSE)
-        iDSE.fill_spa(ciSPA[i]);
-      foreach(iFu[fid])
-        if(enFu[fid]) begin
-          iFu[fid].fill_rfm(ciRFM[i], i);
-          iFu[fid].fill_spa(ciSPA[i]);
-          iFu[fid].fill_spu(ciSPU[i]);
-        end
-      ciSPA[i].vecMode = vecMode;
-      ciSPU[i].vecMode = vecMode;
-      ciSPA[i].tid = tid;
-      ciRFM[i].tid = tid;
-      ciRFM[i].cyc = i;
-      ciSPA[i].subVec = i;
-      ciSPU[i].subVec = i;
-      ciSPA[i].rndMode = srExeMode;
-    end
-  endfunction : fill_issue
-
 endclass : ise_thread_inf
 
 ///---------------------------------------main component----------------------------------------
@@ -588,7 +498,7 @@ class ip4_tlm_ise extends ovm_component;
   local ip4_tlm_ise_vars v, vn;
   local ise_thread_inf thread[NUM_THREAD];
   local ip4_printer printer;
-  local uchar srPBId;
+  local uchar srPBId, rstCnt;
   local uint srExpBase;
   local bit srSupMsgMask, srPerfCntMask, srTimerMask, srReducePower, srDisableTimer,
             srTimerPend,  srSupMsgPend;
@@ -612,97 +522,99 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(srExpBase, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
-  function void changePC(input uchar tid, bit nxt = 0, uchar stage = 0, ejtag = 0);
-    ise_thread_inf tInf = thread[tid];
-    uint target = stage == 0 ? tInf.pc : v.pcStages[stage],
-         offSet = stage == 0 ? tInf.iGrpBytes : v.igSizeStages[stage];
-    bit priv = stage == 0 ? tInf.privMode : v.privStages[stage];
+  function void restorePC(input uchar tid, bit nxt = 0, uchar stage = 0, ejtag = 0);
+    ise_thread_inf t = thread[tid];
+    uint target = stage == 0 ? t.pc : v.pcRst[stage],
+         offSet = stage == 0 ? t.iGrpBytes : v.igSizeRst[stage];
+    offSet = nxt == 0 ? 0 : nxt;
     
-    tInf.privMode = priv;
-    if(tInf.ejtagMode || ejtag) begin
-      tInf.pc = VADR_EJTAGS;
-      tInf.ejtagMode = 1;
+    t.privMode = stage == 0 ? t.privMode : v.privRst[stage];
+    if(t.ejtagMode || ejtag) begin
+      t.pc = VADR_EJTAGS;
+      t.ejtagMode = 1;
     end
     else begin
-      tInf.pcEret = target + offSet;
-      tInf.pc = srExpBase;
+      t.pcEret = target + offSet;
+      t.pc = srExpBase;
     end
   endfunction
   
   function void enter_exp(input uchar tid, ise_exp_t expType, uchar stage = 0, cause_typs cause = EC_DECODE);
-    ise_thread_inf tInf = thread[tid];
-    tInf.privMode = 1;
-    changePC(tid, 0, stage);
+    ise_thread_inf t = thread[tid];
+    t.privMode = 1;
+    restorePC(tid, 0, stage);
     case(expType)
     exp_decode_err:
-      tInf.srCause = EC_DECODE;
+      t.srCause = EC_DECODE;
     exp_dse_err:
-      tInf.srCause = cause;
+      t.srCause = cause;
     exp_priv_err:
-      tInf.srCause = EC_EXEPRIV;
+      t.srCause = EC_EXEPRIV;
     exp_msc_err:
     begin
-      tInf.srCause = EC_MSC;
-      changePC(tid, 1, stage);
+      t.srCause = EC_MSC;
+      restorePC(tid, 1, stage);
     end
     exp_ife_err:
-      tInf.srCause = tInf.pendIFetchCause;
+      t.srCause = t.pendIFetchCause;
     exp_fu_err:
-      tInf.srCause = EC_FUEXP;
+      t.srCause = EC_FUEXP;
     endcase
-    tInf.flush();
+    t.flush();
   endfunction : enter_exp
 
   function void dse_wait(input uchar tid);
-    ise_thread_inf tInf = thread[tid];
+    ise_thread_inf t = thread[tid];
     ///its possible a previous blocking mem access followed by nonBlock access
-    tInf.pendMemAcc = 0;
-    tInf.pendLoad = 0;
-    tInf.pendStore = 0;    
-    changePC(tid, 1, STAGE_ISE_DEM0);
+    t.pendMemAcc = 0;
+    t.pendLoad = 0;
+    t.pendStore = 0; 
+    t.threadState = ts_rdy;
+    t.cancel = 1;   
+    restorePC(tid, 1, STAGE_ISE_DEM0);
   endfunction : dse_wait
 
   function void resolve_br(input uchar tid, bit br, uchar stage);
-    ise_thread_inf tInf = thread[tid];
-    if(tInf.threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
-      if(tInf.pendBr > 0) tInf.pendBr--;
-      if(tInf.pendBr == 0)
-        tInf.threadState = ts_rdy;
-      if(br != tInf.brPred) begin
-        tInf.flush();
-        changePC(tid, 1, stage);
-        tInf.cancel = 1;
+    ise_thread_inf t = thread[tid];
+    if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
+      if(t.pendBr > 0) t.pendBr--;
+      if(t.pendBr == 0)
+        t.threadState = ts_rdy;
+      if(br != t.brPred) begin
+        t.flush();
+        restorePC(tid, 1, stage);
+        t.cancel = 1;
       end
     end
   endfunction : resolve_br
     
   function word exe_ise(input uchar tid, opcode_e op, word op0 = 0, uchar sr = 0);
-    ise_thread_inf tInf = thread[tid];
+    ise_thread_inf t = thread[tid];
     word res;
     case(op)
     op_exit,
     op_sys: 
     begin
-      changePC(tid); ///, tInf.iGrpByte); 
-      tInf.privMode = 1;
-      tInf.srCause = EC_SYSCAL;
-      tInf.flush();     
+      restorePC(tid); ///, t.iGrpByte); 
+      t.privMode = 1;
+      t.srCause = EC_SYSCAL;
+      t.flush();     
     end
     op_brk  :
     begin
-      changePC(tid, 0, 0, 1); 
-      tInf.privMode = 1;
-      tInf.srCause = EC_BREAK;
-      tInf.flush();     
+      restorePC(tid, 0, 0, 1); 
+      t.privMode = 1;
+      t.srCause = EC_BREAK;
+      t.flush();     
     end
     op_wait:
     begin
     end
     op_eret:
     begin
-      tInf.pc = tInf.pcEret;
-      tInf.privMode = 0;
-      tInf.flush();
+      t.pc = t.pcEret;
+      t.privMode = 0;
+      t.flush();
     end
     op_tsync:
     begin
@@ -713,9 +625,9 @@ class ip4_tlm_ise extends ovm_component;
     op_alloc:
     begin
       if(op0[2])
-        tInf.vrfMap[op0[24:21]] = op0[19:16];
+        t.vrfMap[op0[24:21]] = op0[19:16];
       else
-        tInf.srfMap[op0[24:21]] = op0[19:16];
+        t.srfMap[op0[24:21]] = op0[19:16];
     end
     op_gp2s:
     begin
@@ -738,15 +650,15 @@ class ip4_tlm_ise extends ovm_component;
 ///      end
       SR_THD_CTL  :
       begin
-        tInf.privMode = op0[0];
-        tInf.srThreadGrp = op0[15];
-        tInf.srFIFOMask = op0[23:16];
-        tInf.srExeMode = round_mode'(op0[26:24]);
+        t.privMode = op0[0];
+        t.srThreadGrp = op0[15];
+        t.srFIFOMask = op0[23:16];
+        t.srExeMode = round_mode'(op0[26:24]);
       end
       SR_UEE    :
-        tInf.srUEE = op0;
+        t.srUEE = op0;
       SR_UER    :
-        tInf.srUEE = op0;
+        t.srUEE = op0;
       endcase
     end
     op_s2gp:
@@ -768,17 +680,17 @@ class ip4_tlm_ise extends ovm_component;
         res = srExpBase;
       SR_THD_CTL  :
       begin
-        res[0] = tInf.privMode;
-        res[2] = tInf.srThreadGrp;
-        res[23:16] = tInf.srFIFOMask;
-        res[26:24] = tInf.srExeMode;
+        res[0] = t.privMode;
+        res[2] = t.srThreadGrp;
+        res[23:16] = t.srFIFOMask;
+        res[26:24] = t.srExeMode;
       end
       SR_THD_ST   :
       begin
-        res[4:0] = tInf.srUserEvent;
-        res[8:5] = tInf.srCause;
+        res[4:0] = t.srUserEvent;
+        res[8:5] = t.srCause;
         res[9] = srSupMsgPend;
-        res[17:10] = tInf.srFIFOPend;
+        res[17:10] = t.srFIFOPend;
         res[19:18] = srPerfCntPend;        
         res[20] = srTimerPend;        
       end
@@ -790,143 +702,239 @@ class ip4_tlm_ise extends ovm_component;
 
   function bit can_issue(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
-    ise_thread_inf tInf = thread[tid];
+    ise_thread_inf t = thread[tid];
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [NUM_FU-1:0] enFuTmp;
       foreach(enFuTmp[i])
-        enFuTmp[i] = tInf.enFu[i];
+        enFuTmp[i] = t.enFu[i];
         
       ovm_report_info("can_issue",
         $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   tInf.threadState.name, tInf.decoded, tInf.decodeErr, tInf.wCnt[tInf.wCntSel], tInf.pc, tInf.enSPU, tInf.enDSE,
-                   enFuTmp, tInf.dseVec, tInf.wCntSel),
+                   t.threadState.name, t.decoded, t.decodeErr, t.wCnt[t.wCntSel], t.pc, t.enSPU, t.enDSE,
+                   enFuTmp, t.dseVec, t.wCntSel),
         OVM_HIGH);
     end
     
-    if(tInf.enVec && cntVecProc >= tInf.vecMode)
+    if(t.enVec && cntVecProc >= t.vecMode)
       return 0;
       
     ///issue disable check
-    if(tInf.iDSE.dse_block(noLd, noSt, noSMsg, noRMsg))
+    if(t.iDSE.dse_block(noLd, noSt, noSMsg, noRMsg))
       return 0;
     
     foreach(noFu[i])
-      if(noFu[i] && tInf.enFu[i])
+      if(noFu[i] && t.enFu[i])
         return 0;
     
     ///read cyc check
-    if(cntSrfRd > 0 && tInf.cntSrfRd > 0)
+    if(cntSrfRd > 0 && t.cntSrfRd > 0)
       return 0;
 
-    if(cntVrfRd > 0 && tInf.cntVrfRd > 0)
+    if(cntVrfRd > 0 && t.cntVrfRd > 0)
       return 0;
 
-    if(cntDSERd > 0 && tInf.cntDSERd > 0)
+    if(cntDSERd > 0 && t.cntDSERd > 0)
       return 0;
 
     /// write buf overflow check
-    if(cntPRWr + tInf.cntPRWr > CYC_VEC)
+    if(cntPRWr + t.cntPRWr > CYC_VEC)
       return 0;
     
     foreach(cntVrfWr[i])
-      if(cntVrfWr[i] + tInf.cntVrfWr[i] > CYC_VEC)
+      if(cntVrfWr[i] + t.cntVrfWr[i] > CYC_VEC)
         return 0;      
 
     foreach(cntSrfWr[i])
-      if(cntSrfWr[i] + tInf.cntSrfWr[i] > CYC_VEC)
+      if(cntSrfWr[i] + t.cntSrfWr[i] > CYC_VEC)
         return 0;
     
-    if(!tInf.lpRndMemMode && tInf.pendMemAcc > 0)
+    if(!t.lpRndMemMode && t.pendMemAcc > 0)
       return 0;
       
-    return tInf.decoded && (tInf.threadState inside {ts_rdy, ts_w_b, ts_b_self} && tInf.wCnt[tInf.wCntSel] == 0);
+    return t.decoded && (t.threadState inside {ts_rdy, ts_w_b, ts_b_self} && t.wCnt[t.wCntSel] == 0);
   endfunction : can_issue
 
-  function void issue(input uchar tid, pbId);
-    ise_thread_inf tInf = thread[tid];
-    vn.pcStages[1] = tInf.pc;
-    vn.igSizeStages[1] = tInf.iGrpBytes;
-    vn.privStages[1] = tInf.privMode;
+  function void fill_issue(input uchar tid);
+    ise_thread_inf t = thread[tid];
+    if(ciRFM[0] == null) ciRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+    if(ciRFM[cntVrfRd] == null) ciRFM[cntVrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+    ciRFM[0].start = 1;
+    ciRFM[cntVrfRd].vecEnd = 1;
+
+    foreach(t.iFu[i])
+      t.iFu[i].map_wr_grp(t.vrfMap, t.srfMap);
+
+    /// spu or scalar dse issue
+    if(t.enSPU) begin
+      bit brDepDSE = 0, brDepSPA = 0;
+      t.iSPU.map_wr_grp(t.vrfMap, t.srfMap);
+      if(ciRFM[0] == null) ciRFM[0] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      if(ciRFM[cntSrfRd] == null) ciRFM[cntSrfRd] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      if(ciSPU[cntSrfRd] == null) ciSPU[cntSrfRd] = tr_ise2spu::type_id::create("toSPU", get_parent());
+      ciRFM[0].start = 1;
+      ciRFM[cntSrfRd].sclEnd = 1;
+      ciSPU[cntSrfRd].start = 1;
+      if(t.iSPU.is_br() && !t.iSPU.is_unc_br()) begin ///a conditional branch need vecMode cycles
+        cntSrfRd = t.vecMode;
+        ///find what br is depend on
+        foreach(t.enFu[fid])
+          if(t.enFu[fid] && t.iFu[fid].op inside {op_cmp, op_ucmp})
+            brDepSPA = 1;
+        if(t.enDSE)
+          brDepDSE = !brDepSPA;
+      end
+      ciSPU[cntSrfRd].brEnd = t.iSPU.is_br();
+      for(int i = 0; i <= cntSrfRd; i++) begin
+        if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+        if(ciSPA[i] == null) ciSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
+        t.iSPU.fill_rfm(ciRFM[i], i);
+        t.iSPU.fill_spu(ciSPU[i]);
+        ciSPU[i].brDepSPA = brDepSPA;
+        ciSPU[i].brDepDSE = brDepDSE;
+        ciSPU[i].tid = srPBId;
+        ciSPU[i].rstCnt = rstCnt;
+      end
+    end
     
-    if(tInf.decodeErr) begin
-      if(tInf.threadState == ts_rdy)
+    if(t.enDSE) begin
+      t.iDSE.map_wr_grp(t.vrfMap, t.srfMap);
+      for(int i = 0; i <= cntDSERd; i++) begin
+        if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+        if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
+        if(ciDSE[i] == null) ciDSE[i] = tr_ise2dse::type_id::create("toDSE", get_parent());
+        t.iDSE.fill_dse(ciDSE[i]);
+        t.iDSE.fill_rfm(ciRFM[i], i);
+        t.iDSE.fill_spu(ciSPU[i]);
+        ciDSE[i].subVec = i;
+        ciDSE[i].vecMode = t.vecMode;
+        ciDSE[i].nonBlock = t.lpRndMemMode;
+        ciDSE[i].tid = tid;
+        ciDSE[i].pbId = srPBId;
+        ciDSE[i].rstCnt = rstCnt;
+      end
+    end
+          
+    for(int i = 0; i <= cntSrfRd || i <= cntVrfRd; i++) begin
+      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      ciRFM[i].bpCo = t.co;
+      ciRFM[i].vrfRdGrp = t.vrfGrp[i];
+      ciRFM[i].vrfRdAdr = t.vrfAdr[i];
+      ciRFM[i].srfRdGrp = t.srfGrp[i];
+      ciRFM[i].srfRdAdr = t.srfAdr[i];
+    end
+    
+    for(int i = 0; i <= cntVrfRd; i++) begin
+      if(ciSPA[i] == null) ciSPA[i] = tr_ise2spa::type_id::create("toSPA", get_parent());
+      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", get_parent());
+      if(ciSPU[i] == null) ciSPU[i] = tr_ise2spu::type_id::create("toSPU", get_parent());
+      if(t.enDSE)
+        t.iDSE.fill_spa(ciSPA[i]);
+      foreach(t.iFu[fid])
+        if(t.enFu[fid]) begin
+          t.iFu[fid].fill_rfm(ciRFM[i], i);
+          t.iFu[fid].fill_spa(ciSPA[i]);
+          t.iFu[fid].fill_spu(ciSPU[i]);
+        end
+      ciSPA[i].vecMode = t.vecMode;
+      ciSPU[i].vecMode = t.vecMode;
+      ciSPA[i].tid = tid;
+      ciSPA[i].rstCnt = rstCnt;
+      ciRFM[i].tid = tid;
+      ciRFM[i].cyc = i;
+      ciSPA[i].subVec = i;
+      ciSPU[i].subVec = i;
+      ciSPA[i].rndMode = t.srExeMode;
+    end
+  endfunction : fill_issue
+
+  function void issue(input uchar tid, pbId);
+    ise_thread_inf t = thread[tid];
+    vn.pcRst[rstCnt] = t.pc;
+    vn.igSizeRst[rstCnt] = t.iGrpBytes;
+    vn.privRst[rstCnt] = t.privMode;
+///    vn.pdLdRst[rstCnt] t.pendLoad;
+///    vn.pdStRst[rstCnt] t.pendStore;
+///    vn.pdMemAccRst[rstCnt] t.pendMemAcc;
+    
+    if(t.decodeErr) begin
+      if(t.threadState == ts_rdy)
         enter_exp(tid, exp_decode_err);
       return;
     end
-    else if(tInf.IFetchExp) begin
-      if(tInf.threadState == ts_rdy)
+    else if(t.IFetchExp) begin
+      if(t.threadState == ts_rdy)
         enter_exp(tid, exp_ife_err);
       return;
     end
     
-    if(tInf.enSPU) begin
-      if(tInf.iSPU.is_unc_br()) begin
-        tInf.pc = tInf.pc + tInf.iSPU.offSet;
-        tInf.brPred = 1;
+    if(t.enSPU) begin
+      if(t.iSPU.is_unc_br()) begin
+        t.pc = t.pc + t.iSPU.offSet;
+        t.brPred = 1;
       end
-      else if(tInf.iSPU.is_br())
-        tInf.br_pred();
+      else if(t.iSPU.is_br())
+        t.br_pred();
       
     /// spu or scalar dse issue
-      if(tInf.iSPU.is_priv()) begin
-        if(tInf.privMode)
-          void'(exe_ise(tid, tInf.iSPU.op));
+      if(t.iSPU.is_priv()) begin
+        if(t.privMode)
+          void'(exe_ise(tid, t.iSPU.op));
         else
           enter_exp(tid, exp_priv_err);
       end
-      else if(tInf.iSPU.is_ise_inst())
-        void'(exe_ise(tid, tInf.iSPU.op));
+      else if(t.iSPU.is_ise_inst())
+        void'(exe_ise(tid, t.iSPU.op));
     end
 
     ///branch taken
-    if(tInf.enSPU && tInf.iSPU.is_br() && tInf.brPred) begin
+    if(t.enSPU && t.iSPU.is_br() && t.brPred) begin
       ///jmp to current?
-      if(tInf.iSPU.offSet == 0)
-        tInf.decoded = 1;
+      if(t.iSPU.offSet == 0)
+        t.decoded = 1;
       else begin
-        tInf.flush();
-        tInf.decoded = 0;
+        t.flush();
+        t.decoded = 0;
       end
     end
     ///not branch or branch not taken
     else begin
-      tInf.pc += tInf.iGrpBytes;
-      tInf.decoded = 0;
-      tInf.iBuf = tInf.iBuf[tInf.iGrpBytes:$];
-      tInf.decodeErr = 0;
+      t.pc += t.iGrpBytes;
+      t.decoded = 0;
+      t.iBuf = t.iBuf[t.iGrpBytes:$];
+      t.decodeErr = 0;
     end
             
-    if(tInf.enDSE) begin
-      cntDSERd = tInf.cntDSERd;
-      tInf.pendMemAcc++;
-      if(tInf.iDSE.op inside {op_lw, op_lh, op_lhu, op_lb, op_lbu})
-        tInf.pendLoad = 1;
-      else if(tInf.iDSE.op inside {op_sw, op_sh, op_sb})
-        tInf.pendStore = 1;
-      tInf.lpRndMemMode =  (tInf.iDSE.mT == 1 && tInf.enSPU && tInf.iSPU.is_br()
-        && tInf.threadState == ts_b_self && tInf.iSPU.prWrAdr[0] == tInf.iDSE.prRdAdr
-        && tInf.iDSE.prRdAdr != 0 && tInf.brPred);
+    if(t.enDSE) begin
+      cntDSERd = t.cntDSERd;
+      t.pendMemAcc++;
+      if(t.iDSE.op inside {op_lw, op_lh, op_lhu, op_lb, op_lbu})
+        t.pendLoad = 1;
+      else if(t.iDSE.op inside {op_sw, op_sh, op_sb})
+        t.pendStore = 1;
+      t.lpRndMemMode =  (t.iDSE.mT == 1 && t.enSPU && t.iSPU.is_br()
+        && t.threadState == ts_b_self && t.iSPU.prWrAdr[0] == t.iDSE.prRdAdr
+        && t.iDSE.prRdAdr != 0 && t.brPred);
     end
 
-    if(tInf.wCntNext > tInf.wCnt[tInf.wCntSel])
-      tInf.wCnt[tInf.wCntSel] = tInf.wCntNext;
+    if(t.wCntNext > t.wCnt[t.wCntSel])
+      t.wCnt[t.wCntSel] = t.wCntNext;
           
-    cntSrfRd = tInf.cntSrfRd;
-    cntVrfRd = tInf.cntVrfRd;
-    cntDSERd = tInf.cntDSERd;
-    cntPRWr += tInf.cntPRWr;
+    cntSrfRd = t.cntSrfRd;
+    cntVrfRd = t.cntVrfRd;
+    cntDSERd = t.cntDSERd;
+    cntPRWr += t.cntPRWr;
   
     foreach(cntVrfWr[i])
-      cntVrfWr[i] += tInf.cntVrfWr[i];
+      cntVrfWr[i] += t.cntVrfWr[i];
 
     foreach(cntSrfWr[i])
-      cntSrfWr[i] += tInf.cntSrfWr[i];
+      cntSrfWr[i] += t.cntSrfWr[i];
     
-    if(tInf.enVec)
-      cntVecProc = tInf.vecMode;
+    if(t.enVec)
+      cntVecProc = t.vecMode;
 
     ///rdy to issue the ig 
-    tInf.fill_issue(ciRFM, ciSPA, ciSPU, ciDSE, tid, pbId); 
+    fill_issue(tid); 
   endfunction : issue
       
   function void comb_proc();
@@ -956,15 +964,18 @@ class ip4_tlm_ise extends ovm_component;
     vn.spu[1] = null;
     vn.dse[1] = null;
     
-    for(int i = STAGE_ISE_VWB; i > 1; i--) begin
-      vn.pcStages[i] = v.pcStages[i - 1];
-      vn.igSizeStages[i] = v.igSizeStages[i - 1];
-      vn.privStages[i] = v.privStages[i - 1];
-    end
-    vn.pcStages[1] = v.pcStages[1];
-    vn.igSizeStages[1] = v.igSizeStages[1];
-    vn.privStages[1] = v.privStages[1];
-      
+///    for(int i = STAGE_ISE_VWB; i > 1; i--) begin
+///      vn.pcRst[i] = v.pcRst[i - 1];
+///      vn.igSizeRst[i] = v.igSizeRst[i - 1];
+///      vn.privRst[i] = v.privRst[i - 1];
+///    end
+///    vn.pcRst[1] = v.pcRst[1];
+///    vn.igSizeRst[1] = v.igSizeRst[1];
+///    vn.privRst[1] = v.privRst[1];
+    
+    if(rstCnt >= STAGE_ISE_VWB) rstCnt = 1;
+    else rstCnt++;
+    
     foreach(thread[i])
       thread[i].cyc_new();
     
@@ -1012,31 +1023,35 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       tr_spu2ise spu = v.fmSPU;
-      resolve_br(spu.tid, spu.brTaken, spu.brStage);
+      resolve_br(spu.tid, spu.brTaken, spu.rstCnt);
       if(spu.mscExp)
-        enter_exp(spu.tid, exp_msc_err, spu.brStage);
+        enter_exp(spu.tid, exp_msc_err, spu.rstCnt);
     end
     
     ///cancel condition 2, spa exp
-    if(v.fmSPA != null && v.fmSPA.exp) begin
-      enter_exp(v.fmSPA.tid, exp_fu_err, STAGE_ISE_VWBP);
-    end
+    if(v.fmSPA != null && v.fmSPA.exp)
+      enter_exp(v.fmSPA.tid, exp_fu_err, v.fmSPA.rstCnt);
     
     ///cancel condition 3 dse exp or cache miss
     if(v.fmDSE[STAGE_ISE_DEM0] != null) begin
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM0];
+      ise_thread_inf t = thread[dse.tid];
       if(dse.cancel)
         dse_wait(dse.tid);
       else begin
-        if(thread[dse.tid].pendMemAcc > 0)
-          thread[dse.tid].pendMemAcc--;
-        if(thread[dse.tid].pendMemAcc == 0) begin
-          thread[dse.tid].pendLoad = 0;
-          thread[dse.tid].pendStore = 0;
+        if(t.pendMemAcc > 0)
+          t.pendMemAcc--;
+        if(t.pendMemAcc == 0) begin
+          t.pendLoad = 0;
+          t.pendStore = 0;
         end
       end
-      if(dse.exp)
-        enter_exp(dse.tid, exp_dse_err, STAGE_ISE_DEM0, dse.cause);
+      if(dse.exp) begin
+        t.pendStore = dse.pendStore;
+        t.pendLoad = dse.pendLoad;
+        t.pendMemAcc = dse.pendMemAcc;
+        enter_exp(dse.tid, exp_dse_err, dse.rstCnt, dse.cause);
+      end
     end
     
     ///update no_* for issue & check

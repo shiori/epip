@@ -325,7 +325,7 @@ class ip4_tlm_spu extends ovm_component;
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
         toISE.tid = tid;
         toISE.mscExp = 0;
-        toISE.brStage = found;
+        toISE.rstCnt = found;
         
         foreach(emsk[j,k]) 
           if(emsk[j][k] == 1 && j <= ise.vecMode) begin

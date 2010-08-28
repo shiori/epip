@@ -200,6 +200,7 @@ class ip4_tlm_spa extends ovm_component;
         if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("toISE", this);
         vn.ise[1].exp = exeExp;
         vn.ise[1].tid = ise.tid;
+        vn.ise[1].rstCnt = ise.rstCnt;
         exeExp = 0;
       end
     end

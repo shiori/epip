@@ -439,6 +439,7 @@ class ip4_tlm_dse extends ovm_component;
         selExp = 0;
         toISE = tr_dse2ise::type_id::create("toISE", this);
         toISE.exp = !selExp || ise.nonBlock;
+        toISE.rstCnt = ise.rstCnt;
       end
     end
     
