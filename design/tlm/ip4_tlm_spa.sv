@@ -32,7 +32,7 @@ class ip4_tlm_spa_vars extends ovm_component;
   tr_spu2spa fmSPU;
 
   tr_spa2rfm rfm[STAGE_EXE_VWBP:1];
-  tr_spa2ise ise[STAGE_EXE_VWBP:1];
+  tr_spa2ise ise[STAGE_EXE_CMP:1];
   tr_spa2spu spu[STAGE_EXE_CMP:1];
   tr_spa2dse dse[STAGE_EXE_VWBP:1];
     
@@ -101,13 +101,15 @@ class ip4_tlm_spa extends ovm_component;
 
     vn.cancel = '{default : 0};
     for(int i = STAGE_EXE_VWBP; i > 1; i--) begin
-      vn.ise[i] = v.ise[i - 1];
       vn.rfm[i] = v.rfm[i - 1];
       vn.dse[i] = v.dse[i - 1];
     end
-    vn.ise[1] = null;
     vn.rfm[1] = null;
     vn.dse[1] = null;
+        
+    for(int i = STAGE_EXE_CMP; i > 1; i--)
+      vn.ise[i] = v.ise[i - 1];
+    vn.ise[1] = null;
           
     for(int i = STAGE_EXE_CMP; i > 1; i--)
       vn.spu[i] = v.spu[i - 1];
@@ -193,6 +195,8 @@ class ip4_tlm_spa extends ovm_component;
           vn.spu[1].presCmp0 = presCmp0;
           vn.spu[1].presCmp1 = presCmp1;
         end
+        vn.rfm[1].fu[fid].gp2s = fu.op == op_gp2s;
+        vn.rfm[1].fu[fid].s2gp = fu.op == op_s2gp;
       end
       
       ///signal exp when whole request finished
@@ -200,7 +204,7 @@ class ip4_tlm_spa extends ovm_component;
         if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("toISE", this);
         vn.ise[1].exp = exeExp;
         vn.ise[1].tid = ise.tid;
-        vn.ise[1].rstCnt = ise.rstCnt;
+        vn.ise[1].rstStage = STAGE_ISE_VWB + ise.subVec;
         exeExp = 0;
       end
     end
@@ -232,7 +236,7 @@ class ip4_tlm_spa extends ovm_component;
     ovm_report_info("spa", "req_proc procing...", OVM_FULL); 
         
     toRFM = v.rfm[STAGE_EXE_VWBP];
-    toISE = v.ise[STAGE_EXE_VWBP];
+    toISE = v.ise[STAGE_EXE_CMP];
     toDSE = v.dse[STAGE_EXE_VWBP];
     toSPU = v.spu[STAGE_EXE_CMP];
         
@@ -385,7 +389,8 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   end
   
   case(op)
-  op_nop,   
+  op_nop,
+  op_s2gp,
   op_bp0:   foreach(r0[i]) r0[i] = op0[i];
   op_bp1:   foreach(r0[i]) r0[i] = op1[i];
   op_bp2:   foreach(r0[i]) r0[i] = op2[i];
@@ -452,7 +457,12 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   op_uquo:  foreach(r0[i]) r0[i] = o[0][i] / o[1][i];
   op_res:   foreach(r0[i]) r0[i] = op0[i] % op1[i];
   op_ures:  foreach(r0[i]) r0[i] = o[0][i] % o[1][i];
-  
+
+  op_gp2s:
+  begin
+    foreach(expFlag[i]) expFlag[i] = op0[i];
+    r0 = op0;
+  end
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal instruction opcode!!!");
   endcase
   

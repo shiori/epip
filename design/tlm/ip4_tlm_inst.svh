@@ -346,7 +346,7 @@ class inst_c extends ovm_object;
         grpRMsg[2], adrRMsg[2], bkRMsg[2];
   uint imm, offSet;
   bit vrfEn[CYC_VEC][NUM_VRF_BKS], srfEn[CYC_VEC][NUM_SRF_BKS], 
-      wrEn[2], prRdEn, prWrEn[2], brDep;
+      wrEn[2], prRdEn, prWrEn[2], brDep, fcRet;
   cmp_opcode_e cmpOp;
   pr_merge_e mergeOp;
   msc_opcode_e mscOp;
@@ -564,6 +564,7 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
+      fcRet = inst.i.b.fcr.ja == 0;
       offSet = {{WORD_BITS{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       set_rf_en(inst.i.b.fcr.ja, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       op = op_fcr;
@@ -833,7 +834,7 @@ class inst_c extends ovm_object;
 	  ///long cyc instructions
     if(op inside {spu_only_ops})
       t = STAGE_RRF_RRC + STAGE_EEX_VWBP;
-    ///instructions for ise only
+    ///instructions for ise only, asr need wait longer
 	  else if(!(op inside {op_gp2s, op_s2gp}) && op inside {ise_ops})
 	    t = 0;
 	  ///branchs are predicted, no need to wait
@@ -841,14 +842,14 @@ class inst_c extends ovm_object;
 	    t = 0;
 	  ///non blocking dse, only need to resolve pr dependency
 	  else if(nb && op inside {dse_ops})
-	    t = STAGE_RRF_DEM0;
+	    t = STAGE_RRF_DEM;
 	  ///store are non blocking, ld -> st need to resolve gpr dependency
 	  else if(op inside {st_ops}) begin
 	    ///no gpr dependency?
 	    if(isVec ^ vec)
-	      t = STAGE_RRF_DEM0;
+	      t = STAGE_RRF_DEM;
 	    else ///gpr dependent
-	      t = ld ? (vec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP) : STAGE_RRF_DEM0;
+	      t = ld ? (vec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP) : STAGE_RRF_DEM;
 	  end
 	  else if(isVec)
 	    t = STAGE_RRF_VWBP;

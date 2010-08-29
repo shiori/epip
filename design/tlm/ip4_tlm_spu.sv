@@ -11,8 +11,8 @@
 ///Created by Andy Chen on Apr 9 2010
   
 class ip4_tlm_spu_vars extends ovm_component;
-  tr_ise2spu fmISE[STAGE_RRF_VWB0:0];
-  tr_rfm2spu fmRFM[STAGE_RRF_VWB0:STAGE_RRF_EXS0];
+  tr_ise2spu fmISE[STAGE_RRF_VWB:0];
+  tr_rfm2spu fmRFM[STAGE_RRF_VWB:STAGE_RRF_EXS0];
   tr_spa2spu fmSPA;
   tr_dse2spu fmDSE;
   tr_tlb2spu fmTLB;
@@ -63,10 +63,10 @@ class ip4_tlm_spu extends ovm_component;
   
   function void comb_proc();
     ovm_report_info("spu", "comb_proc procing...", OVM_FULL); 
-    for(int i = STAGE_RRF_VWB0; i > 0; i--)
+    for(int i = STAGE_RRF_VWB; i > 0; i--)
       vn.fmISE[i] = v.fmISE[i - 1];
       
-    for(int i = STAGE_RRF_VWB0; i > STAGE_RRF_EXS0; i--)
+    for(int i = STAGE_RRF_VWB; i > STAGE_RRF_EXS0; i--)
       vn.fmRFM[i] = v.fmRFM[i - 1];
 
     for(int i = STAGE_RRF_SWBP; i > STAGE_RRF_EXS1; i--)
@@ -98,8 +98,8 @@ class ip4_tlm_spu extends ovm_component;
     
     ///----------process data---------------------
     ///write back cmp predication register results
-    if(v.fmSPA != null && v.fmISE[STAGE_RRF_CEM0] != null) begin
-      tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM0];
+    if(v.fmSPA != null && v.fmISE[STAGE_RRF_CEM] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
       tr_spa2spu spa = v.fmSPA;
       ovm_report_info("spu", "write back spa pres", OVM_FULL);
       pr[ise.tid][ise.prWrAdr0][ise.subVec] = spa.presCmp0;
@@ -107,8 +107,8 @@ class ip4_tlm_spu extends ovm_component;
     end
     
     ///write back dse predication register results
-    if(v.fmDSE != null && v.fmISE[STAGE_RRF_DEM0] != null) begin
-      tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM0];
+    if(v.fmDSE != null && v.fmISE[STAGE_RRF_DEM] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
       tr_dse2spu dse = v.fmDSE;
       ovm_report_info("spu", "write back dse pres", OVM_FULL);
       if(dse.wrEn)
@@ -275,28 +275,29 @@ class ip4_tlm_spu extends ovm_component;
     
     ///check for valid branch
     begin
-      uchar found = 1;
+      uchar found = 0;
       tr_ise2spu ise;
       tr_rfm2spu rfm;
       
-      if(v.fmISE[STAGE_RRF_CEM0] != null && v.fmSPA != null
-          && v.fmISE[STAGE_RRF_CEM0].brDepSPA && v.fmISE[STAGE_RRF_CEM0].brEnd) begin
-        ise = v.fmISE[STAGE_RRF_CEM0];
-        rfm = v.fmRFM[STAGE_RRF_CEM0];
+      if(v.fmISE[STAGE_RRF_CEM] != null && v.fmSPA != null
+          && v.fmISE[STAGE_RRF_CEM].brDepSPA && v.fmISE[STAGE_RRF_CEM].brEnd) begin
+        ise = v.fmISE[STAGE_RRF_CEM];
+        rfm = v.fmRFM[STAGE_RRF_CEM];
+        found = STAGE_ISE_CBR + ise.subVec;
       end
-      else if(v.fmISE[STAGE_RRF_DEM0] != null && v.fmDSE != null
-               && v.fmISE[STAGE_RRF_DEM0].brDepDSE && v.fmISE[STAGE_RRF_DEM0].brEnd
+      else if(v.fmISE[STAGE_RRF_DEM] != null && v.fmDSE != null
+               && v.fmISE[STAGE_RRF_DEM].brDepDSE && v.fmISE[STAGE_RRF_DEM].brEnd
                && v.fmDSE.wrEn) begin
-        ise = v.fmISE[STAGE_RRF_DEM0];
-        rfm = v.fmRFM[STAGE_RRF_DEM0];
+        ise = v.fmISE[STAGE_RRF_DEM];
+        rfm = v.fmRFM[STAGE_RRF_DEM];
+        found = STAGE_ISE_DBR + ise.subVec;
       end
       else if(v.fmISE[0] != null && v.fmISE[0].op inside {op_br, op_fcr}
                && v.fmISE[0].brEnd && !v.fmISE[0].brDep) begin
         ise = v.fmISE[0];
-        rfm = v.fmRFM[0];        
+        rfm = v.fmRFM[0];
+        found = LAT_ISE + ise.subVec + 1;
       end
-      else
-        found = 0;
       
       if(found) begin
         uchar tid = ise.tid;
@@ -327,7 +328,7 @@ class ip4_tlm_spu extends ovm_component;
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
         toISE.tid = tid;
         toISE.mscExp = 0;
-        toISE.rstCnt = ise.rstCnt;
+        toISE.rstStage = found;
         
         foreach(emsk[j,k]) 
           if(emsk[j][k] == 1 && j <= ise.vecMode) begin

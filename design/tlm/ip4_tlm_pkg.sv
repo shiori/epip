@@ -119,6 +119,8 @@ parameter uint  NUM_SP            = 8,
                 NUM_DCHE_CL       = LAT_XCHG,
                 NUM_DCHE_TAG      = NUM_SMEM_GRP_W / NUM_DCHE_CL,
                 NUM_DCHE_ASO      = 4,
+                NUM_BR_HISTORY    = 32,
+                NUM_FCR_RET       = 8,
 ///                NUM_BURST_CL      = LAT_XCHG,
 ///                NUM_BURST_LEN     = NUM_BURST_CL * NUM_SMEM_BK,
 ///                NUM_EBUS_WORDS    = 2,
@@ -151,14 +153,13 @@ ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
                                            pipeline stages:
 load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
-dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
+dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
 spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | sr   |
-spu br:   | br0 | br1  | br2  | br3  |
-exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
-cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
-          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
-                                            0      1      2      3      4      5      6      7      8      9      10
+exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
+cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
+          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14        15
+                                            0      1      2      3      4      5      6      7      8      9         10
                        0      1      2      3      4      5      6    
   */  
 parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
@@ -175,31 +176,36 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
                 STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///9
                 STAGE_RRF_CMP     = STAGE_RRF_RRC + NUM_FU,         ///7
-                STAGE_RRF_CEM0    = STAGE_RRF_CMP + 1,              ///8
+                STAGE_RRF_CEM     = STAGE_RRF_CMP + 1,              ///8
+                STAGE_RRF_CBR     = STAGE_RRF_CEM + 1,              ///8
                 STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_RRF_DEM0    = STAGE_RRF_SEL + 1,              ///5
-                STAGE_RRF_DEM     = STAGE_RRF_SEL + CYC_VEC,        ///8
+                STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
+                STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
                 STAGE_RRF_DC      = STAGE_RRF_SEL + LAT_XCHG,       ///6
                 STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///7
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///8
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
-                STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///11
+                STAGE_RRF_VWB     = STAGE_RRF_VWBP + 1,             ///11
                 STAGE_EXE         = LAT_MAC - 1,                    ///3
                 STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
-                STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
                 STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
                 STAGE_EXE_SWBP    = STAGE_RRF_SWBP - STAGE_RRF_EXE0,///2
                 STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///3
                 STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY - CYC_VEC - 1,     ///27
                 STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
-                STAGE_EEX_VWB0    = STAGE_EEX_VWBP + 1,             ///29
+                STAGE_EEX_VWB     = STAGE_EEX_VWBP + 1,             ///29
                 STAGE_ISE         = LAT_ISE - 1,                    ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
                 STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
-                STAGE_ISE_VWB     = STAGE_ISE_VWBP + CYC_VEC,       ///16
-                STAGE_ISE_DEM0    = LAT_ISE + STAGE_RRF_DEM0;        ///8
+                STAGE_ISE_CMP     = LAT_ISE + STAGE_RRF_CMP,        ///7
+                STAGE_ISE_VWB     = STAGE_ISE_VWBP + 1,             ///16
+                STAGE_ISE_VWB_END = STAGE_ISE_VWBP + CYC_VEC,       ///16
+                STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM,        ///5
+                STAGE_ISE_DBR     = LAT_ISE + STAGE_RRF_DBR,        ///6
+                STAGE_ISE_CEM     = LAT_ISE + STAGE_RRF_CEM,        ///8
+                STAGE_ISE_CBR     = LAT_ISE + STAGE_RRF_CBR;        ///9
                                 
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
@@ -241,7 +247,7 @@ endclass : tlm_vif_object
   
 typedef enum uchar {
   selv[0:127], sels[0:31], selc[0:7], selz, selii, selspu,
-  seldse, selfu[0:15], selb[0:7], selsr[0:31], selnull
+  seldse, selfu[0:15], selb[0:7], selnull
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
@@ -422,10 +428,11 @@ typedef enum uchar {
   SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
   SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
-  SR_IIDY,      SR_IIDZ,      SR_EXPF,      SR_THD_CTL,     SR_THD_ST,
-  SR_CONTENT,   SR_EPC,       SR_WIDX,      SR_WIDY,        SR_WIDZ,
-  SR_ILM,       SR_CM,        SR_MSCT,      SR_MSCO,        SR_MSCU,
-  SR_UEE,       SR_UER,       SR_ASID,      SR_MD[0:7],     SR_FIFOS
+  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_THD_CTL,     SR_THD_ST,
+  SR_CONTENT,   SR_EPC,       SR_ERET,      SR_WIDX,        SR_WIDY,
+  SR_WIDZ,      SR_ILM,       SR_CM,        SR_MSCT,        SR_MSCO,
+  SR_MSCU,      SR_UEE,       SR_UER,       SR_ASID,        SR_MD[0:7],
+  SR_FIFOS
   }special_regs;
 
 parameter special_regs tlbsr[] = '{

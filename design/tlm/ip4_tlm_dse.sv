@@ -11,7 +11,7 @@
 ///Created by yajing yuan on July 19 2010
 
 class ip4_tlm_dse_vars extends ovm_component;
-  tr_ise2dse fmISE[STAGE_RRF_VWB0:STAGE_RRF_RRC0];
+  tr_ise2dse fmISE[STAGE_RRF_VWB:STAGE_RRF_RRC0];
   tr_spu2dse fmSPU[STAGE_RRF_SEL:STAGE_RRF_AG];
   tr_rfm2dse fmRFM[STAGE_RRF_SEL:STAGE_RRF_AG];
   tr_spa2dse fmSPA;
@@ -20,7 +20,7 @@ class ip4_tlm_dse_vars extends ovm_component;
   
   tr_dse2ise ise;
 ///  tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
-  tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_DEM0];
+  tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_DEM];
   tr_dse2spa spa;
   tr_dse2tlb tlb;
   tr_dse2eif eif;
@@ -134,7 +134,7 @@ class ip4_tlm_dse extends ovm_component;
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_TAG; i--) 
       tlbReqVAdr[i] = tlbReqVAdr[i - 1];
       
-    for (int i = STAGE_RRF_VWB0; i > STAGE_RRF_RRC0; i--) 
+    for (int i = STAGE_RRF_VWB; i > STAGE_RRF_RRC0; i--) 
       vn.fmISE[i] = v.fmISE[i - 1];
     vn.fmISE[STAGE_RRF_RRC0] = null;
 
@@ -145,9 +145,9 @@ class ip4_tlm_dse extends ovm_component;
     vn.fmRFM[STAGE_RRF_AG] = null;
     vn.fmSPU[STAGE_RRF_AG] = null;
     
-    for(int i = STAGE_RRF_VWBP; i > STAGE_RRF_DEM0; i--) 
+    for(int i = STAGE_RRF_VWBP; i > STAGE_RRF_DEM; i--) 
       vn.rfm[i] = v.rfm[i - 1];
-    vn.rfm[STAGE_RRF_DEM0] = null;
+    vn.rfm[STAGE_RRF_DEM] = null;
     
     for(int i = LAT_XCHG; i > 0; i--) begin
       eifTr[i] = eifTr[i - 1];
@@ -440,7 +440,7 @@ class ip4_tlm_dse extends ovm_component;
           if(iseTr[0] == null) iseTr[0] = tr_dse2ise::type_id::create("toISE", this);
           iseTr[0].exp = selExp && !ise.nonBlock;
           iseTr[0].ext = reqHasEx && !ise.nonBlock;
-          iseTr[0].rstCnt = ise.rstCnt;
+          iseTr[0].rstStage = STAGE_ISE_DEM + ise.subVec;
           iseTr[0].rsp = 1;
           iseTr[0].pendExLoad = 1;
           iseTr[0].pendExStore = 1;
@@ -487,7 +487,7 @@ class ip4_tlm_dse extends ovm_component;
       end
       endcase
     end
-    vn.rfm[STAGE_RRF_DEM0] = rfmTr[LAT_XCHG - 1];
+    vn.rfm[STAGE_RRF_DEM] = rfmTr[LAT_XCHG - 1];
 
   endfunction
   
