@@ -346,7 +346,7 @@ class inst_c extends ovm_object;
         grpRMsg[2], adrRMsg[2], bkRMsg[2];
   uint imm, offSet;
   bit vrfEn[CYC_VEC][NUM_VRF_BKS], srfEn[CYC_VEC][NUM_SRF_BKS], 
-      wrEn[2], prRdEn, prWrEn[2], brDep, fcRet;
+      wrEn[2], prRdEn, prWrEn[2], brDep, fcRet, noExp;
   cmp_opcode_e cmpOp;
   pr_merge_e mergeOp;
   msc_opcode_e mscOp;
@@ -458,6 +458,7 @@ class inst_c extends ovm_object;
     rdBkSel = '{default : selnull};
     prRdAdr = inst.i.p;
     prRdEn = prRdAdr != 0;
+    noExp = 0;
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
@@ -803,11 +804,6 @@ class inst_c extends ovm_object;
     
 	endfunction : decode
 	
-///	function bit is_pd_br();
-///	  if(!decoded) decode();
-///    return brDep && prRdAdr != 0;
-///	endfunction : is_pd_br
-
 	function bit is_unc_br();
 	  if(!decoded) decode();
     return (inst.i.op inside {op_br, op_fcr}) && (brOp == bop_naz && prRdAdr == 0);
@@ -822,41 +818,68 @@ class inst_c extends ovm_object;
 	  if(!decoded) decode();
     return priv;
 	endfunction : is_priv
-
-	function bit is_ise_inst();
-	  if(!decoded) decode();
-    return op inside {ise_ops};
-	endfunction : is_ise_inst
 		
-	function void set_wcnt(inout uchar wCnt, input bit nb = 0, ld = 0, st = 0, vec = 1);
-	  uchar t = 0;
+	function void set_wcnt(inout uchar wCnt[3], input uchar vm);///, bit nb = 0, ld = 0, st = 0, vec = 1);
+	  uchar l = 0,    ///when sr dc gpr pr is rdy for next grp to access (longest)
+	        s = STAGE_RRF_VWBP,  ///when sr dc gpr pr is writeback (queskest)
+	        e = 0;    ///when exception / branch is resolved
+	  ///sometimes l is opt to 0, but s & e must set correct, if no sr dc gpr pr
+	  ///changes, s set to max
 	  if(!decoded) decode();
 	  ///long cyc instructions
-    if(op inside {spu_only_ops})
-      t = STAGE_RRF_RRC + STAGE_EEX_VWBP;
-    ///instructions for ise only, asr need wait longer
-	  else if(!(op inside {op_gp2s, op_s2gp}) && op inside {ise_ops})
-	    t = 0;
+    if(op inside {spu_only_ops}) begin
+      l = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      s = l;
+    end
+    else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
+      ///sr write back
+      l = STAGE_RRF_DSR;
+      l = s;
+    end
+    ///zero wait instructions for ise only, those inst only change threadstate
+	  else if(op inside {ise_zw_ops})
+	    l = 0;
 	  ///branchs are predicted, no need to wait
-	  else if(op inside {op_fcr, op_br})
-	    t = 0;
-	  ///non blocking dse, only need to resolve pr dependency
-	  else if(nb && op inside {dse_ops})
-	    t = STAGE_RRF_DEM;
-	  ///store are non blocking, ld -> st need to resolve gpr dependency
-	  else if(op inside {st_ops}) begin
-	    ///no gpr dependency?
-	    if(isVec ^ vec)
-	      t = STAGE_RRF_DEM;
-	    else ///gpr dependent
-	      t = ld ? (vec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP) : STAGE_RRF_DEM;
+	  else if(op inside {op_fcr, op_br}) begin
+	    ///need to resolve br, only change sr
+	    if(!is_unc_br()) begin
+	      l = 0; ///should be STAGE_RRF_CEM, opt to 0
+	      e = STAGE_RRF_CBR + vm;
+	      s = STAGE_RRF_CEM;
+	    end
 	  end
-	  else if(isVec)
-	    t = STAGE_RRF_VWBP;
-	  else
-	    t = STAGE_RRF_SWBP;
-	  if(wCnt < t)
-	    wCnt = t;
+	  else if(op inside {ld_ops}) begin
+      l = isVec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP;
+	    ///load write pr
+      s = STAGE_RRF_DC;
+      ///load generate exp
+      e = STAGE_RRF_SEL + vm;
+	  end
+	  ///store are non blocking
+	  else if(op inside {st_ops}) begin
+	    ///store write dc
+      l = STAGE_RRF_LXG0 + vm;
+      ///store write dc pr
+      s = STAGE_RRF_DEM;
+      ///store generate exp
+      e = STAGE_RRF_SEL + vm;
+	  end
+	  else if(op inside {op_cmp, op_ucmp}) begin
+	    l = STAGE_RRF_CMP;
+	    s = l;
+	  end
+	  else begin
+	    l = isVec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP;
+	    e = noExp ? 0 : (isVec ? STAGE_RRF_VWBP + vm : STAGE_RRF_SWBP);
+	    s = l;
+	  end
+	  
+	  if(wCnt[0] < l)
+	    wCnt[0] = l;
+	  if(wCnt[1] < e)
+	    wCnt[1] = e;
+	  if(wCnt[2] > s)
+	    wCnt[2] = s;
 	endfunction : set_wcnt
 		
 	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
@@ -1057,7 +1080,7 @@ class inst_c extends ovm_object;
     
     if(op inside {dse_ops}) begin
       spa.bpRfDSE = rdBkSel[1];
-      spa.bpRfDSEWp = 0;
+      spa.bpRfDSEwp = 0;
     end
     else begin
       spa.fu[fuid].en = 1;

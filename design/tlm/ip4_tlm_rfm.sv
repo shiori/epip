@@ -51,8 +51,9 @@ class ip4_tlm_rfm extends ovm_component;
   local tr_rfm2spa toSPA;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
-  local uchar srExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
+  local uchar srExpFlag[NUM_THREAD][CYC_VEC][NUM_FU][NUM_SP];
   local word dseSt[2][CYC_VEC][NUM_SP];
+  local bit[STAGE_RRF_VWB:1] cancel[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_rfm)
   `ovm_component_utils_end
@@ -101,7 +102,7 @@ class ip4_tlm_rfm extends ovm_component;
     ovm_report_info("rfm", "req_proc procing...", OVM_FULL); 
    
     ///----------------------write back results---------------------
-    if(v.fmSPA != null) begin
+    if(v.fmSPA != null && !cancel[STAGE_RRF_VWB]) begin
       tr_spa2rfm spa = v.fmSPA;
       uchar bk0, bk1;
       
@@ -113,25 +114,26 @@ class ip4_tlm_rfm extends ovm_component;
         bk1 = bk0 + 1;
         foreach(spa.fu[0].wrEn[sp])
           if(spa.fu[fid].wrEn[sp]) begin
+            word res0 = spa.fu[fid].res0[sp];
+            srExpFlag[tid][subVec][fid][sp] |= spa.fu[fid].expFlag[sp];
+            if(spa.fu[fid].s2gp)
+              case(spa.fu[fid].srAdr)
+              SR_IIDX:  res0 = srIIDx[tid][subVec][sp];
+              SR_IIDY:  res0 = srIIDy[tid][subVec][sp];
+              SR_IIDZ:  res0 = srIIDz[tid][subVec][sp];
+              SR_EXPFV: res0 = srExpFlag[tid][subVec][fid][sp];
+              endcase
+            if(spa.fu[fid].gp2s)
+              case(spa.fu[fid].srAdr)
+              SR_IIDX:  srIIDx[tid][subVec][sp] = res0;
+              SR_IIDY:  srIIDy[tid][subVec][sp] = res0;
+              SR_IIDZ:  srIIDz[tid][subVec][sp] = res0;
+              SR_EXPFV: srExpFlag[tid][subVec][fid][sp] = res0;
+              endcase
+                                
             if(spa.fu[fid].dw) begin
-              word res0 = spa.fu[fid].res0[sp];
-              srExpFlag[tid][subVec][sp] = spa.fu[fid].expFlag[sp];
               vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][bk1][spa.fu[fid].subVec][sp] = spa.fu[fid].res1[sp];
-              if(spa.fu[fid].s2gp)
-                case(spa.fu[fid].srAdr)
-                SR_IIDX:  res0 = srIIDx[tid][subVec][sp];
-                SR_IIDY:  res0 = srIIDy[tid][subVec][sp];
-                SR_IIDZ:  res0 = srIIDz[tid][subVec][sp];
-                SR_EXPFV: res0 = srExpFlag[tid][subVec][sp];
-                endcase
               vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
-              if(spa.fu[fid].gp2s)
-                case(spa.fu[fid].srAdr)
-                SR_IIDX:  srIIDx[tid][subVec][sp] = res0;
-                SR_IIDY:  srIIDy[tid][subVec][sp] = res0;
-                SR_IIDZ:  srIIDz[tid][subVec][sp] = res0;
-///                SR_EXPFV: srExpFlag[tid][subVec][sp] = res0;
-                endcase              
             end
             else
               vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][spa.fu[fid].vrfWrBk][spa.fu[fid].subVec][sp] = spa.fu[fid].res0[sp];
@@ -142,17 +144,17 @@ class ip4_tlm_rfm extends ovm_component;
     if(v.fmDSE != null) begin
       tr_dse2rfm dse = v.fmDSE;
       ovm_report_info("RFM_WR", "Write Back dse...", OVM_HIGH);
-      if(dse.srfWr)
+      if(dse.srfWr && !cancel[STAGE_RRF_SWB])
         srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       else foreach(dse.wrEn[sp])
-        if(dse.wrEn[sp]) begin
+        if(dse.wrEn[sp] && !cancel[STAGE_RRF_VWB]) begin
           vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
           if(dse.updateAdrWr)
             vrf[dse.updateAdrWrGrp][dse.updateAdrWrAdr][dse.updateAdrWrBk][dse.subVec][sp] = dse.updateAdrRes[sp];
         end
     end
     
-    if(v.fmSPU != null && v.fmSPU.wrEn) begin
+    if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[STAGE_RRF_SWB]) begin
       word res;
       tr_spu2rfm spu = v.fmSPU;
       tr_spa2rfm spa = v.fmSPA;
@@ -227,6 +229,13 @@ class ip4_tlm_rfm extends ovm_component;
     vn.spu[1] = null;
 ///    end
 
+    ///log cancel
+    foreach(cancel[i])
+      cancel[i] = cancel[i] >> 1;
+      
+    if(v.fmSPA != null && v.fmSPA.cancel)
+      cancel[v.fmSPA.tid] = '1;
+      
     ///------------req to other module----------------
     if(toSPA != null) void'(spa_tr_port.nb_transport(toSPA, toSPA));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));

@@ -32,7 +32,7 @@ class ip4_tlm_spa_vars extends ovm_component;
   tr_spu2spa fmSPU;
 
   tr_spa2rfm rfm[STAGE_EXE_VWBP:1];
-  tr_spa2ise ise[STAGE_EXE_CMP:1];
+  tr_spa2ise ise[STAGE_EXE_VWBP:1];
   tr_spa2spu spu[STAGE_EXE_CMP:1];
   tr_spa2dse dse[STAGE_EXE_VWBP:1];
     
@@ -84,7 +84,7 @@ class ip4_tlm_spa extends ovm_component;
   extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, uchar,
                                       const ref bit emsk[NUM_SP], word o[NUM_FU_RP][NUM_SP],
                                       ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
-                                      inout uchar expFlag[NUM_SP], bit);
+                                      inout uchar expFlag[NUM_SP]);
   // endfunction
 
   function void comb_proc();
@@ -107,7 +107,7 @@ class ip4_tlm_spa extends ovm_component;
     vn.rfm[1] = null;
     vn.dse[1] = null;
         
-    for(int i = STAGE_EXE_CMP; i > 1; i--)
+    for(int i = STAGE_EXE_VWBP; i > 1; i--)
       vn.ise[i] = v.ise[i - 1];
     vn.ise[1] = null;
           
@@ -159,10 +159,11 @@ class ip4_tlm_spa extends ovm_component;
           vn.sfu[1].subVec = ise.subVec;
           foreach(op[i])
             op[i] = rfm.fu[fid].rp[i].op;
-            
+          
+          ///exp check is disabled for long ops
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
-                    vn.rfm[1].fu[fid].expFlag, exeExp);
+                    vn.rfm[1].fu[fid].expFlag);
         end
         else begin
           ///normal operations
@@ -188,7 +189,9 @@ class ip4_tlm_spa extends ovm_component;
           
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
-                    vn.rfm[1].fu[fid].expFlag, exeExp);
+                    vn.rfm[1].fu[fid].expFlag);
+          if(vn.rfm[1].fu[fid].expFlag != 0)
+            exeExp = 1;
         end
         if(fu.op inside {op_cmp, op_ucmp}) begin
           if(vn.spu[1] == null) vn.spu[1] = tr_spa2spu::type_id::create("toSPU", this);
@@ -202,9 +205,12 @@ class ip4_tlm_spa extends ovm_component;
       ///signal exp when whole request finished
       if(ise.subVec == ise.vecMode) begin
         if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("toISE", this);
-        vn.ise[1].exp = exeExp;
+        if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("toRFM", this);
+        vn.ise[1].exp = exeExp && !ise.noExp;
         vn.ise[1].tid = ise.tid;
         vn.ise[1].rstStage = STAGE_ISE_VWB + ise.subVec;
+        vn.rfm[1].tid = ise.tid;
+        vn.rfm[1].cancel = exeExp && !ise.noExp;
         exeExp = 0;
       end
     end
@@ -236,7 +242,7 @@ class ip4_tlm_spa extends ovm_component;
     ovm_report_info("spa", "req_proc procing...", OVM_FULL); 
         
     toRFM = v.rfm[STAGE_EXE_VWBP];
-    toISE = v.ise[STAGE_EXE_CMP];
+    toISE = v.ise[STAGE_EXE_VWBP];
     toDSE = v.dse[STAGE_EXE_VWBP];
     toSPU = v.spu[STAGE_EXE_CMP];
         
@@ -377,7 +383,7 @@ endclass : ip4_tlm_spa
 function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_merge_e prMerge, 
                                     uchar subVec, exeMode, const ref bit emsk[NUM_SP], word o[NUM_FU_RP][NUM_SP],
                                     ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
-                                    inout uchar expFlag[NUM_SP], bit exp);
+                                    inout uchar expFlag[NUM_SP]);
   bit pres[NUM_SP];
   bit[WORD_BITS:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
   

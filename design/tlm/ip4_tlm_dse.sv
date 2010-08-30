@@ -11,7 +11,7 @@
 ///Created by yajing yuan on July 19 2010
 
 class ip4_tlm_dse_vars extends ovm_component;
-  tr_ise2dse fmISE[STAGE_RRF_VWB:STAGE_RRF_RRC0];
+  tr_ise2dse fmISE[STAGE_RRF_VWB:0];
   tr_spu2dse fmSPU[STAGE_RRF_SEL:STAGE_RRF_AG];
   tr_rfm2dse fmRFM[STAGE_RRF_SEL:STAGE_RRF_AG];
   tr_spa2dse fmSPA;
@@ -68,6 +68,7 @@ class ip4_tlm_dse extends ovm_component;
               ldXchgBuf[LAT_XCHG][NUM_SMEM_BK],
               exStBuf[LAT_XCHG][NUM_SMEM_BK];
   local uchar ldXchgCtl[LAT_XCHG][NUM_SMEM_BK];
+  local uint ldXchgAdr[LAT_XCHG][NUM_SMEM_BK];
              
   local uchar ldQueXhgCtl[NUM_LDQUE][LAT_XCHG][NUM_SMEM_BK];
   local bit ldQueWrEn[NUM_LDQUE][LAT_XCHG][NUM_SMEM_BK], ldQueEn[NUM_LDQUE];
@@ -134,9 +135,9 @@ class ip4_tlm_dse extends ovm_component;
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_TAG; i--) 
       tlbReqVAdr[i] = tlbReqVAdr[i - 1];
       
-    for (int i = STAGE_RRF_VWB; i > STAGE_RRF_RRC0; i--) 
+    for (int i = STAGE_RRF_VWB; i > 0; i--) 
       vn.fmISE[i] = v.fmISE[i - 1];
-    vn.fmISE[STAGE_RRF_RRC0] = null;
+    vn.fmISE[0] = null;
 
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_AG; i--) begin
       vn.fmSPU[i] = v.fmSPU[i - 1];
@@ -159,7 +160,12 @@ class ip4_tlm_dse extends ovm_component;
     rfmTr[0] = null;
     iseTr[0] = null;
     spuTr[0] = null;
-    
+
+    if(v.fmSPA != null && v.fmSPA.cancel)
+      for(int i = 0; i < STAGE_RRF_DC; i++)
+        if(v.fmISE[i] != null &&  v.fmISE[i].tid == v.fmSPA.tid)
+          v.fmISE[i].en = 0;
+                    
     if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
@@ -176,6 +182,8 @@ class ip4_tlm_dse extends ovm_component;
         ed = tlb.e;
       end
       foreach(rfm.base[i]) begin
+        selOcEMsk[cyc][i] = spu.emsk[i] && ise.en;
+        selExEMsk[cyc][i] = spu.emsk[i] && ise.en;
         if(rfm.base[i] >= VADR_NMAPNC) begin
           if(rfm.base[i] >= VADR_NMAPCH)
             selPAdr[i] = rfm.base[i];
@@ -194,12 +202,14 @@ class ip4_tlm_dse extends ovm_component;
             selExp = tlb.exp;
             expVid = ise.subVec * NUM_SP + i;
             expCause = tlb.cause;
-            selOcEMsk[cyc][i] = spu.emsk[i];
-            selExEMsk[cyc][i] = spu.emsk[i];
           end
           selNoCache[i] = tlb.c == 0;
           for(int j = (VADR_START + tlb.eobit); j < PADR_WIDTH; j++)
             selPAdr[i][j] = tlb.pfn[j - VADR_START];
+        end
+        else begin
+          selOcEMsk[cyc][i] = 0;
+          selExEMsk[cyc][i] = 0;
         end
       end
       
@@ -298,7 +308,6 @@ class ip4_tlm_dse extends ovm_component;
             continue;
           end
           
-          ///load req  
           adr1 = (selPAdr[i] >> (WID_SMEM_BK + WID_WORD)) & `GML(WID_SMEM_ADR + WID_SMEM_GRP);
           foreach(selXchgBk[j])
             if((selSMemAdr[j][bk] == adr1 && selSMemBk[j][bk]) || !selXchgBk[j][bk]) begin
@@ -502,7 +511,7 @@ class ip4_tlm_dse extends ovm_component;
     
     ///select vadr from ise req to tlb for translation
     if(v.fmISE[STAGE_RRF_AG] != null && v.fmRFM[STAGE_RRF_AG] != null
-       && v.fmSPU[STAGE_RRF_AG] != null) begin
+       && v.fmSPU[STAGE_RRF_AG] != null && v.fmISE[STAGE_RRF_AG].en) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_AG];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_AG];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_AG];
@@ -559,6 +568,8 @@ class ip4_tlm_dse extends ovm_component;
     void'(begin_tr(req));
     rsp = req;
     vn.fmRFM[STAGE_RRF_AG] = req;
+    if(vn.fmRFM[STAGE_RRF_TAG] != null)
+      vn.fmRFM[STAGE_RRF_TAG].st = req.st;
     return 1;
   endfunction : nb_transport_rfm
 
