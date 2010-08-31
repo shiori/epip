@@ -108,11 +108,6 @@ class ip4_tlm_spu extends ovm_component;
     toRFM = v.rfm[STAGE_RRF_SWBP];
     
     ///----------process data---------------------
-    ///spa request canceling
-    if(v.fmSPA[STAGE_RRF_CEM] != null && v.fmSPA[STAGE_RRF_CEM].cancel)
-      for(int i = 0; i <=STAGE_RRF_AG; i++)
-        if(v.fmISE[i] != null &&  v.fmISE[i].tid == v.fmSPA[STAGE_RRF_CEM].tid)
-          v.fmISE[i].enSPU = 0;
       
     ///write back cmp predication register results
     if(v.fmSPA[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM] != null) begin
@@ -421,7 +416,19 @@ class ip4_tlm_spu extends ovm_component;
       toRFM.missBr = ise.brPred != toISE.brTaken;
       toRFM.expMSC = toISE.mscExp;
     end
-    
+
+    ///spa request canceling
+    if(v.fmSPA[STAGE_RRF_CEM] != null && v.fmSPA[STAGE_RRF_CEM].cancel)
+      for(int i = 0; i <= STAGE_RRF_DSR; i++)
+        if(v.fmISE[i] != null &&  v.fmISE[i].tid == v.fmSPA[STAGE_RRF_CEM].tid)
+          v.fmISE[i].enSPU = 0;
+          
+    ///spu exp cancel
+    if(toRFM != null && (toRFM.missBr || toRFM.expMSC))
+      for(int i = 0; i <= STAGE_RRF_DSR; i++)
+        if(v.fmISE[i] != null &&  v.fmISE[i].tid == toRFM.tid)
+          v.fmISE[i].enSPU = 0;
+                
     ///------------req to other module----------------
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
