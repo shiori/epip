@@ -70,6 +70,7 @@ class ip4_tlm_ife extends ovm_component;
       if(vn.ise[1] == null) vn.ise[1] = tr_ife2ise::type_id::create("toISE", this);
       vn.ise[1].instEn = 1;
       vn.ise[1].tid = ise.tid;
+      vn.ise[1].fetchGrp.ex = 1;
       vn.ise[1].fetchGrp.fill(data);
       foreach(vn.ise[i])
         if(vn.ise[i] != null && ise.cancel[vn.ise[i].tid])

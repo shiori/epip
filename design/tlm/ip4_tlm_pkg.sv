@@ -53,22 +53,36 @@ function automatic ulong max2(
     max2 = a1;
 endfunction
 
+function automatic ulong min2(
+  input ulong a0, a1
+);
+  min2 = a0;
+  if (a0 > a1)
+    min2 = a1;
+endfunction
+
 parameter time CLK_P              = 2ns;
 parameter uchar WORD_BYTES        = 4,
                 HALF_BYTES        = WORD_BYTES / 2,
-                WORD_WIDTH        = WORD_BYTES * 8,
-                HALF_WIDTH        = HALF_BYTES * 8;
+                WORD_BITS         = WORD_BYTES * 8,
+                HALF_BITS         = HALF_BYTES * 8;
+
+typedef bit[HALF_BYTES - 1 : 0][7:0] halfb;
+typedef bit [HALF_BITS - 1: 0] half;
+typedef bit[WORD_BYTES - 1 : 0][7:0] word;
+typedef bit [WORD_BITS - 1: 0] wordb;
+typedef bit [1:0][HALF_BITS - 1: 0] wordh;
 
 typedef union packed{
   bit[HALF_BYTES - 1 : 0][7:0] b;
-  bit [HALF_WIDTH - 1: 0] h;
-} half;
+  bit [HALF_BITS - 1: 0] h;
+} halfu;
 
 typedef union packed{
   bit[WORD_BYTES - 1 : 0][7:0] b;
-  bit [WORD_WIDTH - 1: 0] w;
-  half [1:0] h;
-} word;
+  bit [WORD_BITS - 1: 0] w;
+  halfu [1:0] h;
+} wordu;
 
 parameter uchar LAT_MAC           = 5,
                 LAT_SFU           = 16,
@@ -105,6 +119,8 @@ parameter uint  NUM_SP            = 8,
                 NUM_DCHE_CL       = LAT_XCHG,
                 NUM_DCHE_TAG      = NUM_SMEM_GRP_W / NUM_DCHE_CL,
                 NUM_DCHE_ASO      = 4,
+                NUM_BR_HISTORY    = 32,
+                NUM_FCR_RET       = 8,
 ///                NUM_BURST_CL      = LAT_XCHG,
 ///                NUM_BURST_LEN     = NUM_BURST_CL * NUM_SMEM_BK,
 ///                NUM_EBUS_WORDS    = 2,
@@ -114,35 +130,37 @@ parameter uint  NUM_SP            = 8,
 
 parameter uint CFG_START_ADR      = 'hf000_0000;
 
-parameter uchar BITS_WORD       = n2w(WORD_BYTES),
-                BITS_HALF       = n2w(HALF_BYTES),
-                BITS_VRF_BKS    = n2w(NUM_VRF_BKS),
-                BITS_SRF_BKS    = n2w(NUM_SRF_BKS),
-                BITS_TID        = n2w(NUM_THREAD),
-                BITS_IFET       = n2w(NUM_IFET_BYTES),
-                BITS_PRF_P_GRP  = n2w(NUM_PRF_P_GRP),
-                BITS_SMEM_BK    = n2w(NUM_SMEM_BK),
-                BITS_SMEM_ADR   = n2w(NUM_SMEM_GRP_W),
-                BITS_SMEM_GRP   = n2w(NUM_SMEM_GRP),
-                BITS_DCH_CL     = n2w(NUM_DCHE_CL),
-                BITS_DCH_IDX    = n2w(NUM_SMEM_GRP / NUM_DCHE_CL);
-///                BITS_BURST      = n2w(NUM_BURST_LEN),
-///                BITS_STBUFL     = n2w(NUM_STBUF_LINE);
+parameter uchar WID_WORD        = n2w(WORD_BYTES),
+                WID_HALF        = n2w(HALF_BYTES),
+                WID_VRF_BKS     = n2w(NUM_VRF_BKS),
+                WID_SRF_BKS     = n2w(NUM_SRF_BKS),
+                WID_TID         = n2w(NUM_THREAD),
+                WID_IFET        = n2w(NUM_IFET_BYTES),
+                WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
+                WID_SMEM_BK     = n2w(NUM_SMEM_BK),
+                WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
+                WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),
+                WID_DCH_CL      = n2w(NUM_DCHE_CL),
+                WID_DCH_IDX     = n2w(NUM_DCHE_TAG),
+                WID_DCHE_STAG   = 2;
+///                WID_BURST      = n2w(NUM_BURST_LEN),
+///                WID_STBUFL     = n2w(NUM_STBUF_LINE);
 
 /*
                                            pipeline stages:
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
+                                            * scl         *      * dse                       * msc  * vec
+exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
-dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem0 | dem1 | dem2 | dem3 |
+dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | sr0  | sr1  |
-exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb0 | vwb1 | vwb2 | vwb3 |
-cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem0 | cem1 | cem2 | cem3 |
-          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14     15
-                                            0      1      2      3      4      5      6      7      8      9      10
+spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | dsr  | asr  |
+cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
+          0     1      2      3      4      5      6      7      8      9      10     11     12     13     14        15
+                                            0      1      2      3      4      5      6      7      8      9         10
                        0      1      2      3      4      5      6    
   */  
 parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
@@ -158,34 +176,43 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_EXE0    = STAGE_RRF_RRC + 1,              ///5
                 STAGE_RRF_EXE     = STAGE_RRF_RRC + LAT_MAC,        ///9
                 STAGE_RRF_CMP     = STAGE_RRF_RRC + NUM_FU,         ///7
-                STAGE_RRF_CEM0    = STAGE_RRF_CMP + 1,              ///8
+                STAGE_RRF_CEM     = STAGE_RRF_CMP + 1,              ///8
+                STAGE_RRF_CBR     = STAGE_RRF_CEM + 1,              ///8
                 STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_RRF_DEM0    = STAGE_RRF_SEL + 1,              ///5
-                STAGE_RRF_DEM     = STAGE_RRF_SEL + CYC_VEC,        ///8
+                STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
+                STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
                 STAGE_RRF_DC      = STAGE_RRF_SEL + LAT_XCHG,       ///6
+                STAGE_RRF_LXG0    = STAGE_RRF_DC + 1,               ///7
                 STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///7
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///8
+                STAGE_RRF_ASR     = STAGE_RRF_SWBP - 1,             ///6
+                STAGE_RRF_DSR     = STAGE_RRF_SWBP - 2,             ///5
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
-                STAGE_RRF_VWB0    = STAGE_RRF_VWBP + 1,             ///11
-                STAGE_RRF_SR1     = STAGE_RRF_DC,                   ///6
-                STAGE_RRF_SR0     = STAGE_RRF_SR1 - 1,              ///6
+                STAGE_RRF_VWB     = STAGE_RRF_VWBP + 1,             ///11
                 STAGE_EXE         = LAT_MAC - 1,                    ///3
                 STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
-                STAGE_EXE_VWB0    = STAGE_EXE_VWBP + 1,             ///5
                 STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
                 STAGE_EXE_SWBP    = STAGE_RRF_SWBP - STAGE_RRF_EXE0,///2
                 STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///3
                 STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY - CYC_VEC - 1,     ///27
                 STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
-                STAGE_EEX_VWB0    = STAGE_EEX_VWBP + 1,             ///29
+                STAGE_EEX_VWB     = STAGE_EEX_VWBP + 1,             ///29
                 STAGE_ISE         = LAT_ISE - 1,                    ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
                 STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
-                STAGE_ISE_VWB     = STAGE_ISE_VWBP + CYC_VEC,       ///16
-                STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM;        ///8
-                                
+                STAGE_ISE_CMP     = LAT_ISE + STAGE_RRF_CMP,        ///7
+                STAGE_ISE_VWB     = STAGE_ISE_VWBP + 1,             ///16
+                STAGE_ISE_VWB_END = STAGE_ISE_VWBP + CYC_VEC,       ///16
+                STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM,        ///5
+                STAGE_ISE_DBR     = LAT_ISE + STAGE_RRF_DBR,        ///6
+                STAGE_ISE_CEM     = LAT_ISE + STAGE_RRF_CEM,        ///8
+                STAGE_ISE_CBR     = LAT_ISE + STAGE_RRF_CBR;        ///9
+
+parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
+                CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC;
+                
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
                  
@@ -226,7 +253,7 @@ endclass : tlm_vif_object
   
 typedef enum uchar {
   selv[0:127], sels[0:31], selc[0:7], selz, selii, selspu,
-  seldse, selfu[0:15], selb[0:7], selsr[0:31], selnull
+  seldse, selfu[0:15], selb[0:7], selnull
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
@@ -271,7 +298,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled,  ts_rdy,     ts_w_b,       ts_b_pred,    ts_b_self
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_rst
 }ise_thread_state;
 
 typedef enum uchar {
@@ -358,13 +385,21 @@ parameter opcode_e sfu_ops[] = '{
 };
 
 parameter opcode_e dse_ops[] = '{
-///op_nop,   op_bp0,  op_bp1,     op_bp2,     op_bp3,      
   op_pera,    op_perb,    op_shf4, 
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
   op_pref,    op_sync,    op_synci,   op_cache,
   op_smsg,    op_rmsg
+};
+
+parameter opcode_e ld_ops[] = '{
+  op_lw,      op_lh,      op_lb,      op_ll,
+  op_lhu,     op_lbu
+};
+
+parameter opcode_e st_ops[] = '{
+  op_sw,      op_sh,      op_sb,      op_sc
 };
 
 parameter opcode_e spu_ops[] = '{
@@ -376,8 +411,7 @@ parameter opcode_e spu_ops[] = '{
 };
 
 parameter opcode_e tlb_ops[] = '{
-  op_tlbp,    op_tlbr,    op_tlbwi,
-  op_tlbwr
+  op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr
 };
 
 parameter opcode_e spu_com_ops[] = '{
@@ -390,41 +424,50 @@ parameter opcode_e spu_com_ops[] = '{
   op_seb,     op_she,     op_wsbh
 };
 
-parameter opcode_e ise_ops[] = '{
+parameter opcode_e ise_zw_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
-  op_brk,     op_tsync,   op_msync,   op_alloc,
-  op_gp2s,    op_s2gp
+  op_brk,     op_tsync,   op_msync,   op_eret
 };
 
 typedef enum uchar {
   SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
   SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
-  SR_IIDY,      SR_IIDZ,      SR_EXPF,      SR_THD_CTL,     SR_THD_ST,
-  SR_CONTENT,   SR_EPC,       SR_WIDX,      SR_WIDY,        SR_WIDZ,
-  SR_ILM,       SR_CM,        SR_MSCT,      SR_MSCO,        SR_MSCU,
-  SR_UEE,       SR_UER,       SR_ASID,      SR_MD[0:7],     SR_FIFOS
-  }special_regs;
+  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_THD_CTL,     SR_THD_ST,
+  SR_CONTENT,   SR_EPC,       SR_ERET,      SR_WIDX,        SR_WIDY,
+  SR_WIDZ,      SR_ILM,       SR_CM,        SR_MSCT,        SR_MSCO,
+  SR_MSCU,      SR_UEE,       SR_UER,       SR_ASID,        SR_DSEEV,
+  SR_MD[0:7],   SR_FIFOS
+}special_reg_t;
 
-parameter special_regs tlbsr[] = '{
+parameter special_reg_t tlbsr[] = '{
   SR_INDEX,     SR_RANDOM,    SR_ENTRY_L0,    SR_ENTRY_L1,
   SR_ENTRY_HI,  SR_ASID
 };
 
 typedef enum uchar {
-  EC_SUPMSG,    EC_TLBINV,    EC_TLBMOD,    EC_TLBLOAD,
-  EC_TLBSTOR,   EC_ADRALG,    EC_NOTEXE,    EC_IFACC,
-  EC_LSACC,     EC_SYSCAL,    EC_BREAK,     EC_EXEPRIV,
-  EC_LSPRIV,    EC_DECODE,    EC_FFERR,     EC_MSC
-}cause_typs;
+  EC_NOEXP,     EC_TLBIFET,   EC_NOTEXE,    EC_EXEPRIV,
+  EC_DECODE,    EC_SYSCAL,    EC_BREAK,     EC_SUPMSG,
+  EC_IFACC,     EC_LSACC,     EC_SCLFU,     EC_MSC
+}cause_spu_t;
+
+typedef enum uchar {
+  EC_NODSE,     EC_TLBINV,    EC_TLBMOD,    EC_TLBPRIV,
+  EC_ADRALG,    EC_SMBOND
+}cause_dse_t;
 
 typedef enum uchar {
   UE_FFCLN,     UE_FFRCV[0:7],  UE_FFSEND[0:7]
-}user_event_typs;
+}user_event_t;
   
 typedef enum uchar {
   rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
-}round_mode;
+}round_mode_t;
+
+typedef enum uchar {
+  gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
+  br_styp,     min_styp,     max_styp
+}storage_type_t;
   
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128

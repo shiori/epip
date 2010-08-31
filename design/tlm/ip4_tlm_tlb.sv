@@ -46,8 +46,6 @@ class ip4_tlm_tlb_vars extends ovm_component;
   tr_ife2tlb fmIFE[IFE_REQ_BUF];
   uchar ifeBufPtr;
 
-  tr_tlb2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
-  
   uint vpn2[NUM_TLB_E];
   uchar pageTyp[NUM_TLB_E];
   uchar asid[NUM_TLB_E];
@@ -68,7 +66,6 @@ class ip4_tlm_tlb_vars extends ovm_component;
     `ovm_field_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fmIFE, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_int(vpn2, OVM_ALL_ON)
     `ovm_field_sarray_int(pageTyp, OVM_ALL_ON)
     `ovm_field_sarray_int(asid, OVM_ALL_ON)
@@ -122,6 +119,7 @@ class ip4_tlm_tlb extends ovm_component;
   local ip4_tlm_tlb_vars v, vn;
   local tr_tlb2ife toIFE;
   local tr_tlb2dse toDSE;
+  local tr_tlb2spu toSPU;
   
   `ovm_component_utils_begin(ip4_tlm_tlb)
   `ovm_component_utils_end
@@ -144,7 +142,7 @@ class ip4_tlm_tlb extends ovm_component;
     uchar varTid;
     word virAdr;
     bit rspDSE = 0, rspIFE = 0, exp = 0, varKC = 0;
-    cause_typs cause;
+    cause_dse_t cause;
     
     ovm_report_info("tlb", "comb_proc procing...", OVM_FULL);
      
@@ -168,10 +166,6 @@ class ip4_tlm_tlb extends ovm_component;
     end
     else if(v.fmDSE != null)
       rspDSE = 1;
-     
-    for (int i = STAGE_RRF_SR0; i > STAGE_RRF_EXS2; i--)
-      vn.spu[i] = v.spu[i-1];
-    vn.spu[STAGE_RRF_EXS2] = null;
      
     ///tlb translation
     if(rspDSE || rspIFE) begin
@@ -213,12 +207,11 @@ class ip4_tlm_tlb extends ovm_component;
             else if(!varEx && rspIFE) begin
               ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
               exp = 1;
-              cause = EC_NOTEXE;
             end
             else if(!varK && varKC) begin
               ovm_report_info("TLB_EX", "tlb PRIVILEGE exception!!!", OVM_HIGH); 
               exp = 1;
-              cause = EC_LSPRIV;
+              cause = EC_TLBPRIV;
             end
             
             if(exp) begin
@@ -240,6 +233,7 @@ class ip4_tlm_tlb extends ovm_component;
         toIFE.hit = find;
         toIFE.exp = exp;
         toIFE.k = varK;
+        toIFE.ex = varEx;
         toIFE.eobit = evenOddBit;
       end
       
@@ -266,7 +260,7 @@ class ip4_tlm_tlb extends ovm_component;
       op_tlbp:
         for (int i = 0; i < NUM_TLB_E; i++) begin
           varMask = page_mask_table[v.pageTyp[i]];
-          if((v.vpn2[i] & ~varMask) == (v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask)
+          if((v.vpn2[i] & ~varMask) == (v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask)
               && ((v.g[i] == 1) || (v.asid[i] == v.srEntryHi[ASID_WIDTH-1:0])))
             vn.srIndex = i;
         end
@@ -278,11 +272,11 @@ class ip4_tlm_tlb extends ovm_component;
         if(i < NUM_TLB_E) begin
           varMask = page_mask_table[v.pageTyp[i]];
           vn.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH] = v.pageTyp[i];
-          vn.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
+          vn.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
           vn.srEntryHi[ASID_WIDTH-1:0] = v.asid[i];
           
           vn.srEntryLo1[0] = v.g[i];
-          vn.srEntryLo1[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] = v.pfn2o[i];
+          vn.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2o[i];
           vn.srEntryLo1[8] = v.ex[1][i];
           vn.srEntryLo1[7:5] = v.c[1][i];
           vn.srEntryLo1[4] = v.k[1][i];
@@ -291,7 +285,7 @@ class ip4_tlm_tlb extends ovm_component;
           vn.srEntryLo1[1] = v.v[1][i];
           
           vn.srEntryLo0[0] = v.g[i];
-          vn.srEntryLo0[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] = v.pfn2e[i];
+          vn.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2e[i];
           vn.srEntryLo0[8] = v.ex[0][i];
           vn.srEntryLo0[7:5] = v.c[0][i];
           vn.srEntryLo0[4] = v.k[0][i];
@@ -306,18 +300,18 @@ class ip4_tlm_tlb extends ovm_component;
         int i = v.srIndex;
         varMask = page_mask_table[v.pageTyp[i]];
         vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
-        vn.vpn2[i] = v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask;
+        vn.vpn2[i] = v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH-1:0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
         
-        vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] & ~varMask;
+        vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
         vn.ex[1][i] = v.srEntryLo1[8];
         vn.c[1][i] = v.srEntryLo1[7:5];
         vn.k[1][i] = v.srEntryLo1[4];
         vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2];
         vn.v[1][i] = v.srEntryLo1[1];
         
-        vn.pfn2e[i] = v.srEntryLo0[WORD_WIDTH - 1 : WORD_WIDTH - PFN_WIDTH] & ~varMask;
+        vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
         vn.ex[0][i] = v.srEntryLo0[8];
         vn.c[0][i] = v.srEntryLo0[7:5];
         vn.k[0][i] = v.srEntryLo0[4];
@@ -330,13 +324,13 @@ class ip4_tlm_tlb extends ovm_component;
         int i = v.srIndex;
         varMask = page_mask_table[v.pageTyp[i]];
         vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
-        vn.vpn2[i] = v.srEntryHi[WORD_WIDTH - 1 : WORD_WIDTH - VPN2_WIDTH] & ~varMask;
+        vn.vpn2[i] = v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH - 1 : 0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
-        vn.pfn2o[i] = v.srEntryLo1[WORD_WIDTH - 1 : 9] & ~varMask;
+        vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : 9] & ~varMask;
         vn.ex[1][i] = v.srEntryLo1[8]; vn.c[1][i] = v.srEntryLo1[7:5]; vn.k[1][i] = v.srEntryLo1[4];
         vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2]; vn.v[1][i] = v.srEntryLo1[1];
-        vn.pfn2e[i] = v.srEntryLo0[WORD_WIDTH - 1 : 9] & ~varMask;
+        vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : 9] & ~varMask;
         vn.ex[0][i] = v.srEntryLo0[8]; vn.c[0][i] = v.srEntryLo0[7:5]; vn.k[0][i] = v.srEntryLo0[4];
         vn.e[0][i] = v.srEntryLo0[3]; vn.d[0][i] = v.srEntryLo0[2]; vn.v[0][i] = v.srEntryLo0[1];
       end
@@ -356,16 +350,16 @@ class ip4_tlm_tlb extends ovm_component;
     /// S2GP
       op_s2gp:
       begin
-        if(vn.spu[STAGE_RRF_EXS2] == null)
-          vn.spu[STAGE_RRF_EXS2] = tr_tlb2spu::type_id::create("toSPU", this);
+        if(toSPU == null)
+          toSPU = tr_tlb2spu::type_id::create("toSPU", this);
         case(v.fmSPU.srAdr)
-        SR_CONTENT:   vn.spu[STAGE_RRF_EXS2].res = v.srContent[v.fmSPU.tid];
-        SR_INDEX:     vn.spu[STAGE_RRF_EXS2].res = v.srIndex;
-        SR_RANDOM:    vn.spu[STAGE_RRF_EXS2].res = v.srRandom;
-        SR_ENTRY_L0:  vn.spu[STAGE_RRF_EXS2].res = v.srEntryLo0;
-        SR_ENTRY_L1:  vn.spu[STAGE_RRF_EXS2].res = v.srEntryLo1;
-        SR_ENTRY_HI:  vn.spu[STAGE_RRF_EXS2].res = v.srEntryHi;
-        SR_ASID:      vn.spu[STAGE_RRF_EXS2].res = v.srASID[v.fmSPU.tid];
+        SR_CONTENT:   toSPU.res = v.srContent[v.fmSPU.tid];
+        SR_INDEX:     toSPU.res = v.srIndex;
+        SR_RANDOM:    toSPU.res = v.srRandom;
+        SR_ENTRY_L0:  toSPU.res = v.srEntryLo0;
+        SR_ENTRY_L1:  toSPU.res = v.srEntryLo1;
+        SR_ENTRY_HI:  toSPU.res = v.srEntryHi;
+        SR_ASID:      toSPU.res = v.srASID[v.fmSPU.tid];
         default: ovm_report_warning("SPU_SRAD", "spu READ SR_ADDR IS ERROR!!!");
         endcase 
       end
@@ -375,12 +369,7 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction
   
   function void req_proc();
-    tr_tlb2spu toSPU;
-    
     ovm_report_info("tlb", "req_proc procing...", OVM_FULL); 
-    
-    /// send to spu
-    toSPU = v.spu[STAGE_RRF_SR0];
     
     /// req to other module
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));

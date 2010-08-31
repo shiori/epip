@@ -84,7 +84,7 @@ class ip4_tlm_spa extends ovm_component;
   extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, uchar,
                                       const ref bit emsk[NUM_SP], word o[NUM_FU_RP][NUM_SP],
                                       ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
-                                      inout uchar expFlag[NUM_SP], bit);
+                                      inout uchar expFlag[NUM_SP]);
   // endfunction
 
   function void comb_proc();
@@ -101,13 +101,15 @@ class ip4_tlm_spa extends ovm_component;
 
     vn.cancel = '{default : 0};
     for(int i = STAGE_EXE_VWBP; i > 1; i--) begin
-      vn.ise[i] = v.ise[i - 1];
       vn.rfm[i] = v.rfm[i - 1];
       vn.dse[i] = v.dse[i - 1];
     end
-    vn.ise[1] = null;
     vn.rfm[1] = null;
     vn.dse[1] = null;
+        
+    for(int i = STAGE_EXE_VWBP; i > 1; i--)
+      vn.ise[i] = v.ise[i - 1];
+    vn.ise[1] = null;
           
     for(int i = STAGE_EXE_CMP; i > 1; i--)
       vn.spu[i] = v.spu[i - 1];
@@ -157,10 +159,11 @@ class ip4_tlm_spa extends ovm_component;
           vn.sfu[1].subVec = ise.subVec;
           foreach(op[i])
             op[i] = rfm.fu[fid].rp[i].op;
-            
+          
+          ///exp check is disabled for long ops
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
-                    vn.rfm[1].fu[fid].expFlag, exeExp);
+                    vn.rfm[1].fu[fid].expFlag);
         end
         else begin
           ///normal operations
@@ -186,19 +189,27 @@ class ip4_tlm_spa extends ovm_component;
           
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
-                    vn.rfm[1].fu[fid].expFlag, exeExp);
+                    vn.rfm[1].fu[fid].expFlag);
+          if(vn.rfm[1].fu[fid].expFlag != 0)
+            exeExp = 1;
         end
         if(fu.op inside {op_cmp, op_ucmp}) begin
           if(vn.spu[1] == null) vn.spu[1] = tr_spa2spu::type_id::create("toSPU", this);
           vn.spu[1].presCmp0 = presCmp0;
           vn.spu[1].presCmp1 = presCmp1;
         end
+        vn.rfm[1].fu[fid].gp2s = fu.op == op_gp2s;
+        vn.rfm[1].fu[fid].s2gp = fu.op == op_s2gp;
       end
       
+      ///signal exp when whole request finished
       if(ise.subVec == ise.vecMode) begin
         if(vn.ise[1] == null) vn.ise[1] = tr_spa2ise::type_id::create("toISE", this);
-        vn.ise[1].exp = exeExp;
+        if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("toRFM", this);
+        vn.ise[1].exp = exeExp && !ise.noExp;
         vn.ise[1].tid = ise.tid;
+        vn.rfm[1].tid = ise.tid;
+        vn.rfm[1].cancel = exeExp && !ise.noExp;
         exeExp = 0;
       end
     end
@@ -371,19 +382,20 @@ endclass : ip4_tlm_spa
 function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_merge_e prMerge, 
                                     uchar subVec, exeMode, const ref bit emsk[NUM_SP], word o[NUM_FU_RP][NUM_SP],
                                     ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
-                                    inout uchar expFlag[NUM_SP], bit exp);
+                                    inout uchar expFlag[NUM_SP]);
   bit pres[NUM_SP];
-  bit[WORD_WIDTH:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
+  bit[WORD_BITS:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
   
   foreach(op0[i]) begin
-    op0[i] = {o[0][i][WORD_WIDTH-1], o[0][i]};
-    op1[i] = {o[1][i][WORD_WIDTH-1], o[1][i]};
-    op2[i] = {o[2][i][WORD_WIDTH-1], o[2][i]};
-    op3[i] = {o[3][i][WORD_WIDTH-1], o[3][i]};
+    op0[i] = {o[0][i][WORD_BITS-1], o[0][i]};
+    op1[i] = {o[1][i][WORD_BITS-1], o[1][i]};
+    op2[i] = {o[2][i][WORD_BITS-1], o[2][i]};
+    op3[i] = {o[3][i][WORD_BITS-1], o[3][i]};
   end
   
   case(op)
-  op_nop,   
+  op_nop,
+  op_s2gp,
   op_bp0:   foreach(r0[i]) r0[i] = op0[i];
   op_bp1:   foreach(r0[i]) r0[i] = op1[i];
   op_bp2:   foreach(r0[i]) r0[i] = op2[i];
@@ -424,14 +436,14 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   op_umin:  foreach(r0[i]) r0[i] = o[0][i] > o[1][i] ? o[1][i] : o[0][i];
   op_clo:   
     foreach(r0[i])
-      for(int j=WORD_WIDTH-1; j>=0; j--)
+      for(int j=WORD_BITS-1; j>=0; j--)
         if(o[0][i][j])
           r0[i]++;
         else
           break;
   op_clz:
     foreach(r0[i])
-      for(int j=WORD_WIDTH-1; j>=0; j--)
+      for(int j=WORD_BITS-1; j>=0; j--)
         if(!o[0][i][j])
           r0[i]++;
         else
@@ -450,12 +462,17 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   op_uquo:  foreach(r0[i]) r0[i] = o[0][i] / o[1][i];
   op_res:   foreach(r0[i]) r0[i] = op0[i] % op1[i];
   op_ures:  foreach(r0[i]) r0[i] = o[0][i] % o[1][i];
-  
+
+  op_gp2s:
+  begin
+    foreach(expFlag[i]) expFlag[i] = op0[i];
+    r0 = op0;
+  end
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal instruction opcode!!!");
   endcase
   
   foreach(res0[i])
-    res0[i] = r0[i][WORD_WIDTH-1:0];
+    res0[i] = r0[i][WORD_BITS-1:0];
     
   if(op == op_cmp)
     case(cop)

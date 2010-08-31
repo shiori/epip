@@ -346,14 +346,14 @@ class inst_c extends ovm_object;
         grpRMsg[2], adrRMsg[2], bkRMsg[2];
   uint imm, offSet;
   bit vrfEn[CYC_VEC][NUM_VRF_BKS], srfEn[CYC_VEC][NUM_SRF_BKS], 
-      wrEn[2], prRdEn, prWrEn[2], brDep;
+      wrEn[2], prRdEn, prWrEn[2], brDep, fcRet, noExp;
   cmp_opcode_e cmpOp;
   pr_merge_e mergeOp;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
   uchar mMT, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos, srAdr;
-  bit enSPU, enDSE, enFu[NUM_FU];
+  bit enSPU, enDSE, enFu;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(decoded, OVM_ALL_ON)
@@ -364,7 +364,7 @@ class inst_c extends ovm_object;
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(enSPU, OVM_ALL_ON)
     `ovm_field_int(enDSE, OVM_ALL_ON)
-    `ovm_field_sarray_int(enFu, OVM_ALL_ON)
+    `ovm_field_int(enFu, OVM_ALL_ON)
 ///    `ovm_field_int(priv, OVM_ALL_ON)
     `ovm_field_sarray_enum(rbk_sel_e, rdBkSel, OVM_ALL_ON)
     `ovm_field_int(vecRd, OVM_ALL_ON)
@@ -431,16 +431,16 @@ class inst_c extends ovm_object;
                           inout uchar vrf, srf);
     uchar cyc, bk;
     if(adr < 8) begin
-      cyc = adr >> BITS_SRF_BKS;
-      bk = adr & `GML(BITS_SRF_BKS);
+      cyc = adr >> WID_SRF_BKS;
+      bk = adr & `GML(WID_SRF_BKS);
       srf = (srf > cyc) ? vrf : cyc;
       srfEn[cyc][bk] = 1;
       sel = rbk_sel_e'(sels0 + cyc * NUM_SRF_BKS + bk);
     end
     else if(adr > 15) begin
       adr -= 16;
-      cyc = adr >> BITS_VRF_BKS;
-      bk = adr & `GML(BITS_VRF_BKS);
+      cyc = adr >> WID_VRF_BKS;
+      bk = adr & `GML(WID_VRF_BKS);
       vrf = (vrf > cyc) ? vrf : cyc;
       vrfEn[cyc][bk] = 1;
       hasVec = 1;
@@ -458,6 +458,7 @@ class inst_c extends ovm_object;
     rdBkSel = '{default : selnull};
     prRdAdr = inst.i.p;
     prRdEn = prRdAdr != 0;
+    noExp = 0;
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
@@ -465,12 +466,12 @@ class inst_c extends ovm_object;
       wrEn[0] = 1;
       rdBkSel[1] = selii;
       case(inst.i.op)
-      iop_lu    : begin op = op_bp1; imm = imm << (WORD_WIDTH / 2); end
+      iop_lu    : begin op = op_bp1; imm = imm << (WORD_BITS / 2); end
       iop_li    : begin op = op_bp1; end
       endcase
     end
     else if(inst.i.op inside {iop_r1w1i}) begin
-      uint imms = {{WORD_WIDTH{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
+      uint imms = {{WORD_BITS{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
       imm = {inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
       adrWr[0] = inst.i.b.i26.rd;
       wrEn[0] = 1;
@@ -564,7 +565,8 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
-      offSet = {{WORD_WIDTH{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
+      fcRet = inst.i.b.fcr.ja == 0;
+      offSet = {{WORD_BITS{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       set_rf_en(inst.i.b.fcr.ja, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       op = op_fcr;
       case(inst.i.op)
@@ -580,7 +582,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_bs}) begin
       imm = inst.i.b.b.sc;
-      offSet = {{WORD_WIDTH{inst.i.b.b.offSet[$bits(inst.i.b.b.offSet)-1]}}, inst.i.b.b.offSet};
+      offSet = {{WORD_BITS{inst.i.b.b.offSet[$bits(inst.i.b.b.offSet)-1]}}, inst.i.b.b.offSet};
       op = op_br;
       case(inst.i.op)
       iop_b   : begin brDep = 0; brOp = bop_az; end
@@ -783,30 +785,25 @@ class inst_c extends ovm_object;
     
 	  if(isVec)
 	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & `GML(BITS_VRF_BKS);
-		    grpWr[i] = adrWr[i] >> BITS_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> BITS_VRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_VRF_BKS);
+	      bkWr[i] = adrWr[i] & `GML(WID_VRF_BKS);
+		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+		    adrWr[i] = (adrWr[i] >> WID_VRF_BKS) & `GML(WID_PRF_P_GRP - WID_VRF_BKS);
 		  end
 		else
 	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & `GML(BITS_SRF_BKS);
-		    grpWr[i] = adrWr[i] >> BITS_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> BITS_SRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_SRF_BKS);
+	      bkWr[i] = adrWr[i] & `GML(WID_SRF_BKS);
+		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+		    adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
 		  end
 
    foreach(adrRMsg[i]) begin
-      bkRMsg[i] = adrRMsg[i] & `GML(BITS_SRF_BKS);
-      grpRMsg[i] = adrRMsg[i] >> BITS_PRF_P_GRP;
-      adrRMsg[i] = (adrRMsg[i] >> BITS_SRF_BKS) & `GML(BITS_PRF_P_GRP - BITS_SRF_BKS);
+      bkRMsg[i] = adrRMsg[i] & `GML(WID_SRF_BKS);
+      grpRMsg[i] = adrRMsg[i] >> WID_PRF_P_GRP;
+      adrRMsg[i] = (adrRMsg[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
     end
     
 	endfunction : decode
 	
-///	function bit is_pd_br();
-///	  if(!decoded) decode();
-///    return brDep && prRdAdr != 0;
-///	endfunction : is_pd_br
-
 	function bit is_unc_br();
 	  if(!decoded) decode();
     return (inst.i.op inside {op_br, op_fcr}) && (brOp == bop_naz && prRdAdr == 0);
@@ -821,28 +818,87 @@ class inst_c extends ovm_object;
 	  if(!decoded) decode();
     return priv;
 	endfunction : is_priv
-
-	function bit is_ise_inst();
-	  if(!decoded) decode();
-    return op inside {ise_ops};
-	endfunction : is_ise_inst
 		
-	function void set_wcnt(inout uchar wCnt);
-	  uchar t;
-	  if(isVec) begin
-	    if(op inside {spu_only_ops}) begin
-	      t = STAGE_RRF_RRC + STAGE_EEX_VWBP;
-	    end
-	    else begin
-	      t = STAGE_RRF_VWBP;
+	function void set_wcnt(inout uchar wCnt[8], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
+///	  uchar l = 0,    ///when sr dc gpr pr is rdy for next grp to access (longest)
+///	        s = STAGE_RRF_VWBP,  ///when sr dc gpr pr is writeback (queskest)
+///	        e = 0;    ///when exception / branch is resolved
+///	  ///sometimes l is opt to 0, but s & e must set correct, if no sr dc gpr pr
+///	  ///changes, s set to max
+
+	  uchar tCnt[6] = '{default : 0};
+	  if(!decoded) decode();
+	  ///long cyc instructions
+    if(op inside {spu_only_ops}) begin
+      if(isVec)
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+    end
+    else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
+      ///sr write back
+      tCnt[sr_styp] = STAGE_RRF_DSR;
+    end
+    ///zero wait instructions for ise only, those inst only change threadstate
+	  else if(op inside {ise_zw_ops}) begin
+	  end
+	  ///branchs are predicted, no need to wait
+	  else if(op inside {op_fcr, op_br}) begin
+	    ///need to resolve br, only change sr
+	    if(!is_unc_br()) begin
+	      tCnt[sr_styp] = STAGE_RRF_CBR;
+	      tCnt[br_styp] = STAGE_RRF_CBR + vm;
 	    end
 	  end
-	  else if(op inside {ise_ops})
-	    t = 0;
-	  else
-	    t = STAGE_RRF_SWB;
-	  if(wCnt < t)
-	    wCnt = t;
+	  else if(op inside {ld_ops}) begin
+      if(isVec)
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+	    ///load write pr
+      if(mT != 2)
+       tCnt[pr_styp] = STAGE_RRF_DEM;
+      ///load generate exp
+      tCnt[br_styp] = STAGE_RRF_SEL + vm;
+      if(nb) begin
+        ///in nb mode, only care about e
+        tCnt[gprs_styp] = 0;
+        tCnt[gprv_styp] = 0;
+      end
+	  end
+	  ///store are non blocking
+	  else if(op inside {st_ops}) begin
+	    ///store write dc
+      tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
+      ///store write pr
+     if(mT != 2)
+       tCnt[pr_styp] = STAGE_RRF_DEM;
+      ///store generate exp
+      tCnt[br_styp] = STAGE_RRF_SEL + vm;
+	  end
+	  else if(op inside {op_cmp, op_ucmp}) begin
+	    ///cmp write pr
+	    tCnt[pr_styp] = STAGE_RRF_CMP;
+	  end
+	  else begin
+      if(isVec)
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWBP + vm : STAGE_RRF_SWBP);
+	  end
+	  
+	  foreach(tCnt[i])
+	    if(tCnt[i] > wCnt[i])
+	      wCnt[i] = tCnt[i];
+	      
+	  foreach(tCnt[i])
+	    if(wCnt[i] != 0 && tCnt[i] < wCnt[min_styp])
+	      wCnt[min_styp] = wCnt[i];
+
+	  foreach(tCnt[i])
+	    if(tCnt[i] > wCnt[max_styp])
+	      wCnt[max_styp] = tCnt[i];
 	endfunction : set_wcnt
 		
 	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
@@ -852,7 +908,7 @@ class inst_c extends ovm_object;
     priv = 0;
     enDSE = 0;
     enSPU = 0;
-    enFu = '{default : 0};
+    enFu = 0;
     prWrAdr = '{default : 0};
     vrfEn = '{default : 0};
     srfEn = '{default : 0};
@@ -871,12 +927,15 @@ class inst_c extends ovm_object;
     if(op inside {dse_ops})
       enDSE = 1;
     else if(vec)  
-      enFu[fuid] = 1;
+      enFu = 1;
     else if(op inside {spu_only_ops, spu_com_ops})
       enSPU = 1;    
 	endfunction : set_data
 	
-  function void analyze_rs(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrf, srf, dse);
+  function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
+                            s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfCnt, srfCnt, dseCnt,
+                            ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
+                            ref bit wCntDep[5]);
     if(!decoded) decode();
     foreach(vrfEn[i,j])
       v_en[i][j] = v_en[i][j] | vrfEn[i][j];
@@ -884,20 +943,17 @@ class inst_c extends ovm_object;
     foreach(srfEn[i,j])
       s_en[i][j] = s_en[i][j] | srfEn[i][j];
     
-    if(CntSrfRd > srf)
-      srf = CntSrfRd;
-    if(CntVrfRd > vrf)
-      vrf = CntVrfRd;
-    if(vmode > vrf)
-      vrf = vmode;
+    if(CntSrfRd > srfCnt)
+      srfCnt = CntSrfRd;
+    if(CntVrfRd > vrfCnt)
+      vrfCnt = CntVrfRd;
+    if(vmode > vrfCnt)
+      vrfCnt = vmode;
     if(isVec)
-      dse = vmode;
+      dseCnt = vmode;
     else
-      dse = 1;
-  endfunction : analyze_rs
+      dseCnt = 1;
 
-  function void analyze_rd(ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr);
-    if(!decoded) decode();
     foreach(wrEn[i])
       if(wrEn[i]) begin
         if(isVec)
@@ -912,30 +968,51 @@ class inst_c extends ovm_object;
     if(op == op_rmsg)
       foreach(bkRMsg[i])
         srf[bkRMsg[i]]++;
-  endfunction : analyze_rd
+    
+    if(enFu) begin
+      wCntDep[gprv_styp] = 1;
+      wCntDep[gprs_styp] = 1;
+    end
+    
+    if(enSPU) begin
+      wCntDep[gprs_styp] = 1;
+      if(op inside {op_s2gp})
+        wCntDep[sr_styp] = 1;
+    end
+    
+    if(enDSE) begin
+      wCntDep[gprv_styp] = 1;
+      wCntDep[gprs_styp] = 1;
+      if(op inside {ld_ops} && mT != 1) ///todo mem acc type not finalized
+        wCntDep[mem_styp] = 1;
+    end
+    
+    if(prRdAdr != 0) wCntDep[pr_styp] = 1;
+  endfunction : analyze
   
   ///reallocate en set by set_data
   function void analyze_fu(inout bit spu, dse, ref bit fu[NUM_FU]);
     enDSE = 0;
     enSPU = 0;
-    enFu = '{default : 0};
+    enFu = 0;
     if(!decoded) decode();
     if(op inside {dse_ops})
       enDSE = 1;
     else if(op inside {spu_ops})
       enSPU = 1;
     else if(isVec) begin
+      enFu = 1;
       if(op inside {spu_only_ops}) begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == sfu) begin
-            enFu[i] = 1;
+            fu[i] = 1;
             break;
           end
       end
       else begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == alu) begin
-            enFu[i] = 1;
+            fu[i] = 1;
             break;
           end
       end
@@ -945,7 +1022,6 @@ class inst_c extends ovm_object;
       
     spu = enSPU;
     dse = enDSE;
-    fu = enFu;
   endfunction : analyze_fu
   
   function rbk_sel_e cvt_sel(input rbk_sel_e s, uchar i);
@@ -1043,7 +1119,7 @@ class inst_c extends ovm_object;
     
     if(op inside {dse_ops}) begin
       spa.bpRfDSE = rdBkSel[1];
-      spa.bpRfDSEWp = 0;
+      spa.bpRfDSEwp = 0;
     end
     else begin
       spa.fu[fuid].en = 1;
@@ -1056,16 +1132,16 @@ class inst_c extends ovm_object;
     end
   endfunction : fill_spa
 
-  function bit dse_block(input bit noLd, noSt, noSMsg, noRMsg);
+  function bit dse_block(input uchar noLd, noSt, noSMsg, noRMsg);
     if(!decoded) decode();
     if(enSPU) begin
-      if(noLd && op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu})
+      if(noLd > 0 && op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu})
         return 1;
-      if(noSt && op inside {iop_sw, iop_sh, iop_sb, iop_sc})
+      if(noSt > 0 && op inside {iop_sw, iop_sh, iop_sb, iop_sc})
         return 1;
-      if(noSMsg && op == op_smsg)
+      if(noSMsg > 0 && op == op_smsg)
         return 1;
-      if(noRMsg && op == op_rmsg)
+      if(noRMsg > 0 && op == op_rmsg)
         return 1;
     end
     return 0;
@@ -1090,11 +1166,12 @@ endclass
 
 class inst_fg_c extends ovm_object;
   uchar data[NUM_IFET_BYTES];
-  bit k, exp, accErr;
+  bit k, ex, exp, accErr;
   
   `ovm_object_utils_begin(inst_fg_c)
     `ovm_field_sarray_int(data, OVM_ALL_ON + OVM_BIN)
 	  `ovm_field_int(k, OVM_ALL_ON)
+	  `ovm_field_int(ex, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_int(accErr, OVM_ALL_ON)
   `ovm_object_utils_end
