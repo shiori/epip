@@ -151,7 +151,7 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
-                                     *                           *                           *      *                   
+                                            * scl         *      * dse                       * msc  * vec
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
@@ -436,30 +436,38 @@ typedef enum uchar {
   SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_THD_CTL,     SR_THD_ST,
   SR_CONTENT,   SR_EPC,       SR_ERET,      SR_WIDX,        SR_WIDY,
   SR_WIDZ,      SR_ILM,       SR_CM,        SR_MSCT,        SR_MSCO,
-  SR_MSCU,      SR_UEE,       SR_UER,       SR_ASID,        SR_MD[0:7],
-  SR_FIFOS
-  }special_regs;
+  SR_MSCU,      SR_UEE,       SR_UER,       SR_ASID,        SR_DSEEV,
+  SR_MD[0:7],   SR_FIFOS
+}special_reg_t;
 
-parameter special_regs tlbsr[] = '{
+parameter special_reg_t tlbsr[] = '{
   SR_INDEX,     SR_RANDOM,    SR_ENTRY_L0,    SR_ENTRY_L1,
   SR_ENTRY_HI,  SR_ASID
 };
 
 typedef enum uchar {
-  EC_SUPMSG,    EC_TLBINV,    EC_TLBMOD,    EC_TLBLOAD,
-  EC_TLBSTOR,   EC_ADRALG,    EC_SMBOND,    EC_NOTEXE,
-  EC_IFACC,     EC_LSACC,     EC_SYSCAL,    EC_BREAK,
-  EC_EXEPRIV,   EC_LSPRIV,    EC_DECODE,    EC_FUEXP,
-  EC_MSC
-}cause_typs;
+  EC_NOEXP,     EC_TLBIFET,   EC_NOTEXE,    EC_EXEPRIV,
+  EC_DECODE,    EC_SYSCAL,    EC_BREAK,     EC_SUPMSG,
+  EC_IFACC,     EC_LSACC,     EC_SCLFU,     EC_MSC
+}cause_spu_t;
+
+typedef enum uchar {
+  EC_NODSE,     EC_TLBINV,    EC_TLBMOD,    EC_TLBPRIV,
+  EC_ADRALG,    EC_SMBOND
+}cause_dse_t;
 
 typedef enum uchar {
   UE_FFCLN,     UE_FFRCV[0:7],  UE_FFSEND[0:7]
-}user_event_typs;
+}user_event_t;
   
 typedef enum uchar {
   rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
-}round_mode;
+}round_mode_t;
+
+typedef enum uchar {
+  gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
+  br_styp,     min_styp,     max_styp
+}storage_type_t;
   
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128

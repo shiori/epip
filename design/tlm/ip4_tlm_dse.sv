@@ -83,7 +83,7 @@ class ip4_tlm_dse extends ovm_component;
   local bit cacheGrpEn[NUM_SMEM_GRP];
   local bit selExp;
   local uchar expVid;
-  local cause_typs expCause;
+  local cause_dse_t expCause;
 
   local tr_dse2eif eifTr[LAT_XCHG];
   local tr_dse2rfm rfmTr[LAT_XCHG];
@@ -449,7 +449,6 @@ class ip4_tlm_dse extends ovm_component;
           if(iseTr[0] == null) iseTr[0] = tr_dse2ise::type_id::create("toISE", this);
           iseTr[0].exp = selExp && !ise.nonBlock;
           iseTr[0].ext = reqHasEx && !ise.nonBlock;
-          iseTr[0].rstStage = STAGE_ISE_DEM + ise.subVec;
           iseTr[0].rsp = 1;
           iseTr[0].pendExLoad = 1;
           iseTr[0].pendExStore = 1;

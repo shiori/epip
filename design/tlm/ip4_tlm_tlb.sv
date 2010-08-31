@@ -142,7 +142,7 @@ class ip4_tlm_tlb extends ovm_component;
     uchar varTid;
     word virAdr;
     bit rspDSE = 0, rspIFE = 0, exp = 0, varKC = 0;
-    cause_typs cause;
+    cause_dse_t cause;
     
     ovm_report_info("tlb", "comb_proc procing...", OVM_FULL);
      
@@ -207,12 +207,11 @@ class ip4_tlm_tlb extends ovm_component;
             else if(!varEx && rspIFE) begin
               ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
               exp = 1;
-              cause = EC_NOTEXE;
             end
             else if(!varK && varKC) begin
               ovm_report_info("TLB_EX", "tlb PRIVILEGE exception!!!", OVM_HIGH); 
               exp = 1;
-              cause = EC_LSPRIV;
+              cause = EC_TLBPRIV;
             end
             
             if(exp) begin
@@ -234,6 +233,7 @@ class ip4_tlm_tlb extends ovm_component;
         toIFE.hit = find;
         toIFE.exp = exp;
         toIFE.k = varK;
+        toIFE.ex = varEx;
         toIFE.eobit = evenOddBit;
       end
       

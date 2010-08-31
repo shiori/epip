@@ -353,7 +353,7 @@ class inst_c extends ovm_object;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
   uchar mMT, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos, srAdr;
-  bit enSPU, enDSE, enFu[NUM_FU];
+  bit enSPU, enDSE, enFu;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(decoded, OVM_ALL_ON)
@@ -364,7 +364,7 @@ class inst_c extends ovm_object;
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(enSPU, OVM_ALL_ON)
     `ovm_field_int(enDSE, OVM_ALL_ON)
-    `ovm_field_sarray_int(enFu, OVM_ALL_ON)
+    `ovm_field_int(enFu, OVM_ALL_ON)
 ///    `ovm_field_int(priv, OVM_ALL_ON)
     `ovm_field_sarray_enum(rbk_sel_e, rdBkSel, OVM_ALL_ON)
     `ovm_field_int(vecRd, OVM_ALL_ON)
@@ -819,67 +819,86 @@ class inst_c extends ovm_object;
     return priv;
 	endfunction : is_priv
 		
-	function void set_wcnt(inout uchar wCnt[3], input uchar vm);///, bit nb = 0, ld = 0, st = 0, vec = 1);
-	  uchar l = 0,    ///when sr dc gpr pr is rdy for next grp to access (longest)
-	        s = STAGE_RRF_VWBP,  ///when sr dc gpr pr is writeback (queskest)
-	        e = 0;    ///when exception / branch is resolved
-	  ///sometimes l is opt to 0, but s & e must set correct, if no sr dc gpr pr
-	  ///changes, s set to max
+	function void set_wcnt(inout uchar wCnt[8], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
+///	  uchar l = 0,    ///when sr dc gpr pr is rdy for next grp to access (longest)
+///	        s = STAGE_RRF_VWBP,  ///when sr dc gpr pr is writeback (queskest)
+///	        e = 0;    ///when exception / branch is resolved
+///	  ///sometimes l is opt to 0, but s & e must set correct, if no sr dc gpr pr
+///	  ///changes, s set to max
+
+	  uchar tCnt[6] = '{default : 0};
 	  if(!decoded) decode();
 	  ///long cyc instructions
     if(op inside {spu_only_ops}) begin
-      l = STAGE_RRF_RRC + STAGE_EEX_VWBP;
-      s = l;
+      if(isVec)
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
     end
     else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
       ///sr write back
-      l = STAGE_RRF_DSR;
-      l = s;
+      tCnt[sr_styp] = STAGE_RRF_DSR;
     end
     ///zero wait instructions for ise only, those inst only change threadstate
-	  else if(op inside {ise_zw_ops})
-	    l = 0;
+	  else if(op inside {ise_zw_ops}) begin
+	  end
 	  ///branchs are predicted, no need to wait
 	  else if(op inside {op_fcr, op_br}) begin
 	    ///need to resolve br, only change sr
 	    if(!is_unc_br()) begin
-	      l = 0; ///should be STAGE_RRF_CEM, opt to 0
-	      e = STAGE_RRF_CBR + vm;
-	      s = STAGE_RRF_CEM;
+	      tCnt[sr_styp] = STAGE_RRF_CBR;
+	      tCnt[br_styp] = STAGE_RRF_CBR + vm;
 	    end
 	  end
 	  else if(op inside {ld_ops}) begin
-      l = isVec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP;
+      if(isVec)
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
 	    ///load write pr
-      s = STAGE_RRF_DC;
+      if(mT != 2)
+       tCnt[pr_styp] = STAGE_RRF_DEM;
       ///load generate exp
-      e = STAGE_RRF_SEL + vm;
+      tCnt[br_styp] = STAGE_RRF_SEL + vm;
+      if(nb) begin
+        ///in nb mode, only care about e
+        tCnt[gprs_styp] = 0;
+        tCnt[gprv_styp] = 0;
+      end
 	  end
 	  ///store are non blocking
 	  else if(op inside {st_ops}) begin
 	    ///store write dc
-      l = STAGE_RRF_LXG0 + vm;
-      ///store write dc pr
-      s = STAGE_RRF_DEM;
+      tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
+      ///store write pr
+     if(mT != 2)
+       tCnt[pr_styp] = STAGE_RRF_DEM;
       ///store generate exp
-      e = STAGE_RRF_SEL + vm;
+      tCnt[br_styp] = STAGE_RRF_SEL + vm;
 	  end
 	  else if(op inside {op_cmp, op_ucmp}) begin
-	    l = STAGE_RRF_CMP;
-	    s = l;
+	    ///cmp write pr
+	    tCnt[pr_styp] = STAGE_RRF_CMP;
 	  end
 	  else begin
-	    l = isVec ? STAGE_RRF_VWBP : STAGE_RRF_SWBP;
-	    e = noExp ? 0 : (isVec ? STAGE_RRF_VWBP + vm : STAGE_RRF_SWBP);
-	    s = l;
+      if(isVec)
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWBP + vm : STAGE_RRF_SWBP);
 	  end
 	  
-	  if(wCnt[0] < l)
-	    wCnt[0] = l;
-	  if(wCnt[1] < e)
-	    wCnt[1] = e;
-	  if(wCnt[2] > s)
-	    wCnt[2] = s;
+	  foreach(tCnt[i])
+	    if(tCnt[i] > wCnt[i])
+	      wCnt[i] = tCnt[i];
+	      
+	  foreach(tCnt[i])
+	    if(wCnt[i] != 0 && tCnt[i] < wCnt[min_styp])
+	      wCnt[min_styp] = wCnt[i];
+
+	  foreach(tCnt[i])
+	    if(tCnt[i] > wCnt[max_styp])
+	      wCnt[max_styp] = tCnt[i];
 	endfunction : set_wcnt
 		
 	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
@@ -889,7 +908,7 @@ class inst_c extends ovm_object;
     priv = 0;
     enDSE = 0;
     enSPU = 0;
-    enFu = '{default : 0};
+    enFu = 0;
     prWrAdr = '{default : 0};
     vrfEn = '{default : 0};
     srfEn = '{default : 0};
@@ -908,12 +927,15 @@ class inst_c extends ovm_object;
     if(op inside {dse_ops})
       enDSE = 1;
     else if(vec)  
-      enFu[fuid] = 1;
+      enFu = 1;
     else if(op inside {spu_only_ops, spu_com_ops})
       enSPU = 1;    
 	endfunction : set_data
 	
-  function void analyze_rs(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrf, srf, dse);
+  function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
+                            s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfCnt, srfCnt, dseCnt,
+                            ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
+                            ref bit wCntDep[5]);
     if(!decoded) decode();
     foreach(vrfEn[i,j])
       v_en[i][j] = v_en[i][j] | vrfEn[i][j];
@@ -921,20 +943,17 @@ class inst_c extends ovm_object;
     foreach(srfEn[i,j])
       s_en[i][j] = s_en[i][j] | srfEn[i][j];
     
-    if(CntSrfRd > srf)
-      srf = CntSrfRd;
-    if(CntVrfRd > vrf)
-      vrf = CntVrfRd;
-    if(vmode > vrf)
-      vrf = vmode;
+    if(CntSrfRd > srfCnt)
+      srfCnt = CntSrfRd;
+    if(CntVrfRd > vrfCnt)
+      vrfCnt = CntVrfRd;
+    if(vmode > vrfCnt)
+      vrfCnt = vmode;
     if(isVec)
-      dse = vmode;
+      dseCnt = vmode;
     else
-      dse = 1;
-  endfunction : analyze_rs
+      dseCnt = 1;
 
-  function void analyze_rd(ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr);
-    if(!decoded) decode();
     foreach(wrEn[i])
       if(wrEn[i]) begin
         if(isVec)
@@ -949,30 +968,51 @@ class inst_c extends ovm_object;
     if(op == op_rmsg)
       foreach(bkRMsg[i])
         srf[bkRMsg[i]]++;
-  endfunction : analyze_rd
+    
+    if(enFu) begin
+      wCntDep[gprv_styp] = 1;
+      wCntDep[gprs_styp] = 1;
+    end
+    
+    if(enSPU) begin
+      wCntDep[gprs_styp] = 1;
+      if(op inside {op_s2gp})
+        wCntDep[sr_styp] = 1;
+    end
+    
+    if(enDSE) begin
+      wCntDep[gprv_styp] = 1;
+      wCntDep[gprs_styp] = 1;
+      if(op inside {ld_ops} && mT != 1) ///todo mem acc type not finalized
+        wCntDep[mem_styp] = 1;
+    end
+    
+    if(prRdAdr != 0) wCntDep[pr_styp] = 1;
+  endfunction : analyze
   
   ///reallocate en set by set_data
   function void analyze_fu(inout bit spu, dse, ref bit fu[NUM_FU]);
     enDSE = 0;
     enSPU = 0;
-    enFu = '{default : 0};
+    enFu = 0;
     if(!decoded) decode();
     if(op inside {dse_ops})
       enDSE = 1;
     else if(op inside {spu_ops})
       enSPU = 1;
     else if(isVec) begin
+      enFu = 1;
       if(op inside {spu_only_ops}) begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == sfu) begin
-            enFu[i] = 1;
+            fu[i] = 1;
             break;
           end
       end
       else begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == alu) begin
-            enFu[i] = 1;
+            fu[i] = 1;
             break;
           end
       end
@@ -982,7 +1022,6 @@ class inst_c extends ovm_object;
       
     spu = enSPU;
     dse = enDSE;
-    fu = enFu;
   endfunction : analyze_fu
   
   function rbk_sel_e cvt_sel(input rbk_sel_e s, uchar i);
@@ -1127,11 +1166,12 @@ endclass
 
 class inst_fg_c extends ovm_object;
   uchar data[NUM_IFET_BYTES];
-  bit k, exp, accErr;
+  bit k, ex, exp, accErr;
   
   `ovm_object_utils_begin(inst_fg_c)
     `ovm_field_sarray_int(data, OVM_ALL_ON + OVM_BIN)
 	  `ovm_field_int(k, OVM_ALL_ON)
+	  `ovm_field_int(ex, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
 	  `ovm_field_int(accErr, OVM_ALL_ON)
   `ovm_object_utils_end

@@ -51,7 +51,8 @@ class ip4_tlm_rfm extends ovm_component;
   local tr_rfm2spa toSPA;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
-  local uchar srExpFlag[NUM_THREAD][CYC_VEC][NUM_FU][NUM_SP];
+  local word srExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
+  local uchar srDSEExp[NUM_THREAD][CYC_VEC][NUM_SP];
   local word dseSt[2][CYC_VEC][NUM_SP];
   local bit[STAGE_RRF_VWB:1] cancel[NUM_THREAD];
   
@@ -115,20 +116,22 @@ class ip4_tlm_rfm extends ovm_component;
         foreach(spa.fu[0].wrEn[sp])
           if(spa.fu[fid].wrEn[sp]) begin
             word res0 = spa.fu[fid].res0[sp];
-            srExpFlag[tid][subVec][fid][sp] |= spa.fu[fid].expFlag[sp];
+            srExpFlag[tid][subVec][sp] |= spa.fu[fid].expFlag[sp] << (fid * 8);
             if(spa.fu[fid].s2gp)
               case(spa.fu[fid].srAdr)
               SR_IIDX:  res0 = srIIDx[tid][subVec][sp];
               SR_IIDY:  res0 = srIIDy[tid][subVec][sp];
               SR_IIDZ:  res0 = srIIDz[tid][subVec][sp];
-              SR_EXPFV: res0 = srExpFlag[tid][subVec][fid][sp];
+              SR_EXPFV: res0 = srExpFlag[tid][subVec][sp];
+              SR_DSEEV: res0 = srDSEExp[tid][subVec][sp];
               endcase
             if(spa.fu[fid].gp2s)
               case(spa.fu[fid].srAdr)
               SR_IIDX:  srIIDx[tid][subVec][sp] = res0;
               SR_IIDY:  srIIDy[tid][subVec][sp] = res0;
               SR_IIDZ:  srIIDz[tid][subVec][sp] = res0;
-              SR_EXPFV: srExpFlag[tid][subVec][fid][sp] = res0;
+              SR_EXPFV: srExpFlag[tid][subVec][sp] = res0;
+              SR_DSEEV: srDSEExp[tid][subVec][sp] = res0;
               endcase
                                 
             if(spa.fu[fid].dw) begin
@@ -144,6 +147,7 @@ class ip4_tlm_rfm extends ovm_component;
     if(v.fmDSE != null) begin
       tr_dse2rfm dse = v.fmDSE;
       ovm_report_info("RFM_WR", "Write Back dse...", OVM_HIGH);
+      srDSEExp[dse.tid][dse.subVec] = dse.expVec;
       if(dse.srfWr && !cancel[STAGE_RRF_SWB])
         srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       else foreach(dse.wrEn[sp])

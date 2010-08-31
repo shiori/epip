@@ -11,8 +11,8 @@
 ///Created by Andy Chen on Mar 16 2010
 
 typedef enum uchar {
-  exp_decode_err,   exp_dse_err,    exp_priv_err,     exp_msc_err,
-  exp_ife_err,      exp_fu_err
+  exp_decode_err,   exp_priv_err,   exp_msc_err,
+  exp_ife_err,      exp_vfu_err,    exp_sfu_err
 }ise_exp_t;
 
 class ip4_tlm_ise_vars extends ovm_component;
@@ -82,16 +82,18 @@ class ise_thread_inf extends ovm_component;
       decoded,
       decodeErr,
       cancel;
-  uchar wCnt[NUM_W_CNT], wExpCnt, wCntNext[3], wCntSel, vecMode;
+  uchar wCnt[NUM_W_CNT][6], wCntNext[8], wCntSel, vecMode;
+  bit wCntDep[5];
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   bit isLastLoad, isLastStore, isLastVecDse, lpRndMemMode, pendIFetchExp, iFetchExp;
   uchar pendIFetch, pendExLoad, pendExStore, pendBr;
-  uchar srThreadGrp, srFIFOMask, srCause, srUserEvent, srFIFOPend;
-  round_mode srExeMode;
-  bit srKD;
-  cause_typs pendIFetchCause;
+  uchar srThreadGrp, srFIFOMask, srUserEvent, srFIFOPend;
+  round_mode_t srExeMode;
+  bit srKD, srCauseFu;
+  cause_spu_t srCauseSPU, pendIFetchCause;
+  cause_dse_t srCauseDSE;
   
   inst_c iSPU, iDSE, iFu[NUM_FU];
   uint pc, pcExp, pcEret, pcUEret, srUEE;
@@ -122,7 +124,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(enDSE, OVM_ALL_ON)
     `ovm_field_sarray_int(enFu, OVM_ALL_ON)
     `ovm_field_int(enVec, OVM_ALL_ON)
-    `ovm_field_sarray_int(wCnt, OVM_ALL_ON)
+///    `ovm_field_sarray_int(wCnt, OVM_ALL_ON)
     `ovm_field_sarray_int(wCntNext, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
@@ -148,6 +150,7 @@ class ise_thread_inf extends ovm_component;
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
 	  if(get_report_verbosity_level() >= OVM_HIGH) begin
+	    `PAF3(wCnt, OVM_DEC)
   		if(enSPU)
   		  printer.print_object("spu", iSPU);
   		if(enDSE)
@@ -189,9 +192,9 @@ class ise_thread_inf extends ovm_component;
 
   function void cyc_new();
     cancel = 0;
-    foreach(wCnt[i])
-      if(wCnt[i] != 0) wCnt[i]--;
-    if(wExpCnt != 0) wExpCnt--;
+    foreach(wCnt[i, j])
+      if(wCnt[i][j] != 0) wCnt[i][j]--;
+///    if(wExpCnt != 0) wExpCnt--;
   endfunction : cyc_new
 
   function uint br_pred();
@@ -302,8 +305,7 @@ class ise_thread_inf extends ovm_component;
         iFu[i].set_data(iBuf, offSet, i, 1);
         
       offSet += NUM_INST_BYTES;
-      iSPU.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-      iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+      iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
       iSPU.analyze_fu(enSPU, enDSE, enFu);
       adrs[0] = grpStart.a;
 ///      if(adrPkgBytes) begin
@@ -323,23 +325,23 @@ class ise_thread_inf extends ovm_component;
       
       if(enSPU) begin
         iSPU.set_data(iBuf, offSet, 0, 0);
-        iSPU.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-        iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+        iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
         offSet += NUM_INST_BYTES;
+        iSPU.enSPU = 1;
       end
       
       if(enDSE) begin
+        iSPU.enDSE = 1;
         iDSE.set_data(iBuf, offSet, 0, dseVec);
-        iDSE.analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-        iDSE.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+        iDSE.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
         offSet += NUM_INST_BYTES;
       end
       
       foreach(iFu[i])
         if(enFu[i]) begin
+          iFu[i].enFu = 1;
           iFu[i].set_data(iBuf, offSet, i, 1);
-          iFu[i].analyze_rs(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd);
-          iSPU.analyze_rd(cntVrfWr, cntSrfWr, cntPRWr);
+          iFu[i].analyze(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
           offSet += NUM_INST_BYTES;          
         end
 
@@ -414,11 +416,14 @@ class ise_thread_inf extends ovm_component;
 ///    noVecExp |= iDSE.noVecExp;
     
     foreach(iFu[fid]) begin
-      iFu[fid].set_wcnt(wCntNext, vecMode);
+      if(enFu[fid])
+        iFu[fid].set_wcnt(wCntNext, vecMode);
       decodeErr |= iFu[fid].decodeErr;
     end
-    iSPU.set_wcnt(wCntNext, vecMode);
-    iDSE.set_wcnt(wCntNext, vecMode); ///, lpRndMemMode, isLastLoad, isLastStore, isLastVecDse);
+    if(enSPU)
+      iSPU.set_wcnt(wCntNext, vecMode);
+    if(enDSE)
+      iDSE.set_wcnt(wCntNext, vecMode, lpRndMemMode); ///, isLastLoad, isLastStore, isLastVecDse);
     decodeErr |= iSPU.decodeErr;
     decodeErr |= iDSE.decodeErr;
     
@@ -467,7 +472,7 @@ class ise_thread_inf extends ovm_component;
     end
     
     if(fetchGrp.exp) begin
-      pendIFetchCause = EC_TLBLOAD;
+      pendIFetchCause = EC_TLBIFET;
       pendIFetchExp = 1;
       return;
     end
@@ -481,7 +486,12 @@ class ise_thread_inf extends ovm_component;
       pendIFetchExp = 1;
       return;
     end
-    
+    else if(!fetchGrp.ex) begin
+      pendIFetchCause = EC_NOTEXE;
+      pendIFetchExp = 1;
+      return;
+    end
+        
     foreach(fetchGrp.data[i])
       if(i >= offSet)
         iBuf.push_back(fetchGrp.data[i]);
@@ -586,27 +596,37 @@ class ip4_tlm_ise extends ovm_component;
     end
   endfunction
   
-  function void enter_exp(input uchar tid, ise_exp_t expType, uchar stage = 0, cause_typs cause = EC_DECODE);
+  function void enter_exp(input uchar tid, ise_exp_t expType);
     ise_thread_inf t = thread[tid];
-    restorePC(tid, 1, stage, 1);
+    uchar st = 0, sel = 1;
     case(expType)
     exp_decode_err:
-      t.srCause = EC_DECODE;
-    exp_dse_err:
-      t.srCause = cause;
+      t.srCauseSPU = EC_DECODE;
     exp_priv_err:
-      t.srCause = EC_EXEPRIV;
+      t.srCauseSPU = EC_EXEPRIV;
     exp_msc_err:
-      t.srCause = EC_MSC;
+    begin
+      t.srCauseSPU = EC_MSC;
+      st = STAGE_ISE_CEM + t.vecMode;
+    end
     exp_ife_err:
-      t.srCause = t.pendIFetchCause;
-    exp_fu_err:
-      t.srCause = EC_FUEXP;
+      t.srCauseSPU = t.pendIFetchCause;
+    exp_vfu_err:
+    begin
+      t.srCauseFu = 1;
+      st = STAGE_ISE_VWB + t.vecMode;
+    end
+    exp_sfu_err:
+    begin
+      t.srCauseSPU = EC_SCLFU;
+      st = LAT_ISE + STAGE_RRF_EXS2;
+    end
     endcase
+    restorePC(tid, sel, st, 1);
     t.flush();
   endfunction : enter_exp
 
-  function void resolve_br(input uchar tid, bit br, uchar stage);
+  function void resolve_br(input uchar tid, bit br);
     ise_thread_inf t = thread[tid];
     if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
       if(t.pendBr == 0)
@@ -614,7 +634,7 @@ class ip4_tlm_ise extends ovm_component;
       ///miss prediction
       if(br != t.brPred) begin
         t.flush();
-        restorePC(tid, 2, stage);
+        restorePC(tid, 2, STAGE_RRF_CEM + t.vecMode);
         t.lpRndMemMode = 0;
         t.cancel = 1;
         t.brHistory = t.brHistory >> t.pendBr;
@@ -635,13 +655,13 @@ class ip4_tlm_ise extends ovm_component;
     op_sys: 
     begin
       restorePC(tid, 0, 0, 1);
-      t.srCause = EC_SYSCAL;
+      t.srCauseSPU = EC_SYSCAL;
       t.flush();     
     end
     op_brk  :
     begin
       restorePC(tid, 0, 0, 0, 1); 
-      t.srCause = EC_BREAK;
+      t.srCauseSPU = EC_BREAK;
       t.flush();     
     end
     op_wait:
@@ -651,6 +671,9 @@ class ip4_tlm_ise extends ovm_component;
     begin
       t.pc = t.pcEret;
       t.privMode = 0;
+      t.srCauseSPU = EC_NOEXP;
+      t.srCauseDSE = EC_NODSE;
+      t.srCauseFu = 0;
       t.flush();
     end
     op_tsync:
@@ -694,7 +717,7 @@ class ip4_tlm_ise extends ovm_component;
         t.privMode = op0[0];
         t.srThreadGrp = op0[15];
         t.srFIFOMask = op0[23:16];
-        t.srExeMode = round_mode'(op0[26:24]);
+        t.srExeMode = round_mode_t'(op0[26:24]);
         t.srKD = op0[27];
       end
       SR_UEE    :
@@ -735,11 +758,13 @@ class ip4_tlm_ise extends ovm_component;
       SR_THD_ST   :
       begin
         res[4:0] = t.srUserEvent;
-        res[9:5] = t.srCause;
-        res[10] = srSupMsgPend;
-        res[18:11] = t.srFIFOPend;
-        res[20:19] = srPerfCntPend;        
-        res[21] = srTimerPend;        
+        res[9:5] = t.srCauseSPU;
+        res[13:10] = t.srCauseDSE;
+        res[14] = t.srCauseFu;
+        res[15] = srSupMsgPend;
+        res[23:16] = t.srFIFOPend;
+        res[25:24] = srPerfCntPend;        
+        res[26] = srTimerPend;        
       end
       endcase
     end
@@ -750,14 +775,15 @@ class ip4_tlm_ise extends ovm_component;
   function bit can_issue(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
     ise_thread_inf t = thread[tid];
+    
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [NUM_FU-1:0] enFuTmp;
       foreach(enFuTmp[i])
         enFuTmp[i] = t.enFu[i];
-        
+          
       ovm_report_info("can_issue",
-        $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   t.threadState.name, t.decoded, t.decodeErr, t.wCnt[t.wCntSel], t.pc, t.enSPU, t.enDSE,
+        $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
+                   t.threadState.name, t.decoded, t.decodeErr, t.wCnt[t.wCntSel][max_styp], t.wCnt[t.wCntSel][br_styp], t.pc, t.enSPU, t.enDSE,
                    enFuTmp, t.dseVec, t.wCntSel),
         OVM_HIGH);
     end
@@ -801,8 +827,14 @@ class ip4_tlm_ise extends ovm_component;
     if(!(t.threadState inside {ts_rdy, ts_w_b, ts_b_self}))
       return 0;
     
-    if(t.wCnt[t.wCntSel] != 0  || t.wCntNext[2] < t.wExpCnt)
+    foreach(t.wCntDep[i])
+      if(t.wCntDep[i] && t.wCnt[t.wCntSel][i] > 0)
+        return 0;
+    
+    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] > t.wCnt[br_styp])
       return 0;
+///    if(t.wCnt[t.wCntSel] != 0  || t.wCntNext[2] < t.wExpCnt)
+///      return 0;
       
     return t.decoded;
   endfunction : can_issue
@@ -963,11 +995,12 @@ class ip4_tlm_ise extends ovm_component;
         && t.threadState == ts_b_self && t.iSPU.prWrAdr[0] == t.iDSE.prRdAdr
         && t.iDSE.prRdAdr != 0 && t.brPred);
     end
-
-    if(t.wCntNext[0] > t.wCnt[t.wCntSel])
-      t.wCnt[t.wCntSel] = t.wCntNext[0];
-    if(t.wCntNext[1] > t.wExpCnt)
-      t.wExpCnt = t.wCntNext[1];
+    
+    foreach(t.wCntNext[i])
+      if(t.wCntNext[i] > t.wCnt[t.wCntSel][i])
+        t.wCnt[t.wCntSel][i] = t.wCntNext[i];
+///    if(t.wCntNext[1] > t.wExpCnt)
+///      t.wExpCnt = t.wCntNext[1];
                 
     cntSrfRd = t.cntSrfRd;
     cntVrfRd = t.cntVrfRd;
@@ -1071,27 +1104,35 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       tr_spu2ise spu = v.fmSPU;
-      resolve_br(spu.tid, spu.brTaken, spu.rstStage);
+      resolve_br(spu.tid, spu.brTaken);
+      if(spu.sclExp)
+        enter_exp(spu.tid, exp_sfu_err);
       if(spu.mscExp)
-        enter_exp(spu.tid, exp_msc_err, spu.rstStage);
+        enter_exp(spu.tid, exp_msc_err);
     end
     
     ///cancel condition 2, spa exp
     if(v.fmSPA != null && v.fmSPA.exp)
-      enter_exp(v.fmSPA.tid, exp_fu_err, v.fmSPA.rstStage);
+      enter_exp(v.fmSPA.tid, exp_vfu_err);
     
     ///cancel condition 3 dse exp or cache miss
     if(v.fmDSE[STAGE_ISE_DEM] != null && v.fmDSE[STAGE_ISE_DEM].rsp) begin
       tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
+      uchar st = STAGE_ISE_DEM;
       ise_thread_inf t = thread[dse.tid];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
-      if(dse.exp)
-        enter_exp(dse.tid, exp_dse_err, dse.rstStage, dse.cause);
+      if(dse.scl) st += t.vecMode;
+      if(dse.exp) begin
+        t.srCauseDSE = dse.cause;
+        t.cancel = 1;  
+        restorePC(dse.tid, 1,st, 1);
+        t.flush();
+      end
       else if(dse.ext) begin
-        t.threadState = ts_rdy;
         t.cancel = 1;   
-        restorePC(dse.tid, 1, dse.rstStage, 1);
+        restorePC(dse.tid, 1,st);
+        t.flush();
       end
     end
     
