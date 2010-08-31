@@ -82,7 +82,7 @@ class ise_thread_inf extends ovm_component;
       decoded,
       decodeErr,
       cancel;
-  uchar wCnt[NUM_W_CNT][6], wCntNext[8], wCntSel, vecMode;
+  uchar wCnt[NUM_W_CNT][6], wCntNext[7], wCntSel, vecMode;
   bit wCntDep[5];
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
@@ -782,12 +782,17 @@ class ip4_tlm_ise extends ovm_component;
     
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [NUM_FU-1:0] enFuTmp;
+      uchar tmp = 0;
       foreach(enFuTmp[i])
         enFuTmp[i] = t.enFu[i];
+      
+      foreach(t.wCntDep[i])
+        if(t.wCnt[t.wCntSel][i] > tmp && i != br_styp)
+          tmp = t.wCnt[t.wCntSel][i];
           
       ovm_report_info("can_issue",
         $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   t.threadState.name, t.decoded, t.decodeErr, t.wCnt[t.wCntSel][max_styp], t.wCnt[t.wCntSel][br_styp], t.pc, t.enSPU, t.enDSE,
+                   t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCnt[t.wCntSel][br_styp], t.pc, t.enSPU, t.enDSE,
                    enFuTmp, t.dseVec, t.wCntSel),
         OVM_HIGH);
     end

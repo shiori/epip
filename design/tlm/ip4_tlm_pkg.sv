@@ -466,7 +466,7 @@ typedef enum uchar {
 
 typedef enum uchar {
   gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
-  br_styp,     min_styp,     max_styp
+  br_styp,      min_styp
 }storage_type_t;
   
 parameter uchar INDEX_ENT    = 7 , /// entry bits

@@ -458,7 +458,7 @@ class inst_c extends ovm_object;
     rdBkSel = '{default : selnull};
     prRdAdr = inst.i.p;
     prRdEn = prRdAdr != 0;
-    noExp = 0;
+    noExp = 1;
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
@@ -819,7 +819,7 @@ class inst_c extends ovm_object;
     return priv;
 	endfunction : is_priv
 		
-	function void set_wcnt(inout uchar wCnt[8], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
+	function void set_wcnt(inout uchar wCnt[7], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
 ///	  uchar l = 0,    ///when sr dc gpr pr is rdy for next grp to access (longest)
 ///	        s = STAGE_RRF_VWBP,  ///when sr dc gpr pr is writeback (queskest)
 ///	        e = 0;    ///when exception / branch is resolved
@@ -895,10 +895,6 @@ class inst_c extends ovm_object;
 	  foreach(tCnt[i])
 	    if(wCnt[i] != 0 && tCnt[i] < wCnt[min_styp])
 	      wCnt[min_styp] = wCnt[i];
-
-	  foreach(tCnt[i])
-	    if(tCnt[i] > wCnt[max_styp])
-	      wCnt[max_styp] = tCnt[i];
 	endfunction : set_wcnt
 		
 	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
