@@ -225,9 +225,10 @@ class ip4_tlm_spu extends ovm_component;
         endcase
         vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
         vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_BITS-1:0];
-        vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1];
-        vn.rfm[STAGE_RRF_EXS1].exp = exp;
-        vn.rfm[STAGE_RRF_EXS1].srfWrDSel = ise.srfWrDSel;
+        vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp;
+        vn.rfm[STAGE_RRF_EXS1].expFu = exp;
+        vn.rfm[STAGE_RRF_EXS1].tid = ise.tid;
+        vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecMode;
         vn.rfm[STAGE_RRF_EXS1].srfWrBk   = ise.srfWrBk;
         vn.rfm[STAGE_RRF_EXS1].srfWrGrp  = ise.srfWrGrp;
         vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
@@ -345,7 +346,7 @@ class ip4_tlm_spu extends ovm_component;
         bop_naz  :  toISE.brTaken = !emsk_az;
         bop_az   :  toISE.brTaken = emsk_az;
         endcase
-       
+             
       case(ise.mop)
       mop_nop   : update_msc = 1;
       mop_rstor :
@@ -414,6 +415,11 @@ class ip4_tlm_spu extends ovm_component;
             srMSCO[tid][j * NUM_SP + k] = 0;
         end
       endcase
+      
+      
+      if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
+      toRFM.missBr = ise.brPred != toISE.brTaken;
+      toRFM.expMSC = toISE.mscExp;
     end
     
     ///------------req to other module----------------

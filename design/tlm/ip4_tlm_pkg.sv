@@ -151,7 +151,7 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
-                                            * scl         *      * dse                       * msc  * vec
+                                            * scl                * dse                       * msc  * vec
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |

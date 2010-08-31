@@ -1071,7 +1071,6 @@ class inst_c extends ovm_object;
       spu.prInvSPU = 0;
       spu.prNMskSPU = 0;
       spu.brDep = brDep;
-      spu.srfWrDSel = 0;
       spu.srfWrAdr = adrWr[0];
       spu.srfWrBk = bkWr[0];
       spu.srAdr = srAdr;

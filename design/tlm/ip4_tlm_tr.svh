@@ -111,9 +111,8 @@ endclass : tr_rfm2ise
 class tr_spu2rfm extends ovm_sequence_item;
 	rand bit wrEn;///, sel_sfu;
 	rand word res; ///BRU ScalarP use port4
-	rand uchar srfWrBk, srfWrGrp, srfWrAdr, 
-	           srfWrDSel; ///select which res from dual res
-	rand bit exp;
+	rand uchar tid, vecMode, srfWrBk, srfWrGrp, srfWrAdr;
+	rand bit expFu, missBr, expMSC;
 	
 	///wrEn signal is given one cycle before writeback
 	
@@ -125,14 +124,16 @@ class tr_spu2rfm extends ovm_sequence_item;
 		srfWrBk inside {[0:NUM_VRF_BKS-1]};
 		srfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
 		srfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-		srfWrDSel < 2;
 	}
 		
 	`ovm_object_utils_begin(tr_spu2rfm)
 		`ovm_field_int(wrEn, OVM_ALL_ON)
 		`ovm_field_int(res, OVM_ALL_ON)
-		`ovm_field_int(exp, OVM_ALL_ON)
-		`ovm_field_int(srfWrDSel, OVM_ALL_ON)
+		`ovm_field_int(expFu, OVM_ALL_ON)
+		`ovm_field_int(missBr, OVM_ALL_ON)
+		`ovm_field_int(expMSC, OVM_ALL_ON)
+		`ovm_field_int(tid, OVM_ALL_ON)
+		`ovm_field_int(vecMode, OVM_ALL_ON)
 		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
@@ -295,11 +296,11 @@ endclass : tr_spa2rfm
 
 class tr_dse2rfm extends ovm_sequence_item;
 	rand word res[NUM_SP], updateAdrRes[NUM_SP];
-	rand bit wrEn[NUM_SP], srfWr, updateAdrWr;
+	rand bit wrEn[NUM_SP], srfWr, updateAdrWr, exp;
 	rand uchar tid, expVec[NUM_SP];
 	rand uchar wrGrp, wrAdr, wrBk, 
 	           updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, 
-	           subVec;
+	           subVec, vecMode;
 	
 	constraint valid_dse{
 		foreach(wrEn[i])
@@ -335,8 +336,10 @@ class tr_dse2rfm extends ovm_sequence_item;
 		`ovm_field_int(updateAdrWrBk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(tid, OVM_ALL_ON)
 		`ovm_field_int(subVec, OVM_ALL_ON)
+		`ovm_field_int(vecMode, OVM_ALL_ON)
 		`ovm_field_int(srfWr, OVM_ALL_ON)
 		`ovm_field_int(updateAdrWr, OVM_ALL_ON)
+		`ovm_field_int(exp, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2rfm");
@@ -612,9 +615,10 @@ class tr_ise2spu extends ovm_sequence_item;
            brDepSPA,
            enFu[NUM_FU],
            enDSE,
-           enSPU;
+           enSPU,
+           brPred;
   
-  rand uchar srfWrBk, srfWrGrp, srfWrAdr, srfWrDSel;
+  rand uchar srfWrBk, srfWrGrp, srfWrAdr;
   rand uchar prWrAdr0, prWrAdr1, ///fu pr write adr
              prWrAdr2; ///dse pr write adr
   rand uchar prRdAdr[NUM_FU],   ///fu pr read adr
@@ -646,7 +650,6 @@ class tr_ise2spu extends ovm_sequence_item;
 		srfWrBk inside {[0:NUM_VRF_BKS-1]};
 		srfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
 		srfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-		srfWrDSel < 2;
     solve prRdAdrSPU before brDep;
     solve op before sop, mop, bop;
   }
@@ -664,6 +667,7 @@ class tr_ise2spu extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_ise2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(brPred, OVM_ALL_ON)
 	  `ovm_field_int(brDep, OVM_ALL_ON)
 	  `ovm_field_int(brDepDSE, OVM_ALL_ON)
 	  `ovm_field_int(brDepSPA, OVM_ALL_ON)
@@ -686,7 +690,6 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_enum(msk_opcode_e, mop, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
 	  `ovm_field_enum(br_opcode_e, bop, OVM_ALL_ON)
-		`ovm_field_int(srfWrDSel, OVM_ALL_ON)
 		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)

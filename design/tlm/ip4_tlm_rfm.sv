@@ -159,14 +159,10 @@ class ip4_tlm_rfm extends ovm_component;
     end
     
     if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[STAGE_RRF_SWB]) begin
-      word res;
       tr_spu2rfm spu = v.fmSPU;
-      tr_spa2rfm spa = v.fmSPA;
-      tr_dse2rfm dse = v.fmDSE;
-      bit dw = 0;
       ovm_report_info("RFM_WR", "Write Back spu...", OVM_HIGH);
-      res = spu.res;
-      srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = res;
+      if(spu.wrEn)
+        srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = spu.res;
     end
          
     ///----------read registers---------------------
@@ -238,8 +234,21 @@ class ip4_tlm_rfm extends ovm_component;
       cancel[i] = cancel[i] >> 1;
       
     if(v.fmSPA != null && v.fmSPA.cancel)
-      cancel[v.fmSPA.tid] = '1;
-      
+      cancel[v.fmSPA.tid] |= '1;
+
+    if(v.fmSPU != null) begin
+      tr_spu2rfm spu = v.fmSPU;
+      if(spu.expFu)
+        cancel[spu.tid] |= '1 << (STAGE_RRF_SWB + spu.vecMode);
+      if(spu.missBr)
+        cancel[spu.tid] |= '1 << STAGE_RRF_CBR;
+      if(spu.expMSC)
+        cancel[spu.tid] |= '1 << STAGE_RRF_CBR;
+    end
+    
+    if(v.fmDSE != null && v.fmDSE.exp)
+      cancel[v.fmSPA.tid] |= '1 << (STAGE_RRF_DEM + v.fmDSE.vecMode);
+          
     ///------------req to other module----------------
     if(toSPA != null) void'(spa_tr_port.nb_transport(toSPA, toSPA));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));

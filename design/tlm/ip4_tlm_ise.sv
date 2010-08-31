@@ -886,6 +886,7 @@ class ip4_tlm_ise extends ovm_component;
         ciSPU[i].brDepSPA = brDepSPA;
         ciSPU[i].brDepDSE = brDepDSE;
         ciSPU[i].tid = srPBId;
+        ciSPU[i].brPred = t.brPred;
       end
     end
     
