@@ -474,21 +474,25 @@ class ise_thread_inf extends ovm_component;
     if(fetchGrp.exp) begin
       pendIFetchCause = EC_TLBIFET;
       pendIFetchExp = 1;
+      ovm_report_info("update_inst", "EC_TLBIFET", OVM_HIGH);
       return;
     end
     else if(fetchGrp.accErr) begin
       pendIFetchCause = EC_IFACC;
       pendIFetchExp = 1;
+      ovm_report_info("update_inst", "EC_IFACC", OVM_HIGH);
       return;
     end
     else if(fetchGrp.k && !privMode) begin
       pendIFetchCause = EC_EXEPRIV;
       pendIFetchExp = 1;
+      ovm_report_info("update_inst", "EC_EXEPRIV", OVM_HIGH);
       return;
     end
     else if(!fetchGrp.ex) begin
       pendIFetchCause = EC_NOTEXE;
       pendIFetchExp = 1;
+      ovm_report_info("update_inst", "EC_NOTEXE", OVM_HIGH);
       return;
     end
         
@@ -1177,8 +1181,10 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     ///cancel from one cycle delayed
-    if(v.fmIFE != null && v.cancel[v.fmIFE.tid])
+    if(v.fmIFE != null && v.cancel[v.fmIFE.tid]) begin
       v.fmIFE = null;
+      ovm_report_info("cancel", "cancel IFE", OVM_HIGH);
+    end
     
     foreach(ciDSE[i]) begin
       if(ciDSE[i] != null && v.cancel[ciDSE[i].tid])
@@ -1190,7 +1196,7 @@ class ip4_tlm_ise extends ovm_component;
       if(ciSPA[i] != null && v.cancel[ciSPA[i].tid])
         ciSPA[i] = null;
     end
-    
+
     ///update ife data into thread
     if(v.fmIFE != null && v.fmIFE.instEn)
       thread[v.fmIFE.tid].update_inst(v.fmIFE.fetchGrp);
