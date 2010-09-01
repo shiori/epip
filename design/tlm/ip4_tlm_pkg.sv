@@ -153,12 +153,12 @@ ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
                                            pipeline stages:
                                             * scl                * dse                       * msc  * vec
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
-load:     | rrf | rrc0 |  ag  |  tag |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
-store:    | rrf | rrc0 |  ag  |  tag | sxg0 | sxg1 | dc   |
-dse pr:   | rrf | rrc0 |  ag  |  tag | 0    |   1  |  2   | dprw |
+load:     | rrf | rrc0 |  ag  |  tag |  sel |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
+store:    | rrf | rrc0 |  ag  |  tag |  sel | sxg0 | sxg1 | dc   |
+dse pr:   | rrf | rrc0 |  ag  |  tag |  sel | 0    |   1  |  2   | dprw |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
-spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | swbp |  swb |
-spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | dsr  | asr  |
+spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | exs4 | swbp |  swb |
+spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | asr  |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14        15
                                             0      1      2      3      4      5      6      7      8      9         10
@@ -184,22 +184,23 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
                 STAGE_RRF_DPRW    = STAGE_RRF_TAG + CYC_VEC,        ///7
+                STAGE_RRF_SXG0    = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
-                STAGE_RRF_DC      = STAGE_RRF_SEL + LAT_XCHG,       ///6
-                STAGE_RRF_LXG0    = STAGE_RRF_DC + 1,               ///7
-                STAGE_RRF_LXG     = STAGE_RRF_DC + LAT_XCHG,        ///8
-                STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///7
-                STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///8
-                STAGE_RRF_ASR     = STAGE_RRF_SWBP - 1,             ///6
-                STAGE_RRF_DSR     = STAGE_RRF_SWBP - 2,             ///5
+                STAGE_RRF_DC      = STAGE_RRF_DEM + LAT_XCHG,       ///7
+                STAGE_RRF_LXG0    = STAGE_RRF_DC + 1,               ///8
+                STAGE_RRF_LXG     = STAGE_RRF_DC + LAT_XCHG,        ///9
+                STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///8
+                STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///9
+                STAGE_RRF_ASR     = STAGE_RRF_SWBP - 1,             ///7
+                STAGE_RRF_DSR     = STAGE_RRF_SWBP - 2,             ///6
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
                 STAGE_RRF_VWB     = STAGE_RRF_VWBP + 1,             ///11
                 STAGE_EXE         = LAT_MAC - 1,                    ///3
                 STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
                 STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
-                STAGE_EXE_SWBP    = STAGE_RRF_SWBP - STAGE_RRF_EXE0,///2
-                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///3
+                STAGE_EXE_SWBP    = STAGE_RRF_SWBP - STAGE_RRF_EXE0,///3
+                STAGE_EXE_SWB     = STAGE_EXE_SWBP + 1,             ///4
                 STAGE_EEX         = LAT_SFU + CYC_SFU_BUSY - CYC_VEC - 1,     ///27
                 STAGE_EEX_VWBP    = STAGE_EEX + LAT_VWBP,           ///28
                 STAGE_EEX_VWB     = STAGE_EEX_VWBP + 1,             ///29
@@ -207,8 +208,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
                 STAGE_ISE_EXE     = LAT_ISE + STAGE_RRF_EXE,        ///11
                 STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
-                STAGE_ISE_SWBP    = LAT_ISE + STAGE_RRF_SWBP,       ///12
-                STAGE_ISE_SWB     = LAT_ISE + STAGE_RRF_SWB,        ///13
+                STAGE_ISE_SWBP    = LAT_ISE + STAGE_RRF_SWBP,       ///10
+                STAGE_ISE_SWB     = LAT_ISE + STAGE_RRF_SWB,        ///11
                 STAGE_ISE_CMP     = LAT_ISE + STAGE_RRF_CMP,        ///7
                 STAGE_ISE_VWB     = STAGE_ISE_VWBP + 1,             ///16
                 STAGE_ISE_VWB_END = STAGE_ISE_VWBP + CYC_VEC,       ///16

@@ -21,8 +21,8 @@ class ip4_tlm_dse_vars extends ovm_component;
   tr_dse2ise ise;
 ///  tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
   tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_LXG0];
-  tr_dse2spa spa;
-  tr_dse2tlb tlb;
+///  tr_dse2spa spa;
+///  tr_dse2tlb tlb;
   tr_dse2eif eif[STAGE_RRF_DPRW:STAGE_RRF_LXG0];
   tr_dse2spu spu[STAGE_RRF_DPRW:STAGE_RRF_LXG0];
   
@@ -37,8 +37,8 @@ class ip4_tlm_dse_vars extends ovm_component;
 ///     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
-     `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
-     `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
+///     `ovm_field_object(spa, OVM_ALL_ON + OVM_REFERENCE) 
+///     `ovm_field_object(tlb, OVM_ALL_ON + OVM_REFERENCE) 
      `ovm_field_sarray_object(eif, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
@@ -91,7 +91,7 @@ class ip4_tlm_dse extends ovm_component;
   local word tlbReqVAdr[STAGE_RRF_SEL:STAGE_RRF_TAG];
   local cache_t cache[NUM_DCHE_TAG][NUM_DCHE_ASO];
   
-  local bit selExRdy, selExp;
+  local bit selExRdy, selExp, selExpReq, selValidReq;
   local padr_t selExAdr;
   local cause_dse_t expCause;
 
@@ -102,8 +102,9 @@ class ip4_tlm_dse extends ovm_component;
   
   local sm_t ck[LAT_XCHG][NUM_SMEM_BK],
              smi[STAGE_RRF_LXG:STAGE_RRF_SEL][NUM_SMEM_BK];
-  local sp_t spi[STAGE_RRF_LXG:STAGE_RRF_DEM][NUM_SP];
+  local sp_t spi[STAGE_RRF_LXG:STAGE_RRF_SXG0][NUM_SP];
   local padr_t spPAdr[STAGE_RRF_LXG:STAGE_RRF_DEM];
+  local bit expReq[STAGE_RRF_LXG:STAGE_RRF_DEM];
   
   local bit dcEx, dcExp, dcValid;
   
@@ -199,12 +200,8 @@ class ip4_tlm_dse extends ovm_component;
       uint vAdrHi;
       uint dcIdx, dcRdy = 0;
       bit ed = 0;
-      bit start = ((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      bit last = ((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
       
-      if(start)
-        foreach(ck[i, j])
-          ck[i][j] = new();
-        
       if(tlb != null) begin
         vAdrHi = tlbReqVAdr[STAGE_RRF_SEL] >> tlb.eobit;
         ed = tlb.e;
@@ -405,20 +402,41 @@ class ip4_tlm_dse extends ovm_component;
             ck[grp][bk].stData.b[ed ? adr : (WORD_BYTES - 1 - adr)] = st.b[adr];
           endcase
         end
-        spi[STAGE_RRF_DEM][sp] = new();
-        spi[STAGE_RRF_DEM][sp].exp = exp;
-        spi[STAGE_RRF_DEM][sp].oc = oc;
-        spi[STAGE_RRF_DEM][sp].ex = ex;
-        spi[STAGE_RRF_DEM][sp].slot = slot;
+        spi[STAGE_RRF_SXG0][sp] = new();
+        spi[STAGE_RRF_SXG0][sp].exp = exp;
+        spi[STAGE_RRF_SXG0][sp].oc = oc;
+        spi[STAGE_RRF_SXG0][sp].ex = ex;
+        spi[STAGE_RRF_SXG0][sp].slot = slot;
+        selValidReq |= oc || ex;
       end
       spPAdr[STAGE_RRF_DEM] = selExAdr;
       
+      selExpReq |= selExp;
+      
+      if(ise.vecMode == ise.subVec) begin
+        bit res = 0;
+        if(ise.nonBlock)
+          res = selValidReq;
+        else
+          res = selExpReq;
+          
+        for(int i = 0; i <= ise.subVec; i++)
+          expReq[STAGE_RRF_DEM + i] = res;
+                    
+        selExpReq = 0;
+        selValidReq = 0;
+      end
+        expReq[STAGE_RRF_DEM] = 1;
+        
       ///finish one half wrap or whole request
-      if(start) begin
+      if(last) begin
         uchar lvl = ise.subVec & `GML(WID_DCH_CL);
-        for(int i = 0; i <= lvl; i++) begin
+        for(int i = 0; i <= lvl; i++)
           smi[STAGE_RRF_DEM + i] = ck[LAT_XCHG - 1 - i];
-        end
+        selExp = 0;
+        selExRdy = 0;
+        foreach(ck[i, j])
+          ck[i][j] = new();
           
 ///        ///is ex?
 ///        if(selExValid && (!selExp || ise.nonBlock)) begin
@@ -468,27 +486,6 @@ class ip4_tlm_dse extends ovm_component;
 ///          end
 ///        end
 ///        
-///        if(selOcValid && (!selExp || ise.nonBlock)) begin
-///          foreach(rfmTr[i]) begin
-///            tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + i];
-///            tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL + i];
-///            if(i < lvl) continue;
-///            if(rfmTr[i] == null) rfmTr[i] = tr_dse2rfm::type_id::create("toRFM", this);
-///            if(rfm == null || ise == null) begin
-///              ovm_report_warning("dse", "ise or rfm req missing");
-///              continue;
-///            end
-///            rfmTr[i].res = ldXchgBuf[i];
-///            rfmTr[i].updateAdrRes = rfm.base;
-///            rfmTr[i].wrEn = selOcEMsk;
-///            rfmTr[i].wrGrp = ise.wrGrp;
-///            rfmTr[i].wrAdr = ise.wrAdr;
-///            rfmTr[i].updateAdrWrBk = ise.updateAdrWrBk;
-///            rfmTr[i].updateAdrWrAdr = ise.updateAdrWrAdr;
-///            rfmTr[i].updateAdrWrGrp = ise.updateAdrWrGrp;
-///            rfmTr[i].subVec = ise.subVec;
-///          end
-///        end
 ///        
 ///        ///whole request finished
 ///        if((ise.subVec == ise.vecMode) || !ise.vec) begin
@@ -517,11 +514,12 @@ class ip4_tlm_dse extends ovm_component;
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_DEM; i--) begin
       spi[i] = spi[i - 1];
       spPAdr[i] = spPAdr[i - 1];
+      expReq[i] = expReq[i - 1];
     end
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_SEL; i--)
       smi[i] = smi[i - 1];
       
-    spi[STAGE_RRF_DEM] = '{default: null};
+    spi[STAGE_RRF_SXG0] = '{default: null};
     smi[STAGE_RRF_SEL] = '{default: null};
         
     ///dc stage
