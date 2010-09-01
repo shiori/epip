@@ -96,7 +96,7 @@ class ip4_tlm_rfm extends ovm_component;
     vn.spu[0] = null;
 
     foreach(cancel[i])
-      cancel[i] = cancel[i] >> 1;
+      cancel[i] = cancel[i] << 1;
       
     if(v.fmSPA != null && v.fmSPA.cancel)
       cancel[v.fmSPA.tid] |= '1;
