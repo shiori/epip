@@ -38,7 +38,7 @@ class ip4_tlm_spa_vars extends ovm_component;
     
   ip4_tlm_sfu_stages sfu[STAGE_EEX_VWBP:1];
   
-  bit cancel[NUM_THREAD];
+///  bit cancel[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_spa_vars)
     `ovm_field_sarray_object(fmISE, OVM_ALL_ON + OVM_REFERENCE)
@@ -49,12 +49,12 @@ class ip4_tlm_spa_vars extends ovm_component;
     `ovm_field_sarray_object(ise, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE)
-    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
+///    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
   
   function new (string name, ovm_component parent);
     super.new(name, parent);
-    cancel = '{default : 0};
+///    cancel = '{default : 0};
   endfunction : new
 endclass : ip4_tlm_spa_vars
 
@@ -99,7 +99,7 @@ class ip4_tlm_spa extends ovm_component;
     vn.fmSPU = null;
     vn.fmRFM = null;
 
-    vn.cancel = '{default : 0};
+///    vn.cancel = '{default : 0};
     for(int i = STAGE_EXE_VWBP; i > 1; i--) begin
       vn.rfm[i] = v.rfm[i - 1];
       vn.dse[i] = v.dse[i - 1];
@@ -209,28 +209,28 @@ class ip4_tlm_spa extends ovm_component;
         vn.ise[1].exp = exeExp && !ise.noExp;
         vn.ise[1].tid = ise.tid;
         vn.rfm[1].tid = ise.tid;
-        vn.rfm[1].cancel = exeExp && !ise.noExp;
+///        vn.rfm[1].cancel = exeExp && !ise.noExp;
         exeExp = 0;
       end
     end
     
     ///log spa exp to cancel
-    if(v.ise[STAGE_EXE_VWBP] != null) begin
-      tr_spa2ise ise = v.ise[STAGE_EXE_VWBP];
-      vn.cancel[ise.tid] = ise.exp;
-    end
+///    if(v.ise[STAGE_EXE_VWBP] != null) begin
+///      tr_spa2ise ise = v.ise[STAGE_EXE_VWBP];
+///      vn.cancel[ise.tid] = ise.exp;
+///    end
         
     ///canceling from ise
-    if(v.fmISE[0] != null) begin
-      foreach(vn.cancel[i])
-        vn.cancel[i] |= v.fmISE[0].cancel[i];
-    end
-    
-    foreach(vn.rfm[i])
-      if(vn.rfm[i] != null && v.cancel[vn.rfm[i].fu[0].tid]) begin
-        vn.rfm[i] = null;
-        ovm_report_info("spa", $psprintf("canceling tid:%0d, at stage %0d", vn.rfm[i].fu[0].tid, i), OVM_HIGH);
-      end
+///    if(v.fmISE[0] != null) begin
+///      foreach(vn.cancel[i])
+///        vn.cancel[i] |= v.fmISE[0].cancel[i];
+///    end
+///    
+///    foreach(vn.rfm[i])
+///      if(vn.rfm[i] != null && v.cancel[vn.rfm[i].fu[0].tid]) begin
+///        vn.rfm[i] = null;
+///        ovm_report_info("spa", $psprintf("canceling tid:%0d, at stage %0d", vn.rfm[i].fu[0].tid, i), OVM_HIGH);
+///      end
   endfunction
   
   function void req_proc();
@@ -289,10 +289,10 @@ class ip4_tlm_spa extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    if(v.cancel[req.tid])
-      ovm_report_info("spa_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
-    else
-      vn.fmISE[0] = req;
+///    if(v.cancel[req.tid])
+///      ovm_report_info("spa_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
+///    else
+    vn.fmISE[0] = req;
     return 1;
   endfunction : nb_transport_ise
 

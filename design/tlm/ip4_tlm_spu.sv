@@ -327,6 +327,7 @@ class ip4_tlm_spu extends ovm_component;
       if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
       toISE.tid = tid;
       toISE.mscExp = 0;
+      toISE.vecMode = ise.vecMode;
       
       foreach(emsk[j,k]) 
         if(emsk[j][k] == 1 && j <= ise.vecMode) begin
@@ -410,7 +411,6 @@ class ip4_tlm_spu extends ovm_component;
             srMSCO[tid][j * NUM_SP + k] = 0;
         end
       endcase
-      
       
       if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
       toRFM.missBr = ise.brPred != toISE.brTaken;

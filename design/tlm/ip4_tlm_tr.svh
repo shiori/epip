@@ -415,7 +415,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   ise2spa_fu fu[NUM_FU];
   rand pr_merge_e prMerge;
   rand uchar subVec, vecMode, tid;
-  rand bit cancel[NUM_THREAD]; /// cancel is sync to vwb0 stage to fu & sfu
+///  rand bit cancel[NUM_THREAD]; /// cancel is sync to vwb0 stage to fu & sfu
   rand uchar bpRfDSEwp;
   rand rbk_sel_e bpRfDSE;
   rand round_mode_t rndMode;
@@ -427,7 +427,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 	  `ovm_field_int(subVec, OVM_ALL_ON)
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
+///	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(bpRfDSEwp, OVM_ALL_ON)
 	  `ovm_field_int(noExp, OVM_ALL_ON)
 	  `ovm_field_enum(rbk_sel_e, bpRfDSE, OVM_ALL_ON)
@@ -444,7 +444,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   constraint dist_vars{
     subVec dist {0:=5, 1:=5};
     vecMode < CYC_VEC; ///inside {[1:CYC_VEC]};
-    foreach(cancel[i]) cancel[i] dist {0:=19, 1:=1};
+///    foreach(cancel[i]) cancel[i] dist {0:=19, 1:=1};
     bpRfDSEwp < 2;
     bpRfDSE dist {selnull:=9, [selfu0:selfu0+NUM_FU]:=1};
   }
@@ -582,7 +582,7 @@ class tr_spu2ise extends ovm_sequence_item;
   rand word op0;
   rand bit srReq;
   rand opcode_e op;
-  rand uchar srAdr;
+  rand uchar srAdr, vecMode;
     
 	`ovm_object_utils_begin(tr_spu2ise)
 	  `ovm_field_int(brRsp, OVM_ALL_ON)
@@ -592,6 +592,7 @@ class tr_spu2ise extends ovm_sequence_item;
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(srReq, OVM_ALL_ON)
 	  `ovm_field_int(srAdr, OVM_ALL_ON)
+	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -712,9 +713,9 @@ endclass : tr_ise2spu
 class tr_spu2dse extends ovm_sequence_item;
   rand bit emsk[NUM_SP];
   rand word op0;
-  rand bit srReq;
+  rand bit srReq, expFu, missBr, expMSC;
   rand opcode_e op;
-  rand uchar tid, srAdr;
+  rand uchar tid, srAdr, vecMode;
   
 	`ovm_object_utils_begin(tr_spu2dse)
 	  `ovm_field_sarray_int(emsk, OVM_ALL_ON)
@@ -722,6 +723,10 @@ class tr_spu2dse extends ovm_sequence_item;
 	  `ovm_field_int(srReq, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(srAdr, OVM_ALL_ON)
+	  `ovm_field_int(expFu, OVM_ALL_ON)
+	  `ovm_field_int(missBr, OVM_ALL_ON)
+	  `ovm_field_int(expMSC, OVM_ALL_ON)
+	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -869,7 +874,7 @@ class tr_dse2ise extends ovm_sequence_item;
            exp,     ///the whole req has exception
            rdy,     ///one external access finished
            scl;
-  rand uchar tid, vidExp, pendExLoad, pendExStore;
+  rand uchar tid, vecMode, pendExLoad, pendExStore;
   rand cause_dse_t cause;
 ///  rand bit pendLoad, pendStore;
   
@@ -890,7 +895,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(scl, OVM_ALL_ON)
-	  `ovm_field_int(vidExp, OVM_ALL_ON)
+	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(pendExLoad, OVM_ALL_ON)
 	  `ovm_field_int(pendExStore, OVM_ALL_ON)
 ///	  `ovm_field_int(pendMemAcc, OVM_ALL_ON)

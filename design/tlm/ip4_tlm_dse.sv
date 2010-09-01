@@ -66,7 +66,8 @@ class sm_t;
 ///sel stage data struct
   bit sMemOpy,   ///occupy for onchip shared mem
       xhgOpy,    ///occupy for exchange network
-      exEn[WORD_BYTES];  ///ext enabled
+      exEn[WORD_BYTES],  ///ext enabled
+      ocEn[WORD_BYTES];  ///onchip enabled
   uint sMemAdr, sMemGrp;  ///on chip adr grp
   uchar sMemBk, sMemOs;
   wordu stData;
@@ -75,6 +76,7 @@ endclass
 class sp_t;
   bit exp, oc, ex;
   uchar slot;
+  ushort adr; ///bk + os
 endclass
 
 ///---------------------------------------main component----------------------------------------
@@ -92,7 +94,8 @@ class ip4_tlm_dse extends ovm_component;
   local uchar srCacheGrp;
   local uint srMapBase;
   local bit cacheGrpEn[NUM_SMEM_GRP];
-    
+  local bit[STAGE_RRF_DC:0] cancel[NUM_THREAD];
+  
   local sm_t smSel[LAT_XCHG][NUM_SMEM_BK],
              smDc[LAT_XCHG][NUM_SMEM_BK];
   local sp_t spDc[LAT_XCHG][NUM_SP];
@@ -144,6 +147,21 @@ class ip4_tlm_dse extends ovm_component;
     vn.fmEIF = null;
     vn.fmEIF = null;
 
+    foreach(cancel[i])
+      cancel[i] = cancel[i] >> 1;
+      
+    ///cancel from spa
+    if(v.fmSPA != null && v.fmSPA.cancel)
+      cancel[v.fmSPA.tid] |= `GML(STAGE_RRF_DC);
+
+    ///cancel from spu
+    if(v.fmSPU[0] != null) begin
+      if(v.fmSPU[0].missBr || v.fmSPU[0].expMSC)
+        cancel[v.fmSPU[0].tid] |= `GML(STAGE_RRF_DC);
+      if(v.fmSPU[0].expFu)
+        cancel[v.fmSPU[0].tid] |= `GML(STAGE_RRF_EPS - v.fmSPU[0].vecMode);
+    end
+    
 ///    for (int i = STAGE_RRF_SR0; i > STAGE_RRF_EXS2; i--)
 ///      vn.spu[i] = v.spu[i-1];
 ///    vn.spu[STAGE_RRF_EXS2] = null;
@@ -177,18 +195,24 @@ class ip4_tlm_dse extends ovm_component;
     iseTr[0] = null;
     spuTr[0] = null;
     
-    for(int i = LAT_XCHG; i > 0; i--) begin
-      spDc[i] = spDc[i - 1];
-      smDc[i] = smDc[i - 1];
+    if(v.fmISE[STAGE_RRF_DC] != null && v.fmISE[STAGE_RRF_DC].en) begin
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
+      if(spDc[0][0] == null || smDc[0][0] == null) begin
+        ovm_report_warning("dc", "previous data missing");
+      end
+      else begin
+        
+      end
     end
     
-    spDc[0] = '{default: null};
-    smDc[0] = '{default: null};
+    ///do pip shift after process
+    for(int i = 0; i < (LAT_XCHG - 1); i++) begin
+      spDc[i] = spDc[i + 1];
+      smDc[i] = smDc[i + 1];
+    end
     
-    if(v.fmSPA != null && v.fmSPA.cancel)
-      for(int i = 0; i < STAGE_RRF_DC; i++)
-        if(v.fmISE[i] != null &&  v.fmISE[i].tid == v.fmSPA.tid)
-          v.fmISE[i].en = 0;
+    spDc[LAT_XCHG - 1] = '{default: null};
+    smDc[LAT_XCHG - 1] = '{default: null};
                     
     if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
@@ -359,7 +383,15 @@ class ip4_tlm_dse extends ovm_component;
           smSel[slot][bk].sMemGrp = grp;
           smSel[slot][bk].sMemGrp = grp;
           smSel[slot][bk].sMemOs = os;
-///          selXhgCyc[sp] = slot;
+          if(ise.op inside {op_lbu, op_lb, op_sb})
+            smSel[slot][bk].ocEn[adr] = 1;
+          else if(ise.op inside {op_lhu, op_lh, op_sh}) begin
+            for(int j = 0; j < HALF_BYTES; j++)
+              smSel[slot][bk].ocEn[j] = 1;
+          end
+          else if(ise.op inside {op_lw, op_sw})
+            for(int j = 0; j < WORD_BYTES; j++)
+              smSel[slot][bk].ocEn[j] = 1;
           
 ///          case(ise.op)
 ///          op_lbu  : res = {'0, res.b[adr]};
@@ -376,16 +408,14 @@ class ip4_tlm_dse extends ovm_component;
         if(ex) begin
           wordu st = rfm.st[sp];
           if(ise.op inside {op_lbu, op_lb, op_sb})
-            smSel[grp][bk].exEn[ed ? adr : (WORD_BYTES - 1 - adr)] = 1;
+            smSel[slot][bk].exEn[ed ? adr : (WORD_BYTES - 1 - adr)] = 1;
           else if(ise.op inside {op_lhu, op_lh, op_sh}) begin
-            int adr2 = adr & `GMH(WID_HALF - 1);
-            adr2 = ed ? adr2 : (HALF_BYTES - adr2);
             for(int j = 0; j < HALF_BYTES; j++)
-              smSel[grp][bk].exEn[j] = 1;
+              smSel[slot][bk].exEn[j] = 1;
           end
           else if(ise.op inside {op_lw, op_sw})
             for(int j = 0; j < WORD_BYTES; j++)
-              smSel[grp][bk].exEn[j] = 1;
+              smSel[slot][bk].exEn[j] = 1;
               
           case(ise.op)
           op_sw   : 
@@ -401,11 +431,11 @@ class ip4_tlm_dse extends ovm_component;
             smSel[grp][bk].stData.b[ed ? adr : (WORD_BYTES - 1 - adr)] = st.b[adr];
           endcase
         end
-        spDc[0][sp] = new();
-        spDc[0][sp].exp = exp;
-        spDc[0][sp].oc = oc;
-        spDc[0][sp].ex = ex;
-        spDc[0][sp].slot = slot;
+        spDc[LAT_XCHG - 1][sp] = new();
+        spDc[LAT_XCHG - 1][sp].exp = exp;
+        spDc[LAT_XCHG - 1][sp].oc = oc;
+        spDc[LAT_XCHG - 1][sp].ex = ex;
+        spDc[LAT_XCHG - 1][sp].slot = slot;
       end
       
       ///finish one half wrap or whole request
@@ -414,8 +444,8 @@ class ip4_tlm_dse extends ovm_component;
         lvl = ise.vec ? lvl : (LAT_XCHG - 1);
         for(int i = lvl; i < LAT_XCHG; i++) begin
           smDc[i] = smSel[i - lvl];
-            for(int j = 0; j < NUM_SMEM_BK; j++)
-              smSel[i - lvl][j] = new();
+          for(int j = 0; j < NUM_SMEM_BK; j++)
+            smSel[i - lvl][j] = new();
         end
           
 ///        ///is ex?
@@ -539,7 +569,6 @@ class ip4_tlm_dse extends ovm_component;
       endcase
     end
     vn.rfm[STAGE_RRF_DEM] = rfmTr[LAT_XCHG - 1];
-
   endfunction
   
   function void req_proc();

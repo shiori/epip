@@ -12,7 +12,7 @@
 
 typedef enum uchar {
   exp_decode_err,   exp_priv_err,   exp_msc_err,
-  exp_ife_err,      exp_vfu_err,    exp_sfu_err
+  exp_ife_err,      exp_vfu_err,    exp_scl_err
 }ise_exp_t;
 
 class ip4_tlm_ise_vars extends ovm_component;
@@ -21,7 +21,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ife2ise fmIFE;
   tr_spa2ise fmSPA;
   tr_eif2ise fmEIF, pendEIF;
-  tr_dse2ise fmDSE[STAGE_ISE_VWBP:STAGE_ISE_DEM];
+  tr_dse2ise fmDSE;
   
   tr_ise2rfm rfm[STAGE_ISE:1];
   tr_ise2spa spa[STAGE_ISE:1];
@@ -29,7 +29,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ise2dse dse[STAGE_ISE:1];
   
   uchar TIdIssueLast, TIdFetchLast;
-  bit cancel[NUM_THREAD];
+///  bit cancel[NUM_THREAD];
   uint pcRst[STAGE_ISE_VWB_END:1], bpcRst[STAGE_ISE_VWB_END:1], igbRst[STAGE_ISE_VWB_END:1];
   bit privRst[STAGE_ISE_VWB_END:1];
 ///      pdLdRst[STAGE_ISE_VWB_END:1],
@@ -42,14 +42,14 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_object(fmIFE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(pendEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
-    `ovm_field_sarray_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+    `ovm_field_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_int(TIdIssueLast, OVM_ALL_ON)
     `ovm_field_int(TIdFetchLast, OVM_ALL_ON)
-    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
+///    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
     `ovm_field_sarray_int(pcRst, OVM_ALL_ON)
     `ovm_field_sarray_int(bpcRst, OVM_ALL_ON)
     `ovm_field_sarray_int(igbRst, OVM_ALL_ON)
@@ -551,6 +551,7 @@ class ip4_tlm_ise extends ovm_component;
             srTimerPend,  srSupMsgPend;
   local bit[1:0] srPerfCntPend;
   local tr_ise2eif toEIF;
+  local bit[STAGE_ISE_EXE:0] cancel[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -567,6 +568,7 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
     `ovm_field_int(srPBId, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(srExpBase, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function void restorePC(input uchar tid, uchar sel = 0, stage = 0, bit exp = 0, ejtag = 0);
@@ -600,9 +602,9 @@ class ip4_tlm_ise extends ovm_component;
     end
   endfunction
   
-  function void enter_exp(input uchar tid, ise_exp_t expType);
+  function void enter_exp(input uchar tid, ise_exp_t expType, uchar vecMode = 0);
     ise_thread_inf t = thread[tid];
-    uchar st = 0, sel = 1;
+    uchar st = 0, sel = 0;
     case(expType)
     exp_decode_err:
       t.srCauseSPU = EC_DECODE;
@@ -610,20 +612,29 @@ class ip4_tlm_ise extends ovm_component;
       t.srCauseSPU = EC_EXEPRIV;
     exp_msc_err:
     begin
+      if(cancel[tid][STAGE_ISE_CEM])
+        return;
+      sel = 1;
       t.srCauseSPU = EC_MSC;
       st = STAGE_ISE_CEM + t.vecMode;
+      cancel[tid] |= `GML(STAGE_ISE_CBR);
     end
     exp_ife_err:
       t.srCauseSPU = t.pendIFetchCause;
     exp_vfu_err:
     begin
       t.srCauseFu = 1;
+      sel = 1;
       st = STAGE_ISE_VWB + t.vecMode;
+      cancel[tid] |= `GML(STAGE_ISE_VWB);
     end
-    exp_sfu_err:
+    exp_scl_err:
     begin
+      if(cancel[tid][STAGE_ISE_SWBP])
+        return;
       t.srCauseSPU = EC_SCLFU;
-      st = LAT_ISE + STAGE_RRF_EXS2;
+      st = STAGE_ISE_EPS;
+      cancel[tid] |= `GML(STAGE_ISE_SWB + vecMode);
     end
     endcase
     restorePC(tid, sel, st, 1);
@@ -632,7 +643,7 @@ class ip4_tlm_ise extends ovm_component;
 
   function void resolve_br(input uchar tid, bit br);
     ise_thread_inf t = thread[tid];
-    if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self}) begin
+    if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self} && !cancel[tid][STAGE_RRF_CBR]) begin
       if(t.pendBr == 0)
         t.threadState = ts_rdy;
       ///miss prediction
@@ -642,11 +653,13 @@ class ip4_tlm_ise extends ovm_component;
         t.lpRndMemMode = 0;
         t.cancel = 1;
         t.brHistory = t.brHistory >> t.pendBr;
+        cancel[tid] |= `GML(STAGE_RRF_CBR);
       end
       if(t.pendBr > 0) t.pendBr--;
     end
     else begin
-      ovm_report_warning("resolve_br", "called with wrong threadState!");
+      if(!cancel[tid][STAGE_RRF_CBR])
+        ovm_report_warning("resolve_br", "called with wrong threadState!");
       t.pendBr = 0;
     end
   endfunction : resolve_br
@@ -1037,13 +1050,13 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null) end_tr(v.fmSPA);
     if(v.fmRFM != null) end_tr(v.fmRFM);
     if(v.fmIFE != null) end_tr(v.fmIFE);
-    if(v.fmDSE[STAGE_ISE_DEM] != null) end_tr(v.fmDSE[STAGE_ISE_DEM]);
+    if(v.fmDSE != null) end_tr(v.fmDSE);
     
     vn.fmSPU = null;
     vn.fmSPA = null;
     vn.fmRFM = null;
     vn.fmIFE = null;
-    vn.fmDSE[STAGE_ISE_DEM] = null;
+    vn.fmDSE = null;
     toEIF = null;
     
     for(int i = STAGE_ISE; i > 1; i--) begin
@@ -1068,10 +1081,13 @@ class ip4_tlm_ise extends ovm_component;
     vn.privRst[1] = v.privRst[1];
     vn.igbRst[1] = v.igbRst[1];
     
-    foreach(thread[i])
+    foreach(thread[i]) begin
+      cancel[i] = cancel[i] << 1;
+      cancel[i][0] = thread[i].cancel;
       thread[i].cyc_new();
+    end
     
-    vn.cancel = '{default : 0};
+///    vn.cancel = '{default : 0};
     
     for(int i = 0; i < (CYC_VEC - 1); i++) begin
       ciRFM[i] = ciRFM[i + 1];
@@ -1101,9 +1117,6 @@ class ip4_tlm_ise extends ovm_component;
     if(noSt > 0) noSt--;
     if(noSMsg > 0) noSMsg--;
     if(noRMsg > 0) noRMsg--;
-
-    for(int i = STAGE_ISE_VWBP; i > STAGE_ISE_DEM; i--)
-      vn.fmDSE[i] = v.fmDSE[i-1];  
     
     ///SR Requests
     if(v.fmSPU != null && v.fmSPU.srReq) begin
@@ -1116,9 +1129,9 @@ class ip4_tlm_ise extends ovm_component;
       tr_spu2ise spu = v.fmSPU;
       resolve_br(spu.tid, spu.brTaken);
       if(spu.sclExp)
-        enter_exp(spu.tid, exp_sfu_err);
+        enter_exp(spu.tid, exp_scl_err, spu.vecMode);
       if(spu.mscExp)
-        enter_exp(spu.tid, exp_msc_err);
+        enter_exp(spu.tid, exp_msc_err, spu.vecMode);
     end
     
     ///cancel condition 2, spa exp
@@ -1126,23 +1139,25 @@ class ip4_tlm_ise extends ovm_component;
       enter_exp(v.fmSPA.tid, exp_vfu_err);
     
     ///cancel condition 3 dse exp or cache miss
-    if(v.fmDSE[STAGE_ISE_DEM] != null && v.fmDSE[STAGE_ISE_DEM].rsp) begin
-      tr_dse2ise dse = v.fmDSE[STAGE_ISE_DEM];
+    if(v.fmDSE != null && v.fmDSE.rsp) begin
+      tr_dse2ise dse = v.fmDSE;
       uchar st = STAGE_ISE_DEM;
       ise_thread_inf t = thread[dse.tid];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
       if(dse.scl) st += t.vecMode;
-      if(dse.exp) begin
+      if(dse.exp && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.srCauseDSE = dse.cause;
         t.cancel = 1;  
         restorePC(dse.tid, 1,st, 1);
         t.flush();
+        cancel[dse.tid] |= `GML(STAGE_ISE_DEM + dse.vecMode);
       end
-      else if(dse.ext) begin
+      else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.cancel = 1;   
         restorePC(dse.tid, 1,st);
         t.flush();
+        cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
       end
     end
     
@@ -1187,19 +1202,19 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     ///cancel from one cycle delayed
-    if(v.fmIFE != null && v.cancel[v.fmIFE.tid]) begin
-      v.fmIFE = null;
-      ovm_report_info("cancel", "cancel IFE", OVM_HIGH);
-    end
+///    if(v.fmIFE != null && v.cancel[v.fmIFE.tid]) begin
+///      v.fmIFE = null;
+///      ovm_report_info("cancel", "cancel IFE", OVM_HIGH);
+///    end
     
     foreach(ciDSE[i]) begin
-      if(ciDSE[i] != null && v.cancel[ciDSE[i].tid])
+      if(ciDSE[i] != null && cancel[ciDSE[i].tid][0])
         ciDSE[i] = null;
-      if(ciRFM[i] != null && v.cancel[ciRFM[i].tid])
+      if(ciRFM[i] != null && cancel[ciRFM[i].tid][0])
         ciRFM[i] = null;
-      if(ciSPU[i] != null && v.cancel[ciSPU[i].tid])
+      if(ciSPU[i] != null && cancel[ciSPU[i].tid][0])
         ciSPU[i] = null;
-      if(ciSPA[i] != null && v.cancel[ciSPA[i].tid])
+      if(ciSPA[i] != null && cancel[ciSPA[i].tid][0])
         ciSPA[i] = null;
     end
 
@@ -1259,15 +1274,14 @@ class ip4_tlm_ise extends ovm_component;
       if(thread[i].cancel) begin
         if(toIFE == null) toIFE = tr_ise2ife::type_id::create("toIFE", this);
         toIFE.cancel[i] = 1;
-        vn.cancel[i] = 1;
       end
     
     ///send dse cancel to spa
-    if(v.fmDSE[STAGE_ISE_VWBP] != null && v.fmDSE[STAGE_ISE_VWBP].ext) begin
-      tr_dse2ise dse = v.fmDSE[STAGE_ISE_VWBP];
-      if(toSPA == null) toSPA = tr_ise2spa::type_id::create("toSPA", this);
-      toSPA.cancel[dse.tid] = 1;
-    end
+///    if(v.fmDSE[STAGE_ISE_VWBP] != null && v.fmDSE[STAGE_ISE_VWBP].ext) begin
+///      tr_dse2ise dse = v.fmDSE[STAGE_ISE_VWBP];
+///      if(toSPA == null) toSPA = tr_ise2spa::type_id::create("toSPA", this);
+///      toSPA.cancel[dse.tid] = 1;
+///    end
       
     ///------------req to other module----------------
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
@@ -1285,7 +1299,10 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     end_tr(req);
-    rsp = req;
+    if(cancel[req.tid][0])
+      ovm_report_info("ise_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
+    else
+      rsp = req;
     vn.fmIFE = req;
     return 1;
   endfunction : nb_transport_ife
@@ -1326,7 +1343,7 @@ class ip4_tlm_ise extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fmDSE[STAGE_ISE_DEM] = req;
+    vn.fmDSE = req;
     return 1;
   endfunction : nb_transport_dse
 
