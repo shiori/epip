@@ -95,7 +95,7 @@ class ip4_tlm_dse extends ovm_component;
     
   local bit selExRdy, selExp, selExpReq, selValidReq;
   local padr_t selExAdr;
-  local cause_dse_t expCause;
+  local cause_dse_t selCause;
 
   local uchar srCacheGrp;
   local uint srMapBase;
@@ -105,8 +105,9 @@ class ip4_tlm_dse extends ovm_component;
   local sm_t ck[LAT_XCHG][NUM_SMEM_BK],
              smi[STAGE_RRF_LXG:STAGE_RRF_SEL][NUM_SMEM_BK];
   local sp_t spi[STAGE_RRF_LXG:STAGE_RRF_SXG0][NUM_SP];
-  local padr_t spPAdr[STAGE_RRF_LXG:STAGE_RRF_DEM];
+  local padr_t exPAdr[STAGE_RRF_LXG:STAGE_RRF_DEM];
   local bit expReq[STAGE_RRF_LXG:STAGE_RRF_DEM];
+  local cause_dse_t expCause[STAGE_RRF_LXG:STAGE_RRF_DEM];
   
   local bit dcExRdy, dcExp, dcValid;
   local uchar dcQueId;
@@ -238,7 +239,7 @@ class ip4_tlm_dse extends ovm_component;
           if(!selExp && tlb.exp) begin
             selExp = 1;
             exp = 1;
-            expCause = tlb.cause;
+            selCause = tlb.cause;
             continue;
           end
           nc = tlb.c == 0;
@@ -260,7 +261,7 @@ class ip4_tlm_dse extends ovm_component;
         if((ise.op inside {ld_ops, op_fetadd} && padr[1:0] != 2'b0)
            || (ise.op inside {op_lh, op_sh, op_lhu, op_cmpxchg} && padr[0] != 1'b0)) begin
           if(!selExp) begin
-            expCause = EC_ADRALG;
+            selCause = EC_ADRALG;
             exp = 1;
             selExp = 1;
             continue;
@@ -334,7 +335,7 @@ class ip4_tlm_dse extends ovm_component;
         ///**shared mem
         else if(oc) begin
           if(padr >= smEnd) begin
-            if(!selExp) expCause = EC_SMBOND;
+            if(!selExp) selCause = EC_SMBOND;
             selExp = 1;
             exp = 1;
             continue;
@@ -357,15 +358,6 @@ class ip4_tlm_dse extends ovm_component;
           ck[slot][bk].sMemGrp = grp;
           ck[slot][bk].sMemOs = os;
           ck[slot][bk].ocEn = oc;
-///          if(ise.op inside {op_lbu, op_lb, op_sb})
-///            ck[slot][bk].ocEn[adr] = 1;
-///          else if(ise.op inside {op_lhu, op_lh, op_sh}) begin
-///            for(int j = 0; j < HALF_BYTES; j++)
-///              ck[slot][bk].ocEn[j] = 1;
-///          end
-///          else if(ise.op inside {op_lw, op_sw})
-///            for(int j = 0; j < WORD_BYTES; j++)
-///              ck[slot][bk].ocEn[j] = 1;
         end
         
         if(ex) begin
@@ -403,7 +395,8 @@ class ip4_tlm_dse extends ovm_component;
         spi[STAGE_RRF_SXG0][sp].slot = slot;
         selValidReq |= oc || ex;
       end
-      spPAdr[STAGE_RRF_DEM] = selExAdr;
+      exPAdr[STAGE_RRF_DEM] = selExAdr;
+      expCause[STAGE_RRF_DEM] = selCause;
       
       selExpReq |= selExp;
       
@@ -437,8 +430,9 @@ class ip4_tlm_dse extends ovm_component;
     ///do pip shift after sel stage
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_DEM; i--) begin
       spi[i] = spi[i - 1];
-      spPAdr[i] = spPAdr[i - 1];
+      exPAdr[i] = exPAdr[i - 1];
       expReq[i] = expReq[i - 1];
+      expCause[i] = expCause[i- 1];
     end
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_SEL; i--)
       smi[i] = smi[i - 1];
@@ -558,7 +552,7 @@ class ip4_tlm_dse extends ovm_component;
               queId = dcQueId;
             vn.eif[STAGE_RRF_LXG0].op = ise.op;
             vn.eif[STAGE_RRF_LXG0].req = 1;
-            vn.eif[STAGE_RRF_LXG0].pAdr = spPAdr[STAGE_RRF_DC];
+            vn.eif[STAGE_RRF_LXG0].pAdr = exPAdr[STAGE_RRF_DC];
             ldQue[queId].en = 1;
             ldQue[queId].grp = ise.wrGrp;
             ldQue[queId].bk = ise.wrBk;
@@ -641,6 +635,7 @@ class ip4_tlm_dse extends ovm_component;
         toTLB.op = ise.op;
         toTLB.tid = ise.tid;
         toTLB.req = 1;
+        toTLB.k = ise.priv;
         tlbReqVAdr[STAGE_RRF_TAG] = toTLB.vAdr;
       end
       
@@ -655,19 +650,34 @@ class ip4_tlm_dse extends ovm_component;
     toEIF = v.eif[STAGE_RRF_DPRW];
 
     if(v.fmISE[STAGE_RRF_DPRW] != null) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_AG];
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_DPRW];
       bit last = ((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
       if(expReq[STAGE_RRF_DPRW]) begin
         toEIF = null;
-        
-        if(last && toEIF != null) begin
+        if(last && toEIF != null && !cancel[STAGE_RRF_DPRW]) begin
           if(toEIF.op inside {ld_ops})
             ldQue[toEIF.id].en = 0;
           else if(toEIF.op inside {st_ops})
             stQue[toEIF.id].en = 0;
         end
       end
-      
+      if(last && !cancel[STAGE_RRF_DPRW]) begin
+        toISE = tr_dse2ise::type_id::create("toISE", this);
+        toISE.rsp = 1;
+        toISE.exp = expReq[STAGE_RRF_DPRW];
+        toISE.scl = ise.vec == 0;
+        toISE.tid = ise.tid;
+        toISE.vecMode = ise.vecMode;
+        toISE.pendExLoad = 0;
+        toISE.pendExStore = 0;
+        toISE.cause = expCause[STAGE_RRF_DPRW];
+        foreach(ldQue[i])
+          if(ldQue[i].en && ldQue[i].tid == ise.tid)
+            toISE.pendExLoad++;
+        foreach(stQue[i])
+          if(stQue[i].en && stQue[i].tid == ise.tid)
+            toISE.pendExStore++;
+      end
     end
     
     ///spu ops

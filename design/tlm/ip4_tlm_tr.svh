@@ -873,7 +873,7 @@ class tr_dse2ise extends ovm_sequence_item;
   rand bit rsp,     ///respond
            ext,     ///this req generate a external transaction
            exp,     ///the whole req has exception
-           rdy,     ///one external access finished
+///           rdy,     ///one external access finished
            scl;
   rand uchar tid, vecMode, pendExLoad, pendExStore;
   rand cause_dse_t cause;
@@ -886,14 +886,14 @@ class tr_dse2ise extends ovm_sequence_item;
   constraint valid_var {
     exp -> rsp;
     ext -> rsp;
-    rdy -> rsp;
+///    rdy -> rsp;
   }
   
 	`ovm_object_utils_begin(tr_dse2ise)
 	  `ovm_field_int(ext, OVM_ALL_ON)
 	  `ovm_field_int(rsp, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
-	  `ovm_field_int(rdy, OVM_ALL_ON)
+///	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(scl, OVM_ALL_ON)
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
@@ -1056,15 +1056,15 @@ class tr_dse2eif extends ovm_sequence_item;
 endclass : tr_dse2eif
 
 class tr_eif2dse extends ovm_sequence_item;
-  rand bit loadRsp, storeRsp;
-  rand uchar loadId, storeId;
+  rand bit loadRsp, storeRsp, last;
+  rand uchar id;
   rand word data[NUM_SMEM_BK];
   
   `ovm_object_utils_begin(tr_eif2dse)
     `ovm_field_int(loadRsp, OVM_ALL_ON)
     `ovm_field_int(storeRsp, OVM_ALL_ON)
-    `ovm_field_int(loadId, OVM_ALL_ON)
-    `ovm_field_int(storeId, OVM_ALL_ON)
+    `ovm_field_int(last, OVM_ALL_ON)
+    `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
   `ovm_object_utils_end
 
