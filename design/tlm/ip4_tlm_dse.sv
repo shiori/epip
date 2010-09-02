@@ -16,9 +16,9 @@ class ip4_tlm_dse_vars extends ovm_component;
   tr_rfm2dse fmRFM[STAGE_RRF_SEL:STAGE_RRF_AG];
   tr_spa2dse fmSPA;
   tr_tlb2dse fmTLB;
-  tr_eif2dse fmEIF;    /// external interfaces
+  tr_eif2dse fmEIF[STAGE_RRF_DC:STAGE_RRF_AG];    /// external interfaces
   
-  tr_dse2ise ise;
+///  tr_dse2ise ise;
 ///  tr_dse2spu spu[STAGE_RRF_SR0:STAGE_RRF_EXS2];
   tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_LXG0];
 ///  tr_dse2spa spa;
@@ -32,8 +32,8 @@ class ip4_tlm_dse_vars extends ovm_component;
      `ovm_field_sarray_object(fmRFM, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE)  
      `ovm_field_object(fmTLB, OVM_ALL_ON + OVM_REFERENCE)  
-     `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)  
-     `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
+     `ovm_field_sarray_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)  
+///     `ovm_field_object(ise, OVM_ALL_ON + OVM_REFERENCE)
 ///     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
      `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE)
@@ -50,18 +50,21 @@ endclass : ip4_tlm_dse_vars
 typedef struct{
   uchar xhg[LAT_XCHG][NUM_SP];
   bit wrEn[LAT_XCHG][NUM_SP], en;
-  uchar grp, adr, bk, tid, subVec;
+  uchar wrGrp, wrAdr, wrBk, tid, subVec;
   opcode_e op;
+  padr_t padr;
 }ldQue_t;
 
 typedef struct{
   uchar tid;
+  padr_t padr;
   bit en;
 }stQue_t;
 
 typedef struct{
   uint tagHi, tagLo[NUM_SMEM_GRP];
   bit tagV[NUM_SMEM_GRP], dirty[NUM_SMEM_GRP];
+  uchar lo;
 }cache_t;
 
 class sm_t;
@@ -78,7 +81,7 @@ endclass
 class sp_t;
   bit exp, oc, ex, re;
   uchar slot;
-  ushort adr; ///cl + bk + os
+  ushort xhg; ///cl + bk + os
 endclass
 
 ///---------------------------------------main component----------------------------------------
@@ -89,7 +92,9 @@ class ip4_tlm_dse extends ovm_component;
   local ip4_tlm_dse_vars v, vn;  
   local wordu sharedMem[NUM_SMEM_GRP][NUM_SMEM_GRP_W][NUM_SMEM_BK];
   local cache_t cache[NUM_DCHE_TAG][NUM_DCHE_ASO];
-
+  local uchar cacheSelHi[NUM_DCHE_TAG];
+  local bit cacheFlush[STAGE_RRF_LXG:STAGE_RRF_DEM];
+  
   local word tlbReqVAdr[STAGE_RRF_SEL:STAGE_RRF_TAG];
   local bit tlbRdy;
     
@@ -141,15 +146,14 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fmSPU[STAGE_RRF_AG] != null) end_tr(v.fmSPU[STAGE_RRF_AG]);
     if(v.fmSPA != null) end_tr(v.fmSPA);
     if(v.fmTLB != null) end_tr(v.fmTLB);
-    if(v.fmEIF != null) end_tr(v.fmEIF);
+    if(v.fmEIF[STAGE_RRF_AG] != null) end_tr(v.fmEIF[STAGE_RRF_AG]);
     
     vn.fmISE[STAGE_RRF_RRC0] = null;
     vn.fmRFM[STAGE_RRF_AG] = null;
     vn.fmSPU[STAGE_RRF_AG] = null;
+    vn.fmEIF[STAGE_RRF_AG] = null;
     vn.fmSPA = null;
     vn.fmTLB = null;
-    vn.fmEIF = null;
-    vn.fmEIF = null;
 
     foreach(cancel[i])
       cancel[i] = cancel[i] << 1;
@@ -173,6 +177,10 @@ class ip4_tlm_dse extends ovm_component;
       vn.fmISE[i] = v.fmISE[i - 1];
     vn.fmISE[0] = null;
 
+    for (int i = STAGE_RRF_DC; i > STAGE_RRF_AG; i--) 
+      vn.fmEIF[i] = v.fmEIF[i - 1];
+    vn.fmEIF[STAGE_RRF_AG] = null;
+    
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_AG; i--) begin
       vn.fmSPU[i] = v.fmSPU[i - 1];
       vn.fmRFM[i] = v.fmRFM[i - 1];
@@ -191,7 +199,7 @@ class ip4_tlm_dse extends ovm_component;
     vn.eif[STAGE_RRF_LXG0] = null;
     vn.spu[STAGE_RRF_LXG0] = null;
         
-    ///**sel stage
+    ///**sel stage, ise request
     if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
@@ -274,30 +282,36 @@ class ip4_tlm_dse extends ovm_component;
         
         ///----------------------start access----------------------------
         ///external mem
-        ///**cache address:   | taghi | taglo | idx | cl | bk | offset |
+        ///**cache address:   | tagHi | tagLo | idx | cl | bk | offset |
         if(ex) begin
           bit hit = 0;
           uint idx;
           
           ///chk cache for match
           if(!nc && cacheGrpEn[grp]) begin
-            uint taglo = padr >> (WID_WORD + WID_SMEM_BK + WID_DCH_CL + WID_DCH_IDX),
-                 taghi = taglo >> WID_DCHE_STAG;
-            taglo = taglo & `GML(WID_DCHE_STAG);
+            uint tagLo = padr >> (WID_WORD + WID_SMEM_BK + WID_DCH_CL + WID_DCH_IDX),
+                 tagHi = tagLo >> WID_DCH_STAG;
+            tagLo = tagLo & `GML(WID_DCH_STAG);
             idx = adr >> WID_DCH_IDX;
             
-            for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++)
-              for(int loTagIdx = 0; loTagIdx < NUM_SMEM_GRP; loTagIdx++)
+            for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++) begin
+              for(int loTagIdx = 0; loTagIdx < NUM_SMEM_GRP; loTagIdx++) begin
                 if(!dcRdy || dcIdx == idx) begin
                   dcRdy = 1;
                   dcIdx = idx;
-                  hit = cache[idx][hiTagIdx].tagV[loTagIdx] && cache[idx][hiTagIdx].tagHi == taghi && 
-                        cache[idx][hiTagIdx].tagLo[loTagIdx] == taglo;
+                  hit = cache[idx][hiTagIdx].tagV[loTagIdx] && cache[idx][hiTagIdx].tagHi == tagHi && 
+                        cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo;
                   dcRdy = 1;
                   dcIdx = idx;
-                  if(hit)
+                  if(hit) begin
                     grp = loTagIdx;
+                    break;
+                  end
                 end
+              end
+              if(hit)
+                adr = (adr & `GML(WID_SMEM_ADR - WID_DCHE_ASO)) | (hiTagIdx << (WID_SMEM_ADR - WID_DCHE_ASO));
+            end
           end
 
           ///cache hit
@@ -355,7 +369,6 @@ class ip4_tlm_dse extends ovm_component;
         if(oc) begin
           ck[slot][bk].sMemAdr = adr;
           ck[slot][bk].sMemGrp = grp;
-          ck[slot][bk].sMemGrp = grp;
           ck[slot][bk].sMemOs = os;
           ck[slot][bk].ocEn = oc;
         end
@@ -387,7 +400,7 @@ class ip4_tlm_dse extends ovm_component;
           endcase
         end
         spi[STAGE_RRF_SXG0][sp] = new();
-        spi[STAGE_RRF_SXG0][sp].adr = padr[sp] & `GML(WID_SMEM_BK + WID_WORD + WID_DCH_CL);
+        spi[STAGE_RRF_SXG0][sp].xhg = padr[sp] & `GML(WID_DCH_CL + WID_SMEM_BK + WID_WORD);
         spi[STAGE_RRF_SXG0][sp].exp = exp;
         spi[STAGE_RRF_SXG0][sp].oc = oc;
         spi[STAGE_RRF_SXG0][sp].ex = ex;
@@ -427,12 +440,106 @@ class ip4_tlm_dse extends ovm_component;
       end
     end
     
+    ///**sel stage, eif request
+    if(v.fmEIF[STAGE_RRF_SEL] != null) begin
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_SEL];
+      padr_t padr;
+      uint adr, tagLo, tagHi, idx;
+      bit hit = 0, hihit = 0, ehit = 0;
+      uchar hi = 0, grp = 0, hiAso = 0, eAso = 0, cyc = eif.cyc;
+
+      if(eif.loadRsp) begin
+        padr = ldQue[eif.id].padr;
+        for(int sp = 0; sp < NUM_SP; sp++) begin
+          spi[STAGE_RRF_SXG0][sp] = new();
+          spi[STAGE_RRF_SXG0][sp].xhg = ldQue[eif.id].xhg[eif.cyc][sp];
+          spi[STAGE_RRF_SXG0][sp].exp = 0;
+          spi[STAGE_RRF_SXG0][sp].oc = ldQue[eif.id].wrEn[eif.cyc][sp];
+          spi[STAGE_RRF_SXG0][sp].ex = 0;
+          spi[STAGE_RRF_SXG0][sp].re = 0;
+          spi[STAGE_RRF_SXG0][sp].slot = ldQue[eif.id].xhg[eif.cyc][sp] >> (WID_WORD + WID_SMEM_BK);
+        end
+      end
+      else if(eif.storeRsp)
+        padr = stQue[eif.id].padr;
+      else
+        ovm_report_warning("sel", "eif tr has no rsp!");
+
+      adr = padr & `GML(WID_SMEM_ADR);
+      tagLo = padr >> (WID_DCH_IDX);
+      tagHi = tagLo >> WID_DCH_STAG;
+      idx = adr >> WID_DCH_IDX;
+      tagLo = tagLo & `GML(WID_DCH_STAG);
+      
+      for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++) begin
+        bit empty = 1;
+        for(int loTagIdx = 0; loTagIdx < NUM_SMEM_GRP; loTagIdx++) begin
+          empty = empty && !cache[idx][hiTagIdx].tagV[loTagIdx];
+          if(cache[idx][hiTagIdx].tagV[loTagIdx] && cache[idx][hiTagIdx].tagHi == tagHi && 
+             cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo) begin
+            hit = 1;
+            hi = hiTagIdx;
+            grp = loTagIdx;
+          end
+          if(cache[idx][hiTagIdx].tagHi == tagHi) begin
+            hiAso = hiTagIdx;
+            hihit = 1;
+          end
+        end
+        if(empty)
+          eAso = hiTagIdx;
+      end
+      if(hit) begin
+        ///already have, discard this
+      end
+      else if(hihit) begin
+        for(grp = cache[idx][hiAso].lo; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP && !cache[idx][hiAso].tagV[grp]; grp++);
+        if(grp >= NUM_SMEM_GRP)
+          for(grp = cache[idx][hiAso].lo; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP; grp++);
+        cache[idx][hiAso].lo = grp;
+        hi = hiAso;
+      end
+      else if(ehit) begin
+        for(grp = 0; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP; grp++);
+        cache[idx][hiAso].lo = grp;
+        hi = eAso;
+      end
+      else begin
+        uchar hi;
+        hi = cacheSelHi[idx];
+        hi = (hi++) & `GML(WID_DCHE_ASO);
+        cacheSelHi[idx] = hi;
+        for(grp = cache[idx][hiAso].lo; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP && !cache[idx][hiAso].tagV[grp]; grp++);
+        cache[idx][hi].tagHi = tagHi;
+        cacheFlush[STAGE_RRF_DEM] = 1;
+      end
+      adr = (adr & `GML(WID_SMEM_ADR - WID_DCHE_ASO)) | (hi << (WID_SMEM_ADR - WID_DCHE_ASO));
+      cache[idx][hi].tagV[grp] = 1;
+      cache[idx][hi].tagLo[grp] = tagLo;
+      
+      for(int bk = 0; bk < NUM_SMEM_BK; bk++) begin
+        ck[cyc][bk].sMemAdr = adr;
+        ck[cyc][bk].sMemGrp = grp;
+        ck[cyc][bk].sMemOs = 0;
+        ck[cyc][bk].ocEn = 1;
+      end
+      if(eif.last) begin
+        for(int i = 0; i < LAT_XCHG; i++)
+          smi[STAGE_RRF_DEM + i] = ck[LAT_XCHG - 1 - i];
+        selExp = 0;
+        selExRdy = 0;
+        foreach(ck[i, j])
+          ck[i][j] = new();
+      end
+    end
+    
     ///do pip shift after sel stage
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_DEM; i--) begin
       spi[i] = spi[i - 1];
       exPAdr[i] = exPAdr[i - 1];
       expReq[i] = expReq[i - 1];
       expCause[i] = expCause[i- 1];
+      cacheFlush[i] = cacheFlush[i - 1];
     end
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_SEL; i--)
       smi[i] = smi[i - 1];
@@ -441,15 +548,30 @@ class ip4_tlm_dse extends ovm_component;
     smi[STAGE_RRF_SEL] = '{default: null};
         
     ///dc stage
-    if(v.fmISE[STAGE_RRF_DC] != null && v.fmISE[STAGE_RRF_DC].en && v.fmRFM[STAGE_RRF_DC] != null) begin
+///    if((v.fmISE[STAGE_RRF_DC] != null && v.fmISE[STAGE_RRF_DC].en && v.fmRFM[STAGE_RRF_DC] != null)
+///        || (v.fmEIF[STAGE_RRF_DC] != null)) begin
+    begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];
       wordu res[NUM_SMEM_BK];
-      bit exp = 0, ex = 0, oc = 0;
-      bit last = ((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
-      
+      bit exp = 0, ex = 0, oc = 0, last = 0, exRsp = 0;
+      if(ise != null && ise.en)
+        last = ((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      if(eif != null && (eif.loadRsp || eif.storeRsp)) begin
+        exRsp = 1;
+        last = eif.last;
+      end
+        
       if(spi[STAGE_RRF_DC][0] == null) begin
         ovm_report_warning("dc", "previous data missing");
+      end
+      else if(exRsp) begin
+        exp = 0;
+        ex = 0;
+        oc = 0;
+        dcExp = 0;
+        dcValid = 0;
       end
       else begin
         for(int i = 0; i < NUM_SP; i++) begin
@@ -460,7 +582,8 @@ class ip4_tlm_dse extends ovm_component;
         dcExp |= exp;
         dcValid |= oc || ex;
       end
-            
+      
+      ///shared memory write
       if(smi[STAGE_RRF_DC][0] == null) begin
         ovm_report_warning("dc", "previous data missing");
       end
@@ -470,9 +593,13 @@ class ip4_tlm_dse extends ovm_component;
                os = smi[STAGE_RRF_DC][bk].sMemOs,
                grp = smi[STAGE_RRF_DC][bk].sMemGrp;
           if(smi[STAGE_RRF_DC][bk].ocEn) begin
-            if(ise.op inside {ld_ops})
+            if(eif != null) begin
+              res[bk] = eif.data[bk];
+              sharedMem[grp][adr][bk] = eif.data[bk];
+            end
+            else if(ise != null && ise.op inside {ld_ops})
               res[bk] = sharedMem[grp][adr][bk];
-            else if(!cancel[ise.tid][STAGE_RRF_DC])
+            else if(ise != null && !cancel[ise.tid][STAGE_RRF_DC])
               case(ise.op)
               op_sb:    sharedMem[grp][adr][bk].b[os] = smi[STAGE_RRF_DC][bk].stData;
               op_sh:    sharedMem[grp][adr][bk].h[os >> (WID_HALF - 1)] = smi[STAGE_RRF_DC][bk].stData;
@@ -489,20 +616,22 @@ class ip4_tlm_dse extends ovm_component;
         ovm_report_warning("dc", "previous data missing");
       end
       else begin
-        for(int sp = 0; sp < NUM_SP; sp++) begin
-          vn.rfm[STAGE_RRF_LXG0].updateAdrRes[sp] = rfm.base[sp];
-          if(spi[STAGE_RRF_DC][sp].exp)
-            vn.spu[STAGE_RRF_LXG0].pres[sp] = 0;
-          else
-            vn.spu[STAGE_RRF_LXG0].pres[sp] = spi[STAGE_RRF_DC][sp].re;
+        if(rfm != null) begin
+          for(int sp = 0; sp < NUM_SP; sp++) begin
+            vn.rfm[STAGE_RRF_LXG0].updateAdrRes[sp] = rfm.base[sp];
+            if(spi[STAGE_RRF_DC][sp].exp)
+              vn.spu[STAGE_RRF_LXG0].pres[sp] = 0;
+            else
+              vn.spu[STAGE_RRF_LXG0].pres[sp] = spi[STAGE_RRF_DC][sp].re;
+          end
         end
-
+        
         if(ise.op inside {ld_ops}) begin
           for(int sp = 0; sp < NUM_SP; sp++) begin
             for(int slot = 0; slot < LAT_XCHG; slot++) begin
               uchar st = STAGE_RRF_LXG0 + slot;
-              uchar bk = spi[st][sp].adr >> WID_WORD & `GML(WID_SMEM_BK),
-                    os = spi[st][sp].adr & `GML(WID_WORD);
+              uchar bk = spi[st][sp].xhg >> WID_WORD & `GML(WID_SMEM_BK),
+                    os = spi[st][sp].xhg & `GML(WID_WORD);
               if(vn.rfm[st] == null) continue;
               if(spi[st][sp].slot != slot) continue;
               case(ise.op)
@@ -525,6 +654,7 @@ class ip4_tlm_dse extends ovm_component;
           vn.spu[STAGE_RRF_LXG0].wrEn = ise.updatePr;
         end
         
+        ///que eif fill
         if(ex) begin
           uchar cyc = ise.subVec & `GML(WID_DCH_CL),
                 queId = 0;
@@ -554,14 +684,16 @@ class ip4_tlm_dse extends ovm_component;
             vn.eif[STAGE_RRF_LXG0].req = 1;
             vn.eif[STAGE_RRF_LXG0].pAdr = exPAdr[STAGE_RRF_DC];
             ldQue[queId].en = 1;
-            ldQue[queId].grp = ise.wrGrp;
-            ldQue[queId].bk = ise.wrBk;
+            ldQue[queId].wrGrp = ise.wrGrp;
+            ldQue[queId].wrBk = ise.wrBk;
+            ldQue[queId].wrAdr = ise.wrAdr;
             ldQue[queId].tid = ise.tid;
             ldQue[queId].op = ise.op;
+            ldQue[queId].padr = exPAdr[STAGE_RRF_DC];
             
             for(int sp = 0; sp < NUM_SP; sp++) begin
               ldQue[queId].wrEn[cyc][sp] = spi[STAGE_RRF_DC][sp].oc;
-              ldQue[queId].xhg[cyc][sp] = spi[STAGE_RRF_DC][sp].adr;
+              ldQue[queId].xhg[cyc][sp] = spi[STAGE_RRF_DC][sp].xhg;
             end
             if(last)
               ldQue[queId].subVec = ise.subVec;
@@ -585,6 +717,7 @@ class ip4_tlm_dse extends ovm_component;
               queId = dcQueId;       
             stQue[queId].en = 1;
             stQue[queId].tid = ise.tid;
+            stQue[queId].padr = exPAdr[STAGE_RRF_DC];
             for(int bk = 0; bk < NUM_SMEM_BK; bk++)
               vn.eif[STAGE_RRF_LXG0].data[cyc][bk] = smi[STAGE_RRF_DC][bk].stData;
           end
@@ -775,7 +908,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    vn.fmEIF = req;
+    vn.fmEIF[STAGE_RRF_AG] = req;
     return 1;
   endfunction : nb_transport_eif
           
