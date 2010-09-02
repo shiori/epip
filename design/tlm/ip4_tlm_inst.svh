@@ -1101,6 +1101,7 @@ class inst_c extends ovm_object;
       dse.wrBk = bkWr[0];
       dse.updateAdrWrBk = (rdBkSel[0] >= selv0 && rdBkSel[0] <= selv_e) ? rdBkSel[0] - selv0 : 0;
       dse.updateAdrWr = mUpdateAdr != 0 ? 1 : 0;
+      dse.updatePr = mT == 1; ///todo
       dse.op = op;
     end
   endfunction : fill_dse

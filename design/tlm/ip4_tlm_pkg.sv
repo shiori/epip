@@ -155,7 +155,7 @@ ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  sel |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag |  sel | sxg0 | sxg1 | dc   |
-dse pr:   | rrf | rrc0 |  ag  |  tag |  sel | 0    |   1  |  2   | dprw |
+dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | dprw |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | exs4 | swbp |  swb |
 spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | asr  |

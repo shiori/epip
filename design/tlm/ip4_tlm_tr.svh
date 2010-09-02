@@ -831,7 +831,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, updateAdrWr, nonBlock;
+  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   rand uchar pbId;
@@ -847,6 +847,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(nonBlock, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWr, OVM_ALL_ON)
+	  `ovm_field_int(updatePr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(subVec, OVM_ALL_ON)
@@ -1038,7 +1039,7 @@ class tr_dse2eif extends ovm_sequence_item;
   rand uchar id;
   rand padr_t pAdr;
   rand word data[NUM_SMEM_BK];
-  rand bit wrEn[NUM_SMEM_BK];
+  rand bit[WORD_BYTES - 1:0] wrEn[NUM_SMEM_BK];
   
   `ovm_object_utils_begin(tr_dse2eif)
     `ovm_field_int(req, OVM_ALL_ON)
