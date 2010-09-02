@@ -514,8 +514,6 @@ class ip4_tlm_dse extends ovm_component;
         cacheFlush[STAGE_RRF_DEM] = 1;
       end
       adr = (adr & `GML(WID_SMEM_ADR - WID_DCHE_ASO)) | (hi << (WID_SMEM_ADR - WID_DCHE_ASO));
-      cache[idx][hi].tagV[grp] = 1;
-      cache[idx][hi].tagLo[grp] = tagLo;
       
       for(int bk = 0; bk < NUM_SMEM_BK; bk++) begin
         ck[cyc][bk].sMemAdr = adr;
@@ -524,6 +522,9 @@ class ip4_tlm_dse extends ovm_component;
         ck[cyc][bk].ocEn = 1;
       end
       if(eif.last) begin
+        exPAdr[STAGE_RRF_DEM] = padr;
+        cache[idx][hi].tagV[grp] = 1;
+        cache[idx][hi].tagLo[grp] = tagLo;
         for(int i = 0; i < LAT_XCHG; i++)
           smi[STAGE_RRF_DEM + i] = ck[LAT_XCHG - 1 - i];
         selExp = 0;
@@ -566,13 +567,6 @@ class ip4_tlm_dse extends ovm_component;
       if(spi[STAGE_RRF_DC][0] == null) begin
         ovm_report_warning("dc", "previous data missing");
       end
-      else if(exRsp) begin
-        exp = 0;
-        ex = 0;
-        oc = 0;
-        dcExp = 0;
-        dcValid = 0;
-      end
       else begin
         for(int i = 0; i < NUM_SP; i++) begin
           exp |= spi[STAGE_RRF_DC][i].exp;
@@ -583,7 +577,7 @@ class ip4_tlm_dse extends ovm_component;
         dcValid |= oc || ex;
       end
       
-      ///shared memory write
+      ///shared memory read write
       if(smi[STAGE_RRF_DC][0] == null) begin
         ovm_report_warning("dc", "previous data missing");
       end
@@ -616,7 +610,7 @@ class ip4_tlm_dse extends ovm_component;
         ovm_report_warning("dc", "previous data missing");
       end
       else begin
-        if(rfm != null) begin
+        if(rfm != null && !exRsp) begin
           for(int sp = 0; sp < NUM_SP; sp++) begin
             vn.rfm[STAGE_RRF_LXG0].updateAdrRes[sp] = rfm.base[sp];
             if(spi[STAGE_RRF_DC][sp].exp)
@@ -626,14 +620,14 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
         
-        if(ise.op inside {ld_ops}) begin
-          for(int sp = 0; sp < NUM_SP; sp++) begin
-            for(int slot = 0; slot < LAT_XCHG; slot++) begin
-              uchar st = STAGE_RRF_LXG0 + slot;
-              uchar bk = spi[st][sp].xhg >> WID_WORD & `GML(WID_SMEM_BK),
-                    os = spi[st][sp].xhg & `GML(WID_WORD);
-              if(vn.rfm[st] == null) continue;
-              if(spi[st][sp].slot != slot) continue;
+        for(int sp = 0; sp < NUM_SP; sp++) begin
+          for(int slot = 0; slot < LAT_XCHG; slot++) begin
+            uchar st = STAGE_RRF_LXG0 + slot;
+            uchar bk = spi[st][sp].xhg >> WID_WORD & `GML(WID_SMEM_BK),
+                  os = spi[st][sp].xhg & `GML(WID_WORD);
+            if(vn.rfm[st] == null) continue;
+            if(spi[st][sp].slot != slot) continue;
+            if(ise != null)
               case(ise.op)
               op_lw   : vn.rfm[STAGE_RRF_LXG0].res[sp] = res[bk];
               op_lbu  : vn.rfm[STAGE_RRF_LXG0].res[sp] = {'0, res[bk].b[os]};
@@ -641,11 +635,16 @@ class ip4_tlm_dse extends ovm_component;
               op_lhu  : vn.rfm[STAGE_RRF_LXG0].res[sp] = {'0, res[bk].h[os >> WID_HALF]};
               op_lh   : vn.rfm[STAGE_RRF_LXG0].res[sp] = {{WORD_BITS{res[bk].h[os >> WID_HALF].b[HALF_BYTES - 1][7]}}, res[bk].h[os >> WID_HALF]};
               endcase
-            end
-            vn.rfm[STAGE_RRF_LXG0].wrEn[sp] = spi[STAGE_RRF_DC][sp].oc;
+            if(exRsp)
+              vn.rfm[STAGE_RRF_LXG0].res[sp] = res[bk];
           end
+          vn.rfm[STAGE_RRF_LXG0].wrEn[sp] = spi[STAGE_RRF_DC][sp].oc;
+        end
+        
+        if(ise != null) begin
           vn.rfm[STAGE_RRF_LXG0].wrGrp = ise.wrGrp;
           vn.rfm[STAGE_RRF_LXG0].wrAdr = ise.wrAdr;
+          vn.rfm[STAGE_RRF_LXG0].wrBk = ise.wrBk;
           vn.rfm[STAGE_RRF_LXG0].updateAdrWrBk = ise.updateAdrWrBk;
           vn.rfm[STAGE_RRF_LXG0].updateAdrWrAdr = ise.updateAdrWrAdr;
           vn.rfm[STAGE_RRF_LXG0].updateAdrWrGrp = ise.updateAdrWrGrp;
@@ -654,8 +653,55 @@ class ip4_tlm_dse extends ovm_component;
           vn.spu[STAGE_RRF_LXG0].wrEn = ise.updatePr;
         end
         
-        ///que eif fill
-        if(ex) begin
+        if(exRsp) begin
+          vn.rfm[STAGE_RRF_LXG0].wrGrp = ldQue[eif.id].wrGrp;
+          vn.rfm[STAGE_RRF_LXG0].wrAdr = ldQue[eif.id].wrAdr;
+          vn.rfm[STAGE_RRF_LXG0].wrBk = ldQue[eif.id].wrBk;
+          vn.rfm[STAGE_RRF_LXG0].updateAdrWrBk = 0;
+          vn.rfm[STAGE_RRF_LXG0].updateAdrWrAdr = 0;
+          vn.rfm[STAGE_RRF_LXG0].updateAdrWrGrp = 0;
+          vn.rfm[STAGE_RRF_LXG0].subVec = ldQue[eif.id].subVec;
+        end
+        
+        ///cache flush stQue, eif fill
+        if(exRsp) begin
+          bit found = 0;
+          uchar queId = 0;
+          exp = 0;
+          ex = 0;
+          oc = 0;
+          dcExp = 0;
+          dcValid = 0;
+          foreach(ldQue[i])
+            if(!ldQue[i].en) begin
+              ldQue[i].en = 1;
+              queId = i;
+              found = 1;
+              break;
+            end
+          if(!found)
+            ovm_report_warning("dc", "ld queue overrun!");          
+          vn.eif[STAGE_RRF_LXG0].op = op_nop;
+          vn.eif[STAGE_RRF_LXG0].req = 1;
+          vn.eif[STAGE_RRF_LXG0].cacheFluash = 1;
+          vn.eif[STAGE_RRF_LXG0].pAdr = exPAdr[STAGE_RRF_DC];
+          stQue[queId].en = 1;
+          stQue[queId].tid = ise.tid;
+          stQue[queId].padr = exPAdr[STAGE_RRF_DC];
+          for(int bk = 0; bk < NUM_SMEM_BK; bk++) begin
+            uint adr = smi[STAGE_RRF_DC][bk].sMemAdr,
+                 grp = smi[STAGE_RRF_DC][bk].sMemGrp;
+            bit l = adr;
+            l = !l;
+            adr = adr & `GMH(1) + l;
+            vn.eif[STAGE_RRF_LXG0].data[eif.cyc][bk] = sharedMem[grp][adr][bk];
+          end
+          if(last) begin
+            
+          end
+        end
+        ///dse que eif fill
+        else if(ex) begin
           uchar cyc = ise.subVec & `GML(WID_DCH_CL),
                 queId = 0;
           if(vn.eif[STAGE_RRF_LXG0] == null) vn.eif[STAGE_RRF_LXG0] = tr_dse2eif::type_id::create("toSPU", this);
@@ -723,7 +769,7 @@ class ip4_tlm_dse extends ovm_component;
           end
           vn.eif[STAGE_RRF_LXG0].id = queId;
         end
-          
+        
         if(last) begin
           dcExp = 0;
           dcValid = 0;
