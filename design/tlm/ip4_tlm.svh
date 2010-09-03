@@ -3,6 +3,7 @@
 
 `define GML(i) ~(-1 << (i))
 `define GMH(i) (-1 << (i))
+`define SG(c, s0, s1) (s1 + c - s0)
 
 `define PF(NM, F)  printer.print_field(`"NM`", NM, $bits(NM), F);
 `define PAF1(NM, F) foreach(NM[i])      printer.print_field($psprintf(`"  NM[%0d]`",i), NM[i], $bits(NM[i]), F);

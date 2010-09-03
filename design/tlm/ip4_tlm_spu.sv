@@ -46,6 +46,8 @@ class ip4_tlm_spu extends ovm_component;
   local bit pr[NUM_THREAD][NUM_PR:1][CYC_VEC][NUM_SP];
   local bit[NUM_VEC - 1 : 0] srMSCO[NUM_THREAD],  srMSCU[NUM_THREAD];
   local bit prSPU[STAGE_RRF_SWBP:STAGE_RRF_EXS1];
+  local bit[STAGE_RRF_WSR:0] cancel[NUM_THREAD];
+  local bit expFu, expMSC, missBr;
   
   `ovm_component_utils_begin(ip4_tlm_spu)
   `ovm_component_utils_end
@@ -64,6 +66,27 @@ class ip4_tlm_spu extends ovm_component;
   
   function void comb_proc();
     ovm_report_info("spu", "comb_proc procing...", OVM_FULL); 
+    foreach(cancel[i])
+      cancel[i] = cancel[i] << 1;
+    
+    ///self cancel
+    if(v.fmISE[STAGE_RRF_EPS] != null && expFu)
+      cancel[v.fmISE[STAGE_RRF_EPS].tid] |= `GML(STAGE_RRF_EPS);
+    if(v.fmISE[STAGE_RRF_CBR] != null && (expMSC || missBr))
+      cancel[v.fmISE[STAGE_RRF_EPS].tid] |= `GML(STAGE_RRF_CBR);
+            
+    expFu = 0;
+    missBr = 0;
+    expMSC = 0;
+    
+    ///spa request canceling
+    if(v.fmSPA[STAGE_RRF_CEM] != null && v.fmSPA[STAGE_RRF_CEM].cancel)
+      cancel[v.fmSPA[STAGE_RRF_CEM].tid] |= `GML(STAGE_RRF_WSR);
+    
+    ///dse request canceling
+    if(v.fmDSE[STAGE_RRF_DEM] != null && v.fmDSE[STAGE_RRF_DEM].cancel)
+      cancel[v.fmDSE[STAGE_RRF_DEM].tidCancel] |= `GML(STAGE_RRF_WSR);    
+    
     for(int i = STAGE_RRF_VWB; i > 0; i--)
       vn.fmISE[i] = v.fmISE[i - 1];
       
@@ -227,6 +250,11 @@ class ip4_tlm_spu extends ovm_component;
         vn.rfm[STAGE_RRF_EXS1].srfWrBk   = ise.srfWrBk;
         vn.rfm[STAGE_RRF_EXS1].srfWrGrp  = ise.srfWrGrp;
         vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
+        expFu = exp;
+        if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
+        toISE.sclExp = exp;
+        toISE.vecModeSclExp = ise.vecMode;
+        toISE.tidSclExp = ise.tid;
       end
     end
 
@@ -247,8 +275,41 @@ class ip4_tlm_spu extends ovm_component;
       end
       
       ///redirect sr reqs
-      if(prSPU[STAGE_RRF_DSR] && ise.op inside {op_gp2s, op_s2gp, tlb_ops}) begin
-        if(ise.srAdr inside {tlbsr} || ise.op inside {tlb_ops}) begin
+      if(prSPU[STAGE_RRF_DSR] && ise.op == op_gp2s) begin
+        if(ise.srAdr inside {tlbsr}) begin
+          toTLB = tr_spu2tlb::type_id::create("toTLB", this);
+          toTLB.op0 = rfm.op0;
+          toTLB.s2gp = 1;
+          toTLB.req = 1;
+          toTLB.tid = ise.tid;
+          toTLB.srAdr = ise.srAdr;
+        end
+        else if(ise.srAdr inside {SR_OCMC, SR_MBASE}) begin
+          if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
+          toDSE.srReq = 1;
+          toDSE.s2gp = 1;
+          toDSE.op = ise.op;
+          toDSE.tid = ise.tid;
+          toDSE.srAdr = ise.srAdr;
+        end
+        else begin
+          if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
+          toISE.srReq = 1;
+          toISE.s2gp = 1;
+          toISE.op = ise.op;
+          toISE.tid = ise.tid;
+          toISE.srAdr = ise.srAdr;
+        end
+      end
+    end
+
+    if(v.fmISE[STAGE_RRF_WSR] != null && v.fmISE[STAGE_RRF_WSR] != null
+        && !cancel[v.fmISE[STAGE_RRF_WSR].tid][STAGE_RRF_WSR]) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_WSR];
+      tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_WSR];
+      
+      if(prSPU[STAGE_RRF_DSR] && ise.op inside {op_s2gp, tlb_ops}) begin
+        if(ise.srAdr inside {tlbsr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;
           toTLB.op = ise.op;
@@ -274,10 +335,10 @@ class ip4_tlm_spu extends ovm_component;
         end
       end
     end
-        
+            
     ///collect sr from dse & tlb
-    if(v.fmISE[STAGE_RRF_ASR] != null) begin
-      tr_ise2spu ise = v.fmISE[STAGE_RRF_ASR];
+    if(v.fmISE[STAGE_RRF_RSR] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_RSR];
       if(v.fmTLB != null && v.fmTLB.rsp) begin
         if(vn.rfm[STAGE_RRF_SWBP] == null)
           vn.rfm[STAGE_RRF_SWBP] = tr_spu2rfm::type_id::create("toRFM", this);
@@ -391,7 +452,7 @@ class ip4_tlm_spu extends ovm_component;
               msc[tid][j][k] = 0;
             if(top == 1 && msc[tid][j][k][WORD_BITS - 1] == 0) begin
               srMSCU[tid][j * NUM_SP + k] = 1;
-              toISE.mscExp = 1;
+              expMSC = 1;
             end
             else
               srMSCU[tid][j * NUM_SP + k] = 0;
@@ -405,30 +466,32 @@ class ip4_tlm_spu extends ovm_component;
           if(top == 1 && msc[tid][j][k][WORD_BITS - 1] == 0) begin
             srMSCO[tid][j * NUM_SP + k] = 1;
             msc[tid][j][k][WORD_BITS - 1] = 1;
-            toISE.mscExp = 1;
+            expMSC = 1;
           end
           else
             srMSCO[tid][j * NUM_SP + k] = 0;
         end
       endcase
       
+      missBr = ise.brPred != toISE.brTaken;
+      toISE.mscExp = expMSC;
       if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
       toRFM.missBr = ise.brPred != toISE.brTaken;
-      toRFM.expMSC = toISE.mscExp;
+      toRFM.expMSC = expMSC;
+      if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
+      toDSE.missBr = missBr;
+      toDSE.expMSC = toISE.mscExp;
+      toDSE.tidExpMSC = ise.tid;
     end
 
-    ///spa request canceling
-    if(v.fmSPA[STAGE_RRF_CEM] != null && v.fmSPA[STAGE_RRF_CEM].cancel)
-      for(int i = 0; i <= STAGE_RRF_DSR; i++)
-        if(v.fmISE[i] != null &&  v.fmISE[i].tid == v.fmSPA[STAGE_RRF_CEM].tid)
-          v.fmISE[i].enSPU = 0;
-          
     ///spu exp cancel
-    if(toRFM != null && (toRFM.missBr || toRFM.expMSC))
-      for(int i = 0; i <= STAGE_RRF_DSR; i++)
-        if(v.fmISE[i] != null &&  v.fmISE[i].tid == toRFM.tid)
-          v.fmISE[i].enSPU = 0;
-                
+///    if(toRFM != null) begin
+///      if(toRFM.missBr || toRFM.expMSC)
+///        selfCancel = STAGE_RRF_WSR;
+///      else if(toRFM.expFu)
+///        selfCancel = STAGE_RRF_EXS1;
+///    end
+    
     ///------------req to other module----------------
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));

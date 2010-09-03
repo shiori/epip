@@ -156,10 +156,10 @@ ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  sel |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag |  sel | sxg0 | sxg1 | dc   |
-dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | sel3 | dprw |
+dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | dprb | dprw |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | exs4 | swbp |  swb |
-spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | asr  |
+spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | rsr  |  wsr |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14        15
                                             0      1      2      3      4      5      6      7      8      9         10
@@ -184,7 +184,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_RRF_DPRW    = STAGE_RRF_SEL + CYC_VEC,        ///8
+                STAGE_RRF_DPRB    = STAGE_RRF_TAG + CYC_VEC,        ///7
+                STAGE_RRF_DPRW    = STAGE_RRF_DPRB + 1,             ///8
                 STAGE_RRF_SXG0    = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
@@ -193,7 +194,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_LXG     = STAGE_RRF_DC + LAT_XCHG,        ///9
                 STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///8
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///9
-                STAGE_RRF_ASR     = STAGE_RRF_SWBP - 1,             ///7
+                STAGE_RRF_RSR     = STAGE_RRF_SWBP - 1,             ///7
+                STAGE_RRF_WSR     = STAGE_RRF_DPRW,                 ///8
                 STAGE_RRF_DSR     = STAGE_RRF_SWBP - 2,             ///6
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
                 STAGE_RRF_VWB     = STAGE_RRF_VWBP + 1,             ///11
@@ -218,7 +220,9 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_DBR     = LAT_ISE + STAGE_RRF_DBR,        ///6
                 STAGE_ISE_CEM     = LAT_ISE + STAGE_RRF_CEM,        ///8
                 STAGE_ISE_CBR     = LAT_ISE + STAGE_RRF_CBR,        ///9
-                STAGE_ISE_EPS     = LAT_ISE + STAGE_RRF_EPS;       ///
+                STAGE_ISE_EPS     = LAT_ISE + STAGE_RRF_EPS,        ///
+                STAGE_ISE_RSR     = LAT_ISE + STAGE_RRF_RSR,        ///9
+                STAGE_ISE_WSR     = LAT_ISE + STAGE_RRF_WSR;        ///10
 
 parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
                 CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC;

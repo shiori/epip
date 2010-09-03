@@ -110,7 +110,7 @@ class ip4_tlm_rfm extends ovm_component;
     end
     
     if(v.fmDSE != null && v.fmDSE.exp)
-      cancel[v.fmSPA.tid] |= `GML(STAGE_RRF_DEM + v.fmDSE.vecMode);
+      cancel[v.fmSPA.tid] |= `GML(STAGE_RRF_DEM + v.fmDSE.vecModeExp);
   endfunction
   
   function void req_proc();

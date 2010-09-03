@@ -551,7 +551,7 @@ class ip4_tlm_ise extends ovm_component;
             srTimerPend,  srSupMsgPend;
   local bit[1:0] srPerfCntPend;
   local tr_ise2eif toEIF;
-  local bit[STAGE_ISE_EXE:0] cancel[NUM_THREAD];
+  local bit[STAGE_ISE_VWBP:0] cancel[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -643,22 +643,22 @@ class ip4_tlm_ise extends ovm_component;
 
   function void resolve_br(input uchar tid, bit br);
     ise_thread_inf t = thread[tid];
-    if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self} && !cancel[tid][STAGE_RRF_CBR]) begin
+    if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self} && !cancel[tid][STAGE_ISE_CBR]) begin
       if(t.pendBr == 0)
         t.threadState = ts_rdy;
       ///miss prediction
       if(br != t.brPred) begin
         t.flush();
-        restorePC(tid, 2, STAGE_RRF_CEM + t.vecMode);
+        restorePC(tid, 2, STAGE_ISE_CEM + t.vecMode);
         t.lpRndMemMode = 0;
         t.cancel = 1;
         t.brHistory = t.brHistory >> t.pendBr;
-        cancel[tid] |= `GML(STAGE_RRF_CBR);
+        cancel[tid] |= `GML(STAGE_ISE_CBR);
       end
       if(t.pendBr > 0) t.pendBr--;
     end
     else begin
-      if(!cancel[tid][STAGE_RRF_CBR])
+      if(!cancel[tid][STAGE_ISE_CBR])
         ovm_report_warning("resolve_br", "called with wrong threadState!");
       t.pendBr = 0;
     end
@@ -1118,10 +1118,19 @@ class ip4_tlm_ise extends ovm_component;
     if(noSMsg > 0) noSMsg--;
     if(noRMsg > 0) noRMsg--;
     
+///    for(int i = STAGE_ISE_WSR; i > STAGE_ISE_RSR; i--) 
+///      vn.fmSPU[i] = v.fmSPU[i - 1];
+///    vn.fmSPU[STAGE_ISE_RSR] = null;
+    
     ///SR Requests
     if(v.fmSPU != null && v.fmSPU.srReq) begin
-      if(ciSPU[0] != null) ciSPU[0] = tr_ise2spu::type_id::create("toSPU", this);
-      ciSPU[0].srRes = exe_ise(v.fmSPU.tid, v.fmSPU.op, v.fmSPU.op0, v.fmSPU.srAdr);
+      tr_spu2ise spu = v.fmSPU;
+      if(spu != null && spu.s2gp) begin
+        if(ciSPU[0] != null) ciSPU[0] = tr_ise2spu::type_id::create("toSPU", this);
+        ciSPU[0].srRes = exe_ise(spu.tid, spu.op, spu.op0, spu.srAdr);
+      end
+      if(spu.op != op_s2gp)
+        void'(exe_ise(spu.tid, spu.op, spu.op0, spu.srAdr));
     end
     
     ///cancel condition 1 branch mispredication, msc exp
@@ -1129,7 +1138,7 @@ class ip4_tlm_ise extends ovm_component;
       tr_spu2ise spu = v.fmSPU;
       resolve_br(spu.tid, spu.brTaken);
       if(spu.sclExp)
-        enter_exp(spu.tid, exp_scl_err, spu.vecMode);
+        enter_exp(spu.tidSclExp, exp_scl_err, spu.vecModeSclExp);
       if(spu.mscExp)
         enter_exp(spu.tid, exp_msc_err, spu.vecMode);
     end
@@ -1207,17 +1216,6 @@ class ip4_tlm_ise extends ovm_component;
 ///      ovm_report_info("cancel", "cancel IFE", OVM_HIGH);
 ///    end
     
-    foreach(ciDSE[i]) begin
-      if(ciDSE[i] != null && cancel[ciDSE[i].tid][0])
-        ciDSE[i] = null;
-      if(ciRFM[i] != null && cancel[ciRFM[i].tid][0])
-        ciRFM[i] = null;
-      if(ciSPU[i] != null && cancel[ciSPU[i].tid][0])
-        ciSPU[i] = null;
-      if(ciSPA[i] != null && cancel[ciSPA[i].tid][0])
-        ciSPA[i] = null;
-    end
-
     ///update ife data into thread
     if(v.fmIFE != null && v.fmIFE.instEn)
       thread[v.fmIFE.tid].update_inst(v.fmIFE.fetchGrp);
@@ -1250,7 +1248,29 @@ class ip4_tlm_ise extends ovm_component;
     vn.spa[1] = ciSPA[0];
     vn.spu[1] = ciSPU[0];
     vn.dse[1] = ciDSE[0];  
-        
+    
+    foreach(ciDSE[i]) begin
+      if(ciDSE[i] != null && cancel[ciDSE[i].tid][0])
+        ciDSE[i] = null;
+      if(ciRFM[i] != null && cancel[ciRFM[i].tid][0])
+        ciRFM[i] = null;
+      if(ciSPU[i] != null && cancel[ciSPU[i].tid][0])
+        ciSPU[i] = null;
+      if(ciSPA[i] != null && cancel[ciSPA[i].tid][0])
+        ciSPA[i] = null;
+    end
+
+    foreach(v.rfm[i]) begin
+      if(vn.dse[i] != null && cancel[vn.dse[i].tid][0])
+        vn.dse[i] = null;
+      if(vn.rfm[i] != null && cancel[vn.rfm[i].tid][0])
+        vn.rfm[i] = null;
+      if(vn.spu[i] != null && cancel[vn.spu[i].tid][0])
+        vn.spu[i] = null;
+      if(vn.spa[i] != null && cancel[vn.spa[i].tid][0])
+        vn.spa[i] = null;
+    end
+            
     toRFM = v.rfm[STAGE_ISE];
     toSPA = v.spa[STAGE_ISE];
     toSPU = v.spu[STAGE_ISE];
