@@ -117,8 +117,10 @@ class ip4_tlm_dse extends ovm_component;
   
   local ldQue_t ldQue[NUM_LDQUE];
   local stQue_t stQue[NUM_STQUE];
+  local uchar pbId;
   
   `ovm_component_utils_begin(ip4_tlm_dse)
+    `ovm_field_int(pbId, OVM_ALL_ON)
   `ovm_component_utils_end
       
   ovm_nonblocking_transport_imp_ise #(tr_ise2dse, tr_ise2dse, ip4_tlm_dse) ise_tr_imp;
@@ -214,7 +216,6 @@ class ip4_tlm_dse extends ovm_component;
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL];
       tr_tlb2dse tlb = v.fmTLB;
-      uchar pbId = ise.pbId;
       padr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
              smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
@@ -874,7 +875,7 @@ class ip4_tlm_dse extends ovm_component;
           if(stQue[i].en && stQue[i].tid == ise.tid)
             toISE.pendExStore++;
         if(expReq[STAGE_RRF_DPRW]) begin
-          if(toSPU == null) toSPU = tr_dse2eif::type_id::create("toSPU", this);
+          if(toSPU == null) toSPU = tr_dse2spu::type_id::create("toSPU", this);
           if(toRFM == null) toRFM = tr_dse2rfm::type_id::create("toRFM", this);
           toSPU.cancel = 1;
           toSPU.tidCancel = v.fmISE[STAGE_RRF_DPRW] == null ? 0 : v.fmISE[STAGE_RRF_DPRW].tid;

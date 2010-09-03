@@ -718,7 +718,6 @@ class ip4_tlm_ise extends ovm_component;
         foreach(thread[i])
           if(thread[i].threadState == ts_disabled && op0[i])
             thread[i].threadState = ts_rdy;
-        srPBId = op0[19:16];
         srDisableTimer = op0[25];
         srReducePower = op0[26];
         srTimerMask = op0[27];
@@ -898,7 +897,7 @@ class ip4_tlm_ise extends ovm_component;
         t.iSPU.fill_spu(ciSPU[i]);
         ciSPU[i].brDepSPA = brDepSPA;
         ciSPU[i].brDepDSE = brDepDSE;
-        ciSPU[i].tid = srPBId;
+        ciSPU[i].tid = tid;
         ciSPU[i].brPred = t.brPred;
       end
     end
@@ -916,7 +915,6 @@ class ip4_tlm_ise extends ovm_component;
         ciDSE[i].vecMode = t.vecMode;
         ciDSE[i].nonBlock = t.lpRndMemMode;
         ciDSE[i].tid = tid;
-        ciDSE[i].pbId = srPBId;
       end
     end
           
@@ -1441,7 +1439,6 @@ class ip4_tlm_ise extends ovm_component;
     cntSrfWr = '{default: 0};
     cntVrfWr = '{default: 0};
     srExpBase = CFG_START_ADR;
-    srPBId = 0;
     
     printer = new();
     printer.knobs.depth = 1;
