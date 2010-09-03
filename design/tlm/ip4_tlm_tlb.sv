@@ -243,8 +243,11 @@ class ip4_tlm_tlb extends ovm_component;
         toDSE.eobit = evenOddBit;
         toDSE.hit = find;
         toDSE.exp = exp;
-        toDSE.c = varC;
-        toDSE.e = varE;
+        toDSE.writeAlloc = (varC >> 2) & 'b01;
+        toDSE.writeThru = (varC >> 3) & 'b01;
+        toDSE.coherence = (varC >> 1) & 'b01;
+        toDSE.cached = varC & 'b01;
+        toDSE.endian = varE;
       end   
     end   
     
@@ -275,23 +278,23 @@ class ip4_tlm_tlb extends ovm_component;
           vn.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
           vn.srEntryHi[ASID_WIDTH-1:0] = v.asid[i];
           
-          vn.srEntryLo1[0] = v.g[i];
           vn.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2o[i];
-          vn.srEntryLo1[8] = v.ex[1][i];
-          vn.srEntryLo1[7:5] = v.c[1][i];
+          vn.srEntryLo1[9] = v.ex[1][i];
+          vn.srEntryLo1[8:5] = v.c[1][i];
           vn.srEntryLo1[4] = v.k[1][i];
           vn.srEntryLo1[3] = v.e[1][i];
           vn.srEntryLo1[2] = v.d[1][i];
           vn.srEntryLo1[1] = v.v[1][i];
-          
-          vn.srEntryLo0[0] = v.g[i];
+          vn.srEntryLo1[0] = v.g[i];
+                    
           vn.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2e[i];
-          vn.srEntryLo0[8] = v.ex[0][i];
-          vn.srEntryLo0[7:5] = v.c[0][i];
+          vn.srEntryLo0[9] = v.ex[0][i];
+          vn.srEntryLo0[8:5] = v.c[0][i];
           vn.srEntryLo0[4] = v.k[0][i];
           vn.srEntryLo0[3] = v.e[0][i];
           vn.srEntryLo0[2] = v.d[0][i];
           vn.srEntryLo0[1] = v.v[0][i];
+          vn.srEntryLo0[0] = v.g[i];
         end
      end   
      /// TLBWI

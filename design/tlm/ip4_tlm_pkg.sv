@@ -113,7 +113,7 @@ parameter uint  NUM_SP            = 8,
                 NUM_IFET_BYTES    = 16,
                 NUM_INST_VRF      = 32,
                 NUM_INST_SRF      = 16,
-                NUM_SMEM_BK       = NUM_SP,   /// register file bank number, default equal to NUM_SP
+///                NUM_SMEM_BK       = NUM_SP,   /// register file bank number, must be NUM_SP
                 NUM_SMEM_GRP      = 4,
                 NUM_SMEM_GRP_W    = 512,
                 NUM_DCHE_CL       = LAT_XCHG,
@@ -137,7 +137,7 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_TID         = n2w(NUM_THREAD),
                 WID_IFET        = n2w(NUM_IFET_BYTES),
                 WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
-                WID_SMEM_BK     = n2w(NUM_SMEM_BK),
+                WID_SMEM_BK     = n2w(NUM_SP),
                 WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
                 WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),
                 WID_DCH_CL      = n2w(NUM_DCHE_CL),
@@ -156,7 +156,7 @@ ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  sel |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag |  sel | sxg0 | sxg1 | dc   |
-dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | dprw |
+dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | sel3 | dprw |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | exs4 | swbp |  swb |
 spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | asr  |
@@ -184,7 +184,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_RRF_DPRW    = STAGE_RRF_TAG + CYC_VEC,        ///7
+                STAGE_RRF_DPRW    = STAGE_RRF_SEL + CYC_VEC,        ///8
                 STAGE_RRF_SXG0    = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
@@ -486,8 +486,8 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 ASID_WIDTH   = 8,
                 IFE_REQ_BUF  = 2,
                 VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
-                PFN_WIDTH    = 23,
-                PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///37
+                PFN_WIDTH    = 22,
+                PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///36
 
 typedef bit[PADR_WIDTH-1:0]     padr_t;
 
@@ -501,7 +501,7 @@ parameter uint VADR_MAPPED = 'h0000_0000,
                EJTG_OFFSET = 'h24_1000,
                EBUS_OFFSET = 'h24_2000;
                
-parameter uint SGRP_SIZE = NUM_SMEM_BK * NUM_SMEM_GRP_W * 4,
+parameter uint SGRP_SIZE = NUM_SP * NUM_SMEM_GRP_W * 4,
                SMEM_SIZE = SGRP_SIZE * NUM_SMEM_GRP,
                MSGE_SIZE = 256, /// 256BYTE
                CTLR_SIZE = 128, /// each control register of pb 128byte
