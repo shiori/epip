@@ -1103,8 +1103,8 @@ class tr_ise2eif extends ovm_sequence_item;
 endclass : tr_ise2eif
 
 class tr_eif2ise extends ovm_sequence_item;
-  rand uchar noLd, noSt, noSMsg, noRMsg;
-
+  rand uchar noLd, noSt, noSMsg, noRMsg, vecCnt, sclCnt;
+  
   constraint valid_var {
     noLd <= CYC_VEC;
     noSt <= CYC_VEC;
@@ -1117,6 +1117,8 @@ class tr_eif2ise extends ovm_sequence_item;
 	  `ovm_field_int(noSt, OVM_ALL_ON)
 	  `ovm_field_int(noSMsg, OVM_ALL_ON)
 	  `ovm_field_int(noRMsg, OVM_ALL_ON)
+	  `ovm_field_int(vecCnt, OVM_ALL_ON)
+	  `ovm_field_int(sclCnt, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2ise");

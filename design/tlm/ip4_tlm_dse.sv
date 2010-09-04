@@ -118,6 +118,7 @@ class ip4_tlm_dse extends ovm_component;
   local ldQue_t ldQue[NUM_LDQUE];
   local stQue_t stQue[NUM_STQUE];
   local uchar pbId;
+  local uchar statLds, statSts;
   
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
@@ -224,7 +225,7 @@ class ip4_tlm_dse extends ovm_component;
       bit ed = 0, wa = 0, wt = 0;
       bit last = ((ise.subVec + 1) & `GML(WID_DCH_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
       
-      exReq[STAGE_RRF_SEL] = 0;
+      exReq[STAGE_RRF_DEM] = 0;
       if(tlb == null) tlb = tlbCached;
       if(tlb != null) begin
         vAdrHi = tlbReqVAdr[STAGE_RRF_SEL] >> tlb.eobit;
@@ -889,13 +890,22 @@ class ip4_tlm_dse extends ovm_component;
       tr_ise2dse ise = v.fmISE[STAGE_RRF_LXG];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_LXG];
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
+      bit rfmReq = 0;
+      opcode_e op;
       
-      if((eif != null && eif.loadRsp) || (ise != null && exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG]
-         && !expReq[STAGE_RRF_LXG] && ise.op inside {ld_ops}))begin
-        opcode_e op;
-        if(vn.rfm[STAGE_RRF_LXG] == null) vn.rfm[STAGE_RRF_LXG] = tr_dse2rfm::type_id::create("toRFM", this);
+      if(eif != null && eif.loadRsp) begin
         if(v.eif[STAGE_RRF_LXG] != null)
           op = v.eif[STAGE_RRF_LXG].op;
+        rfmReq = 1;
+      end
+      else if(ise != null && exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG]
+         && !expReq[STAGE_RRF_LXG] && ise.op inside {ld_ops}) begin
+        rfmReq = 1;
+        op = ise.op;
+      end
+      
+      if(rfmReq) begin
+        if(vn.rfm[STAGE_RRF_LXG] == null) vn.rfm[STAGE_RRF_LXG] = tr_dse2rfm::type_id::create("toRFM", this);
         for(int sp = 0; sp < NUM_SP; sp++) begin
           uchar os = spi[STAGE_RRF_LXG][sp].xhg & `GML(WORD_BYTES);
           wordu res = dcXhgData[STAGE_RRF_LXG][sp];

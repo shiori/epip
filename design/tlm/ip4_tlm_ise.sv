@@ -545,7 +545,7 @@ class ip4_tlm_ise extends ovm_component;
   local ip4_tlm_ise_vars v, vn;
   local ise_thread_inf thread[NUM_THREAD];
   local ip4_printer printer;
-  local uchar srPBId;
+  local uchar pbId;
   local uint srExpBase;
   local bit srSupMsgMask, srPerfCntMask, srTimerMask, srReducePower, srDisableTimer,
             srTimerPend,  srSupMsgPend;
@@ -566,7 +566,7 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
-    `ovm_field_int(srPBId, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_int(pbId, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(srExpBase, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
@@ -753,7 +753,7 @@ class ip4_tlm_ise extends ovm_component;
       begin
         foreach(thread[i])
           res[i] = thread[i].threadState != ts_disabled;
-        res[19:16] = srPBId;
+        res[19:16] = pbId;
         res[23:20] = tid;
         res[25] = srDisableTimer;
         res[26] = srReducePower;
@@ -1185,7 +1185,11 @@ class ip4_tlm_ise extends ovm_component;
         noSt += eif.noSt;
         noSMsg += eif.noSMsg;
         noRMsg += eif.noRMsg;
-        vn.pendEIF = null;
+        foreach(cntVrfWr[i])
+          cntVrfWr[i] += eif.vecCnt;
+        foreach(cntSrfWr[i])
+          cntSrfWr[i] += eif.sclCnt;
+        vn.pendEIF = v.fmEIF;
         if(toEIF == null) toEIF = tr_ise2eif::type_id::create("toEIF", this);
           toEIF.rsp = 1;
       end
@@ -1202,7 +1206,7 @@ class ip4_tlm_ise extends ovm_component;
       ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(can_issue(tid)) begin
         ovm_report_info("issue", $psprintf("issuing thread %0d", tid), OVM_HIGH);
-        issue(tid, srPBId);
+        issue(tid, pbId);
         vn.TIdIssueLast = tid;
         break;
       end

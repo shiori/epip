@@ -142,9 +142,9 @@ class ip4_tlm_spu extends ovm_component;
     end
     
     ///write back dse predication register results
-    if(v.fmDSE[STAGE_RRF_DC] != null && v.fmISE[STAGE_RRF_DC] != null) begin
-      tr_ise2spu ise = v.fmISE[STAGE_RRF_DC];
-      tr_dse2spu dse = v.fmDSE[STAGE_RRF_DC];
+    if(v.fmDSE[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM] != null) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
+      tr_dse2spu dse = v.fmDSE[STAGE_RRF_CEM];
       ovm_report_info("spu", "write back dse pres", OVM_FULL);
       if(dse.wrEn)
         pr[ise.tid][ise.prWrAdr2][ise.subVec] = dse.pres;
