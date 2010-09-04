@@ -84,6 +84,7 @@ class ise_thread_inf extends ovm_component;
       cancel;
   uchar wCnt[NUM_W_CNT][6], wCntNext[7], wCntSel, vecMode;
   bit wCntDep[5];
+  bit[CYC_VEC - 1 : 0] noExt;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
@@ -915,6 +916,8 @@ class ip4_tlm_ise extends ovm_component;
         ciDSE[i].vecMode = t.vecMode;
         ciDSE[i].nonBlock = t.lpRndMemMode;
         ciDSE[i].tid = tid;
+        ciDSE[i].noExt = t.noExt[i];
+        t.noExt[i] = 0;
       end
     end
           
@@ -1162,8 +1165,15 @@ class ip4_tlm_ise extends ovm_component;
       end
       else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.cancel = 1;   
-        restorePC(dse.tid, 1,st);
+        restorePC(dse.tid, 1, st);
         t.flush();
+        cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
+      end
+      else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DEM]) begin
+        t.cancel = 1;   
+        restorePC(dse.tid, 0, st);
+        t.flush();
+        t.noExt = ~dse.reRun;
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
       end
     end

@@ -152,22 +152,23 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
 ise,ife:      | ife0 | ife1 | ise0 | ise1 | rrf |
 
                                            pipeline stages:
-                                            * scl                * dse                       * msc  * vec
+                                            * scl                       * dse                * msc  * vec
 exe:      | rrf | rrc0 | rrc1 | rrc2 | rrc3 | exe0 | exe1 | exe2 | exe3 | exe4 | vwbp | vwb  | vwb  | vwb  | vwb_end |
 load:     | rrf | rrc0 |  ag  |  tag |  sel |  ad0 | ad1  | dc   | lxg0 | lxg1 | 
 store:    | rrf | rrc0 |  ag  |  tag |  sel | sxg0 | sxg1 | dc   |
-dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | dprb | dprw |
+dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | sel3 | dprb | dprw |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | exs4 | swbp |  swb |
-spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | rsr  |  wsr |
+spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | rsr  |      | wsr  |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14        15
                                             0      1      2      3      4      5      6      7      8      9         10
                        0      1      2      3      4      5      6    
   */  
 parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
-                  
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU,    ///16 
+                CYC_DSE       = CYC_VEC / LAT_XCHG;   ///2
+                
 parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
                 STAGE_RRF_EXS0    = STAGE_RRF_RRC0 + 2,             ///3
@@ -184,8 +185,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_AG      = STAGE_RRF_RRC0 + LAT_RF,        ///2
                 STAGE_RRF_TAG     = STAGE_RRF_AG + 1,               ///3
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
-                STAGE_RRF_DPRB    = STAGE_RRF_TAG + CYC_VEC,        ///7
-                STAGE_RRF_DPRW    = STAGE_RRF_DPRB + 1,             ///8
+                STAGE_RRF_DPRB    = STAGE_RRF_SEL + CYC_VEC,        ///8
+                STAGE_RRF_DPRW    = STAGE_RRF_DPRB + 1,             ///9
                 STAGE_RRF_SXG0    = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5

@@ -1081,6 +1081,7 @@ class inst_c extends ovm_object;
       spu.prInvDSE = 0;
       spu.prWrAdr2 = prWrAdr[0];
       spu.enDSE = 1;
+      spu.sclDSE = !isVec;
     end
     else begin
       spu.enFu[fuid] = 1;
@@ -1103,6 +1104,7 @@ class inst_c extends ovm_object;
       dse.updateAdrWr = mUpdateAdr != 0 ? 1 : 0;
       dse.updatePr = mT == 1; ///todo
       dse.op = op;
+      dse.vec = isVec;
     end
   endfunction : fill_dse
 

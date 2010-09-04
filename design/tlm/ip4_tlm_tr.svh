@@ -620,6 +620,7 @@ class tr_ise2spu extends ovm_sequence_item;
            brDepSPA,
            enFu[NUM_FU],
            enDSE,
+           sclDSE,
            enSPU,
            brPred;
   
@@ -698,9 +699,10 @@ class tr_ise2spu extends ovm_sequence_item;
 		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(enDSE, OVM_ALL_ON + OVM_NOPRINT)
-		`ovm_field_int(enSPU, OVM_ALL_ON + OVM_NOPRINT)
-		`ovm_field_sarray_int(enFu, OVM_ALL_ON + OVM_NOPRINT)
+		`ovm_field_int(enDSE, OVM_ALL_ON)
+		`ovm_field_int(sclDSE, OVM_ALL_ON)
+		`ovm_field_int(enSPU, OVM_ALL_ON)
+		`ovm_field_sarray_int(enFu, OVM_ALL_ON)
 		`ovm_field_int(srAdr, OVM_ALL_ON)
 		`ovm_field_int(srRsp, OVM_ALL_ON)
 		`ovm_field_int(srRes, OVM_ALL_ON)
@@ -715,7 +717,7 @@ endclass : tr_ise2spu
 ///---------------------------trsaction dse_spu spu_dse------------------------
 
 class tr_spu2dse extends ovm_sequence_item;
-  rand bit emsk[NUM_SP];
+  rand bit emsk[NUM_SP], sclEn;
   rand word op0;
   rand bit srReq, expFu, missBr, expMSC, s2gp;
   rand opcode_e op;
@@ -723,6 +725,7 @@ class tr_spu2dse extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_spu2dse)
 	  `ovm_field_sarray_int(emsk, OVM_ALL_ON)
+	  `ovm_field_int(sclEn, OVM_ALL_ON)
 	  `ovm_field_int(op0, OVM_ALL_ON)
 	  `ovm_field_int(srReq, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
@@ -841,7 +844,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock;
+  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock, noExt;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   
@@ -854,6 +857,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(updateAdrWrGrp, OVM_ALL_ON)
 	  `ovm_field_int(priv, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
+	  `ovm_field_int(noExt, OVM_ALL_ON)
 	  `ovm_field_int(nonBlock, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWr, OVM_ALL_ON)
 	  `ovm_field_int(updatePr, OVM_ALL_ON)
@@ -885,6 +889,7 @@ class tr_dse2ise extends ovm_sequence_item;
            scl;
   rand uchar tid, vecMode, pendExLoad, pendExStore;
   rand cause_dse_t cause;
+  rand bit[CYC_VEC - 1 : 0] reRun;
 ///  rand bit pendLoad, pendStore;
   
   constraint dist_var {
@@ -901,6 +906,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(ext, OVM_ALL_ON)
 	  `ovm_field_int(rsp, OVM_ALL_ON)
 	  `ovm_field_int(exp, OVM_ALL_ON)
+	  `ovm_field_int(reRun, OVM_ALL_ON)
 ///	  `ovm_field_int(rdy, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_int(scl, OVM_ALL_ON)
@@ -1046,20 +1052,20 @@ endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
-  rand bit req, cacheFlush;
+  rand bit req, cacheFlush, cacheFill, sgl;
   rand opcode_e op;
   rand uchar id;
   rand padr_t pAdr;
   rand word data[NUM_SP];
   rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
-  rand bit writeAlloc;
   
   `ovm_object_utils_begin(tr_dse2eif)
     `ovm_field_int(req, OVM_ALL_ON)
+    `ovm_field_int(sgl, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(cacheFlush, OVM_ALL_ON)
-    `ovm_field_int(writeAlloc, OVM_ALL_ON)
+    `ovm_field_int(cacheFill, OVM_ALL_ON)
     `ovm_field_int(pAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
     `ovm_field_sarray_int(byteEn, OVM_ALL_ON)
@@ -1071,7 +1077,7 @@ class tr_dse2eif extends ovm_sequence_item;
 endclass : tr_dse2eif
 
 class tr_eif2dse extends ovm_sequence_item;
-  rand bit loadRsp, storeRsp, last;
+  rand bit loadRsp, storeRsp, last, alloc, noVecSt, noSglSt, noLd;
   rand uchar id, cyc;
   rand word data[NUM_SP];
   
@@ -1079,6 +1085,10 @@ class tr_eif2dse extends ovm_sequence_item;
     `ovm_field_int(loadRsp, OVM_ALL_ON)
     `ovm_field_int(storeRsp, OVM_ALL_ON)
     `ovm_field_int(last, OVM_ALL_ON)
+    `ovm_field_int(alloc, OVM_ALL_ON)
+    `ovm_field_int(noVecSt, OVM_ALL_ON)
+    `ovm_field_int(noSglSt, OVM_ALL_ON)
+    `ovm_field_int(noLd, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(cyc, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)

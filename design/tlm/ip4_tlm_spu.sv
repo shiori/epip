@@ -169,6 +169,12 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_RRC0] != null && v.fmISE[STAGE_RRF_RRC0].enDSE) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC0];
       toDSE = tr_spu2dse::type_id::create("toDSE", this);
+      
+      if(ise.sclDSE && ise.subVec == 0)
+        toDSE.emsk[0] = 1;
+      else
+        toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][ise.subVec];
+        
       foreach(toDSE.emsk[i]) begin
         if(ise.prInvDSE)
           toDSE.emsk[i] = !toDSE.emsk[i];
@@ -178,6 +184,26 @@ class ip4_tlm_spu extends ovm_component;
       toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][ise.subVec];
     end
     
+    ///scalar dse enable
+    if(v.fmISE[STAGE_RRF_RRC] != null && v.fmISE[STAGE_RRF_RRC].enDSE) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC];
+      bit res = 0;
+      if(toDSE) toDSE = tr_spu2dse::type_id::create("toDSE", this);
+      if(ise.sclDSE) begin
+        for(int subVec = 0; subVec <= ise.vecMode; subVec++) begin
+          bit tmp[NUM_SP];
+          tmp = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][subVec];
+          foreach(tmp[i]) begin
+            if(ise.prInvDSE)
+              res |= !tmp[i];
+            if(!ise.prNMskDSE)
+              toDSE.emsk[i] = tmp[i] && ilm[ise.tid][subVec][i] && cm[ise.tid][subVec][i];
+          end
+        end
+      end
+      toDSE.sclEn = res;
+    end
+        
     ///processing normal spu instructions
     if(v.fmISE[STAGE_RRF_EXS0] != null && v.fmISE[STAGE_RRF_EXS0].enSPU) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS0];
@@ -317,14 +343,6 @@ class ip4_tlm_spu extends ovm_component;
           toTLB.tid = ise.tid;
           toTLB.srAdr = ise.srAdr;
         end
-        else if(ise.srAdr inside {SR_OCMC, SR_MBASE}) begin
-          if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
-          toDSE.srReq = 1;
-          toDSE.op0 = rfm.op0;
-          toDSE.op = ise.op;
-          toDSE.tid = ise.tid;
-          toDSE.srAdr = ise.srAdr;
-        end
         else begin
           if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
           toISE.srReq = 1;
@@ -332,6 +350,15 @@ class ip4_tlm_spu extends ovm_component;
           toISE.op = ise.op;
           toISE.tid = ise.tid;
           toISE.srAdr = ise.srAdr;
+        end
+        
+        if(ise.srAdr inside {SR_OCMC, SR_MBASE} && ise.op inside {op_s2gp, tlb_ops}) begin
+          if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
+          toDSE.srReq = 1;
+          toDSE.op0 = rfm.op0;
+          toDSE.op = ise.op;
+          toDSE.tid = ise.tid;
+          toDSE.srAdr = ise.srAdr;
         end
       end
     end
