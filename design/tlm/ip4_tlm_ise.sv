@@ -20,7 +20,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_rfm2ise fmRFM;
   tr_ife2ise fmIFE;
   tr_spa2ise fmSPA;
-  tr_eif2ise fmEIF, pendEIF;
+  tr_eif2ise fmEIF;
   tr_dse2ise fmDSE;
   
   tr_ise2rfm rfm[STAGE_ISE:1];
@@ -41,7 +41,7 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_object(fmRFM, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmIFE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
-    `ovm_field_object(pendEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
+///    `ovm_field_object(pendEIF, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -528,6 +528,7 @@ class ip4_tlm_ise extends ovm_component;
   local tr_ise2spa ciSPA[CYC_VEC];
   local tr_ise2spu ciSPU[CYC_VEC];
   local tr_ise2dse ciDSE[CYC_VEC];
+  local tr_eif2ise pendEIF[$];
   
   ovm_nonblocking_transport_imp_spu #(tr_spu2ise, tr_spu2ise, ip4_tlm_ise) spu_tr_imp;
   ovm_nonblocking_transport_imp_spa #(tr_spa2ise, tr_spa2ise, ip4_tlm_ise) spa_tr_imp;
@@ -1182,15 +1183,15 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null)
       noFu = v.fmSPA.noFu;
       
-    if(v.pendEIF != null || v.fmEIF != null) begin
-      tr_eif2ise eif;
-      if(v.pendEIF != null) begin
-        eif = v.pendEIF;
-        vn.pendEIF = null;
-      end
-      else
-        eif = v.fmEIF;
+    if(pendEIF.size() > 0 || v.fmEIF != null) begin
       if(ciDSE[0] == null || !ciDSE[0].en) begin
+        tr_eif2ise eif;
+        if(pendEIF.size() > 0)
+          eif = pendEIF.pop_front();
+          if(v.fmEIF != null)
+            pendEIF.push_back(v.fmEIF);
+        else
+          eif = v.fmEIF;
         noLd += eif.noLd;
         noSt += eif.noSt;
         noSMsg += eif.noSMsg;
@@ -1199,12 +1200,11 @@ class ip4_tlm_ise extends ovm_component;
           cntVrfWr[i] += eif.vecCnt;
         foreach(cntSrfWr[i])
           cntSrfWr[i] += eif.sclCnt;
-        vn.pendEIF = v.fmEIF;
         if(toEIF == null) toEIF = tr_ise2eif::type_id::create("toEIF", this);
           toEIF.rsp = 1;
       end
-      else
-        vn.pendEIF = eif;
+      else if(v.fmEIF != null)
+        pendEIF.push_back(v.fmEIF);
     end
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch

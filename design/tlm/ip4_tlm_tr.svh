@@ -1054,7 +1054,7 @@ endclass : tr_tlb2ife
 class tr_dse2eif extends ovm_sequence_item;
   rand bit req, cacheFlush, cacheFill, sgl;
   rand opcode_e op;
-  rand uchar id;
+  rand uchar id, cyc;
   rand padr_t pAdr;
   rand word data[NUM_SP];
   rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
@@ -1064,6 +1064,7 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_int(sgl, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
+    `ovm_field_int(cyc, OVM_ALL_ON)
     `ovm_field_int(cacheFlush, OVM_ALL_ON)
     `ovm_field_int(cacheFill, OVM_ALL_ON)
     `ovm_field_int(pAdr, OVM_ALL_ON)

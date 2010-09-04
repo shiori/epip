@@ -94,7 +94,8 @@ parameter uchar LAT_MAC           = 5,
                 LAT_IFE           = 2,
                 LAT_DC            = 1,
                 LAT_XCHG          = 2,
-                LAT_DWBP          = 1;    ///dse writeback bypass time
+                LAT_DWBP          = 1,    ///dse writeback bypass time
+                LAT_EXM           = 100;  ///external memory latency
                 
 parameter uint  NUM_SP            = 8,
                 NUM_VEC           = 32,
@@ -140,10 +141,10 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_SMEM_BK     = n2w(NUM_SP),
                 WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
                 WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),
-                WID_DCH_CL      = n2w(NUM_DCHE_CL),
-                WID_DCH_IDX     = n2w(NUM_DCHE_TAG),
+                WID_DCHE_CL     = n2w(NUM_DCHE_CL),
+                WID_DCHE_IDX    = n2w(NUM_DCHE_TAG),
                 WID_DCHE_ASO    = n2w(NUM_DCHE_ASO),
-                WID_DCH_STAG    = 2;
+                WID_DCHE_STAG   = 2;
 ///                WID_BURST      = n2w(NUM_BURST_LEN),
 ///                WID_STBUFL     = n2w(NUM_STBUF_LINE);
 
@@ -226,7 +227,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_WSR     = LAT_ISE + STAGE_RRF_WSR;        ///10
 
 parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
-                CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC;
+                CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC,
+                CYC_EIF_ISE_DSE   = STAGE_RRF_AG;
                 
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
