@@ -429,7 +429,7 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   op_sll:   foreach(r0[i]) r0[i] = o[0][i] << o[1][i];
   op_ror:   foreach(r0[i]) {r1[i], r0[i]} = {o[0][i], o[0][i]} >> o[1][i];
   op_lid:   foreach(r0[i]) r0[i] = o[0][i] + i + subVec;
-  op_shf4:  foreach(r0[i]) r0[i] = op0[op1[i][2:0]];
+  op_shf4a:  foreach(r0[i]) r0[i] = op0[op1[i][2:0]];
   op_max:   foreach(r0[i]) r0[i] = op0[i] > op1[i] ? op0[i] : op1[i];
   op_min:   foreach(r0[i]) r0[i] = op0[i] > op1[i] ? op1[i] : op0[i];
   op_umax:  foreach(r0[i]) r0[i] = o[0][i] > o[1][i] ? o[0][i] : o[1][i];

@@ -451,6 +451,8 @@ class inst_c extends ovm_object;
     else if(adr inside {[12:14]}) begin
       sel = rbk_sel_e'(selfu0 + adr - 12);
     end
+    else
+      sel = selb0;
   endfunction : set_rf_en
   
 	function void decode();
@@ -731,8 +733,24 @@ class inst_c extends ovm_object;
       adrRMsg[0] = inst.i.b.rmsg.rd & `GMH(1);
       adrRMsg[1] = adrRMsg[0] + 1;
       prWrAdr[0] = inst.i.p;
-      prWrEn[0] = prWrAdr[0] == 0;
+      prWrEn[0] = prWrAdr[0] != 0;
     end    
+    else if(inst.i.op == iop_vxchg) begin
+      if(inst.i.b.vxchg.t) begin
+      op = inst.i.b.vxchg.s ? op_pera : op_perb;
+      set_rf_en(inst.i.b.vxchg.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+      end
+      else begin
+        op = inst.i.b.vxchg.s ? op_shf4a : op_shf4b;
+        imm = inst.i.b.vxchg.fun;
+        rdBkSel[1] = selii;
+      end
+      set_rf_en(inst.i.b.vxchg.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+      adrWr[0] = inst.i.b.vxchg.rd;
+      wrEn[0] = 1;
+      prWrAdr[0] = inst.i.p;
+      prWrEn[0] = prWrAdr[0] != 0 && inst.i.b.vxchg.up;
+    end 
     else if(inst.i.op == iop_cop) begin
       imm = inst.i.b.cop.code;
       case(inst.i.b.cop.fun)

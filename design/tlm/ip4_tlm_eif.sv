@@ -60,9 +60,9 @@ class ip4_tlm_eif extends ovm_component;
   function void comb_proc();
     
     ovm_report_info("EIF", "comb_proc procing...", OVM_FULL); 
-    for(int i = LAT_EXM - 1; i > 0; i++)
+    for(int i = LAT_EXM - 1; i > 0; i--)
       vn.fmDSE[i] = v.fmDSE[i - 1];
-    for(int i = STAGE_ISE_DC; i > 0; i++)
+    for(int i = STAGE_ISE_DC; i > 0; i--)
       vn.dse[i] = v.dse[i - 1];
     vn.dse[0] = null;
             

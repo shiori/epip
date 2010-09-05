@@ -167,8 +167,7 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
                        0      1      2      3      4      5      6    
   */  
 parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU,    ///16 
-                CYC_DSE       = CYC_VEC / LAT_XCHG;   ///2
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
                 
 parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
@@ -189,6 +188,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_DPRB    = STAGE_RRF_SEL + CYC_VEC,        ///8
                 STAGE_RRF_DPRW    = STAGE_RRF_DPRB + 1,             ///9
                 STAGE_RRF_SXG0    = STAGE_RRF_SEL + 1,              ///5
+                STAGE_RRF_SXG     = STAGE_RRF_SEL + LAT_XCHG,       ///6
                 STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
                 STAGE_RRF_DC      = STAGE_RRF_DEM + LAT_XCHG,       ///7
@@ -339,7 +339,7 @@ typedef enum uchar {
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
   ///dse opcodes
-  op_pera,    op_perb,    op_shf4,
+  op_pera,    op_perb,    op_shf4a,   op_shf4b,
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
@@ -403,7 +403,7 @@ parameter opcode_e sfu_ops[] = '{
 };
 
 parameter opcode_e dse_ops[] = '{
-  op_pera,    op_perb,    op_shf4, 
+  op_pera,    op_perb,    op_shf4a,   op_shf4b,
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
