@@ -216,6 +216,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_SWBP    = LAT_ISE + STAGE_RRF_SWBP,       ///10
                 STAGE_ISE_SWB     = LAT_ISE + STAGE_RRF_SWB,        ///11
                 STAGE_ISE_CMP     = LAT_ISE + STAGE_RRF_CMP,        ///7
+                STAGE_ISE_RRC0    = LAT_ISE + STAGE_RRF_RRC0,
+                STAGE_ISE_DC      = LAT_ISE + STAGE_RRF_DC,
                 STAGE_ISE_VWB     = STAGE_ISE_VWBP + 1,             ///16
                 STAGE_ISE_VWB_END = STAGE_ISE_VWBP + CYC_VEC,       ///16
                 STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM,        ///5
@@ -227,8 +229,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_WSR     = LAT_ISE + STAGE_RRF_WSR;        ///10
 
 parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
-                CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC,
-                CYC_EIF_ISE_DSE   = STAGE_RRF_AG;
+                CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC;
                 
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
@@ -496,7 +497,8 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 PFN_WIDTH    = 22,
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///36
 
-typedef bit[PADR_WIDTH-1:0]     padr_t;
+typedef bit[PADR_WIDTH - 1:0]     padr_t;
+typedef bit[PADR_WIDTH - WORD_BYTES - WID_SMEM_BK - 1:0] exadr_t;
 
 parameter uint VADR_MAPPED = 'h0000_0000,
                VADR_NMAPNC = 'hF000_0000,

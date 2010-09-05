@@ -1052,22 +1052,23 @@ endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
-  rand bit req, cacheFlush, cacheFill, sgl;
+  rand bit req, cacheFlush, cacheFill, sgl, last;
   rand opcode_e op;
   rand uchar id, cyc;
-  rand padr_t pAdr;
+  rand exadr_t exAdr;
   rand word data[NUM_SP];
   rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
   
   `ovm_object_utils_begin(tr_dse2eif)
     `ovm_field_int(req, OVM_ALL_ON)
     `ovm_field_int(sgl, OVM_ALL_ON)
+    `ovm_field_int(last, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(cyc, OVM_ALL_ON)
     `ovm_field_int(cacheFlush, OVM_ALL_ON)
     `ovm_field_int(cacheFill, OVM_ALL_ON)
-    `ovm_field_int(pAdr, OVM_ALL_ON)
+    `ovm_field_int(exAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
     `ovm_field_sarray_int(byteEn, OVM_ALL_ON)
   `ovm_object_utils_end

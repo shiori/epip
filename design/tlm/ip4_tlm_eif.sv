@@ -13,7 +13,7 @@
 class ip4_tlm_eif_vars extends ovm_component;
   tr_dse2eif fmDSE[LAT_EXM - 1 : 0];
   tr_ise2eif fmISE;
-  tr_eif2dse dse[CYC_EIF_ISE_DSE:0];
+  tr_eif2dse dse[STAGE_ISE_DC:0];
 
   `ovm_component_utils_begin(ip4_tlm_eif_vars)
     `ovm_field_sarray_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE)
@@ -36,8 +36,10 @@ class ip4_tlm_eif extends ovm_component;
   local uchar dm[];
   local string dmFilePath;
   local uint dmBase, dmSize;
-  local tr_dse2eif dseReq[$];
-  local tr_eif2dse dseRsp[$];
+  local tr_dse2eif reqBuf[$];
+  local uint reqAdr[$];
+  local uchar iseReq[$], iseReqBuf[$], dseLdCacheFillCntRsp;
+  local tr_eif2dse dseLdCacheFillRsp[$], dseStRsp[$];
   local uchar waitISE;
   
 ///  local tr_eif2dse resDSE;
@@ -60,7 +62,7 @@ class ip4_tlm_eif extends ovm_component;
     ovm_report_info("EIF", "comb_proc procing...", OVM_FULL); 
     for(int i = LAT_EXM - 1; i > 0; i++)
       vn.fmDSE[i] = v.fmDSE[i - 1];
-    for(int i = CYC_EIF_ISE_DSE - 1; i > 0; i++)
+    for(int i = STAGE_ISE_DC; i > 0; i++)
       vn.dse[i] = v.dse[i - 1];
     vn.dse[0] = null;
             
@@ -77,41 +79,117 @@ class ip4_tlm_eif extends ovm_component;
     
     begin
       tr_dse2eif dse = v.fmDSE[LAT_EXM - 1];
-      if(dse != null && dse.req && (dse.cacheFill || dse.op inside {ld_ops})) begin
+      if(dse != null && dse.req) begin
         uint adr;
-        tr_eif2dse toDSE;
-        if(dse.pAdr >= dmBase && dse.pAdr < (dmBase + dmSize))
-          adr = dse.pAdr - dmBase;
+        if(dse.exAdr >= (dmBase >> (WID_WORD + WID_SMEM_BK))
+            && dse.exAdr < ((dmBase + dmSize) >> (WID_WORD + WID_SMEM_BK)))
+          adr = dse.exAdr - (dmBase >> (WID_WORD + WID_SMEM_BK));
         else
           ovm_report_warning("dse", "Physical adr out of bound");
-        toDSE = tr_eif2dse::type_id::create("toDSE", this);
-        case(dse.op)
-        op_lw: begin end
-        endcase
-        toDSE.id = dse.id;
-        dseReq.push_back(dse);
-        dseRsp.push_back(toDSE);
+        
+        if(!dse.sgl) begin
+          adr = adr & `GMH(1);
+        end if(!dse.last)
+          ovm_report_warning("eif", "dse req sgl without last!");
+        if(dse.last)
+          reqAdr.push_back(adr);
+        reqBuf.push_back(dse);
       end
     end
     
-    if(dseReq.size() > 0 && waitISE < 2) begin
-      tr_dse2eif dse = dseReq.pop_front();
+    if(reqAdr.size() > 0) begin
+      uint adr = reqAdr.pop_front();
+      uchar cnt = 0, typ = 0;
+      while(reqBuf.size() > 0) begin
+        tr_eif2dse toDSE;
+        tr_dse2eif dse = reqBuf.pop_front();
+        adr = adr + dse.cyc;
+        toDSE = tr_eif2dse::type_id::create("toDSE", this);
+        cnt++;
+        if(dse.op inside {st_ops} || dse.cacheFlush) begin
+          if(dse.cacheFlush)
+            adr = adr ^ 'b01;
+          foreach(dse.data[bk]) begin
+            wordu res = dse.data[bk];
+            for(int os = 0; os < WORD_BYTES; os++) begin
+              uint adrb = adr << (WID_WORD + WID_SMEM_BK) + bk << WID_WORD + os;
+              if(dse.byteEn[bk][os])
+                dm[adrb] = res.b[os];
+            end
+          end
+        end
+        if(dse.cacheFill || dse.op inside {ld_ops}) begin
+          toDSE.cyc = dse.cyc;
+          toDSE.last = dse.last;
+          foreach(dse.data[bk]) begin
+            wordu res;
+            for(int os = 0; os < WORD_BYTES; os++) begin
+              uint adrb = adr << (WID_WORD + WID_SMEM_BK) + bk << WID_WORD + os;
+              res.b[os] = dm[adrb];
+            end
+            toDSE.data[bk] = res;
+          end
+          toDSE.alloc = dse.cacheFill;
+          toDSE.loadRsp = dse.op inside {ld_ops};
+          toDSE.storeRsp = dse.op inside {st_ops};
+          if(cnt != 0 && typ != 2)
+            ovm_report_warning("eif", "inconsistent access typ");
+          typ = 2;
+          dseLdCacheFillRsp.push_back(toDSE);
+          if(dse.last) begin
+            typ = 0;
+            iseReq.push_back(cnt);
+          end
+        end
+        else if(dse.last) begin
+          toDSE.storeRsp = 1;
+          toDSE.last = 1;
+          toDSE.alloc = 0;
+          if(cnt != 0 && typ != 1)
+            ovm_report_warning("eif", "inconsistent access typ");
+          typ = 1; 
+          dseStRsp.push_back(toDSE);
+        end
+      end
+    end
+    
+    if(iseReq.size() > 0 && waitISE < 2) begin
+      uchar cnt = iseReq.pop_front();
       waitISE++;
       toISE = tr_eif2ise::type_id::create("toISE", this);
-      toISE.noLd = 0;
-      toISE.noSt = 0; 
-      toISE.noSMsg = 0;
-      toISE.noRMsg = 0; 
-      toISE.vecCnt = 0; 
-      toISE.sclCnt = 0;
+      toISE.noLd = cnt;
+      toISE.noSt = cnt; 
+      toISE.noSMsg = cnt;
+      toISE.noRMsg = cnt; 
+      toISE.vecCnt = cnt; 
+      toISE.sclCnt = cnt;
+      iseReqBuf.push_back(cnt);
     end
     
     if(v.fmISE != null && v.fmISE.rsp) begin
-      vn.dse[0] = dseRsp.pop_front();
+      uchar cnt = iseReqBuf.pop_front();
+      dseLdCacheFillCntRsp += cnt;
       if(waitISE > 0) waitISE--;
     end
     
-    toDSE = v.dse[CYC_EIF_ISE_DSE - 1];
+    if(dseLdCacheFillCntRsp > 0) begin
+      dseLdCacheFillCntRsp--;
+      if(dseLdCacheFillRsp.size() == 0)
+        ovm_report_warning("eif", "dseLdCacheFillRsp empty while cnt > 0!");
+      vn.dse[0] = dseLdCacheFillRsp.pop_front();
+    end
+    
+    if(v.dse[STAGE_ISE_RRC0] != null) begin
+      toDSE = tr_eif2dse::type_id::create("toDSE", this);
+      toDSE.copy(v.dse[STAGE_ISE_DC - 1]);
+    end
+    else if(dseStRsp.size() > 0)
+      toDSE = dseStRsp.pop_front();
+      
+    if(v.dse[STAGE_ISE_DC - 1] != null) begin
+      if(toDSE == null) toDSE = tr_eif2dse::type_id::create("toDSE", this);
+      toDSE.data = v.dse[STAGE_ISE_DC - 1].data;
+    end
     
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
