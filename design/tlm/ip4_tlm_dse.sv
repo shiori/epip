@@ -54,10 +54,9 @@ typedef struct{
 }stQue_t;
 
 typedef struct{
-  bit en;
-  exadr_t exAdr;
-  uchar tid;
-  bit failed[CYC_VEC][NUM_SP];
+  padr_t adr;
+  uchar tid[LAT_XCHG][NUM_SP];
+  bit en[LAT_XCHG][NUM_SP];
 }ll_ck_t;
 
 typedef struct{
@@ -127,7 +126,8 @@ class ip4_tlm_dse extends ovm_component;
   local stQue_t stQue[NUM_STQUE];
   local uchar pbId;
   
-  local ll_ck_t llck[NUM_LLCK];
+  local ll_ck_t llCk[NUM_LLCK];
+  local uchar llNext;
   
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
@@ -281,7 +281,7 @@ class ip4_tlm_dse extends ovm_component;
       
       wordu xhgData[NUM_SP], eifRes[NUM_SP], spRes[NUM_SP], smWData[NUM_SP];
       uchar st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG);
-      bit last = 0, exRsp = 0, shf4 = 0, per = 0, xhgWEn; ///exp = 0, ex = 0, oc = 0, 
+      bit last = 0, exRsp = 0, shf4 = 0, per = 0, xhgWEn;
       if(ise != null && ise.en) begin
         last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
         shf4 = ise.op inside {op_shf4a, op_shf4b};
@@ -649,6 +649,9 @@ class ip4_tlm_dse extends ovm_component;
       uint dcIdx, dcRdy = 0;
       bit ed = 0, wa = 0, wt = 0;
       bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      padr_t lladr;
+      bit llrdy;
+      uchar llid;
       
       exReq[STAGE_RRF_DEM] = 0;
       if(tlb == null) tlb = tlbCached;
@@ -760,9 +763,9 @@ class ip4_tlm_dse extends ovm_component;
           if(wt && oc && selExRdy) begin
             bit exhit = (selExAdr >> WID_DCHE_CL) == (padr >> (WID_DCHE_CL + WID_SMEM_BK + WID_WORD));
             if(wt && !exhit) begin
-                ex = 0;
-                oc = 0;
-              end
+              ex = 0;
+              oc = 0;
+            end
           end
           
           ///cache hit
@@ -817,11 +820,55 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
         
+        ///load link & store conditional
+        if(ise.op inside {op_ll, op_sc} && (oc || ex)) begin
+          bit found = 0, failed = 1;
+          uchar cl = padr >> (WID_WORD + WID_SMEM_BK) & `GML(WID_DCHE_CL);
+          uint tag = adr >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL);
+          if(!llrdy) begin
+            ///not found a valid address to check
+            foreach(llCk[i]) begin
+              if(llCk[i].adr == tag) begin
+                found = 1;
+                llid = i;
+                lladr = tag;
+              end
+            end
+            if(!found && ise.op == op_ll) begin
+              ///no entry found, if its a ll, allocate one
+              llNext++;
+              if(llNext >= NUM_LLCK) llNext = 0;
+              llid = llNext;
+              found = 1;
+              llCk[llid].adr = tag;
+              llCk[llid].en = '{default : 0};
+            end
+            llrdy = found;
+          end
+          else
+            found = lladr == tag;
+          
+          if(found) begin /// && !llAdrCk[cl][bk] && 
+            if(ise.op == op_ll) begin
+              llCk[llid].en[cl][bk] = 1;
+              llCk[llid].tid[cl][bk] = ise.tid;
+            end
+            else begin
+              failed = !(llCk[llid].en[cl][bk] && llCk[llid].tid[cl][bk] == ise.tid);
+              llCk[llid].en[cl][bk] = 0;  ///so following sc failed
+            end
+          end
+          
+          if(failed && ise.op == op_sc) begin
+            oc = 0;
+            ex = 0;
+          end
+        end
+        
         ///filling ck
         if(oc) begin
           ck[slot][bk].sMemAdr = adr;
           ck[slot][bk].sMemGrp = grp;
-///          ck[slot][bk].sMemWEn = os;
           ck[slot][bk].ocEn = oc;
         end
 
@@ -864,11 +911,9 @@ class ip4_tlm_dse extends ovm_component;
       selExpReq |= selExp;
       
       if(ise.vecMode == ise.subVec) begin
-        bit res = 0;
+        bit res = selExpReq;
         if(ise.nonBlock)
-          res = selValidReq;
-        else
-          res = selExpReq;
+          res &= !selValidReq;
           
         for(int i = 0; i <= ise.subVec; i++)
           expReq[STAGE_RRF_DEM + i] = res;
@@ -876,6 +921,7 @@ class ip4_tlm_dse extends ovm_component;
         selExpReq = 0;
         selValidReq = 0;
       end
+      else
         expReq[STAGE_RRF_DEM] = 1;
 
       ///finish one half wrap or whole request

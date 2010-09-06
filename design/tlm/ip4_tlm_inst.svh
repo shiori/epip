@@ -19,7 +19,7 @@ typedef enum bit[5:0] {
   iop_cmpxchg = 'b111000,   iop_fetadd = 'b111001,  iop_lhu = 'b111010,       iop_lbu = 'b111011,
   iop_mctl = 'b111100,      iop_smsg = 'b001100,    iop_rmsg = 'b001101,
   iop_cmp = 'b001110,       iop_cmpu = 'b001111,    iop_cmpi = 'b010000,      iop_cmpiu = 'b010001,
-  iop_cop = 'b010010,       iop_vxchg = 'b010100    ///iop_grag = 'b010011,    
+  iop_cop = 'b010010,       iop_vxchg = 'b010100
 } iop_e;
 
 typedef struct packed{
