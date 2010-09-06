@@ -46,5 +46,11 @@ asr.s2g s3 0x13 0x3 ;
 asr 0x13 s3 0x3 ; 
 // SHUFFLE4 
 shuffle4 v1 v3 v2 0x249 ; 
-// 
+// Start group1 test
+options.g1
+add.si v2 v3 0x6a6b7
+mad.s v6 v3 v1 v5
+nop
+lu v2 0x16526C9
+nop ;
 
