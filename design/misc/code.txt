@@ -38,3 +38,13 @@ sync.mctbst.syldst s3 0x12 ;
 cmp.unc.>= p0 p1 s5 s2 ; 
 // TLBWR
 tlbwr ;
+// ALLOC
+alloc v0 0xa ;
+// ASR special register -> general register
+asr.s2g s3 0x13 0x3 ; 
+// ASR general register -> special register
+asr 0x13 s3 0x3 ; 
+// SHUFFLE4 
+shuffle4 v1 v3 v2 0x249 ; 
+// 
+
