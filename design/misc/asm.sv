@@ -106,6 +106,8 @@ class asmig;
     mu = 0;
     su = 0;
     fcrl = 0;
+    emsk = 0;
+    vxup = 0;
     ldH = 0;
     ldB = 0;
     ldHu = 0;
@@ -860,11 +862,10 @@ class asmig;
           begin
             inst[i].i.b.cop.fun = icop_alloc;
             inst[i].i.op =iop_cop;
-            one = 1;
-            if(alocd) begin
+            if(!alocd) begin
               inst[i].i.b.cop.code[0] = 1;
               if(immOp[i][1]) 
-                inst[i].i.b.cop.code[19:16] = immOp[i][1];
+                inst[i].i.b.cop.code[19:16] = imm[i][1];
               else begin
                 `asm_err("op number does not match with the op_code!");
                 return 0;
@@ -948,6 +949,7 @@ class asmig;
           end
         "tlbwr" : 
           begin
+            `asm_msg("it is tlbwr inst", OVM_HIGH);
             inst[i].i.b.cop.fun = icop_tlbwr;
             inst[i].i.op = iop_cop;            
           end
@@ -956,18 +958,30 @@ class asmig;
             inst[i].i.b.cop.fun = icop_asr;
             inst[i].i.op = iop_cop;
             inst[i].i.b.cop.code[0] = s2g;
-            enOp[i][0] = 0;
-            enOp[i][1] = 0;
-            enOp[i][2] = 0;
-            if(immOp[i][2]) begin
-              inst[i].i.b.cop.code[10:2] = imm[i][2];
-              bksel[0] = inst[i].i.b.cop.code[20:16];
-              one = 1;
+            if(s2g) begin
+              enOp[i][0] = 0;
+              enOp[i][1] = 0;
+              enOp[i][2] = 0;
+              if(immOp[i][2]) begin
+                inst[i].i.b.cop.code[10:2] = imm[i][2];
+                inst[i].i.b.cop.code[20:16] = imm[i][1];
+              end
+              else begin
+                `asm_err("op number does not match with the op_code!");
+                return 0;
+              end
             end
             else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
+              one = 1;
+              if(immOp[i][2]) begin
+                inst[i].i.b.cop.code[10:2] = imm[i][2];
+                inst[i].i.b.cop.code[25:21] = imm[i][0];
+              end
+              else begin
+                `asm_err("op number does not match with the op_code!");
+                return 0;
+              end
+            end            
           end
         "eret"  : 
           begin
@@ -1055,7 +1069,8 @@ class asmig;
       end
       
       ///set rs0 rs1
-      foreach(bk[j]) begin        
+      foreach(bk[j]) begin    
+        `asm_msg("assign rs0 and rs1 bank!");   
         if(zeroOp[i][ps + j]) begin
           bksel[j] = 15;
           break;
@@ -1076,7 +1091,10 @@ class asmig;
           bksel[j] = 11;
           break;
         end
-        if(!enOp[i][ps + j]) break;
+        if(!enOp[i][ps + j]) begin
+          `asm_msg("enop is not enable!");   
+          break;
+        end
         if(vecOp[i][ps + j]) begin
           if(adr[ps + j] > 31) begin
             `asm_err("vec reg out of bound!");
@@ -1152,7 +1170,7 @@ class asmig;
     /// calculate the group size
     adrBits = (adrcnt - 1) * 3;
     if(en == 'b01) begin
-      grpsize = (8 + icnt * 40 +  adrBits + contNum * 32) / 8; 
+      grpsize = (8 + (icnt+1) * 40 +  adrBits + contNum * 32) / 8; 
       `asm_msg($psprintf("gs0 icnt grpsize %0d", icnt), OVM_HIGH);
       `asm_msg($psprintf("gs0 grpsize %0d", grpsize), OVM_HIGH);
     end
@@ -1167,9 +1185,14 @@ class asmig;
   
   function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
     bit[7:0] constPkg[NUM_BP_CO][4];
-    uchar adrBytes = (adrcnt - 1) * 3 / 8;
+    uchar adrBytes ;
     bit[8:0][7:0] tmp0;
     bit[23:0][2:0] tmp1;
+    
+    if(adrcnt != 0)
+      adrBytes = (adrcnt - 1) * 3 / 8;
+    else
+      adrBytes = 0;
 
     if(tagOp[0] && tag2ig.exists(tag)) begin
       foreach(inst[i]) begin
@@ -1479,20 +1502,21 @@ class ip4_assembler;
               "orcm" : cur.mtyp = 6;
               "orandcm" : cur.mtyp = 7;
               "andorcm" : cur.mtyp = 8;
-              "penmsk0" : cur.emsk = 0;
-              "penmsk1" : cur.emsk = 1;
-              "vxup0" : cur.vxup = 0;
-              "vxup1" : cur.vxup = 1;
+              "penmsk" : cur.emsk = 1;
+              "vxup" : cur.vxup = 1;
               default : begin `asm_err("unkonwn options."); return 0; end
               endcase
             end
           end        
           else if(state == 1) begin
-            cur.icnt = icnt + 1;
+///            `asm_msg("it's state == 1.", OVM_HIGH);     
+///            cur.icnt = icnt + 1;
             if(opcnt >= 4)
               continue;
             `asm_msg($psprintf("trying to get a reg adr or imm for op%0d", opcnt), OVM_HIGH);
             cur.enOp[icnt][opcnt] = 1;
+///            /// sepecial register defined prefix u-
+///            cur.srOp[icnt][opcnt] = tk0.tolower() == "u";
             cur.pdrOp[icnt][opcnt] = tk0.tolower() == "p";
             cur.tagOp[opcnt] = tk0.tolower() == "$";
             cur.bp0Op[icnt][opcnt] = tk0.tolower() == "bp0";
@@ -1503,7 +1527,7 @@ class ip4_assembler;
             cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
             cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
                                      && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt] && !cur.tidOp[icnt][opcnt]
-                                     && !cur.pdrOp[icnt][opcnt];
+                                     && !cur.pdrOp[icnt][opcnt] ;
             if(cur.tagOp[opcnt])
               cur.tag = tk1n;
             else if(cur.immOp[icnt][opcnt])
