@@ -109,10 +109,11 @@ endclass : tr_rfm2ise
 ///---------------------------trsaction spu_rfm rfm_spu------------------------
 
 class tr_spu2rfm extends ovm_sequence_item;
-	rand bit wrEn;///, sel_sfu;
+	rand bit wrEn, wrSrMSC;///, sel_sfu;
 	rand word res; ///BRU ScalarP use port4
-	rand uchar tid, vecMode, srfWrBk, srfWrGrp, srfWrAdr;
+	rand uchar tid, vecMode, srfWrBk, srfWrGrp, srfWrAdr, subVec;
 	rand bit expFu, missBr, expMSC;
+	rand bit msco[NUM_SP], mscu[NUM_SP];
 	
 	///wrEn signal is given one cycle before writeback
 	
@@ -134,6 +135,10 @@ class tr_spu2rfm extends ovm_sequence_item;
 		`ovm_field_int(expMSC, OVM_ALL_ON)
 		`ovm_field_int(tid, OVM_ALL_ON)
 		`ovm_field_int(vecMode, OVM_ALL_ON)
+		`ovm_field_int(wrSrMSC, OVM_ALL_ON)
+		`ovm_field_int(subVec, OVM_ALL_ON)
+		`ovm_field_sarray_int(msco, OVM_ALL_ON)
+		`ovm_field_sarray_int(mscu, OVM_ALL_ON)
 		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)

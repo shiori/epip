@@ -53,6 +53,9 @@ class ip4_tlm_rfm extends ovm_component;
   local tr_rfm2dse toDSE;
   local word srExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
   local uchar srDSEExp[NUM_THREAD][CYC_VEC][NUM_SP];
+  local bit srMSCO[NUM_THREAD][CYC_VEC][NUM_SP],
+            srMSCU[NUM_THREAD][CYC_VEC][NUM_SP];
+  
   local word dseSt[2][CYC_VEC][NUM_SP];
   local bit[STAGE_RRF_VWB:1] cancel[NUM_THREAD];
   
@@ -141,6 +144,8 @@ class ip4_tlm_rfm extends ovm_component;
               SR_IIDZ:  res0 = srIIDz[tid][subVec][sp];
               SR_EXPFV: res0 = srExpFlag[tid][subVec][sp];
               SR_DSEEV: res0 = srDSEExp[tid][subVec][sp];
+              SR_MSCO:  res0 = srMSCO[tid][subVec][sp];
+              SR_MSCU:  res0 = srMSCU[tid][subVec][sp];
               endcase
             if(spa.fu[fid].gp2s)
               case(spa.fu[fid].srAdr)
@@ -178,6 +183,10 @@ class ip4_tlm_rfm extends ovm_component;
     if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_SWB]) begin
       tr_spu2rfm spu = v.fmSPU;
       ovm_report_info("RFM_WR", "Write Back spu...", OVM_HIGH);
+      if(spu.wrSrMSC) begin
+        srMSCU[spu.tid][spu.subVec] = spu.mscu;
+        srMSCO[spu.tid][spu.subVec] = spu.msco;
+      end
       if(spu.wrEn)
         srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = spu.res;
     end
