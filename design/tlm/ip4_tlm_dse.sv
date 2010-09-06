@@ -54,6 +54,13 @@ typedef struct{
 }stQue_t;
 
 typedef struct{
+  bit en;
+  exadr_t exAdr;
+  uchar tid;
+  bit failed[CYC_VEC][NUM_SP];
+}ll_ck_t;
+
+typedef struct{
   uint tagHi, tagLo[NUM_SMEM_GRP];
   bit tagV[NUM_SMEM_GRP], dirty[NUM_SMEM_GRP];
   uchar lo;
@@ -119,6 +126,8 @@ class ip4_tlm_dse extends ovm_component;
   local ldQue_t ldQue[NUM_LDQUE];
   local stQue_t stQue[NUM_STQUE];
   local uchar pbId;
+  
+  local ll_ck_t llck[NUM_LLCK];
   
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
@@ -263,7 +272,7 @@ class ip4_tlm_dse extends ovm_component;
     toRFM = v.rfm[STAGE_RRF_VWBP];
     toEIF = v.eif[STAGE_RRF_LXG];
             
-    ///dc stage
+    ///**dc stage
     begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];

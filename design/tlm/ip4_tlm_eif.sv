@@ -40,7 +40,7 @@ class ip4_tlm_eif extends ovm_component;
   local uint reqAdr[$];
   local uchar iseReq[$], iseReqBuf[$], dseLdCacheFillCntRsp;
   local tr_eif2dse dseLdCacheFillRsp[$], dseStRsp[$];
-  local uchar waitISE;
+  local uchar pbId, waitISE;
   
 ///  local tr_eif2dse resDSE;
 ///  local uchar id;
@@ -49,6 +49,7 @@ class ip4_tlm_eif extends ovm_component;
     `ovm_field_string(dmFilePath, OVM_ALL_ON)
     `ovm_field_int(dmSize, OVM_ALL_ON)
     `ovm_field_int(dmBase, OVM_ALL_ON)
+    `ovm_field_int(pbId, OVM_ALL_ON)
   `ovm_component_utils_end
       
   ovm_nonblocking_transport_imp_dse #(tr_dse2eif, tr_dse2eif, ip4_tlm_eif) dse_tr_imp;

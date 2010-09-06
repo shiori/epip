@@ -127,7 +127,8 @@ parameter uint  NUM_SP            = 8,
 ///                NUM_EBUS_WORDS    = 2,
 ///                NUM_STBUF_LINE    = LAT_XCHG,
                 NUM_STQUE         = 8,
-                NUM_LDQUE         = 16;
+                NUM_LDQUE         = 16,
+                NUM_LLCK          = 4;
 
 parameter uint CFG_START_ADR      = 'hf000_0000,
                CFG_MAX_MSC        = 'hffff_fff0;
@@ -320,7 +321,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_rst
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_rst, ts_w_syn
 }ise_thread_state;
 
 typedef enum uchar {
@@ -448,7 +449,7 @@ parameter opcode_e spu_com_ops[] = '{
 
 parameter opcode_e ise_zw_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
-  op_brk,     op_tsync,   op_msync,   op_eret
+  op_brk,     op_eret
 };
 
 typedef enum uchar {

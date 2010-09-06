@@ -573,7 +573,7 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
 
-  function void restorePC(input uchar tid, uchar sel = 0, stage = 0, bit exp = 0, ejtag = 0);
+  function void restore_pc(input uchar tid, uchar sel = 0, stage = 0, bit exp = 0, ejtag = 0);
     ise_thread_inf t = thread[tid];
     uint res,
          pc = stage == 0 ? t.pc : v.pcRst[stage],
@@ -639,7 +639,7 @@ class ip4_tlm_ise extends ovm_component;
       cancel[tid] |= `GML(STAGE_ISE_SWB + vecMode);
     end
     endcase
-    restorePC(tid, sel, st, 1);
+    restore_pc(tid, sel, st, 1);
     t.flush();
   endfunction : enter_exp
 
@@ -651,7 +651,7 @@ class ip4_tlm_ise extends ovm_component;
       ///miss prediction
       if(br != t.brPred) begin
         t.flush();
-        restorePC(tid, 2, STAGE_ISE_CEM + t.vecMode);
+        restore_pc(tid, 2, STAGE_ISE_CEM + t.vecMode);
         t.lpRndMemMode = 0;
         t.cancel = 1;
         t.brHistory = t.brHistory >> t.pendBr;
@@ -673,13 +673,13 @@ class ip4_tlm_ise extends ovm_component;
     op_exit,
     op_sys: 
     begin
-      restorePC(tid, 0, 0, 1);
+      restore_pc(tid, 0, 0, 1);
       t.srCauseSPU = EC_SYSCAL;
       t.flush();     
     end
     op_brk  :
     begin
-      restorePC(tid, 0, 0, 0, 1); 
+      restore_pc(tid, 0, 0, 0, 1); 
       t.srCauseSPU = EC_BREAK;
       t.flush();     
     end
@@ -697,6 +697,16 @@ class ip4_tlm_ise extends ovm_component;
     end
     op_tsync:
     begin
+      bit sync = 1;
+      t.threadState = ts_w_syn;
+      foreach(thread[i])
+        if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_syn)
+          sync = 0;
+      if(!sync) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_syn;
+      end
     end
     op_msync:
     begin
@@ -1160,19 +1170,19 @@ class ip4_tlm_ise extends ovm_component;
       if(dse.exp && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.srCauseDSE = dse.cause;
         t.cancel = 1;  
-        restorePC(dse.tid, 1,st, 1);
+        restore_pc(dse.tid, 1,st, 1);
         t.flush();
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM + dse.vecMode);
       end
       else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.cancel = 1;   
-        restorePC(dse.tid, 1, st);
+        restore_pc(dse.tid, 1, st);
         t.flush();
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
       end
       else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.cancel = 1;   
-        restorePC(dse.tid, 0, st);
+        restore_pc(dse.tid, 0, st);
         t.flush();
         t.noExt = ~dse.reRun;
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM);

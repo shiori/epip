@@ -317,14 +317,6 @@ class ip4_tlm_spu extends ovm_component;
       tr_ise2spu ise = v.fmISE[STAGE_RRF_RSRB];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_RSRB];    
       
-///      if(ise.op == op_s2gp && ise.srAdr inside {SR_MSCG, SR_MSCO, SR_MSCU}) begin
-///        if(vn.rfm[STAGE_RRF_RSRB] == null) vn.rfm[STAGE_RRF_RSRB] = tr_spu2rfm::type_id::create("toRFM", this);
-///        case(ise.srAdr)
-///        SR_MSCG:
-///          vn.rfm[STAGE_RRF_RSRB].res = srMSCGuard[ise.tid][ise.subVec];
-///        endcase
-///      end
-      
       ///redirect sr reqs
       if(prSPU[STAGE_RRF_RSRB] && ise.op == op_gp2s) begin
         if(ise.srAdr inside {tlbsr}) begin
