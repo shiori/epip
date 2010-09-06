@@ -127,9 +127,11 @@ parameter uint  NUM_SP            = 8,
 ///                NUM_EBUS_WORDS    = 2,
 ///                NUM_STBUF_LINE    = LAT_XCHG,
                 NUM_STQUE         = 8,
-                NUM_LDQUE         = 16;
+                NUM_LDQUE         = 16,
+                NUM_LLCK          = 4;
 
-parameter uint CFG_START_ADR      = 'hf000_0000;
+parameter uint CFG_START_ADR      = 'hf000_0000,
+               CFG_MAX_MSC        = 'hffff_fff0;
 
 parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_HALF        = n2w(HALF_BYTES),
@@ -160,7 +162,7 @@ store:    | rrf | rrc0 |  ag  |  tag |  sel | sxg0 | sxg1 | dc   |
 dse pr:   | rrf | rrc0 |  ag  |  tag | sel0 | sel1 | sel2 | sel3 | dprb | dprw |
 dse emsk: | rrf | rrc0 |  ag  |  tag |  sel | dem  | dbr  |
 spu:      | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | exs3 | exs4 | swbp |  swb |
-spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | dsr  | rsr  |      | wsr  |
+spu sr:   | rrf | rrc0 | rrc1 | exs0 | exs1 | exs2 | rsrb | rsr  | wsrb | wsr  |
 cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
           0     1      2      3      4      5      6      7      8      9      10     11     12     13     14        15
                                             0      1      2      3      4      5      6      7      8      9         10
@@ -198,9 +200,11 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///9
                 STAGE_RRF_RSR     = STAGE_RRF_SWBP - 1,             ///7
                 STAGE_RRF_WSR     = STAGE_RRF_DPRW,                 ///8
-                STAGE_RRF_DSR     = STAGE_RRF_SWBP - 2,             ///6
+                STAGE_RRF_RSRB    = STAGE_RRF_RSR - 1,              ///6
+                STAGE_RRF_WSRB    = STAGE_RRF_WSR - 1,              ///7
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
                 STAGE_RRF_VWB     = STAGE_RRF_VWBP + 1,             ///11
+                STAGE_RRF_VWB_END = STAGE_RRF_VWBP + CYC_VEC,       ///14
                 STAGE_EXE         = LAT_MAC - 1,                    ///3
                 STAGE_EXE_VWBP    = STAGE_EXE + LAT_VWBP,           ///4
                 STAGE_EXE_CMP     = NUM_FU - 1,                     ///2
@@ -218,8 +222,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_CMP     = LAT_ISE + STAGE_RRF_CMP,        ///7
                 STAGE_ISE_RRC0    = LAT_ISE + STAGE_RRF_RRC0,
                 STAGE_ISE_DC      = LAT_ISE + STAGE_RRF_DC,
-                STAGE_ISE_VWB     = STAGE_ISE_VWBP + 1,             ///16
-                STAGE_ISE_VWB_END = STAGE_ISE_VWBP + CYC_VEC,       ///16
+                STAGE_ISE_VWB     = LAT_ISE + STAGE_RRF_VWB,        ///13
+                STAGE_ISE_VWB_END = LAT_ISE + STAGE_RRF_VWB_END,    ///16
                 STAGE_ISE_DEM     = LAT_ISE + STAGE_RRF_DEM,        ///5
                 STAGE_ISE_DBR     = LAT_ISE + STAGE_RRF_DBR,        ///6
                 STAGE_ISE_CEM     = LAT_ISE + STAGE_RRF_CEM,        ///8
@@ -303,12 +307,13 @@ typedef enum uchar {
 } pr_merge_e;
 
 typedef enum uchar {
-  sop_nop,      sop_pop2n,    sop_store
+  sop_nop,    sop_pop2n,  sop_store,  sop_zero
 } msc_opcode_e;
 
 typedef enum uchar {
   mop_nop,      mop_bc,     mop_rstor,    mop_loop,
-  mop_else,     mop_cont,   mop_if,       mop_brk
+  mop_else,     mop_cont,   mop_if,       mop_brk,
+  mop_guard
 } msk_opcode_e;
 
 typedef enum bit {
@@ -316,7 +321,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_rst
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_rst, ts_w_syn
 }ise_thread_state;
 
 typedef enum uchar {
@@ -444,17 +449,17 @@ parameter opcode_e spu_com_ops[] = '{
 
 parameter opcode_e ise_zw_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
-  op_brk,     op_tsync,   op_msync,   op_eret
+  op_brk,     op_eret
 };
 
 typedef enum uchar {
   SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
   SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
-  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_THD_CTL,     SR_THD_ST,
-  SR_CONTENT,   SR_EPC,       SR_ERET,      SR_WIDX,        SR_WIDY,
-  SR_WIDZ,      SR_ILM,       SR_CM,        SR_MSCT,        SR_MSCO,
-  SR_MSCU,      SR_UEE,       SR_UER,       SR_ASID,        SR_DSEEV,
+  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCG,
+  SR_MSCO,      SR_MSCU,      SR_THD_CTL,   SR_THD_ST,      SR_CONTENT,
+  SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
+  SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
   SR_MD[0:7],   SR_FIFOS
 }special_reg_t;
 

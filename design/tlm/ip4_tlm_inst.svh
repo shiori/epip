@@ -855,7 +855,7 @@ class inst_c extends ovm_object;
     end
     else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
       ///sr write back
-      tCnt[sr_styp] = STAGE_RRF_DSR;
+      tCnt[sr_styp] = STAGE_RRF_RSRB;
     end
     ///zero wait instructions for ise only, those inst only change threadstate
 	  else if(op inside {ise_zw_ops}) begin
