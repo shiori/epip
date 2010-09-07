@@ -425,6 +425,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   rand uchar bpRfDSEwp;
   rand rbk_sel_e bpRfDSE;
   rand round_mode_t rndMode;
+  rand uchar expMsk;
   rand bit noExp;
   
 	`ovm_object_utils_begin(tr_ise2spa)
@@ -436,6 +437,7 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
 ///	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
 	  `ovm_field_int(bpRfDSEwp, OVM_ALL_ON)
 	  `ovm_field_int(noExp, OVM_ALL_ON)
+	  `ovm_field_int(expMsk, OVM_ALL_ON)
 	  `ovm_field_enum(rbk_sel_e, bpRfDSE, OVM_ALL_ON)
 	  `ovm_field_enum(round_mode_t, rndMode, OVM_ALL_ON)
   `ovm_object_utils_end
@@ -1057,7 +1059,8 @@ endclass : tr_tlb2ife
 
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
-  rand bit req, cacheFlush, cacheFill, sgl, last;
+  rand bit req, cacheFlush, cacheFill, sgl,
+           last, endian, allocFail;
   rand opcode_e op;
   rand uchar id, cyc;
   rand exadr_t exAdr;
@@ -1070,6 +1073,7 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_int(last, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
+    `ovm_field_int(allocFail, OVM_ALL_ON)
     `ovm_field_int(cyc, OVM_ALL_ON)
     `ovm_field_int(cacheFlush, OVM_ALL_ON)
     `ovm_field_int(cacheFill, OVM_ALL_ON)
@@ -1084,20 +1088,26 @@ class tr_dse2eif extends ovm_sequence_item;
 endclass : tr_dse2eif
 
 class tr_eif2dse extends ovm_sequence_item;
-  rand bit loadRsp, storeRsp, last, alloc, noVecSt, noSglSt, noLd;
+  rand bit loadRsp, storeRsp, last, noVecSt,
+           rd, wr, alc, noSglSt, noLd, endian;
   rand uchar id, cyc;
   rand word data[NUM_SP];
+  rand exadr_t exAdr;
   
   `ovm_object_utils_begin(tr_eif2dse)
     `ovm_field_int(loadRsp, OVM_ALL_ON)
     `ovm_field_int(storeRsp, OVM_ALL_ON)
     `ovm_field_int(last, OVM_ALL_ON)
-    `ovm_field_int(alloc, OVM_ALL_ON)
+    `ovm_field_int(rd, OVM_ALL_ON)
+    `ovm_field_int(wr, OVM_ALL_ON)
+    `ovm_field_int(alc, OVM_ALL_ON)
     `ovm_field_int(noVecSt, OVM_ALL_ON)
     `ovm_field_int(noSglSt, OVM_ALL_ON)
     `ovm_field_int(noLd, OVM_ALL_ON)
+    `ovm_field_int(endian, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(cyc, OVM_ALL_ON)
+    `ovm_field_int(exAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
   `ovm_object_utils_end
 
@@ -1108,10 +1118,14 @@ endclass : tr_eif2dse
 
 ///---------------------------trsaction ise_eif eif_ise------------------------
 class tr_ise2eif extends ovm_sequence_item;
-  rand bit rsp;
+  rand bit rsp, issueLd, issueSt, issueRMsg, issueSMsg;
     
   `ovm_object_utils_begin(tr_ise2eif)
     `ovm_field_int(rsp, OVM_ALL_ON)
+    `ovm_field_int(issueLd, OVM_ALL_ON)
+    `ovm_field_int(issueSt, OVM_ALL_ON)
+    `ovm_field_int(issueRMsg, OVM_ALL_ON)
+    `ovm_field_int(issueSMsg, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_ise2eif");

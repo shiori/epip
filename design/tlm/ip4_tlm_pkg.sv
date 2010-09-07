@@ -323,7 +323,11 @@ typedef enum bit {
 typedef enum uchar {
   ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self,
   ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
-}ise_thread_state;
+}thread_state_t;
+
+typedef enum uchar {
+  priv_user,    priv_kernel,  priv_event
+}priv_mode_t;
 
 typedef enum uchar {
   ///bypass opcodes
