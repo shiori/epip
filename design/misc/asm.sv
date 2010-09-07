@@ -97,6 +97,7 @@ class asmig;
     zeroOp = 0;
     enOp = 0;
     tagOp = 0;
+    nop = 0;
     r3w1d = 0;
     fcrPc = 0;
     fcrPb = 0;
@@ -126,6 +127,7 @@ class asmig;
   endfunction
 
   function bit pack_grp(ovm_verbosity verb);
+      uchar v_icnt;
     ///assemble each inst
     foreach(inst[i]) begin
       uchar adru[3], bk[3];
@@ -1018,7 +1020,10 @@ class asmig;
               return 0;
             end
           end
-        "nop": nop[i] = 1;
+        "nop": begin
+          nop[i] = 1;
+          enOp[i] = 0;
+        end
       default: begin `asm_err("op not understood!"); return 0; end
       endcase
       
@@ -1095,12 +1100,15 @@ class asmig;
           `asm_msg("enop is not enable!");   
           break;
         end
+        `asm_msg($psprintf("printf out vecOp %0d, ps: %d, i: %d, j: %d", vecOp[i][ps + j], ps, i, j), OVM_HIGH);
         if(vecOp[i][ps + j]) begin
           if(adr[ps + j] > 31) begin
             `asm_err("vec reg out of bound!");
             return 0;
           end
+          `asm_msg("vector reg alloc!");
           adru[j] = adr[i][ps + j] >> WID_VRF_BKS;
+          `asm_msg($psprintf("printf out vec adru %0d, j:%0d", adru[j],j), OVM_HIGH);
           bk[j] = adr[i][ps + j] & ~{'1 << WID_VRF_BKS};
           if(j < 2) begin
             bit failed = 1;
@@ -1118,11 +1126,12 @@ class asmig;
             end
           end
         end
-        else begin
+        else if(enOp[i][ps + j] && !immOp[i][ps + j]) begin
           if(adr[ps + j] > 15) begin
             `asm_err("scl reg out of bound!");
             return 0;
           end
+          `asm_msg("scalar reg alloc!");
           adru[j] = adr[i][ps + j] >> WID_SRF_BKS;
           bk[j] = adr[i][ps + j] & `GML(WID_SRF_BKS);
           if(j < 2) begin
@@ -1143,39 +1152,54 @@ class asmig;
         end
       end
       
-      if(one)
+      if(one) begin
         inst[i].i.b.ir3w1.rs0 = bksel[0];
+        `asm_msg($psprintf("printf out bksel 0 of r1w1 %0d", bksel[0]), OVM_HIGH);
+      end
       else if(two || three) begin
         inst[i].i.b.ir3w1.rs0 = bksel[0];
         inst[i].i.b.ir3w1.rs1 = bksel[1];
+        `asm_msg($psprintf("printf out bksel 0 of r2w1 or r3w1 %0d", bksel[0]), OVM_HIGH);
+        `asm_msg($psprintf("printf out bksel 1 of r2w1 or r3w1 %0d", bksel[1]), OVM_HIGH);
       end
     
     end
     
     ///collect all address
     for(int i = 0; i < CYC_VEC; i++) begin
+      `asm_msg("collect address" , OVM_HIGH);
       for(int j = 0; j < NUM_VRF_BKS; j++)
         if(vrfEn[i][j] && vrfAdr[i][j] < 32) begin
+          `asm_msg($psprintf("count vector address:%0d", adrcnt), OVM_HIGH);
           allAdr[adrcnt] = vrfAdr[i][j];
+          `asm_msg($psprintf("vector address:%0d", allAdr[adrcnt]), OVM_HIGH);
           adrcnt++;
         end
          
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfEn[i][j]) begin
+          `asm_msg($psprintf("count scalar address:%0d", adrcnt), OVM_HIGH);
           allAdr[adrcnt] = srfAdr[i][j];
+          `asm_msg($psprintf("scalar address:%0d", allAdr[adrcnt]), OVM_HIGH);
           adrcnt++;
         end
     end
     
     /// calculate the group size
-    adrBits = (adrcnt - 1) * 3;
+    v_icnt = 0;
+    adrBits = adrcnt  * 3;
     if(en == 'b01) begin
       grpsize = (8 + (icnt+1) * 40 +  adrBits + contNum * 32) / 8; 
       `asm_msg($psprintf("gs0 icnt grpsize %0d", icnt), OVM_HIGH);
       `asm_msg($psprintf("gs0 grpsize %0d", grpsize), OVM_HIGH);
     end
     else begin
-      grpsize = (16 + icnt * 40 +  adrBits + contNum * 32) / 8 ;
+      for (int i = 0; i < 5; i++) begin
+        if(enOp[i])
+          v_icnt += 1 ; 
+      end      
+      grpsize = (16 + v_icnt * 40 +  adrBits + contNum * 32) / 8 ;
+      `asm_msg($psprintf("gs1 v_icnt grpsize %0d", v_icnt), OVM_HIGH);
       `asm_msg($psprintf("gs1 grpsize %0d", grpsize), OVM_HIGH);
     end
     
@@ -1186,11 +1210,16 @@ class asmig;
   function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
     bit[7:0] constPkg[NUM_BP_CO][4];
     uchar adrBytes ;
+    uchar modBytes;
     bit[8:0][7:0] tmp0;
     bit[23:0][2:0] tmp1;
     
-    if(adrcnt != 0)
-      adrBytes = (adrcnt - 1) * 3 / 8;
+    `asm_msg($psprintf("adrcnt :%0d", adrcnt), OVM_HIGH);
+    if(adrcnt != 0) begin
+      modBytes = (adrcnt  * 3) % 8;
+      if(modBytes != 0)
+        adrBytes = (adrcnt  * 3 / 8) + 1;
+    end
     else
       adrBytes = 0;
 
@@ -1252,20 +1281,25 @@ class asmig;
 
       
       for(int i = 0; i < 5; i++)
-        for(int j = 0; j < 5; j++)
-          $fwrite(fo, "%8b\n", inst[i].b[j]);
+        for(int j = 0; j < 5; j++) begin
+          if(enOp[i])          
+            $fwrite(fo, "%8b\n", inst[i].b[j]);
+        end
     end
     
     ///write out adr package
+    `asm_msg("write out address package", OVM_HIGH);
     foreach(tmp1[i])
       tmp1[i] = allAdr[1 + i];
     tmp0 = tmp1;
 
-    foreach(tmp0[i])
+    foreach(tmp0[i]) begin
+      `asm_msg($psprintf("write out adr package byte %0d", adrBytes), OVM_HIGH);
       if(adrBytes > i) begin
         `asm_msg($psprintf("write out adr package %0d", i), OVM_HIGH);
         $fwrite(fo, "%8b\n", tmp0[i]);
       end
+    end
     
     ///write out Constant package
     for(int i = 0; i < contNum; i++)
@@ -1291,6 +1325,7 @@ class ip4_assembler;
   function bit translate();
     string s;
     uchar icnt = 0;
+    bit isInst = 0;///, hasTag = 0;
     fi = $fopen(i, "r");
     fo = $fopen(o, "w");
         
@@ -1305,7 +1340,7 @@ class ip4_assembler;
     while($fgets(s, fi)) begin
       string tokens[$];
       int state = 0, opcnt = 0;
-      bit isInst = 0;///, hasTag = 0;
+///      bit isInst = 0;///, hasTag = 0;
       if(cur == null) cur  = new();
       `asm_msg("@@Asm code as follows:", OVM_HIGH);
       `asm_msg(s, OVM_HIGH, write);
@@ -1486,9 +1521,9 @@ class ip4_assembler;
               "pfiwb" : cur.mcfun = 6;
               "syldst" : cur.mcfun = 8;
               "syld" : cur.mcfun = 9;
-              "syst" : cur.mcfun = 10;
+              "syst" : cur.mcfun = 12;
               "syl2s" : cur.mcfun = 11;
-              "sys2l" : cur.mcfun = 12;
+              "sys2l" : cur.mcfun = 10;
               "=" : cur.ctyp = 0;
               ">" : cur.ctyp = 1;
               ">=" : cur.ctyp = 2;
@@ -1535,9 +1570,9 @@ class ip4_assembler;
             else if(!cur.zeroOp[icnt][opcnt] && !cur.pdrOp[icnt][opcnt])
               cur.adr[icnt][opcnt] = tk1n.atoi();
             `asm_msg($psprintf("tag branch %s", cur.tag), OVM_HIGH);
-            `asm_msg($psprintf("tagOp:%0d, vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d", cur.tagOp[opcnt], cur.vecOp[icnt][opcnt],
+            `asm_msg($psprintf("tagOp:%0d, vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d, icnt:%0d, enOp: %0d", cur.tagOp[opcnt], cur.vecOp[icnt][opcnt],
                       cur.zeroOp[icnt][opcnt], cur.immOp[icnt][opcnt], cur.adr[icnt][opcnt],
-                      cur.imm[icnt][opcnt], opcnt), OVM_HIGH);
+                      cur.imm[icnt][opcnt], opcnt, icnt, cur.enOp[icnt][opcnt]), OVM_HIGH);
             opcnt++;
           end
         end   
