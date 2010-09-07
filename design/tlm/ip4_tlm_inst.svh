@@ -706,8 +706,12 @@ class inst_c extends ovm_object;
           op = op_cache;
         if(mFun < 7)
           op = op_pref;
+        else if(mFun < 9)
+          op = op_syna;
+        else if(mFun < 11)
+          op = op_synld;
         else if(mFun < 13)
-          op = op_sync;
+          op = op_synst;
         else if(mFun == 13)
           op = op_synci;
       end

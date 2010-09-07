@@ -698,14 +698,38 @@ class ip4_tlm_ise extends ovm_component;
     op_tsync:
     begin
       bit sync = 1;
-      t.threadState = ts_w_syn;
+      t.threadState = ts_w_tsyn;
       foreach(thread[i])
-        if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_syn)
+        if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_tsyn)
           sync = 0;
       if(!sync) begin
         restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.flush();
-        t.threadState = ts_w_syn;
+        t.threadState = ts_w_tsyn;
+      end
+    end
+    op_syna:
+    begin
+      if(t.pendExLoad > 0 || t.pendExStore > 0) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_syna;
+      end
+    end
+    op_synld:
+    begin
+      if(t.pendExLoad > 0) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_synld;
+      end
+    end
+    op_synst:
+    begin
+      if(t.pendExStore > 0) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_synst;
       end
     end
     op_msync:
@@ -1166,6 +1190,10 @@ class ip4_tlm_ise extends ovm_component;
       ise_thread_inf t = thread[dse.tid];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
+      if(t.pendExStore == 0 && t.threadState inside {ts_w_synst, ts_w_syna})
+        t.threadState = ts_rdy;
+      if(t.pendExLoad == 0 && t.threadState inside {ts_w_synld, ts_w_syna})
+        t.threadState = ts_rdy;
       if(dse.scl) st += t.vecMode;
       if(dse.exp && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.srCauseDSE = dse.cause;
