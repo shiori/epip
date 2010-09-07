@@ -1089,7 +1089,7 @@ endclass : tr_dse2eif
 
 class tr_eif2dse extends ovm_sequence_item;
   rand bit loadRsp, storeRsp, last, noVecSt,
-           rd, wr, alc, noSglSt, noLd, endian;
+           rd, wr, alloc, noSglSt, noLd, endian;
   rand uchar id, cyc;
   rand word data[NUM_SP];
   rand exadr_t exAdr;
@@ -1100,7 +1100,7 @@ class tr_eif2dse extends ovm_sequence_item;
     `ovm_field_int(last, OVM_ALL_ON)
     `ovm_field_int(rd, OVM_ALL_ON)
     `ovm_field_int(wr, OVM_ALL_ON)
-    `ovm_field_int(alc, OVM_ALL_ON)
+    `ovm_field_int(alloc, OVM_ALL_ON)
     `ovm_field_int(noVecSt, OVM_ALL_ON)
     `ovm_field_int(noSglSt, OVM_ALL_ON)
     `ovm_field_int(noLd, OVM_ALL_ON)

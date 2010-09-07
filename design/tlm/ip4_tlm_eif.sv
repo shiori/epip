@@ -132,7 +132,7 @@ class ip4_tlm_eif extends ovm_component;
             end
             toDSE.data[bk] = res;
           end
-          toDSE.alc = dse.cacheFill;
+          toDSE.alloc = dse.cacheFill;
           toDSE.loadRsp = dse.op inside {ld_ops};
           toDSE.storeRsp = dse.op inside {st_ops};
           if(cnt != 0 && typ != 2)
@@ -147,7 +147,7 @@ class ip4_tlm_eif extends ovm_component;
         else if(dse.last) begin
           toDSE.storeRsp = 1;
           toDSE.last = 1;
-          toDSE.alc = 0;
+          toDSE.alloc = 0;
           if(cnt != 0 && typ != 1)
             ovm_report_warning("eif", "inconsistent access typ");
           typ = 1; 

@@ -765,6 +765,10 @@ class ip4_tlm_dse extends ovm_component;
                   dcIdx = idx;
                   if(hit) begin
                     grp = loTagIdx;
+                    if(cache[idx][hiTagIdx].hi >= 2)
+                      cache[idx][hiTagIdx].hi -= 2;
+                    else
+                      cache[idx][hiTagIdx].hi = 0;
                     break;
                   end
                 end
@@ -1048,7 +1052,7 @@ class ip4_tlm_dse extends ovm_component;
       smEnd2 >>= WID_WORD + WID_SMEM_BK;
       first = (eif.cyc & `GML(WID_DCHE_CL)) == 0;
       
-      if(eif.alc || eif.loadRsp || eif.wr || eif.rd) begin
+      if(eif.alloc || eif.loadRsp || eif.wr || eif.rd) begin
         exadr_t exAdr = eif.exAdr, flushAdr;
         uint adr, tagLo, tagHi, idx;
         bit hit = 0, hihit = 0, ehit = 0, fhit = 0, updateLo = 0, updateHi = 0, flush = 0;
@@ -1166,10 +1170,10 @@ class ip4_tlm_dse extends ovm_component;
         else if(exAdr >= smEnd2)
           smWEn = 0;
         
-        cacheFlush[STAGE_RRF_SEL] = (updateHi || updateLo) && eif.alc && !allocFail;
+        cacheFlush[STAGE_RRF_SEL] = flush && eif.alloc && !allocFail;
           
         if(eif.last) begin
-          if(eif.alc) begin
+          if(eif.alloc) begin
             if(updateLo) begin
               cache[idx][hi].tagV[grp] = 1;
               cache[idx][hi].lo = grp;
