@@ -53,4 +53,13 @@ mad.s v6 v3 v1 v5
 nop
 lu v2 0x16526C9
 nop ;
+// include constant package
+options.const1.0x5
+options.const2.0x9
+mad.s v6 v7 v10 v9
+mad.s v4 v3 v1 v6
+add.si v2 v1 0x6a6b7
+lu v3 0x16526C9
+nop ;
+
 
