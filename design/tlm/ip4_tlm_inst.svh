@@ -764,7 +764,11 @@ class inst_c extends ovm_object;
       icop_brk   : op = op_brk;
       icop_tsync : op = op_tsync;
       icop_msync : op = op_msync;
-      icop_alloc : op = op_alloc;
+      icop_alloc :
+      begin
+        op = op_alloc;
+        priv = 1;
+      end
       icop_tlbp  :
       begin
         op = op_tlbp;
@@ -796,6 +800,8 @@ class inst_c extends ovm_object;
         else 
           rdBkSel[0] = selii;
         imm = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
+        if(!wrEn[0])
+          priv = 1;
       end
       icop_eret :
       begin

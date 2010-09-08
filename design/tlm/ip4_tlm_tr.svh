@@ -1156,3 +1156,28 @@ class tr_eif2ise extends ovm_sequence_item;
 		super.new(name);
 	endfunction : new
 endclass : tr_eif2ise
+
+///---------------------------trsaction spu_eif eif_spu------------------------
+class tr_spu2eif extends ovm_sequence_item;
+  rand bit srReq;
+  rand uchar srAdr, tid;
+  
+  `ovm_object_utils_begin(tr_spu2eif)
+    `ovm_field_int(srReq, OVM_ALL_ON)
+    `ovm_field_int(srAdr, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+  `ovm_object_utils_end
+
+	function new (string name = "tr_spu2eif");
+		super.new(name);
+	endfunction : new
+endclass : tr_spu2eif
+
+class tr_eif2spu extends ovm_sequence_item;
+  `ovm_object_utils_begin(tr_eif2spu)
+  `ovm_object_utils_end
+
+	function new (string name = "tr_eif2spu");
+		super.new(name);
+	endfunction : new
+endclass : tr_eif2spu

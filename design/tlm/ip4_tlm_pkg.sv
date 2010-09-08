@@ -469,7 +469,7 @@ typedef enum uchar {
   SR_MSCO,      SR_MSCU,      SR_THD_CTL,   SR_THD_ST,      SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7],   SR_FIFOS
+  SR_MD[0:7]
 }special_reg_t;
 
 parameter special_reg_t tlbsr[] = '{

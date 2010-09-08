@@ -70,6 +70,7 @@ class ip4_tlm_spu extends ovm_component;
   ovm_nonblocking_transport_port #(tr_spu2spa, tr_spu2spa) spa_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2dse, tr_spu2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2tlb, tr_spu2tlb) tlb_tr_port;
+  ovm_nonblocking_transport_port #(tr_spu2eif, tr_spu2eif) eif_tr_port;
   
   function void comb_proc();
     ovm_report_info("spu", "comb_proc procing...", OVM_FULL); 
@@ -143,6 +144,7 @@ class ip4_tlm_spu extends ovm_component;
     tr_spu2spa toSPA;
     tr_spu2dse toDSE;
     tr_spu2tlb toTLB;
+    tr_spu2eif toEIF;
     
     ovm_report_info("spu", "req_proc procing...", OVM_FULL); 
     
@@ -360,6 +362,12 @@ class ip4_tlm_spu extends ovm_component;
           toTLB.tid = ise.tid;
           toTLB.srAdr = ise.srAdr;
         end
+        else if(ise.srAdr inside {[SR_MD0:SR_MD7]}) begin
+          if(toEIF == null) toEIF = tr_spu2eif::type_id::create("toEIF", this);
+          toEIF.srReq = 1;
+          toEIF.tid = ise.tid;
+          toEIF.srAdr = ise.srAdr;
+        end
         else begin
           if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
           toISE.srReq = 1;
@@ -563,6 +571,7 @@ class ip4_tlm_spu extends ovm_component;
     if(toSPA != null) void'(spa_tr_port.nb_transport(toSPA, toSPA));
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
     if(toTLB != null) void'(tlb_tr_port.nb_transport(toTLB, toTLB));
+    if(toEIF != null) void'(eif_tr_port.nb_transport(toEIF, toEIF));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
@@ -657,6 +666,7 @@ class ip4_tlm_spu extends ovm_component;
     spa_tr_port = new("spa_tr_port", this);
     dse_tr_port = new("dse_tr_port", this);
     tlb_tr_port = new("tlb_tr_port", this);
+    eif_tr_port = new("eif_tr_port", this);
     
     v = new("v", this);
     vn = new("vn", this);

@@ -77,6 +77,8 @@ class test_sys_env extends ovm_env;
 
     ise.eif_tr_port.connect(eif.ise_tr_imp);
     eif.ise_tr_port.connect(ise.eif_tr_imp);
+    
+    spu.eif_tr_port.connect(eif.spu_tr_imp);
   endfunction
 
   virtual task run();
