@@ -330,6 +330,10 @@ typedef enum uchar {
 }priv_mode_t;
 
 typedef enum uchar {
+  cs_inv,     cs_shared,    cs_owner,     cs_modified
+}cache_state_t;
+
+typedef enum uchar {
   ///bypass opcodes
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,      

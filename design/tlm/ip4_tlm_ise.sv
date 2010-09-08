@@ -15,6 +15,43 @@ typedef enum uchar {
   exp_ife_err,      exp_vfu_err,    exp_scl_err
 }ise_exp_t;
 
+class ip4_tlm_ise_rst extends ovm_object;
+  uint pc, bpc, igb;
+  priv_mode_t priv;
+  uchar tid;
+  bit en, roll, exp, sel, ejtag;
+///      pdLdRst,
+///      pdStRst;
+
+  `ovm_object_utils_begin(ip4_tlm_ise_rst)
+    `ovm_field_int(pc, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(bpc, OVM_ALL_ON)
+    `ovm_field_int(igb, OVM_ALL_ON)
+    `ovm_field_int(roll, OVM_ALL_ON + OVM_NOCOPY)
+    `ovm_field_int(exp, OVM_ALL_ON + OVM_NOCOPY)
+    `ovm_field_int(en, OVM_ALL_ON + OVM_NOCOPY)
+    `ovm_field_int(sel, OVM_ALL_ON + OVM_NOCOPY)
+    `ovm_field_int(ejtag, OVM_ALL_ON + OVM_NOCOPY)
+    `ovm_field_enum(priv_mode_t, priv, OVM_ALL_ON)
+  `ovm_object_utils_end
+  
+  function void do_copy (ovm_object rhs);
+    ip4_tlm_ise_rst tmp;
+
+    super.do_copy(rhs);
+    $cast(tmp,rhs);
+    roll = 0;
+    en = 0;
+    sel = 0;
+    exp = 0;
+  endfunction
+  
+  function new (string name = "rst_vars");
+    super.new(name);
+  endfunction : new  
+endclass : ip4_tlm_ise_rst
+
 class ip4_tlm_ise_vars extends ovm_component;
   tr_spu2ise fmSPU;
   tr_rfm2ise fmRFM;
@@ -28,12 +65,10 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ise2spu spu[STAGE_ISE:1];
   tr_ise2dse dse[STAGE_ISE:1];
   
+  ip4_tlm_ise_rst rst[STAGE_ISE_VWB_END:1];
+  
   uchar TIdIssueLast, TIdFetchLast;
 ///  bit cancel[NUM_THREAD];
-  uint pcRst[STAGE_ISE_VWB_END:1], bpcRst[STAGE_ISE_VWB_END:1], igbRst[STAGE_ISE_VWB_END:1];
-  priv_mode_t privRst[STAGE_ISE_VWB_END:1];
-///      pdLdRst[STAGE_ISE_VWB_END:1],
-///      pdStRst[STAGE_ISE_VWB_END:1];
   
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
     `ovm_field_object(fmSPU, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
@@ -49,11 +84,8 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_int(TIdIssueLast, OVM_ALL_ON)
     `ovm_field_int(TIdFetchLast, OVM_ALL_ON)
+    `ovm_field_sarray_object(rst, OVM_ALL_ON + OVM_REFERENCE)
 ///    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
-    `ovm_field_sarray_int(pcRst, OVM_ALL_ON)
-    `ovm_field_sarray_int(bpcRst, OVM_ALL_ON)
-    `ovm_field_sarray_int(igbRst, OVM_ALL_ON)
-    `ovm_field_sarray_enum(priv_mode_t, privRst, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function new(string name, ovm_component parent);
@@ -61,6 +93,8 @@ class ip4_tlm_ise_vars extends ovm_component;
     TIdFetchLast = 0;
     TIdIssueLast = 0;
     print_enabled = 0;
+    foreach(rst[i])
+      rst[i] = new();
   endfunction : new
 endclass : ip4_tlm_ise_vars
 
@@ -577,32 +611,45 @@ class ip4_tlm_ise extends ovm_component;
 
   function void restore_pc(input uchar tid, uchar sel = 0, stage = 0, bit exp = 0, ejtag = 0);
     ise_thread_inf t = thread[tid];
-    uint res,
-         pc = stage == 0 ? t.pc : v.pcRst[stage],
-         npc = stage == 0 ? (t.pc + t.iGrpBytes) : (v.pcRst[stage] + v.igbRst[stage]),
-         bpc = stage == 0 ? (t.pc + t.iSPU.offSet) : v.bpcRst[stage];
-    case(sel)
-    0:  res = pc;
-    1:  res = npc;
-    2:  res = bpc;
-    endcase
-    
-    t.privMode = stage == 0 ? t.privMode : v.privRst[stage];
-    if(exp)
-      t.privMode = priv_kernel;
-    t.pc = res;
-
-    if(exp || (!t.ejtagMode && ejtag)) begin
-      t.pcEret = res;
-      t.pcExp = pc;
-      t.pc = srExpBase;
-    end
-    
-    if(t.ejtagMode || ejtag) begin
-      t.pc = VADR_EJTAGS;
-      t.ejtagMode = 1;
-      if(t.srKD)
+///    bit csis = 1;
+///    for(int i = 1; i < stage; i++)
+///      if(v.rst.en && v.rst.tid == tid) begin
+///        csis = 0;
+///        break;
+///      end
+    if(stage == 0) begin
+      uint res,
+           pc = t.pc,
+           npc = t.pc + t.iGrpBytes,
+           bpc = t.pc + t.iSPU.offSet;
+      case(sel)
+      0:  res = pc;
+      1:  res = npc;
+      2:  res = bpc;
+      endcase
+      if(exp)
         t.privMode = priv_kernel;
+      t.pc = res;
+  
+      if(exp || (!t.ejtagMode && ejtag)) begin
+        t.pcEret = res;
+        t.pcExp = pc;
+        t.pc = srExpBase;
+      end
+      
+      if(exp && ejtag) begin
+        t.pc = VADR_EJTAGS;
+        t.ejtagMode = 1;
+        if(t.srKD)
+          t.privMode = priv_kernel;
+      end
+    end
+    else begin
+      vn.rst[stage].roll = 1;
+      vn.rst[stage].exp = exp;
+      t.threadState = ts_w_rst;
+      if(v.rst[stage].tid != tid)
+        ovm_report_warning("restore_pc", "tid info inconsistent!");
     end
   endfunction
   
@@ -641,8 +688,8 @@ class ip4_tlm_ise extends ovm_component;
       cancel[tid] |= `GML(STAGE_ISE_SWB + vecMode);
     end
     endcase
-    restore_pc(tid, sel, st, 1);
     t.flush();
+    restore_pc(tid, sel, st, 1);
   endfunction : enter_exp
 
   function void resolve_br(input uchar tid, bit br);
@@ -675,27 +722,27 @@ class ip4_tlm_ise extends ovm_component;
     op_exit,
     op_sys: 
     begin
+      t.flush();
       restore_pc(tid, 0, 0, 1);
       t.srCauseSPU = EC_SYSCAL;
-      t.flush();     
     end
     op_brk  :
     begin
+      t.flush();
       restore_pc(tid, 0, 0, 0, 1); 
       t.srCauseSPU = EC_BREAK;
-      t.flush();     
     end
     op_wait:
     begin
     end
     op_eret:
     begin
+      t.flush();
       t.pc = t.pcEret;
       t.privMode = t.privEret;
       t.srCauseSPU = EC_NOEXP;
       t.srCauseDSE = EC_NODSE;
       t.srCauseFu = 0;
-      t.flush();
     end
     op_tsync:
     begin
@@ -705,32 +752,32 @@ class ip4_tlm_ise extends ovm_component;
         if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_tsyn)
           sync = 0;
       if(!sync) begin
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.flush();
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.threadState = ts_w_tsyn;
       end
     end
     op_syna:
     begin
       if(t.pendExLoad > 0 || t.pendExStore > 0) begin
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.flush();
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.threadState = ts_w_syna;
       end
     end
     op_synld:
     begin
       if(t.pendExLoad > 0) begin
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.flush();
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.threadState = ts_w_synld;
       end
     end
     op_synst:
     begin
       if(t.pendExStore > 0) begin
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.flush();
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.threadState = ts_w_synst;
       end
     end
@@ -996,7 +1043,7 @@ class ip4_tlm_ise extends ovm_component;
   function void issue(input uchar tid, pbId);
     ise_thread_inf t = thread[tid];
     
-    vn.privRst[1] = t.privMode;
+    vn.rst[1].priv = t.privMode;
     
     if(t.decodeErr) begin
       if(t.threadState == ts_rdy)
@@ -1009,9 +1056,11 @@ class ip4_tlm_ise extends ovm_component;
       return;
     end
     
-    vn.pcRst[1] = t.pc;
-    vn.igbRst[1] = t.iGrpBytes;
-   
+    vn.rst[1].pc = t.pc;
+    vn.rst[1].igb = t.iGrpBytes;
+    vn.rst[1].en = 1;
+    vn.rst[1].ejtag = t.ejtagMode;
+    
     if(t.enSPU) begin
       /// spu or scalar dse issue
       if(t.iSPU.is_priv()) begin
@@ -1025,9 +1074,9 @@ class ip4_tlm_ise extends ovm_component;
     end
 
     if(t.enSPU && !t.iSPU.is_unc_br() && t.iSPU.is_br())
-      vn.bpcRst[1] = t.br_pred();
+      vn.rst[1].bpc = t.br_pred();
     else
-      vn.bpcRst[1] = t.pc + t.iGrpBytes;
+      vn.rst[1].bpc = t.pc + t.iGrpBytes;
       
     ///branch taken
     if(t.enSPU && t.iSPU.is_br() && t.brPred) begin
@@ -1111,16 +1160,11 @@ class ip4_tlm_ise extends ovm_component;
     vn.spu[1] = null;
     vn.dse[1] = null;
     
-    for(int i = STAGE_ISE_VWB_END; i > 1; i--) begin
-      vn.pcRst[i] = v.pcRst[i - 1];
-      vn.bpcRst[i] = v.bpcRst[i - 1];
-      vn.privRst[i] = v.privRst[i - 1];
-      vn.igbRst[i] = v.igbRst[i - 1];
-    end
-    vn.pcRst[1] = v.pcRst[1];
-    vn.bpcRst[1] = v.bpcRst[1];
-    vn.privRst[1] = v.privRst[1];
-    vn.igbRst[1] = v.igbRst[1];
+    for(int i = STAGE_ISE_VWB_END; i > 1; i--)
+      vn.rst[i] = v.rst[i - 1];
+    
+    vn.rst[1] = new();
+    vn.rst[1].copy(v.rst[1]);
     
     foreach(thread[i]) begin
       cancel[i] = cancel[i] << 1;
@@ -1203,20 +1247,20 @@ class ip4_tlm_ise extends ovm_component;
       if(dse.exp && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.srCauseDSE = dse.cause;
         t.cancel = 1;  
-        restore_pc(dse.tid, 1,st, 1);
         t.flush();
+        restore_pc(dse.tid, 1,st, 1);
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM + dse.vecMode);
       end
       else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.cancel = 1;   
-        restore_pc(dse.tid, 1, st);
         t.flush();
+        restore_pc(dse.tid, 1, st);
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
       end
       else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.cancel = 1;   
-        restore_pc(dse.tid, 0, st);
         t.flush();
+        restore_pc(dse.tid, 0, st);
         t.noExt = ~dse.reRun;
         cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
       end
@@ -1288,6 +1332,45 @@ class ip4_tlm_ise extends ovm_component;
           thread[i].decoded = 1;
         end
       end
+    
+    ///rollback
+    for(int i = STAGE_ISE_VWB_END; i > 0; i--) begin
+      uchar tid = v.rst[i].tid;
+      ise_thread_inf t = thread[tid];
+      uint res,
+           pc = v.rst[i].pc,
+           npc = (v.rst[i].pc + v.rst[i].igb),
+           bpc = v.rst[i].bpc;
+      if(!v.rst[i].en || !v.rst[i].roll)
+        continue;
+      case(v.rst[i].sel)
+      0:  res = pc;
+      1:  res = npc;
+      2:  res = bpc;
+      endcase
+      
+      t.privMode = v.rst[i].priv;
+      t.pc = res;
+      t.ejtagMode = v.rst[i].ejtag;
+  
+      if(v.rst[i].exp) begin
+        if(v.rst[i].ejtag) begin
+          t.pc = VADR_EJTAGS;
+          t.ejtagMode = 1;
+          if(t.srKD)
+            t.privMode = priv_kernel;
+        end
+        else begin
+          t.pcEret = res;
+          t.pcExp = pc;
+          t.pc = srExpBase;
+          t.privMode = priv_kernel;
+        end
+      end
+      vn.rst[i].roll = 0;
+      t.threadState = ts_rdy;
+      break;
+    end
   endfunction
   
   function void req_proc();

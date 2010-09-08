@@ -61,7 +61,7 @@ typedef struct{
 
 typedef struct{
   uint tagHi, tagLo[NUM_SMEM_GRP];
-  bit tagV[NUM_SMEM_GRP], dirty[NUM_SMEM_GRP];
+  cache_state_t state[NUM_SMEM_GRP];
   uchar lo, hi;
 }cache_t;
 
@@ -652,7 +652,7 @@ class ip4_tlm_dse extends ovm_component;
       padr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
              smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
-      uint vAdrHi;
+      uint tlbVAdr;
       uint dcIdx, dcRdy = 0;
       bit ed = 0, wa = 0, wt = 0;
       bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
@@ -671,10 +671,10 @@ class ip4_tlm_dse extends ovm_component;
       exReq[STAGE_RRF_DEM] = 0;
       if(tlb == null) tlb = tlbCached;
       if(tlb != null) begin
-        vAdrHi = tlbReqVAdr[STAGE_RRF_SEL] >> tlb.eobit;
+        tlbVAdr = tlbReqVAdr[STAGE_RRF_SEL] >> tlb.eobit;
         ed = tlb.endian;
         wa = tlb.writeAlloc;
-        wt = tlb.writeThru;
+        wt = tlb.writeThru && ise.op inside {st_ops};
       end
       
       foreach(rfm.base[sp]) begin
@@ -700,7 +700,7 @@ class ip4_tlm_dse extends ovm_component;
           oc = 0;
           padr = srMapBase + rfm.base[sp] - VADR_NMAPNC;
         end
-        else if(tlb != null && tlb.hit && (rfm.base[sp] >> (VADR_START + tlb.eobit)) == vAdrHi) begin
+        else if(tlb != null && tlb.hit && (rfm.base[sp] >> (VADR_START + tlb.eobit)) == tlbVAdr) begin
           padr = rfm.base[sp];
           if(!spu.emsk[sp]) continue;
           if(!selExp && tlb.exp) begin
@@ -759,7 +759,7 @@ class ip4_tlm_dse extends ovm_component;
                 if(!dcRdy || dcIdx == idx) begin
                   dcRdy = 1;
                   dcIdx = idx;
-                  hit = cache[idx][hiTagIdx].tagV[loTagIdx] && cache[idx][hiTagIdx].tagHi == tagHi && 
+                  hit = cache[idx][hiTagIdx].state[loTagIdx] != cs_inv && cache[idx][hiTagIdx].tagHi == tagHi && 
                         cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo;
                   dcRdy = 1;
                   dcIdx = idx;
@@ -782,7 +782,7 @@ class ip4_tlm_dse extends ovm_component;
           ///external access
           if(wt && oc && selExRdy) begin
             bit exhit = (selExAdr >> maxSlot) == (padr >> (maxSlot + WID_SMEM_BK + WID_WORD));
-            if(wt && !exhit) begin
+            if(!exhit) begin
               ex = 0;
               oc = 0;
             end
@@ -811,7 +811,7 @@ class ip4_tlm_dse extends ovm_component;
             end
             else begin
               bit exhit = (selExAdr >> maxSlot) == (padr >> (maxSlot + WID_SMEM_BK + WID_WORD));
-              if(wt && !exhit) begin
+              if(!exhit) begin
                 ex = 0;
                 oc = 0;
               end
@@ -1082,11 +1082,12 @@ class ip4_tlm_dse extends ovm_component;
         if(exAdr < smStart && exAdr >= smEnd && srCacheGrp > 0) begin
           ///in ext rang, check cache
           for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++) begin
-            bit empty = 1, dirtys = 0;
+            bit empty = 1;
+            uchar dirtys = 0;
             for(int loTagIdx = (NUM_SMEM_GRP - srCacheGrp); loTagIdx < NUM_SMEM_GRP; loTagIdx++) begin
-              empty = empty && !cache[idx][hiTagIdx].tagV[loTagIdx];
-              dirtys += cache[idx][hiTagIdx].tagV[loTagIdx] && cache[idx][hiTagIdx].dirty[loTagIdx];
-              if(cache[idx][hiTagIdx].tagV[loTagIdx] && cache[idx][hiTagIdx].tagHi == tagHi && 
+              empty = empty && cache[idx][hiTagIdx].state[loTagIdx] == cs_inv;
+              dirtys += cache[idx][hiTagIdx].state[loTagIdx] == cs_modified;
+              if(cache[idx][hiTagIdx].state[loTagIdx] != cs_inv && cache[idx][hiTagIdx].tagHi == tagHi && 
                  cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo) begin
                 hit = 1;
                 hi = hiTagIdx;
@@ -1114,8 +1115,10 @@ class ip4_tlm_dse extends ovm_component;
             bit found = 0;
             updateLo = 1;
             grp = cache[idx][hiAso].lo;
+            hi = hiAso;
             for(int i = 0; i < NUM_SMEM_GRP; i++) begin
-              if(grp >= (NUM_SMEM_GRP - srCacheGrp) && !cache[idx][hiAso].tagV[grp]) begin
+              ///find a inv first
+              if(grp >= (NUM_SMEM_GRP - srCacheGrp) && cache[idx][hi].state[grp] == cs_inv) begin
                 found = 1;
                 break;
               end
@@ -1125,12 +1128,22 @@ class ip4_tlm_dse extends ovm_component;
               end
             end
             
-            if(found)
-              ///found a valid lo entry
-              hi = hiAso;
-            else if(ehit) begin
-              for(grp = 0; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP; grp++);
+            if(!found) begin
+              for(int i = 0; i < NUM_SMEM_GRP; i++) begin
+                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && cache[idx][hi].state[grp] != cs_modified) begin
+                  found = 1;
+                  break;
+                end
+                else begin
+                  grp++;
+                  grp = grp & `GML(WID_SMEM_GRP);
+                end
+              end
+            end
+
+            if(!found && ehit) begin
               hi = eAso;
+              for(grp = 0; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP; grp++);
             end
           end
           else begin
@@ -1147,7 +1160,7 @@ class ip4_tlm_dse extends ovm_component;
               updateHi = 1;
               grp = cache[idx][hiAso].lo;
               for(int i = 0; i < NUM_SMEM_GRP; i++) begin
-                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && !cache[idx][hiAso].tagV[grp]) begin
+                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && cache[idx][hi].state[grp] == cs_inv) begin
                   found = 1;
                   break;
                 end
@@ -1156,12 +1169,34 @@ class ip4_tlm_dse extends ovm_component;
                   grp = grp & `GML(WID_SMEM_GRP);
                 end
               end
-              flush = found && cache[idx][hiAso].tagV[grp];
+            
+              if(!found) begin
+                for(int i = 0; i < NUM_SMEM_GRP; i++) begin
+                  if(grp >= (NUM_SMEM_GRP - srCacheGrp) && cache[idx][hi].state[grp] != cs_modified) begin
+                    found = 1;
+                    break;
+                  end
+                  else begin
+                    grp++;
+                    grp = grp & `GML(WID_SMEM_GRP);
+                  end
+                end
+              end
+            
+              flush = found && cache[idx][hi].state[grp] == cs_modified;
             end
             else begin
               allocFail = 1;
               flush = 1;
-              for(grp = 0; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP && cache[idx][hiAso].tagV[grp]; grp++);
+              grp = cache[idx][hiAso].lo;
+              for(int i = 0; i < NUM_SMEM_GRP; i++) begin
+                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP)
+                  break;
+                else begin
+                  grp++;
+                  grp = grp & `GML(WID_SMEM_GRP);
+                end
+              end
               smWEn = 0;
             end
           end
@@ -1175,7 +1210,7 @@ class ip4_tlm_dse extends ovm_component;
         if(eif.last) begin
           if(eif.alloc) begin
             if(updateLo) begin
-              cache[idx][hi].tagV[grp] = 1;
+              cache[idx][hi].state[grp] = cs_owner;
               cache[idx][hi].lo = grp;
               cache[idx][hi].tagLo[grp] = tagLo;
             end
