@@ -997,7 +997,7 @@ endclass : tr_dse2tlb
 class tr_tlb2dse extends ovm_sequence_item;
   rand word pfn;
   rand bit endian, hit, exp;
-  rand bit writeAlloc, writeThru, coherence, cached;
+  rand bit writeAlloc, writeThru, coherency, cached;
   rand uchar eobit;  /// evenoddbit
   rand cause_dse_t cause;
   
@@ -1008,7 +1008,7 @@ class tr_tlb2dse extends ovm_sequence_item;
     `ovm_field_int(endian, OVM_ALL_ON);
     `ovm_field_int(writeAlloc, OVM_ALL_ON);
     `ovm_field_int(writeThru, OVM_ALL_ON);
-    `ovm_field_int(coherence, OVM_ALL_ON);
+    `ovm_field_int(coherency, OVM_ALL_ON);
     `ovm_field_int(cached, OVM_ALL_ON);
     `ovm_field_enum(cause_dse_t, cause, OVM_ALL_ON)
   `ovm_object_utils_end  
@@ -1060,12 +1060,14 @@ endclass : tr_tlb2ife
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
   rand bit req, cacheFlush, cacheFill, sgl,
-           last, endian, allocFail;
+           last, endian, allocFail, queryNoHit,
+           coherency;
   rand opcode_e op;
   rand uchar id, cyc;
   rand exadr_t exAdr;
   rand word data[NUM_SP];
   rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
+  rand cache_state_t queryRes;
   
   `ovm_object_utils_begin(tr_dse2eif)
     `ovm_field_int(req, OVM_ALL_ON)
@@ -1078,8 +1080,11 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_int(cacheFlush, OVM_ALL_ON)
     `ovm_field_int(cacheFill, OVM_ALL_ON)
     `ovm_field_int(exAdr, OVM_ALL_ON)
+    `ovm_field_int(coherency, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
     `ovm_field_sarray_int(byteEn, OVM_ALL_ON)
+    `ovm_field_enum(cache_state_t, queryRes, OVM_ALL_ON)
+    `ovm_field_int(queryNoHit, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_dse2eif");
@@ -1089,10 +1094,13 @@ endclass : tr_dse2eif
 
 class tr_eif2dse extends ovm_sequence_item;
   rand bit loadRsp, storeRsp, last, noVecSt,
-           rd, wr, alloc, noSglSt, noLd, endian;
+           rd, wr, alloc, noSglSt, noLd, endian,
+           queryCacheState;
   rand uchar id, cyc;
   rand word data[NUM_SP];
   rand exadr_t exAdr;
+  rand cache_state_t cacheState;
+  rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
   
   `ovm_object_utils_begin(tr_eif2dse)
     `ovm_field_int(loadRsp, OVM_ALL_ON)
@@ -1109,6 +1117,9 @@ class tr_eif2dse extends ovm_sequence_item;
     `ovm_field_int(cyc, OVM_ALL_ON)
     `ovm_field_int(exAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
+    `ovm_field_enum(cache_state_t, cacheState, OVM_ALL_ON)
+    `ovm_field_sarray_int(byteEn, OVM_ALL_ON)
+    `ovm_field_int(queryCacheState, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2dse");

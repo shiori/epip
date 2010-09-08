@@ -245,7 +245,7 @@ class ip4_tlm_tlb extends ovm_component;
         toDSE.exp = exp;
         toDSE.writeAlloc = (varC >> 2) & 'b01;
         toDSE.writeThru = (varC >> 3) & 'b01;
-        toDSE.coherence = (varC >> 1) & 'b01;
+        toDSE.coherency = (varC >> 1) & 'b01;
         toDSE.cached = varC & 'b01;
         toDSE.endian = varE;
       end   
