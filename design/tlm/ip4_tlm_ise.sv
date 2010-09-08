@@ -31,7 +31,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   uchar TIdIssueLast, TIdFetchLast;
 ///  bit cancel[NUM_THREAD];
   uint pcRst[STAGE_ISE_VWB_END:1], bpcRst[STAGE_ISE_VWB_END:1], igbRst[STAGE_ISE_VWB_END:1];
-  bit privRst[STAGE_ISE_VWB_END:1];
+  priv_mode_t privRst[STAGE_ISE_VWB_END:1];
 ///      pdLdRst[STAGE_ISE_VWB_END:1],
 ///      pdStRst[STAGE_ISE_VWB_END:1];
   
@@ -53,7 +53,7 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_sarray_int(pcRst, OVM_ALL_ON)
     `ovm_field_sarray_int(bpcRst, OVM_ALL_ON)
     `ovm_field_sarray_int(igbRst, OVM_ALL_ON)
-    `ovm_field_sarray_int(privRst, OVM_ALL_ON)
+    `ovm_field_sarray_enum(priv_mode_t, privRst, OVM_ALL_ON)
   `ovm_component_utils_end
 
   function new(string name, ovm_component parent);
@@ -65,7 +65,7 @@ class ip4_tlm_ise_vars extends ovm_component;
 endclass : ip4_tlm_ise_vars
 
 class ise_thread_inf extends ovm_component;
-  ise_thread_state threadState;
+  thread_state_t threadState;
   uchar iBuf[$];
   bit dseVec;
   uchar iGrpBytes, adrPkgBytes, numImms,
@@ -77,8 +77,8 @@ class ise_thread_inf extends ovm_component;
   uchar cntPRWr, cntVrfWr[NUM_VRF_BKS], cntSrfWr[NUM_SRF_BKS];
   
   bit enSPU, enDSE, enVec, enFu[NUM_FU];
-  bit privMode,  ///privilege running status
-      ejtagMode,
+  priv_mode_t privMode, privEret;  ///privilege running status
+  bit ejtagMode,
       decoded,
       decodeErr,
       cancel;
@@ -91,7 +91,8 @@ class ise_thread_inf extends ovm_component;
   bit isLastLoad, isLastStore, isLastVecDse, lpRndMemMode, pendIFetchExp, iFetchExp;
   uchar pendIFetch, pendExLoad, pendExStore, pendBr;
   uchar srThreadGrp, srFIFOMask, srUserEvent, srFIFOPend;
-  round_mode_t srExeMode;
+  round_mode_t srRndMode;
+  uchar srExpMsk;
   bit srKD, srCauseFu;
   cause_spu_t srCauseSPU, pendIFetchCause;
   cause_dse_t srCauseDSE;
@@ -103,11 +104,12 @@ class ise_thread_inf extends ovm_component;
   uint fcrRet[$];
   
   `ovm_component_utils_begin(ise_thread_inf)
-    `ovm_field_enum(ise_thread_state, threadState, OVM_ALL_ON)
+    `ovm_field_enum(thread_state_t, threadState, OVM_ALL_ON)
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decodeErr, OVM_ALL_ON)
     `ovm_field_int(cancel, OVM_ALL_ON)
-    `ovm_field_int(privMode, OVM_ALL_ON)
+    `ovm_field_enum(priv_mode_t, privMode, OVM_ALL_ON)
+    `ovm_field_enum(priv_mode_t, privEret, OVM_ALL_ON)
     `ovm_field_int(ejtagMode, OVM_ALL_ON)
     `ovm_field_queue_int(iBuf, OVM_ALL_ON)
     `ovm_field_int(wCntSel, OVM_ALL_ON)
@@ -174,7 +176,7 @@ class ise_thread_inf extends ovm_component;
     foreach(iFu[i])
       iFu[i] = new();
     threadState = ts_disabled;
-    privMode = 0;
+    privMode = priv_user;
     pc = CFG_START_ADR;
     vecMode = CYC_VEC - 1;
     decoded = 0;
@@ -484,7 +486,7 @@ class ise_thread_inf extends ovm_component;
       ovm_report_info("update_inst", "EC_IFACC", OVM_HIGH);
       return;
     end
-    else if(fetchGrp.k && !privMode) begin
+    else if(fetchGrp.k && privMode != priv_kernel) begin
       pendIFetchCause = EC_EXEPRIV;
       pendIFetchExp = 1;
       ovm_report_info("update_inst", "EC_EXEPRIV", OVM_HIGH);
@@ -587,7 +589,7 @@ class ip4_tlm_ise extends ovm_component;
     
     t.privMode = stage == 0 ? t.privMode : v.privRst[stage];
     if(exp)
-      t.privMode = 1;
+      t.privMode = priv_kernel;
     t.pc = res;
 
     if(exp || (!t.ejtagMode && ejtag)) begin
@@ -600,7 +602,7 @@ class ip4_tlm_ise extends ovm_component;
       t.pc = VADR_EJTAGS;
       t.ejtagMode = 1;
       if(t.srKD)
-        t.privMode = 1;
+        t.privMode = priv_kernel;
     end
   endfunction
   
@@ -689,7 +691,7 @@ class ip4_tlm_ise extends ovm_component;
     op_eret:
     begin
       t.pc = t.pcEret;
-      t.privMode = 0;
+      t.privMode = t.privEret;
       t.srCauseSPU = EC_NOEXP;
       t.srCauseDSE = EC_NODSE;
       t.srCauseFu = 0;
@@ -698,14 +700,38 @@ class ip4_tlm_ise extends ovm_component;
     op_tsync:
     begin
       bit sync = 1;
-      t.threadState = ts_w_syn;
+      t.threadState = ts_w_tsyn;
       foreach(thread[i])
-        if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_syn)
+        if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_tsyn)
           sync = 0;
       if(!sync) begin
         restore_pc(tid, 0, STAGE_ISE_WSR); 
         t.flush();
-        t.threadState = ts_w_syn;
+        t.threadState = ts_w_tsyn;
+      end
+    end
+    op_syna:
+    begin
+      if(t.pendExLoad > 0 || t.pendExStore > 0) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_syna;
+      end
+    end
+    op_synld:
+    begin
+      if(t.pendExLoad > 0) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_synld;
+      end
+    end
+    op_synst:
+    begin
+      if(t.pendExStore > 0) begin
+        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        t.flush();
+        t.threadState = ts_w_synst;
       end
     end
     op_msync:
@@ -742,11 +768,12 @@ class ip4_tlm_ise extends ovm_component;
 ///      end
       SR_THD_CTL  :
       begin
-        t.privMode = op0[0];
-        t.srThreadGrp = op0[15];
-        t.srFIFOMask = op0[23:16];
-        t.srExeMode = round_mode_t'(op0[26:24]);
-        t.srKD = op0[27];
+        t.privMode = priv_mode_t'(op0[1:0]);
+        t.srThreadGrp = op0[2];
+        t.srFIFOMask = op0[10:3];
+        t.srRndMode = round_mode_t'(op0[13:11]);
+        t.srExpMsk = op0[20:14];
+        t.srKD = op0[21];
       end
       SR_UEE    :
         t.srUEE = op0;
@@ -777,11 +804,12 @@ class ip4_tlm_ise extends ovm_component;
         res = srExpBase;
       SR_THD_CTL  :
       begin
-        res[0] = t.privMode;
+        res[1:0] = t.privMode;
         res[2] = t.srThreadGrp;
-        res[23:16] = t.srFIFOMask;
-        res[26:24] = t.srExeMode;
-        res[27] = t.srKD;
+        res[10:3] = t.srFIFOMask;
+        res[13:11] = t.srRndMode;
+        res[20:14] = t.srExpMsk;
+        res[21] = t.srKD;
       end
       SR_THD_ST   :
       begin
@@ -960,7 +988,8 @@ class ip4_tlm_ise extends ovm_component;
       ciRFM[i].cyc = i;
       ciSPA[i].subVec = i;
       ciSPU[i].subVec = i;
-      ciSPA[i].rndMode = t.srExeMode;
+      ciSPA[i].rndMode = t.srRndMode;
+      ciSPA[i].expMsk = t.srExpMsk;
     end
   endfunction : fill_issue
 
@@ -986,7 +1015,7 @@ class ip4_tlm_ise extends ovm_component;
     if(t.enSPU) begin
       /// spu or scalar dse issue
       if(t.iSPU.is_priv()) begin
-        if(t.privMode)
+        if(t.privMode == priv_kernel)
           void'(exe_ise(tid, t.iSPU.op));
         else
           enter_exp(tid, exp_priv_err);
@@ -1166,6 +1195,10 @@ class ip4_tlm_ise extends ovm_component;
       ise_thread_inf t = thread[dse.tid];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
+      if(t.pendExStore == 0 && t.threadState inside {ts_w_synst, ts_w_syna})
+        t.threadState = ts_rdy;
+      if(t.pendExLoad == 0 && t.threadState inside {ts_w_synld, ts_w_syna})
+        t.threadState = ts_rdy;
       if(dse.scl) st += t.vecMode;
       if(dse.exp && !cancel[dse.tid][STAGE_ISE_DEM]) begin
         t.srCauseDSE = dse.cause;
@@ -1324,7 +1357,15 @@ class ip4_tlm_ise extends ovm_component;
 ///      if(toSPA == null) toSPA = tr_ise2spa::type_id::create("toSPA", this);
 ///      toSPA.cancel[dse.tid] = 1;
 ///    end
-      
+    
+    if(toDSE != null && toDSE.op inside {ld_ops, st_ops, op_smsg, op_rmsg}) begin
+      if(toEIF == null) toEIF = tr_ise2eif::type_id::create("toEIF", this);
+      toEIF.issueLd = toDSE.op inside {ld_ops};
+      toEIF.issueSt = toDSE.op inside {st_ops};
+      toEIF.issueRMsg = toDSE.op == op_rmsg;
+      toEIF.issueSMsg = toDSE.op == op_smsg;
+    end
+    
     ///------------req to other module----------------
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));
@@ -1454,7 +1495,7 @@ class ip4_tlm_ise extends ovm_component;
     foreach(thread[i])
       thread[i] = new($psprintf("thread%0d", i), this);
     thread[0].threadState = ts_rdy;
-    thread[0].privMode = 1;
+    thread[0].privMode = priv_kernel;
     
     cntVrfRd = 0;
     cntSrfRd = 0;

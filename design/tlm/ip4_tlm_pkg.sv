@@ -321,8 +321,13 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_rst, ts_w_syn
-}ise_thread_state;
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self,
+  ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
+}thread_state_t;
+
+typedef enum uchar {
+  priv_user,    priv_kernel,  priv_event
+}priv_mode_t;
 
 typedef enum uchar {
   ///bypass opcodes
@@ -348,8 +353,8 @@ typedef enum uchar {
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
-  op_pref,    op_sync,    op_synci,   op_cache,
-  op_smsg,    op_rmsg,
+  op_pref,    op_synci,   op_cache,   op_smsg,
+  op_rmsg,    op_syna,    op_synld,   op_synst,
   ///spu opcodes
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
@@ -412,7 +417,7 @@ parameter opcode_e dse_ops[] = '{
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
-  op_pref,    op_sync,    op_synci,   op_cache,
+  op_pref,    op_syna,    op_synci,   op_cache,
   op_smsg,    op_rmsg
 };
 
