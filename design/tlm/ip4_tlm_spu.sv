@@ -352,8 +352,9 @@ class ip4_tlm_spu extends ovm_component;
         && !cancel[v.fmISE[STAGE_RRF_WSRB].tid][STAGE_RRF_WSRB]) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_WSRB];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_WSRB];
+      bit prPass = prSPU[STAGE_RRF_WSRB] || ise.op == op_tsync;
       
-      if(prSPU[STAGE_RRF_WSRB] && ise.op inside {op_s2gp, tlb_ops}) begin
+      if(prPass && ise.op inside {op_s2gp, tlb_ops}) begin
         if(ise.srAdr inside {tlb_sr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;

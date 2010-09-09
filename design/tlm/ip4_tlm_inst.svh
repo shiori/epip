@@ -260,12 +260,12 @@ typedef bit[2:0] iga_t;
 parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;
 
 typedef struct packed{
-  bit t, chkGrp;
+  bit t;
+  bit[1:0] chkGrp;
   bit[4:0] unitEn;
   bit[2:0] adrPkgB;
   bit[1:0] immPkgW;
-  bit dv;
-  iga_t a;
+  bit dv, nmsk, a;
 }i_gs1_t;
 
 typedef union packed{
@@ -274,8 +274,9 @@ typedef union packed{
 } i_gs1_u;
 
 typedef struct packed{
-  bit t, chkGrp, unitEn, adrPkgB, immPkgW;
-  iga_t a;
+  bit t;
+  bit[1:0] chkGrp;
+  bit unitEn, adrPkgB, immPkgW, nmsk, a;
 }i_gs0_t;
 
 typedef struct packed{

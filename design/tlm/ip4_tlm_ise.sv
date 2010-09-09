@@ -115,8 +115,10 @@ class ise_thread_inf extends ovm_component;
   bit ejtagMode,
       decoded,
       decodeErr,
-      cancel;
-  uchar wCnt[NUM_W_CNT][6], wCntNext[7], wCntSel, vecMode;
+      cancel,
+      noMsk;
+  uchar wCnt[NUM_W_CNT][5], wCntBr, wCntNext[7], vecMode;
+  bit[NUM_W_CNT - 1 : 0] wCntSel;
   bit wCntDep[5];
   bit[CYC_VEC - 1 : 0] noExt;
   
@@ -147,6 +149,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(ejtagMode, OVM_ALL_ON)
     `ovm_field_queue_int(iBuf, OVM_ALL_ON)
     `ovm_field_int(wCntSel, OVM_ALL_ON)
+    `ovm_field_int(wCntBr, OVM_ALL_ON)
     `ovm_field_int(iGrpBytes, OVM_ALL_ON)
     `ovm_field_int(adrPkgBytes, OVM_ALL_ON)
     `ovm_field_int(numImms, OVM_ALL_ON)
@@ -280,6 +283,7 @@ class ise_thread_inf extends ovm_component;
       adrPkgBytes = grpStart.adrPkgB;
       numImms = grpStart.immPkgW;
       dseVec = grpStart.unitEn;
+      noMsk = grpStart.nmsk;
       iGrpBytes = 1 + adrPkgBytes + numImms * WORD_BYTES + NUM_INST_BYTES;
     end
     else begin
@@ -300,6 +304,7 @@ class ise_thread_inf extends ovm_component;
       enSPU = grpStart.i.unitEn[0];
       enDSE = grpStart.i.unitEn[1];
       dseVec = grpStart.i.dv;
+      noMsk = grpStart.i.nmsk;
       foreach(enFu[i])
         enFu[i] = grpStart.i.unitEn[2+i];
     end
@@ -318,8 +323,8 @@ class ise_thread_inf extends ovm_component;
     
   function void decode_igrp();
     uchar tmp = 0;
-    iga_t adrs[12];
-    uchar offSet;
+    iga_t[23:0] adrs;
+    uchar offSet, gsa;
     i_gs0_t grpStart = iBuf[0];
 ///    bit noVecExp = 0;
     vrfRdEn = '{default : 0};
@@ -344,7 +349,7 @@ class ise_thread_inf extends ovm_component;
       offSet += NUM_INST_BYTES;
       iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfRd, cntSrfRd, cntDSERd, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
       iSPU.analyze_fu(enSPU, enDSE, enFu);
-      adrs[0] = grpStart.a;
+      gsa = grpStart.a;
 ///      if(adrPkgBytes) begin
 ///        i_ap0_t AdrPkg = iBuf[offSet];
 ///        foreach(AdrPkg.a[i])
@@ -382,43 +387,52 @@ class ise_thread_inf extends ovm_component;
           offSet += NUM_INST_BYTES;          
         end
 
-      adrs[0] = grpStart.i.a;
+      gsa = grpStart.i.a;
     end
 
     foreach(enFu[i])
       enVec |= enFu[i];
           
     ///fill in rf address
-    while(adrPkgBytes != 0) begin
-      if(adrPkgBytes >= 3) begin
-        i_ap2_u AdrPkg;
-        foreach(AdrPkg.b[i]) begin
-          AdrPkg.b[i] = iBuf[offSet];
-          offSet++;
-        end
-        foreach(AdrPkg.i.a[i])
-          adrs[tmp++] = AdrPkg.i.a[i];
-        adrPkgBytes -= 3;
-      end
-      else if(adrPkgBytes >= 2) begin
-        i_ap1_u AdrPkg;
-        foreach(AdrPkg.b[i]) begin
-          AdrPkg.b[i] = iBuf[offSet];
-          offSet++;
-        end
-        foreach(AdrPkg.i.a[i])
-          adrs[tmp++] = AdrPkg.i.a[i];
-        adrPkgBytes -= 2;
-      end
-      else if(adrPkgBytes >= 1) begin
-        i_ap0_t AdrPkg;
-        AdrPkg = iBuf[offSet];
+    begin
+      bit[8:0][7:0] tmp0;
+      for(int i = 0; i < adrPkgBytes; i++) begin
+        tmp0[i] = iBuf[offSet];
         offSet++;
-        foreach(AdrPkg.a[i])
-          adrs[tmp++] = AdrPkg.a[i];
-        adrPkgBytes -= 1;
       end
+      tmp0[adrPkgBytes][0] = gsa;
+      adrs = tmp0;
     end
+///    while(adrPkgBytes != 0) begin
+///      if(adrPkgBytes >= 3) begin
+///        i_ap2_u AdrPkg;
+///        foreach(AdrPkg.b[i]) begin
+///          AdrPkg.b[i] = iBuf[offSet];
+///          offSet++;
+///        end
+///        foreach(AdrPkg.i.a[i])
+///          adrs[tmp++] = AdrPkg.i.a[i];
+///        adrPkgBytes -= 3;
+///      end
+///      else if(adrPkgBytes >= 2) begin
+///        i_ap1_u AdrPkg;
+///        foreach(AdrPkg.b[i]) begin
+///          AdrPkg.b[i] = iBuf[offSet];
+///          offSet++;
+///        end
+///        foreach(AdrPkg.i.a[i])
+///          adrs[tmp++] = AdrPkg.i.a[i];
+///        adrPkgBytes -= 2;
+///      end
+///      else if(adrPkgBytes >= 1) begin
+///        i_ap0_t AdrPkg;
+///        AdrPkg = iBuf[offSet];
+///        offSet++;
+///        foreach(AdrPkg.a[i])
+///          adrs[tmp++] = AdrPkg.a[i];
+///        adrPkgBytes -= 1;
+///      end
+///    end
       
     for(int i = 0; i < numImms; i++) begin
       for(int j = 0; j < WORD_BYTES; j++)
@@ -882,7 +896,14 @@ class ip4_tlm_ise extends ovm_component;
   function bit can_issue(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
     ise_thread_inf t = thread[tid];
+    uchar finalCnt[5];
     
+    foreach(t.wCntSel[i])
+      if(t.wCntSel[i])
+        foreach(t.wCntDep[j])
+          if(t.wCnt[i][j] > finalCnt[j])
+            finalCnt[j] = t.wCnt[i][j];
+                
     if(get_report_verbosity_level() >= OVM_HIGH) begin
       bit [NUM_FU-1:0] enFuTmp;
       uchar tmp = 0;
@@ -890,12 +911,12 @@ class ip4_tlm_ise extends ovm_component;
         enFuTmp[i] = t.enFu[i];
       
       foreach(t.wCntDep[i])
-        if(t.wCnt[t.wCntSel][i] > tmp && i != br_styp)
-          tmp = t.wCnt[t.wCntSel][i];
+        if(finalCnt[i] > tmp && i != br_styp)
+          tmp = finalCnt[i];
           
       ovm_report_info("can_issue",
         $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCnt[t.wCntSel][br_styp], t.pc, t.enSPU, t.enDSE,
+                   t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.pc, t.enSPU, t.enDSE,
                    enFuTmp, t.dseVec, t.wCntSel),
         OVM_HIGH);
     end
@@ -938,12 +959,12 @@ class ip4_tlm_ise extends ovm_component;
     
     if(!(t.threadState inside {ts_rdy, ts_w_b, ts_b_self}))
       return 0;
-    
+        
     foreach(t.wCntDep[i])
-      if(t.wCntDep[i] && t.wCnt[t.wCntSel][i] > 0)
+      if(t.wCntDep[i] && finalCnt[i] > 0)
         return 0;
     
-    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] > t.wCnt[br_styp])
+    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] > t.wCntBr)
       return 0;
 ///    if(t.wCnt[t.wCntSel] != 0  || t.wCntNext[2] < t.wExpCnt)
 ///      return 0;
@@ -990,6 +1011,9 @@ class ip4_tlm_ise extends ovm_component;
         ciSPU[i].brDepDSE = brDepDSE;
         ciSPU[i].tid = tid;
         ciSPU[i].brPred = t.brPred;
+        ciSPU[i].prNMsk = '{default : t.noMsk};
+        ciSPU[i].prNMskDSE = t.noMsk;
+        ciSPU[i].prNMskSPU = t.noMsk;
       end
     end
     
@@ -1113,11 +1137,18 @@ class ip4_tlm_ise extends ovm_component;
         && t.iDSE.prRdAdr != 0 && t.brPred);
     end
     
-    foreach(t.wCntNext[i])
-      if(t.wCntNext[i] > t.wCnt[t.wCntSel][i])
-        t.wCnt[t.wCntSel][i] = t.wCntNext[i];
-///    if(t.wCntNext[1] > t.wExpCnt)
-///      t.wExpCnt = t.wCntNext[1];
+    ///update wcnt
+    begin
+      uchar sel;
+      for(sel = 0; t.wCntSel[sel] != 0; sel++);
+      if(sel >= NUM_W_CNT)
+        sel = 0;
+      foreach(t.wCntDep[i])
+        if(t.wCntNext[i] > t.wCnt[sel][i])
+          t.wCnt[sel][i] = t.wCntNext[i];
+      if(t.wCntDep[br_styp] > t.wCntBr)
+        t.wCntBr = t.wCntDep[br_styp];
+    end
                 
     cntSrfRd = t.cntSrfRd;
     cntVrfRd = t.cntVrfRd;
