@@ -810,17 +810,18 @@ class ip4_tlm_ise extends ovm_component;
         srSupMsgMask = op0[29];
       end
       SR_EBASE    :
-///      begin
         srExpBase = op0;
-///      end
       SR_THD_CTL  :
       begin
         t.privMode = priv_mode_t'(op0[1:0]);
         t.srThreadGrp = op0[2];
-        t.srFIFOMask = op0[10:3];
-        t.srRndMode = round_mode_t'(op0[13:11]);
-        t.srExpMsk = op0[20:14];
-        t.srKD = op0[21];
+        t.srKD = op0[3];
+      end
+      SR_FUFMC:
+      begin
+        t.srRndMode = round_mode_t'(op0[2:0]);
+        t.srExpMsk = op0[9:3];
+        t.srFIFOMask = op0[17:10];
       end
       SR_UEE    :
         t.srUEE = op0;
@@ -853,10 +854,13 @@ class ip4_tlm_ise extends ovm_component;
       begin
         res[1:0] = t.privMode;
         res[2] = t.srThreadGrp;
-        res[10:3] = t.srFIFOMask;
-        res[13:11] = t.srRndMode;
-        res[20:14] = t.srExpMsk;
-        res[21] = t.srKD;
+        res[3] = t.srKD;
+      end
+      SR_FUFMC:
+      begin
+        res[2:0] = t.srRndMode;
+        res[9:3] = t.srExpMsk;
+        res[17:10] = t.srFIFOMask;
       end
       SR_THD_ST   :
       begin

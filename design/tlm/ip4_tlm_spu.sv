@@ -43,7 +43,7 @@ class ip4_tlm_spu extends ovm_component;
   local bit ilm[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit cm[NUM_THREAD][CYC_VEC][NUM_SP];
   local word msc[NUM_THREAD][CYC_VEC][NUM_SP];
-  local bit srMSCGuard[NUM_THREAD][CYC_VEC][NUM_SP];
+  local bit mscGuard[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit pr[NUM_THREAD][NUM_PR:1][CYC_VEC][NUM_SP];
   local bit prSPU[STAGE_RRF_SWBP:STAGE_RRF_EXS1];
   local bit[STAGE_RRF_WSR:0] cancel[NUM_THREAD];
@@ -292,10 +292,10 @@ class ip4_tlm_spu extends ovm_component;
         op_wsbh:  ovm_report_warning("SPU_UNIMP", "wsbh is not implemented yet");
         op_gp2s:
         begin
-          if(ise.srAdr == SR_MSCG)
-            for(int i = 0; i < CYC_VEC; i++)
-              for(int j = 0; j < NUM_SP; j++)
-                msc[ise.tid][i][j][WORD_BITS - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
+///          if(ise.srAdr == SR_MSCG)
+///            for(int i = 0; i < CYC_VEC; i++)
+///              for(int j = 0; j < NUM_SP; j++)
+///                msc[ise.tid][i][j][WORD_BITS - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
         end
         endcase
         vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
@@ -321,7 +321,7 @@ class ip4_tlm_spu extends ovm_component;
       
       ///redirect sr reqs
       if(prSPU[STAGE_RRF_RSRB] && ise.op == op_gp2s) begin
-        if(ise.srAdr inside {tlbsr}) begin
+        if(ise.srAdr inside {tlb_sr}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;
           toTLB.s2gp = 1;
@@ -354,7 +354,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_WSRB];
       
       if(prSPU[STAGE_RRF_WSRB] && ise.op inside {op_s2gp, tlb_ops}) begin
-        if(ise.srAdr inside {tlbsr} && ise.op inside {tlb_ops}) begin
+        if(ise.srAdr inside {tlb_sr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;
           toTLB.op = ise.op;
@@ -439,7 +439,7 @@ class ip4_tlm_spu extends ovm_component;
       
       case(ise.mop)
       mop_guard :
-        srMSCGuard[tid][subVec] = emsk;
+        mscGuard[tid][subVec] = emsk;
       mop_rstor :
       begin
         foreach(emsk[i]) begin
@@ -455,7 +455,7 @@ class ip4_tlm_spu extends ovm_component;
       end
       mop_if,
       mop_loop,
-      mop_brk,
+///      mop_brk,
       mop_else  :
       begin
         ilmNext[0] = emsk;
@@ -469,13 +469,14 @@ class ip4_tlm_spu extends ovm_component;
       endcase
         
       case(ise.sop)
-      sop_pop2n :
+      sop_p2n,
+      sop_p2nc :
         foreach(emsk[i]) begin
           if(msc[tid][subVec][i] > (2*popcnt))
               mscNext[0][i] -= (2*popcnt);
           else begin
             mscNext[0][i] = 0;
-            if(srMSCGuard[tid][subVec][i]) begin
+            if(mscGuard[tid][subVec][i]) begin
               mscUF[0][i] = 1;
               mscNext[0][i] += CFG_MAX_MSC / 2;
               expMSC = 1;
@@ -508,31 +509,29 @@ class ip4_tlm_spu extends ovm_component;
           endcase
              
         case(ise.mop)
-        mop_nop   : updateMSC = 1;
+        mop_bc,
+        mop_nop   : updateMSK = 0;
+        mop_guard,
         mop_rstor : updateMSK = 1;
         mop_loop,
         mop_if,
-        mop_else  : updateMSK = !emskAllZero;
-        mop_brk,
-        mop_cont  :
-        begin
-          updateMSK = !emskAllZero;
-          updateMSC = emskAllZero;
-        end
+        mop_else,
+///        mop_brk,
+        mop_cont  : updateMSK = !emskAllZero;
         endcase
 
-        if(ise.sop inside {sop_store, sop_zero})
+        if(ise.sop inside {sop_p2n, sop_store, sop_zero})
           updateMSC = 1;
-        else if(ise.sop == mop_nop)
-          updateMSC = 0;
-              
+        else/// if(ise.sop == sop_p2nc)
+          updateMSC = emskAllZero;
+
+        updateMSK &= cancel[tid][STAGE_RRF_CEM];
+        updateMSC &= cancel[tid][STAGE_RRF_CEM];
+                      
         for(int i = 0; i <= ise.vecMode; i++) begin
           stkWEn[i] = updateMSC;
           mskWEn[i] = updateMSK;
         end
-        
-        updateMSK &= cancel[tid][STAGE_RRF_CEM];
-        updateMSC &= cancel[tid][STAGE_RRF_CEM];
         
         missBr = ise.brPred != toISE.brTaken;
         expMSC = expMSC && updateMSC;

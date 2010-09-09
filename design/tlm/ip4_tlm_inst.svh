@@ -580,7 +580,7 @@ class inst_c extends ovm_object;
       adrWr[0] = 0;
       wrEn[0] = inst.i.b.fcr.l;
       mskOp = inst.i.b.fcr.mu ? (inst.i.b.fcr.l ? mop_if : mop_rstor) : mop_nop;
-      mscOp = inst.i.b.fcr.su ? (inst.i.b.fcr.l ? sop_store : sop_pop2n) : sop_nop;
+      mscOp = inst.i.b.fcr.su ? (inst.i.b.fcr.l ? sop_store : sop_p2nc) : sop_p2n;
     end
     else if(inst.i.op inside {iop_bs}) begin
       imm = inst.i.b.b.sc;
@@ -593,9 +593,10 @@ class inst_c extends ovm_object;
       iop_bpn : begin brDep = 1; brOp = bop_naz; end
       endcase
       case(inst.i.b.b.sop)
-      2'b00 : mscOp = sop_nop;
-      2'b01 : mscOp = sop_pop2n;
+      2'b00 : mscOp = sop_p2n;
+      2'b01 : mscOp = sop_p2nc;
       2'b10 : mscOp = sop_store;
+      2'b11 : begin mscOp = sop_zero; priv = 1; end
       endcase
       case(inst.i.b.b.sop)
       3'b000 : mskOp = mop_nop;
@@ -605,7 +606,7 @@ class inst_c extends ovm_object;
       3'b100 : mskOp = mop_else;
       3'b101 : mskOp = mop_cont;
       3'b110 : mskOp = mop_if;
-      3'b111 : mskOp = mop_brk;
+      3'b111 : begin mskOp = mop_guard; priv = 1; end
       endcase
     end
     else if(inst.i.op inside {iop_cmps}) begin
@@ -800,7 +801,7 @@ class inst_c extends ovm_object;
         else 
           rdBkSel[0] = selii;
         imm = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
-        if(!wrEn[0])
+        if(!wrEn[0] && !(srAdr inside {non_kernel_sr}))
           priv = 1;
       end
       icop_eret :

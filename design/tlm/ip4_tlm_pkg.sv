@@ -307,13 +307,12 @@ typedef enum uchar {
 } pr_merge_e;
 
 typedef enum uchar {
-  sop_nop,    sop_pop2n,  sop_store,  sop_zero
+  sop_p2n,    sop_p2nc,   sop_store,  sop_zero
 } msc_opcode_e;
 
 typedef enum uchar {
   mop_nop,      mop_bc,     mop_rstor,    mop_loop,
-  mop_else,     mop_cont,   mop_if,       mop_brk,
-  mop_guard
+  mop_else,     mop_cont,   mop_if,       mop_guard   ///mop_brk
 } msk_opcode_e;
 
 typedef enum bit {
@@ -329,9 +328,17 @@ typedef enum uchar {
   priv_user,    priv_kernel,  priv_event
 }priv_mode_t;
 
+///the MOESI protocol plus a dirty state meaning no cc and modified
 typedef enum uchar {
-  cs_inv,     cs_shared,    cs_owner,     cs_modified
+  cs_inv,     cs_shared,    cs_owner,     cs_exclusive,   cs_modified,
+  cs_dirty
 }cache_state_t;
+
+function automatic bit need_writeback(
+  input cache_state_t s
+);
+  return s inside {cs_owner, cs_modified, cs_dirty};
+endfunction
 
 typedef enum uchar {
   ///bypass opcodes
@@ -465,16 +472,20 @@ typedef enum uchar {
   SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
   SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
-  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCG,
-  SR_MSCO,      SR_MSCU,      SR_THD_CTL,   SR_THD_ST,      SR_CONTENT,
+  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCO,
+  SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_FUFMC,       SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
   SR_MD[0:7]
 }special_reg_t;
 
-parameter special_reg_t tlbsr[] = '{
+parameter special_reg_t tlb_sr[] = '{
   SR_INDEX,     SR_RANDOM,    SR_ENTRY_L0,    SR_ENTRY_L1,
   SR_ENTRY_HI,  SR_ASID
+};
+
+parameter special_reg_t non_kernel_sr[] = '{
+  SR_FUFMC,     SR_UEE,       SR_UER
 };
 
 typedef enum uchar {
