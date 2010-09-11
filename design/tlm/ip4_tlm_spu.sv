@@ -16,6 +16,7 @@ class ip4_tlm_spu_vars extends ovm_component;
   tr_spa2spu fmSPA[STAGE_RRF_VWB:STAGE_RRF_CEM];
   tr_dse2spu fmDSE[STAGE_RRF_VWB:STAGE_RRF_DEM];
   tr_tlb2spu fmTLB;
+  tr_eif2spu fmEIF;
   tr_spu2rfm rfm[STAGE_RRF_SWBP:STAGE_RRF_EXS1];
   
   `ovm_component_utils_begin(ip4_tlm_spu_vars)
@@ -24,6 +25,7 @@ class ip4_tlm_spu_vars extends ovm_component;
     `ovm_field_sarray_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fmTLB, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
@@ -64,6 +66,7 @@ class ip4_tlm_spu extends ovm_component;
   ovm_nonblocking_transport_imp_rfm #(tr_rfm2spu, tr_rfm2spu, ip4_tlm_spu) rfm_tr_imp;
   ovm_nonblocking_transport_imp_dse #(tr_dse2spu, tr_dse2spu, ip4_tlm_spu) dse_tr_imp;
   ovm_nonblocking_transport_imp_tlb #(tr_tlb2spu, tr_tlb2spu, ip4_tlm_spu) tlb_tr_imp;
+  ovm_nonblocking_transport_imp_eif #(tr_eif2spu, tr_eif2spu, ip4_tlm_spu) eif_tr_imp;
   
   ovm_nonblocking_transport_port #(tr_spu2rfm, tr_spu2rfm) rfm_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2ise, tr_spu2ise) ise_tr_port;
@@ -624,7 +627,17 @@ class ip4_tlm_spu extends ovm_component;
     vn.fmTLB = req;
     return 1;
   endfunction : nb_transport_tlb
-    
+
+  function bit nb_transport_eif(input tr_eif2spu req, output tr_eif2spu rsp);
+    ovm_report_info("spu_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fmEIF = req;
+    return 1;
+  endfunction : nb_transport_eif
+      
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
@@ -660,6 +673,7 @@ class ip4_tlm_spu extends ovm_component;
     spa_tr_imp = new("spa_tr_imp", this);
     dse_tr_imp = new("dse_tr_imp", this);
     tlb_tr_imp = new("tlb_tr_imp", this);
+    eif_tr_imp = new("eif_tr_imp", this);
     
     rfm_tr_port = new("rfm_tr_port", this);
     ise_tr_port = new("ise_tr_port", this);
