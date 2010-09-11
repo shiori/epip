@@ -411,7 +411,7 @@ class ip4_tlm_dse extends ovm_component;
               foreach(wen[i])
                 wen[i] = spi[st][i].oc || spi[st][i].ex;
                 
-            if(spi[st][sp].slot == ((per || shf4) ? slot + LAT_XCHG : slot)) begin
+            if(spi[st][sp].slot == (per ? slot + LAT_XCHG : slot) && !shf4) begin
               dcXhgData[st][sp] = xhgData[bk];
               dcWEn[st][sp] = wen[sp];
             end
