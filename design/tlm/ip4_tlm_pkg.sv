@@ -334,14 +334,14 @@ typedef enum uchar {
 
 ///the MOESI protocol plus a dirty state meaning no cc and modified
 typedef enum uchar {
-  cs_inv,     cs_shared,    cs_owner,     cs_exclusive,   cs_modified,
+  cs_inv,     cs_shared,    cs_owned,     cs_exclusive,   cs_modified,
   cs_dirty
 }cache_state_t;
 
 function automatic bit need_writeback(
   input cache_state_t s
 );
-  return s inside {cs_owner, cs_modified, cs_dirty};
+  return s inside {cs_owned, cs_modified, cs_dirty};
 endfunction
 
 typedef enum uchar {

@@ -403,36 +403,6 @@ class ise_thread_inf extends ovm_component;
       tmp0[adrPkgBytes][0] = gsa;
       adrs = tmp0;
     end
-///    while(adrPkgBytes != 0) begin
-///      if(adrPkgBytes >= 3) begin
-///        i_ap2_u AdrPkg;
-///        foreach(AdrPkg.b[i]) begin
-///          AdrPkg.b[i] = iBuf[offSet];
-///          offSet++;
-///        end
-///        foreach(AdrPkg.i.a[i])
-///          adrs[tmp++] = AdrPkg.i.a[i];
-///        adrPkgBytes -= 3;
-///      end
-///      else if(adrPkgBytes >= 2) begin
-///        i_ap1_u AdrPkg;
-///        foreach(AdrPkg.b[i]) begin
-///          AdrPkg.b[i] = iBuf[offSet];
-///          offSet++;
-///        end
-///        foreach(AdrPkg.i.a[i])
-///          adrs[tmp++] = AdrPkg.i.a[i];
-///        adrPkgBytes -= 2;
-///      end
-///      else if(adrPkgBytes >= 1) begin
-///        i_ap0_t AdrPkg;
-///        AdrPkg = iBuf[offSet];
-///        offSet++;
-///        foreach(AdrPkg.a[i])
-///          adrs[tmp++] = AdrPkg.a[i];
-///        adrPkgBytes -= 1;
-///      end
-///    end
       
     for(int i = 0; i < numImms; i++) begin
       for(int j = 0; j < WORD_BYTES; j++)
