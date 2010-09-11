@@ -92,9 +92,9 @@ parameter uchar LAT_MAC           = 5,
                 LAT_WB            = 4,
                 LAT_ISE           = 2,
                 LAT_IFE           = 2,
-                LAT_DC            = 1,
+                LAT_L1M           = 1,
                 LAT_XCHG          = 2,
-                LAT_DWBP          = 1,    ///dse writeback bypass time
+                LAT_SWBP          = 1,    ///dse writeback bypass time
                 LAT_EXM           = 100;  ///external memory latency
                 
 parameter uint  NUM_SP            = 8,
@@ -133,11 +133,17 @@ parameter uint  NUM_SP            = 8,
 parameter uint CFG_START_ADR      = 'hf000_0000,
                CFG_MAX_MSC        = 'hffff_fff0;
 
+parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
+                
 parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_HALF        = n2w(HALF_BYTES),
                 WID_VRF_BKS     = n2w(NUM_VRF_BKS),
                 WID_SRF_BKS     = n2w(NUM_SRF_BKS),
                 WID_TID         = n2w(NUM_THREAD),
+                WID_VID         = n2w(NUM_VEC),
+                WID_SP          = n2w(NUM_SP),
+                WID_CYC         = n2w(CYC_VEC),
                 WID_IFET        = n2w(NUM_IFET_BYTES),
                 WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
                 WID_SMEM_BK     = n2w(NUM_SP),
@@ -168,8 +174,6 @@ cmp/fcmp: | rrf | rrc0 | rrc1 | rrc2 | rrc3 | cmp0 | cmp1 | cmp2 | cem  | cbr  |
                                             0      1      2      3      4      5      6      7      8      9         10
                        0      1      2      3      4      5      6    
   */  
-parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
                 
 parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_RRC1    = STAGE_RRF_RRC0 + 1,             ///2
@@ -193,10 +197,10 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_SXG     = STAGE_RRF_SEL + LAT_XCHG,       ///6
                 STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///5
-                STAGE_RRF_DC      = STAGE_RRF_DEM + LAT_XCHG,       ///7
+                STAGE_RRF_DC      = STAGE_RRF_SXG + LAT_L1M,        ///7
                 STAGE_RRF_LXG0    = STAGE_RRF_DC + 1,               ///8
                 STAGE_RRF_LXG     = STAGE_RRF_DC + LAT_XCHG,        ///9
-                STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_DC,          ///8
+                STAGE_RRF_SWBP    = STAGE_RRF_DC + LAT_SWBP,        ///8
                 STAGE_RRF_SWB     = STAGE_RRF_SWBP + 1,             ///9
                 STAGE_RRF_RSR     = STAGE_RRF_SWBP - 1,             ///7
                 STAGE_RRF_WSR     = STAGE_RRF_DPRW,                 ///8
