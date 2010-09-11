@@ -1,12 +1,20 @@
 //test asm file
 options.g0
 $tag1 (p0) li v3 0x16526C9 ;
-add.si v2 v3 0x6a6b7 ;
+options.g0
+add.si v2 v23 0x6a6b7 ;
+options.g0
 lu v2 0x16526C9 ;
 //7+3=10 2r1w noimm
+options.g0
 lu s0 0x380000 ;
+options.g0
 lu s1 0x180000 ;
-add.s s3 s0 s1 ;
+options.g0
+add.s s3 s7 s5 ;
+//3r1w mad 7*3+8
+lu v23 0x400000 ;
+mad.s v6 v13 v10 v23 ;
 //2r1w1imm shift right 3
 srl v3 v1 0x3 ;
 //2r1w shift right 3
@@ -54,12 +62,11 @@ nop
 lu v2 0x16526C9
 nop ;
 // include constant package
+options.g1
 options.const1.0x5
 options.const2.0x9
-mad.s v6 v7 v10 v9
+mad.s v6 v27 v10 v9
 mad.s v4 v3 v1 v6
-add.si v2 v1 0x6a6b7
+add.si v2 v17 0x6a6b7
 lu v3 0x16526C9
 nop ;
-
-
