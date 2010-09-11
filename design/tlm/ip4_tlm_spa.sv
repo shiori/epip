@@ -468,6 +468,7 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
     foreach(expFlag[i]) expFlag[i] = op0[i];
     r0 = op0;
   end
+  op_vid:   foreach(r0[i]) r0[i] = i + subVec * NUM_SP;
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal instruction opcode!!!");
   endcase
   

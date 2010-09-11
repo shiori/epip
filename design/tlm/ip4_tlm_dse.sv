@@ -1027,6 +1027,8 @@ class ip4_tlm_dse extends ovm_component;
         vn.eif[STAGE_RRF_DEM].cyc = ise.subVec & `GML(WID_DCHE_CL);
         vn.eif[STAGE_RRF_DEM].last = last;
         vn.eif[STAGE_RRF_DEM].coherency = selCoherency;
+        vn.eif[STAGE_RRF_DEM].uncachable = selNoCache;
+        vn.eif[STAGE_RRF_DEM].priv = ise.priv;
         vn.eif[STAGE_RRF_DEM].state = cache[selCacheIdx][selCacheAso].state[selCacheGrp];
         for(int sp = 0; sp < NUM_SP; sp++) begin
           vn.rfm[STAGE_RRF_DEM].updateAdrRes[sp] = rfm.base[sp];
@@ -1380,7 +1382,15 @@ class ip4_tlm_dse extends ovm_component;
       else if(ise.op inside {ld_ops, st_ops}) begin
         foreach(spu.emsk[i]) begin
           if(spu.emsk[i]) begin
-            rfm.base[i] = rfm.base[i] + rfm.os[i];
+            rfm.base[i] = rfm.base[i] + rfm.os;
+            if(ise.burst) begin
+              if(ise.op inside {op_lw, op_ll, op_sw, op_sc})
+                rfm.base[i] += (i + NUM_SP * ise.subVec) << 2;
+              else if(ise.op inside {op_lh, op_lhu, op_sh})
+                rfm.base[i] += (i + NUM_SP * ise.subVec) << 1;
+              else
+                rfm.base[i] += (i + NUM_SP * ise.subVec);
+            end
             if(rfm.base[i] >= VADR_MAPPED && rfm.base[i] < VADR_NMAPNC) begin
              found = 1;
              vadr = rfm.base[i];

@@ -226,8 +226,8 @@ class ip4_tlm_rfm extends ovm_component;
         foreach(toDSE.base[sp]) begin
           read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
           read_rf(dseSt[ise.cyc][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
-          read_rf(toDSE.os[sp], ise.dseRdBk[2], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
         end
+        read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpCo, ise.dseImm);
       end
             
       if(ise.spuEn && subVec == 0) begin
@@ -366,9 +366,9 @@ endclass : ip4_tlm_rfm
     selc1:    res = bpCo[1];
     selc2:    res = bpCo[2];
     selc3:    res = bpCo[3];
-    selb0:    res = i;
-    selb1:    res = i << 1;
-    selb2:    res = i << 2;
+///    selb0:    res = i;
+///    selb1:    res = i << 1;
+///    selb2:    res = i << 2;
     selii:    res = imm;
     endcase
   endfunction : read_rf

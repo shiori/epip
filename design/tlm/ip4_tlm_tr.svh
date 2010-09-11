@@ -45,7 +45,7 @@ class tr_ise2rfm extends ovm_sequence_item;
     }
     dseRdBk[0] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
     dseRdBk[1] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
-    dseRdBk[2] inside {selii, [selb0:selb2], selz};
+    dseRdBk[2] inside {selii, selz};
     dseRdBk[3] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
 	  foreach(spuRdBk[i])
 	    spuRdBk[i] inside {[sels0:sels_e], [selc0:selc_e], selz};
@@ -355,12 +355,12 @@ class tr_dse2rfm extends ovm_sequence_item;
 endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
-	rand word base[NUM_SP], st[NUM_SP], os[NUM_SP];
+	rand word base[NUM_SP], st[NUM_SP], os;
 	
 	`ovm_object_utils_begin(tr_rfm2dse)
 		`ovm_field_sarray_int(base, OVM_ALL_ON)
 		`ovm_field_sarray_int(st, OVM_ALL_ON)
-		`ovm_field_sarray_int(os, OVM_ALL_ON)
+		`ovm_field_int(os, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2dse");
@@ -851,7 +851,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock, noExt;
+  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock, noExt, burst;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   
@@ -865,6 +865,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(priv, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(noExt, OVM_ALL_ON)
+	  `ovm_field_int(burst, OVM_ALL_ON)
 	  `ovm_field_int(nonBlock, OVM_ALL_ON)
 	  `ovm_field_int(updateAdrWr, OVM_ALL_ON)
 	  `ovm_field_int(updatePr, OVM_ALL_ON)
@@ -1061,7 +1062,7 @@ endclass : tr_tlb2ife
 class tr_dse2eif extends ovm_sequence_item;
   rand bit req, cacheFlush, cacheFill, sgl,
            last, endian, allocFail, queryNoHit,
-           coherency;
+           coherency, priv, uncachable;
   rand opcode_e op;
   rand uchar id, cyc;
   rand exadr_t exAdr;
@@ -1081,6 +1082,8 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_int(cacheFill, OVM_ALL_ON)
     `ovm_field_int(exAdr, OVM_ALL_ON)
     `ovm_field_int(coherency, OVM_ALL_ON)
+    `ovm_field_int(priv, OVM_ALL_ON)
+    `ovm_field_int(uncachable, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
     `ovm_field_sarray_int(byteEn, OVM_ALL_ON)
     `ovm_field_enum(cache_state_t, queryRes, OVM_ALL_ON)

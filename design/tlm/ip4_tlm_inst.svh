@@ -53,7 +53,7 @@ typedef enum bit[6:0] {
   iop21_or,     iop21_div,    iop21_quo,    iop21_res,
   iop21_clo,    iop21_ext,    iop21_sll,    iop21_rot,
   iop21_and,    iop21_seb,    iop21_wsbh,   iop21_max,
-  iop21_min,
+  iop21_min,    iop21_vid,
   iop21_add = 'b1000000,  
                 iop21_sub,    iop21_sra,    iop21_srav,
   iop21_nor,    iop21_udiv,   iop21_uquo,   iop21_ures,
@@ -452,8 +452,8 @@ class inst_c extends ovm_object;
     else if(adr inside {[12:14]}) begin
       sel = rbk_sel_e'(selfu0 + adr - 12);
     end
-    else
-      sel = selb0;
+///    else
+///      sel = selb0;
   endfunction : set_rf_en
   
 	function void decode();
@@ -565,6 +565,7 @@ class inst_c extends ovm_object;
       iop21_mv2s  : begin op = op_mvs; rdBkSel[1] = selii; if(CntVrfRd > CntSrfRd) CntSrfRd = CntVrfRd; end
       iop21_umax  : begin op = op_umax; end
       iop21_umin  : begin op = op_umin; end
+      iop21_vid   : begin op = op_vid; rdBkSel[1] = selii; end
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
@@ -657,14 +658,14 @@ class inst_c extends ovm_object;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = (mT == 1 && prWrAdr[0] != 0);
       if(!prWrEn[0]) prWrAdr[0] = 0;
-      if(mT == 0) begin
-        if(inst.i.op inside {iop_lw, iop_sw, iop_ll, iop_sc})
-          rdBkSel[2] = selb2;
-        else if(inst.i.op inside {iop_lh, iop_lhu, iop_sh})
-          rdBkSel[2] = selb1;
-        else if(inst.i.op inside {iop_lb, iop_lbu, iop_sb})
-          rdBkSel[2] = selb0;
-      end
+///      if(mT == 0) begin
+///        if(inst.i.op inside {iop_lw, iop_sw, iop_ll, iop_sc})
+///          rdBkSel[2] = selb2;
+///        else if(inst.i.op inside {iop_lh, iop_lhu, iop_sh})
+///          rdBkSel[2] = selb1;
+///        else if(inst.i.op inside {iop_lb, iop_lbu, iop_sb})
+///          rdBkSel[2] = selb0;
+///      end
       
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
@@ -1135,6 +1136,7 @@ class inst_c extends ovm_object;
       dse.updatePr = mT == 1; ///todo
       dse.op = op;
       dse.vec = isVec;
+      dse.burst = mT == 0;
     end
   endfunction : fill_dse
 

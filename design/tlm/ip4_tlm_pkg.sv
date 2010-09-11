@@ -275,7 +275,7 @@ endclass : tlm_vif_object
   
 typedef enum uchar {
   selv[0:127], sels[0:31], selc[0:7], selz, selii, selspu,
-  seldse, selfu[0:15], selb[0:7], selnull
+  seldse, selfu[0:15], selnull
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
@@ -355,7 +355,7 @@ typedef enum uchar {
   op_clo,     op_clz,     op_lid,     op_max,     
   op_min,     op_umin,    op_umax,
   op_ext,     op_ins,     op_seb,     op_she,
-  op_wsbh,
+  op_wsbh,    op_vid,
   ///sfu opcodes
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
