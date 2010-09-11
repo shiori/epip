@@ -1146,7 +1146,7 @@ class ip4_tlm_dse extends ovm_component;
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_SEL];
       exadr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
               smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
-              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
+              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;
       bit smWEn = eif.wr, allocFail = 0, first;
       smStart >>= WID_WORD + WID_SMEM_BK;
       smEnd >>= WID_WORD + WID_SMEM_BK;
@@ -1154,10 +1154,10 @@ class ip4_tlm_dse extends ovm_component;
       first = (eif.cyc & `GML(WID_DCHE_CL)) == 0;
       
       if(eif.alloc || eif.loadRsp || eif.wr || eif.rd) begin
-        exadr_t exAdr = eif.exAdr, flushAdr;
+        exadr_t exAdr = eif.exAdr;
         uint adr, tagLo, tagHi, idx, tag;
         bit hit = 0, hihit = 0, ehit = 0, fhit = 0, updateLo = 0, updateHi = 0, flush = 0;
-        uchar hi = 0, grp = 0, hiAso = 0, eAso = 0, fAso = 0, fGrp = 0, cyc = eif.cyc, cl;
+        uchar aso = 0, grp = 0, hiAso = 0, eAso = 0, fAso = 0, fGrp = 0, cyc = eif.cyc, cl, flushGrp;
         cache_state_t flushCacheState;
         endian[STAGE_RRF_DEM] = eif.endian;
         if(eif.loadRsp) begin
@@ -1180,7 +1180,7 @@ class ip4_tlm_dse extends ovm_component;
         tag = exAdr >> WID_DCHE_CL;
         tagLo = exAdr >> (WID_DCHE_CL + WID_DCHE_IDX);
         tagHi = tagLo >> WID_DCHE_STAG;
-        idx = adr >> WID_DCHE_IDX;
+        idx = adr >> WID_DCHE_CL;
         tagLo = tagLo & `GML(WID_DCHE_STAG);
 
         if(exAdr < smStart && exAdr >= smEnd && srCacheGrp > 0) begin
@@ -1198,7 +1198,7 @@ class ip4_tlm_dse extends ovm_component;
               if(cache[idx][hiTagIdx].state[loTagIdx] != cs_inv && cache[idx][hiTagIdx].tagHi == tagHi && 
                  cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo) begin
                 hit = 1;
-                hi = hiTagIdx;
+                aso = hiTagIdx;
                 grp = loTagIdx;
               end
               if(cache[idx][hiTagIdx].tagHi == tagHi) begin
@@ -1225,10 +1225,10 @@ class ip4_tlm_dse extends ovm_component;
             bit found = 0;
             updateLo = 1;
             grp = cache[idx][hiAso].lo;
-            hi = hiAso;
+            aso = hiAso;
             for(int i = 0; i < NUM_SMEM_GRP; i++) begin
               ///find a inv first
-              if(grp >= (NUM_SMEM_GRP - srCacheGrp) && cache[idx][hi].state[grp] == cs_inv) begin
+              if(grp >= (NUM_SMEM_GRP - srCacheGrp) && cache[idx][aso].state[grp] == cs_inv) begin
                 found = 1;
                 break;
               end
@@ -1239,8 +1239,9 @@ class ip4_tlm_dse extends ovm_component;
             end
             
             if(!found) begin
+              ///find a grp need no flush
               for(int i = 0; i < NUM_SMEM_GRP; i++) begin
-                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && !need_writeback(cache[idx][hi].state[grp])) begin
+                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && !need_writeback(cache[idx][aso].state[grp])) begin
                   found = 1;
                   break;
                 end
@@ -1252,51 +1253,49 @@ class ip4_tlm_dse extends ovm_component;
             end
 
             if(!found && ehit) begin
-              hi = eAso;
+              ///use a empty aso instead
+              aso = eAso;
               for(grp = 0; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP; grp++);
             end
           end
           else begin
+            ///aso full or no hihit
             uchar highest = 0;
-            for(hi = 0; hi < NUM_SMEM_GRP; hi++) begin
-              if(cache[idx][hi].hi > highest)
-                highest = cache[idx][hi].hi;
+            for(aso = 0; aso < NUM_DCHE_ASO; aso++) begin
+              if(cache[idx][aso].hi > highest)
+                highest = cache[idx][aso].hi;
             end
             
             if(fhit) begin
               ///this aso need flush only one cl
-              bit found = 0;
-              hi = fAso;
+              aso = fAso;
               updateLo = 1;
               updateHi = 1;
-              grp = fGrp;
-              flush = found && need_writeback(cache[idx][hi].state[grp]);
-              flushCacheState = cache[idx][hi].state[grp];
+              ///find a grp need no flush, can't write the flushing grp
+              for(grp = 0; grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP; grp++)
+                if(!need_writeback(cache[idx][aso].state[grp]))
+                  break;
+              flush = need_writeback(cache[idx][aso].state[fGrp]);
+              flushGrp = fGrp;
+              flushCacheState = cache[idx][aso].state[flushGrp];
             end
             else begin
               ///now alloc fail, we can't flush more than one cl
               allocFail = 1;
               flush = 1;
-              flushCacheState = cache[idx][hi].state[grp];
+              flushGrp = cache[idx][hiAso].lo;
               grp = cache[idx][hiAso].lo;
-              for(int i = 0; i < NUM_SMEM_GRP; i++) begin
-                if(grp >= (NUM_SMEM_GRP - srCacheGrp) && grp < NUM_SMEM_GRP)
-                  break;
-                else begin
-                  grp++;
-                  grp = grp & `GML(WID_SMEM_GRP);
-                end
-              end
+              flushCacheState = cache[idx][aso].state[flushGrp];
               smWEn = 0;
             end
           end
-          adr = (adr & `GML(WID_SMEM_ADR - WID_DCHE_ASO)) | (hi << (WID_SMEM_ADR - WID_DCHE_ASO));
+          adr = (adr & `GML(WID_SMEM_ADR - WID_DCHE_ASO)) | (aso << (WID_SMEM_ADR - WID_DCHE_ASO));
         end
         else if(exAdr >= smEnd2)
           smWEn = 0;
         
         cacheFlush[STAGE_RRF_SEL] = flush && eif.alloc && !allocFail;
-          
+                        
         ///check llCk
         if(eif.wr) begin
           foreach(llCk[i]) begin
@@ -1313,18 +1312,29 @@ class ip4_tlm_dse extends ovm_component;
         if(eif.last) begin
           if(eif.alloc) begin
             if(updateLo) begin
-              cache[idx][hi].lo = grp;
-              cache[idx][hi].tagLo[grp] = tagLo;
+              cache[idx][aso].lo = grp;
+              cache[idx][aso].tagLo[grp] = tagLo;
             end
             if(updateHi) begin
               ///bias towards the flushed aso
-              for(int i = 0; i < NUM_SMEM_GRP; i++) begin
-                if(i != hi)
-                  cache[idx][hi].hi++;
+              for(int i = 0; i < NUM_DCHE_ASO; i++) begin
+                if(i == aso) continue;
+                cache[idx][aso].hi++;
               end
-              cache[idx][hi].tagHi = tagHi;
+              ///the aso is reloaded, clear old states
+              for(int i = 0; i < NUM_SMEM_GRP; i++) begin
+                if(i == grp) continue;
+                cache[idx][aso].state[i] = cs_inv;
+              end
+              cache[idx][aso].tagHi = tagHi;
             end
-            cache[idx][hi].state[grp] = eif.state;
+            if(cacheFlush[STAGE_RRF_SEL]) begin
+              case(cache[idx][aso].state[flushGrp])
+              cs_modified:  cache[idx][aso].state[flushGrp] = cs_shared;
+              cs_dirty:     cache[idx][aso].state[flushGrp] = cs_exclusive;
+              endcase
+            end
+            cache[idx][aso].state[grp] = eif.state;
           end
           
           for(int i = 0; i < LAT_XCHG; i++)
@@ -1359,10 +1369,13 @@ class ip4_tlm_dse extends ovm_component;
           vn.eif[STAGE_RRF_SXG0].req = 1;
           vn.eif[STAGE_RRF_SXG0].cacheFlush = cacheFlush[STAGE_RRF_SEL];
           vn.eif[STAGE_RRF_SXG0].state = flushCacheState;
-          vn.eif[STAGE_RRF_SXG0].exAdr = exAdr;
           vn.eif[STAGE_RRF_SXG0].cyc = eif.cyc;
           vn.eif[STAGE_RRF_DEM].last = eif.last;
+          vn.eif[STAGE_RRF_DEM].uncachable = 0;
           vn.eif[STAGE_RRF_DEM].allocFail = allocFail;
+          vn.eif[STAGE_RRF_SXG0].exAdr = cache[idx][aso].tagHi << (WID_DCHE_STAG + WID_DCHE_IDX + WID_DCHE_CL);
+          vn.eif[STAGE_RRF_SXG0].exAdr += cache[idx][aso].tagLo[flushGrp] << (WID_DCHE_IDX + WID_DCHE_CL);
+          vn.eif[STAGE_RRF_SXG0].exAdr += idx << WID_DCHE_CL;
         end
       end
       
