@@ -71,10 +71,10 @@ class asmig;
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
   uchar icnt;  
-  uchar chkGrp;
+  uchar chkGrp, grpMsk;
   uchar grpsize;
   uint pc;
-  uchar allAdr[25];
+  bit[2:0] allAdr[25];
   bit isVec[5]; 
   uchar adrcnt;
   i_gs0_t gs0;
@@ -124,6 +124,7 @@ class asmig;
     si = 0;
     isVec = '{default : 0};
     chkGrp = 0;
+    grpMsk = 0;
     adrcnt = 0;
     contNum = 0;
     for(int i=0; i < NUM_BP_CO; i++)
@@ -1121,6 +1122,7 @@ class asmig;
             return 0;
           end
           `asm_msg("vector reg assignment!");
+          `asm_msg($psprintf("printf out original adr %0d, j:%0d", adr[i][ps + j],j), OVM_HIGH);
           adru[j] = adr[i][ps + j] >> WID_VRF_BKS;
           `asm_msg($psprintf("printf out vec adru %0d, j:%0d", adru[j],j), OVM_HIGH);
           bk[j] = adr[i][ps + j] & `GML(WID_VRF_BKS);
@@ -1131,8 +1133,8 @@ class asmig;
               if(!vrfEn[k][bk[j]] || vrfAdr[k][bk[j]] == adru[j]) begin
                 vrfEn[k][bk[j]] = 1;
                 vrfAdr[k][bk[j]] = adru[j];
-///                `asm_msg($psprintf("printf out bk[%0d], vrfEn[%0d][bk[%0d]]: %0d, ", j, k,j,vrfEn[k][bk[j]]), OVM_HIGH);
-///                `asm_msg($psprintf("printf out vrfAdr %0d, j:%0d", adru[j],j), OVM_HIGH);
+                `asm_msg($psprintf("printf out bk[%0d], vrfEn[%0d][bk[%0d]]: %0d, ", j, k,j,vrfEn[k][bk[j]]), OVM_HIGH);
+                `asm_msg($psprintf("printf out vrfAdr %0d, j:%0d", adru[j],j), OVM_HIGH);
                 failed = 0;
                 bksel[j] = 16 + k * NUM_VRF_BKS + bk[j];
                 break;
@@ -1231,15 +1233,23 @@ class asmig;
     bit[7:0] constPkg[NUM_BP_CO][4];
     uchar adrBytes ;
     uchar modBytes;
+    bit gadr_flag;
     bit[8:0][7:0] tmp0;
     bit[23:0][2:0] tmp1;
     
+    gadr_flag = 0;
     `asm_msg($psprintf("adrcnt :%0d", adrcnt), OVM_HIGH);
-    if(adrcnt > 1) begin
-      modBytes = (adrcnt  * 3) % 8;
-      `asm_msg($psprintf("modBytes :%0d", modBytes), OVM_HIGH);
-      if(modBytes != 0)
-        adrBytes = (adrcnt  * 3 / 8) + 1;
+    if(adrcnt >= 1) begin
+        modBytes = (adrcnt  * 3) % 8;
+        `asm_msg($psprintf("modBytes :%0d", modBytes), OVM_HIGH);
+        if(modBytes != 0) begin
+          if(modBytes == 1) begin
+            adrBytes = adrcnt  * 3 / 8;
+            gadr_flag = 1;
+          end
+          else
+            adrBytes = (adrcnt  * 3 / 8) + 1;
+        end
     end
     else
       adrBytes = 0;
@@ -1267,9 +1277,12 @@ class asmig;
       gs0.t = 0;
       gs0.chkGrp = chkGrp;
       gs0.unitEn = isVec[0];
-      gs0.a = allAdr[0];
       gs0.adrPkgB = adrBytes;
+      gs0.nmsk = grpMsk;
+      gs0.a = gadr_flag?allAdr[adrcnt-1][2]:0;
       
+      `asm_msg($psprintf("the allAdr[adrcnt-1][0] :%0d, allAdr[%d-1]:%0d,", allAdr[adrcnt-1][0],adrcnt, allAdr[adrcnt-1]), OVM_HIGH);
+            
       if(contNum < 5)
         gs1.i.immPkgW = contNum;
       else
@@ -1296,9 +1309,11 @@ class asmig;
       
       gs1.i.t = 1;
       gs1.i.chkGrp = chkGrp;
-      gs1.i.a = allAdr[0];
-      `asm_msg($psprintf("the first address is %0d", allAdr[0]), OVM_HIGH);
       gs1.i.adrPkgB = adrBytes;
+      gs0.nmsk = grpMsk;
+      gs1.i.a = gadr_flag?allAdr[adrcnt-1][2]:0;
+      `asm_msg($psprintf("the first address is %0d", allAdr[0]), OVM_HIGH);
+      
       $fwrite(fo, "%16b\n", gs1);
 
       
@@ -1311,9 +1326,14 @@ class asmig;
     
     ///write out adr package
     `asm_msg("write out address package", OVM_HIGH);
-    foreach(tmp1[i])
-      tmp1[i] = allAdr[1 + i];
+    for(int i = 0; i < adrcnt; i++) begin
+        tmp1[i] = allAdr[i];
+        `asm_msg($psprintf("again tmp1[i]:%0d, i:%0d", tmp1[i],i), OVM_HIGH);
+      end
+    
     tmp0 = tmp1;
+///    foreach(tmp0[i])
+///      `asm_msg($psprintf("before, tmp0[i]:%0d, i:%0d", tmp0[i],i), OVM_HIGH);
     
 ///    foreach(tmp0[i]) begin  // high -> low
 ///      `asm_msg($psprintf("tmp0[i]:%0d, i:%0d", tmp0[i],i), OVM_HIGH);
@@ -1467,8 +1487,11 @@ class ip4_assembler;
               "u"   : cur.s[icnt] = 0;
               "si"  : cur.si[icnt] = 1;
               "i"   : cur.si[icnt] = 0;
-              "g0"  : cur.chkGrp = 0;
-              "g1"  : cur.chkGrp = 1;
+              "g0"  : cur.chkGrp = 1;
+              "g1"  : cur.chkGrp = 2;
+              "g10" : cur.chkGrp = 3;
+              "gn"  : cur.chkGrp = 0;
+              "nmsk" : cur.grpMsk = 1;
               "r3w1d" : cur.r3w1d = 1; 
               "pb" : cur.fcrPb = 1;
               "jc" : cur.fcrJc = 1;
@@ -1484,9 +1507,10 @@ class ip4_assembler;
               "elgen": cur.mop = 4;
               "ctgen": cur.mop = 5;
               "ifgen": cur.mop = 6;
-              "snop" : cur.sop = 0;
-              "pop2n": cur.sop = 1;
+              "pop2n" : cur.sop = 0;
+              "pop2nc": cur.sop = 1;
               "store": cur.sop = 2;
+              "zromsc": cur.sop = 3;
               "const0": begin
                 cur.co[0] = get_imm(opts.pop_front());
                 cur.coEn[0] = 1;
