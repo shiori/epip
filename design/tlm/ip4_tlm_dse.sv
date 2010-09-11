@@ -68,8 +68,8 @@ typedef struct{
 class sm_t;
 ///sel stage data struct
   bit sMemOpy[NUM_SP],   ///occupy for onchip shared mem
-      exEn[WORD_BYTES][NUM_SP],  ///ext enabled
-      sMemWEn[WORD_BYTES][NUM_SP];
+      exEn[NUM_SP][WORD_BYTES],  ///ext enabled
+      sMemWEn[NUM_SP][WORD_BYTES];
   uint sMemAdr[NUM_SP], sMemGrp[NUM_SP];  ///on chip adr grp
   wordu stData[NUM_SP]; ///store exchange buffer
 
@@ -314,7 +314,7 @@ class ip4_tlm_dse extends ovm_component;
     end
     
     ///**dc stage
-    begin
+    if(smi[STAGE_RRF_DC] == null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];
@@ -361,97 +361,84 @@ class ip4_tlm_dse extends ovm_component;
       end
       
       ///shared memory write
-      if(smi[STAGE_RRF_DC] == null) begin
-        ovm_report_warning("dc", "previous data missing");
-      end
-      else begin
-        for(int bk = 0; bk < NUM_SP; bk++) begin
-          uint adr = smi[STAGE_RRF_DC].sMemAdr[bk],
-               grp = smi[STAGE_RRF_DC].sMemGrp[bk];
-          bit wEn[WORD_BYTES] = smi[STAGE_RRF_DC].sMemWEn[bk];
-          if(exWrSM && eif != null)
-            foreach(wEn[os])
-              wEn[os] = eif.byteEn[bk][os];
+      for(int bk = 0; bk < NUM_SP; bk++) begin
+        uint adr = smi[STAGE_RRF_DC].sMemAdr[bk],
+             grp = smi[STAGE_RRF_DC].sMemGrp[bk];
+        bit wEn[WORD_BYTES] = smi[STAGE_RRF_DC].sMemWEn[bk];
+        if(exWrSM && eif != null)
           foreach(wEn[os])
-            if(wEn[os])
-              sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
-        end
+            wEn[os] = eif.byteEn[bk][os];
+        foreach(wEn[os])
+          if(wEn[os])
+            sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
       end
       
       ///sharedMem read
-      if(smi[STAGE_RRF_DC] == null) begin
-        ovm_report_warning("dc", "previous data missing");
+      for(int bk = 0; bk < NUM_SP; bk++) begin
+        uint adr = smi[STAGE_RRF_DC].sMemAdr[bk],
+             grp = smi[STAGE_RRF_DC].sMemGrp[bk],
+             adr2 = adr ^ 'b01;   ///flip last bit
+        if(exFlush)
+          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr2][bk];
+        else if(exRd)
+          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr][bk];
+        
+        if(exFlush)
+          xhgData[bk] = smWData[bk];
+        else if((per || shf4 || (ise != null && ise.op inside {st_ops})) && rfm != null)
+          xhgData[bk] = rfm.st[bk];
+        else
+          xhgData[bk] = sharedMem[grp][adr][bk];
       end
-      else begin
-        for(int bk = 0; bk < NUM_SP; bk++) begin
-          uint adr = smi[STAGE_RRF_DC].sMemAdr[bk],
-               grp = smi[STAGE_RRF_DC].sMemGrp[bk],
-               adr2 = adr ^ 'b01;   ///flip last bit
-          if(exFlush)
-            dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr2][bk];
-          else if(exRd)
-            dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr][bk];
           
-          if(exFlush)
-            xhgData[bk] = smWData[bk];
-          else if((per || shf4 || (ise != null && ise.op inside {st_ops})) && rfm != null)
-            xhgData[bk] = rfm.st[bk];
-          else
-            xhgData[bk] = sharedMem[grp][adr][bk];
-        end
-      end
-            
       ///load data exchange
-      if(smi[STAGE_RRF_DC] == null) begin
-        ovm_report_warning("dc", "previous data missing");
-      end
-      else begin
-        for(int sp = 0; sp < NUM_SP; sp++) begin
-          if(per || shf4 || smsg) begin
-            dcXhgData[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].stData[sp];
-            if(vXhgEn)
-              dcVrfWEn[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].sMemOpy[sp];
-            else
-              dcVrfWEn[STAGE_RRF_LXG0][sp] = spu.emsk[sp];
+      for(int sp = 0; sp < NUM_SP; sp++) begin
+        ///dcXhgData dcVrfWEn initial value
+        if(per || shf4 || smsg) begin
+          dcXhgData[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].stData[sp];
+          if(vXhgEn)
+            dcVrfWEn[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].sMemOpy[sp];
+          else
+            dcVrfWEn[STAGE_RRF_LXG0][sp] = spu.emsk[sp];
+        end
+        
+        for(int slot = 0; slot < LAT_XCHG; slot++) begin
+          uchar st = STAGE_RRF_LXG0 + slot,
+                bk = smi[st].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK),
+                cmp;
+          bit wEn[NUM_SP];
+           
+          if(per || smsg) begin
+            cmp = slot + LAT_XCHG;
+            if(spu != null)
+              wEn = v.fmSPU[st].emsk;
+          end
+          else if(shf4) begin
+            cmp = CYC_VEC;    ///not exchange, finished in sxg stages
+          end
+          else begin
+            ///st smsg
+            cmp = slot;
+            foreach(wEn[i])
+              wEn[i] = smi[st].oc[i] || smi[st].ex[i];              
           end
           
-          for(int slot = 0; slot < LAT_XCHG; slot++) begin
-            uchar st = STAGE_RRF_LXG0 + slot,
-                  bk = smi[st].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK),
-                  cmp;
-            bit wEn[NUM_SP];
-           
-            if(per) begin
-              cmp = slot + LAT_XCHG;
-              if(spu != null)
-                wEn = v.fmSPU[st].emsk;
-            end
-            else if(shf4) begin
-              cmp = CYC_VEC;    ///not exchange, finished in sxg stages
-            end
-            else begin
-              cmp = slot;
-              foreach(wEn[i])
-                wEn[i] = smi[st].oc[i] || smi[st].ex[i];              
-            end
-            
-            if(smi[st].slot[sp] == cmp) begin
-              dcXhgData[st][sp] = xhgData[bk];
-              if(vXhgEn)
-                dcVrfWEn[st][sp] = wEn[bk];
-              else
-                dcVrfWEn[st][sp] = wEn[sp];
-            end
+          if(smi[st].slot[sp] == cmp) begin
+            dcXhgData[st][sp] = xhgData[bk];
+            if(vXhgEn)
+              dcVrfWEn[st][sp] = wEn[bk];
+            else
+              dcVrfWEn[st][sp] = wEn[sp];
           end
         end
       end
       
-      if(exFlush || exRd) begin
-        if(toEIF == null)
-          ovm_report_warning("lxg", "eif write out tr missing");
-        else
-          toEIF.data = dcFlushData[STAGE_RRF_LXG];
-      end
+///      if(exFlush || exRd) begin
+///        if(toEIF == null)
+///          ovm_report_warning("lxg", "eif write out tr missing");
+///        else
+///          toEIF.data = dcFlushData[STAGE_RRF_LXG];
+///      end
     end
     
     ///now exception is resolved, allocate que
@@ -603,14 +590,14 @@ class ip4_tlm_dse extends ovm_component;
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
       bit rfmReq = 0;
       opcode_e op;
-      
+        
       if(eif != null && eif.loadRsp) begin
         if(v.eif[STAGE_RRF_LXG] != null)
           op = v.eif[STAGE_RRF_LXG].op;
         rfmReq = 1;
       end
       else if(ise != null && exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG]
-         && !expReq[STAGE_RRF_LXG] && ise.op inside {ld_ops, op_shf4a, op_shf4b, op_pera, op_perb, op_rmsg}) begin
+         && !expReq[STAGE_RRF_LXG] && ise.op inside {ld_ops, op_shf4a, op_shf4b, op_pera, op_perb, op_rmsg, op_smsg}) begin
         rfmReq = 1;
         op = ise.op;
       end
@@ -639,19 +626,43 @@ class ip4_tlm_dse extends ovm_component;
         ///cache flush
         if(vn.eif[STAGE_RRF_LXG] == null) vn.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
         vn.eif[STAGE_RRF_LXG].data = dcFlushData[STAGE_RRF_LXG];
+        vn.eif[STAGE_RRF_LXG].byteEn = '{default : '1};
       end
       else if(ise != null && exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG] && !expReq[STAGE_RRF_LXG]) begin
+        if(vn.eif[STAGE_RRF_LXG] == null) vn.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
         ///dse reqs
         if(ise.op inside {st_ops}) begin
-          if(vn.eif[STAGE_RRF_LXG] == null) vn.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
           vn.eif[STAGE_RRF_LXG].data = dcXhgData[STAGE_RRF_LXG];
+          foreach(vn.eif[STAGE_RRF_LXG].byteEn[i, j])
+            vn.eif[STAGE_RRF_LXG].byteEn[i][j] = smi[STAGE_RRF_LXG].exEn[i][j];
+        end
+        else if(ise.op inside {op_smsg}) begin
+          ///smsg will use part of dcVrfWEn
+          vn.eif[STAGE_RRF_LXG].data = dcXhgData[STAGE_RRF_LXG];
+          if(rfm != null) begin
+            uchar shiftNum;
+            uint mask, maskEx, maskRf;
+            shiftNum = rfm.os;
+            if(shiftNum > (ise.subVec * NUM_SP))
+              shiftNum -= ise.subVec * NUM_SP;
+            mask = -1 << shiftNum;
+            if(ise.sendRotRight) begin
+              maskEx = ~mask;
+              maskRf = mask;
+            end
+            else begin
+              maskEx = mask;
+              maskRf = ~mask;
+            end
+            foreach(vn.eif[STAGE_RRF_LXG].byteEn[i, j])
+              vn.eif[STAGE_RRF_LXG].byteEn[i][j] = maskEx[i];
+            foreach(vn.rfm[STAGE_RRF_LXG].wrEn[i])
+              vn.rfm[STAGE_RRF_LXG].wrEn[i] = maskRf[i];  
+          end
         end
         else
           vn.eif[STAGE_RRF_LXG] = null;
       end
-      if(vn.eif[STAGE_RRF_LXG] != null)
-        foreach(vn.eif[STAGE_RRF_LXG].byteEn[i, j])
-          vn.eif[STAGE_RRF_LXG].byteEn[i][j] = smi[STAGE_RRF_LXG].exEn[i][j];
     end
     
     ///spu ops

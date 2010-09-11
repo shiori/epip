@@ -851,7 +851,7 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock, noExt, burst;
+  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock, noExt, burst, sendRotRight;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   
@@ -864,6 +864,7 @@ class tr_ise2dse extends ovm_sequence_item;
 	  `ovm_field_int(updateAdrWrGrp, OVM_ALL_ON)
 	  `ovm_field_int(priv, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
+	  `ovm_field_int(sendRotRight, OVM_ALL_ON)
 	  `ovm_field_int(noExt, OVM_ALL_ON)
 	  `ovm_field_int(burst, OVM_ALL_ON)
 	  `ovm_field_int(nonBlock, OVM_ALL_ON)
