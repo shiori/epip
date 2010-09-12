@@ -121,6 +121,8 @@ class ise_thread_inf extends ovm_component;
   bit[NUM_W_CNT - 1 : 0] wCntSel;
   bit wCntDep[5];
   bit[CYC_VEC - 1 : 0] noExt;
+  uchar srLSID, srLRID;
+  bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
@@ -782,7 +784,7 @@ class ip4_tlm_ise extends ovm_component;
         t.pcExp = op0;
       SR_ERET: 
         t.pcEret = op0;
-      SR_PROC_CTL :
+      SR_PROC_CTL:
       begin
         foreach(thread[i])
           if(thread[i].threadState == ts_disabled && op0[i])
@@ -793,9 +795,9 @@ class ip4_tlm_ise extends ovm_component;
         srPerfCntMask = op0[29:28];
         srSupMsgMask = op0[29];
       end
-      SR_EBASE    :
+      SR_EBASE:
         srExpBase = op0;
-      SR_THD_CTL  :
+      SR_THD_CTL:
       begin
         t.privMode = priv_mode_t'(op0[1:0]);
         t.srThreadGrp = op0[2];
@@ -807,10 +809,18 @@ class ip4_tlm_ise extends ovm_component;
         t.srExpMsk = op0[9:3];
         t.srFIFOMask = op0[17:10];
       end
-      SR_UEE    :
+      SR_UEE:
         t.srUEE = op0;
-      SR_UER    :
+      SR_UER:
         t.srUEE = op0;
+      SR_FFC:
+      begin
+        t.srFFST = op0[7:0];
+        t.srLSID = op[10:8];
+        t.srFFRT = op0[18:11];
+        t.srLRID = op0[21:19];
+        t.srREE = op0[29:22];
+      end
       endcase
     end
     op_s2gp:
@@ -820,7 +830,7 @@ class ip4_tlm_ise extends ovm_component;
         res = t.pcExp;
       SR_ERET: 
         res = t.pcEret;
-      SR_PROC_CTL :
+      SR_PROC_CTL:
       begin
         foreach(thread[i])
           res[i] = thread[i].threadState != ts_disabled;
@@ -832,9 +842,9 @@ class ip4_tlm_ise extends ovm_component;
         res[29:28] = srPerfCntMask;
         res[29] = srSupMsgMask;
       end
-      SR_EBASE    :
+      SR_EBASE:
         res = srExpBase;
-      SR_THD_CTL  :
+      SR_THD_CTL:
       begin
         res[1:0] = t.privMode;
         res[2] = t.srThreadGrp;
@@ -846,7 +856,7 @@ class ip4_tlm_ise extends ovm_component;
         res[9:3] = t.srExpMsk;
         res[17:10] = t.srFIFOMask;
       end
-      SR_THD_ST   :
+      SR_THD_ST:
       begin
         res[4:0] = t.srUserEvent;
         res[9:5] = t.srCauseSPU;
@@ -856,6 +866,14 @@ class ip4_tlm_ise extends ovm_component;
         res[23:16] = t.srFIFOPend;
         res[25:24] = srPerfCntPend;        
         res[26] = srTimerPend;        
+      end
+      SR_FFC:
+      begin
+        op0[7:0] = t.srFFST;
+        op[10:8] = t.srLSID;
+        op0[18:11] = t.srFFRT;
+        op0[21:19] = t.srLRID;
+        op0[29:22] = t.srREE;
       end
       endcase
     end

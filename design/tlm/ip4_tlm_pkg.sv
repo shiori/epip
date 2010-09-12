@@ -128,7 +128,8 @@ parameter uint  NUM_SP            = 8,
 ///                NUM_STBUF_LINE    = LAT_XCHG,
                 NUM_STQUE         = 8,
                 NUM_LDQUE         = 16,
-                NUM_LLCK          = 4;
+                NUM_LLCK          = 4,
+                NUM_FIFO          = 8;
 
 parameter uint CFG_START_ADR      = 'hf000_0000,
                CFG_MAX_MSC        = 'hffff_fff0;
@@ -480,7 +481,7 @@ typedef enum uchar {
   SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_FUFMC,       SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7]
+  SR_MD[0:7],   SR_FFS,       SR_FFC
 }special_reg_t;
 
 parameter special_reg_t tlb_sr[] = '{
