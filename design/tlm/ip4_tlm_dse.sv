@@ -432,13 +432,6 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
       end
-      
-///      if(exFlush || exRd) begin
-///        if(toEIF == null)
-///          ovm_report_warning("lxg", "eif write out tr missing");
-///        else
-///          toEIF.data = dcFlushData[STAGE_RRF_LXG];
-///      end
     end
     
     ///now exception is resolved, allocate que
@@ -584,7 +577,7 @@ class ip4_tlm_dse extends ovm_component;
     end
     
     ///now load exchange data is ready, set them to eif & rfm tr
-    begin
+    if(smi[STAGE_RRF_LXG] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_LXG];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_LXG];
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
@@ -612,14 +605,20 @@ class ip4_tlm_dse extends ovm_component;
           op_shf4b, 
           op_pera, 
           op_perb,
-          op_lw:  vn.rfm[STAGE_RRF_LXG].res[sp] = res;
-          op_lh:  vn.rfm[STAGE_RRF_LXG].res[sp] = {{WORD_BITS{res.h[os >> WID_HALF].b[7]}}, res.h[os >> WID_HALF]};
-          op_lhu: vn.rfm[STAGE_RRF_LXG].res[sp] = res.h[os >> WID_HALF];
-          op_lb:  vn.rfm[STAGE_RRF_LXG].res[sp] = res.b[os];
-          op_lbu: vn.rfm[STAGE_RRF_LXG].res[sp] = {{WORD_BITS{res.b[os][7]}}, res.b[os]};
+          op_lw:    vn.rfm[STAGE_RRF_LXG].res[sp] = res;
+          op_lh:    vn.rfm[STAGE_RRF_LXG].res[sp] = {{WORD_BITS{res.h[os >> WID_HALF].b[7]}}, res.h[os >> WID_HALF]};
+          op_lhu:   vn.rfm[STAGE_RRF_LXG].res[sp] = res.h[os >> WID_HALF];
+          op_lb:    vn.rfm[STAGE_RRF_LXG].res[sp] = res.b[os];
+          op_lbu:   vn.rfm[STAGE_RRF_LXG].res[sp] = {{WORD_BITS{res.b[os][7]}}, res.b[os]};
+          op_rmsg:  vn.rfm[STAGE_RRF_LXG].res[sp] = res;
+          op_smsg:  vn.rfm[STAGE_RRF_LXG].res[sp] = res;
           endcase
         end
         vn.rfm[STAGE_RRF_LXG].wrEn = dcVrfWEn[STAGE_RRF_LXG];
+        vn.spu[STAGE_RRF_LXG].pres = smi[STAGE_RRF_DEM].re;
+        if(op == op_rmsg && eif != null)
+          foreach(eif.byteEn[i])
+            vn.spu[STAGE_RRF_LXG].pres[i] = eif.byteEn[i][0];
       end
       
       if(cacheFlush[STAGE_RRF_LXG]) begin
@@ -1071,13 +1070,6 @@ class ip4_tlm_dse extends ovm_component;
         vn.eif[STAGE_RRF_DEM].uncachable = selNoCache;
         vn.eif[STAGE_RRF_DEM].priv = ise.priv;
         vn.eif[STAGE_RRF_DEM].state = cache[selCacheIdx][selCacheAso].state[selCacheGrp];
-        for(int sp = 0; sp < NUM_SP; sp++) begin
-          vn.rfm[STAGE_RRF_DEM].updateAdrRes[sp] = rfm.base[sp];
-          if(smi[STAGE_RRF_DEM].exp[sp])
-            vn.spu[STAGE_RRF_DEM].pres[sp] = 0;
-          else
-            vn.spu[STAGE_RRF_DEM].pres[sp] = smi[STAGE_RRF_DEM].re[sp];
-        end
         
         vn.rfm[STAGE_RRF_DEM].wrGrp = ise.wrGrp;
         vn.rfm[STAGE_RRF_DEM].wrAdr = ise.wrAdr;
