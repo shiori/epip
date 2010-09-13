@@ -16,7 +16,7 @@ typedef enum uchar {
 }ise_exp_t;
 
 class ip4_tlm_ise_rst extends ovm_object;
-  uint pc, bpc, igb;
+  uint pc, bpc, igb, pcUEret;
   priv_mode_t priv;
   uchar tid;
   bit en, roll, exp, sel, ejtag;
@@ -27,6 +27,7 @@ class ip4_tlm_ise_rst extends ovm_object;
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON)
     `ovm_field_int(bpc, OVM_ALL_ON)
+    `ovm_field_int(pcUEret, OVM_ALL_ON)
     `ovm_field_int(igb, OVM_ALL_ON)
     `ovm_field_int(roll, OVM_ALL_ON + OVM_NOCOPY)
     `ovm_field_int(exp, OVM_ALL_ON + OVM_NOCOPY)
@@ -122,16 +123,16 @@ class ise_thread_inf extends ovm_component;
   bit wCntDep[5];
   bit[CYC_VEC - 1 : 0] noExt;
   uchar srLSID, srLRID;
-  bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE;
+  bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE, srLRRID, msgRdy;
   
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   bit isLastLoad, isLastStore, isLastVecDse, lpRndMemMode, pendIFetchExp, iFetchExp;
   uchar pendIFetch, pendExLoad, pendExStore, pendSMsg, pendBr;
-  uchar srThreadGrp, srFIFOMask, srUserEvent, srFIFOPend;
+  uchar srThreadGrp;
   round_mode_t srRndMode;
   uchar srExpMsk;
-  bit srKD, srCauseFu;
+  bit srKD, srCauseFu, mrfLocked;
   cause_spu_t srCauseSPU, pendIFetchCause;
   cause_dse_t srCauseDSE;
   
@@ -545,7 +546,7 @@ class ip4_tlm_ise extends ovm_component;
               cntPRWr, cntSrfWr[NUM_SRF_BKS], cntVrfWr[NUM_VRF_BKS];
         
   local bit noFu[NUM_FU];
-  local uchar noLd, noSt, noSMsg, noRMsg;
+  local uchar noLd, noSt, noTMsg, noFMsg;
   
   local tr_ise2rfm ciRFM[CYC_VEC];
   local tr_ise2spa ciSPA[CYC_VEC];
@@ -577,6 +578,7 @@ class ip4_tlm_ise extends ovm_component;
   local bit[1:0] srPerfCntPend;
   local tr_ise2eif toEIF;
   local bit[STAGE_ISE_VWBP:0] cancel[NUM_THREAD];
+  local bit noSMsg, fifoCleanUp;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -585,8 +587,8 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(cntDSERd, OVM_ALL_ON)
     `ovm_field_int(noLd, OVM_ALL_ON)
     `ovm_field_int(noSt, OVM_ALL_ON)
-    `ovm_field_int(noSMsg, OVM_ALL_ON)
-    `ovm_field_int(noRMsg, OVM_ALL_ON)
+    `ovm_field_int(noTMsg, OVM_ALL_ON)
+    `ovm_field_int(noFMsg, OVM_ALL_ON)
     `ovm_field_sarray_int(noFu, OVM_ALL_ON)
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
@@ -725,7 +727,7 @@ class ip4_tlm_ise extends ovm_component;
     op_eret:
     begin
       t.flush();
-      t.pc = t.pcEret;
+      t.pc = t.privMode == priv_user ? t.pcUEret : t.pcEret;
       t.privMode = t.privEret;
       t.srCauseSPU = EC_NOEXP;
       t.srCauseDSE = EC_NODSE;
@@ -804,23 +806,26 @@ class ip4_tlm_ise extends ovm_component;
         t.srThreadGrp = op0[2];
         t.srKD = op0[3];
       end
-      SR_FUFMC:
+      SR_EXEC:
       begin
         t.srRndMode = round_mode_t'(op0[2:0]);
         t.srExpMsk = op0[9:3];
-        t.srFIFOMask = op0[17:10];
       end
       SR_UEE:
         t.srUEE = op0;
       SR_UER:
         t.srUEE = op0;
-      SR_FFC:
+      SR_FFC0:
       begin
         t.srFFST = op0[7:0];
-        t.srLSID = op[10:8];
-        t.srFFRT = op0[18:11];
-        t.srLRID = op0[21:19];
-        t.srREE = op0[29:22];
+        t.srFFRT = op0[15:8];
+        t.srREE = op0[23:16];
+      end
+      SR_FFC1:
+      begin
+        t.srLSID = op[2:0];
+        t.srLRID = op0[5:3];
+        t.srLRRID = op0[13:6];
       end
       endcase
     end
@@ -851,37 +856,45 @@ class ip4_tlm_ise extends ovm_component;
         res[2] = t.srThreadGrp;
         res[3] = t.srKD;
       end
-      SR_FUFMC:
+      SR_EXEC:
       begin
         res[2:0] = t.srRndMode;
         res[9:3] = t.srExpMsk;
-        res[17:10] = t.srFIFOMask;
       end
       SR_THD_ST:
       begin
-        res[4:0] = t.srUserEvent;
-        res[9:5] = t.srCauseSPU;
-        res[13:10] = t.srCauseDSE;
-        res[14] = t.srCauseFu;
-        res[15] = srSupMsgPend;
-        res[23:16] = t.srFIFOPend;
-        res[25:24] = srPerfCntPend;        
-        res[26] = srTimerPend;        
+        res[3:0] = t.srCauseSPU;
+        res[7:4] = t.srCauseDSE;
+        res[8] = t.srCauseFu;
+        res[9] = srSupMsgPend;
+        res[11:10] = srPerfCntPend;        
+        res[12] = srTimerPend;        
       end
-      SR_FFC:
+      SR_FFC0:
       begin
         op0[7:0] = t.srFFST;
-        op[10:8] = t.srLSID;
-        op0[18:11] = t.srFFRT;
-        op0[21:19] = t.srLRID;
-        op0[29:22] = t.srREE;
+        op0[15:8] = t.srFFRT;
+        op0[23:16] = t.srREE;
+      end
+      SR_FFC1:
+      begin
+        op[2:0] = t.srLSID;
+        op0[5:3] = t.srLRID;
+        op0[13:6] = t.srLRRID;
       end
       endcase
     end
     endcase
     return res;
   endfunction : exe_ise
-
+  
+  function void enter_event(input uchar tid, user_event_os_t os);
+    ise_thread_inf t = thread[tid];
+    t.pcUEret = t.pc;
+    t.privMode = priv_event;
+    t.flush();
+  endfunction
+  
   function bit can_issue(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
     ise_thread_inf t = thread[tid];
@@ -910,11 +923,14 @@ class ip4_tlm_ise extends ovm_component;
         OVM_HIGH);
     end
     
+    if(!t.decoded)
+      return 0;
+      
     if(t.enVec && cntVecProc >= t.vecMode)
       return 0;
       
     ///issue disable check
-    if(t.iDSE.dse_block(noLd, noSt)) ///, noSMsg, noRMsg
+    if(t.iDSE.dse_block(noLd, noSt, noTMsg, noFMsg))
       return 0;
     
     foreach(noFu[i])
@@ -955,10 +971,54 @@ class ip4_tlm_ise extends ovm_component;
     
     if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] > t.wCntBr)
       return 0;
-///    if(t.wCnt[t.wCntSel] != 0  || t.wCntNext[2] < t.wExpCnt)
-///      return 0;
+    
+    ///start event only in user mode
+    if(t.privMode == priv_user) begin
+      if(t.msgRdy & t.srREE)
+        enter_event(tid, UE_FFREV);
+      else if(t.enSPU && t.iSPU.op inside {op_rmsg, op_smsg}) begin
+        if(t.srFFST[t.iSPU.mRt] && t.iSPU.op == op_smsg)
+          enter_event(tid, UE_FFSTG);
+        else if((t.srFFRT & t.iSPU.mFifos) && t.iSPU.op == op_rmsg) begin
+          enter_event(tid, UE_FFRTG);
+          t.srLRRID = t.iSPU.mFifos;
+        end
+      end
+      else if(t.msgRdy && fifoCleanUp)
+        enter_event(tid, UE_FFCLN);
       
-    return t.decoded;
+      if(!t.decoded)
+        return 0;
+    end
+    
+    if(t.decoded && t.enSPU) begin
+      if(t.iSPU.op == op_rmsg) begin
+        ///the rmsg is going exe, select a fifo to read
+        ///only find a non event, non triggered fifo
+        bit[NUM_FIFO - 1 : 0] tmp = (~t.srFFRT) & (~t.srREE) & t.msgRdy;
+        if(tmp) begin
+          foreach(tmp[i])
+            if(tmp[i])
+              t.iSPU.mRt = i;
+          t.srLSID = t.iSPU.mRt;
+        end
+        else begin
+          /// recieve failed
+           enter_event(tid, UE_FFRFL);
+           t.srLRRID = t.iSPU.mFifos;
+        end
+      end
+      else if(t.iSPU.op == op_smsg) begin
+        t.srLSID = t.iSPU.mRt;
+      end
+    end
+    
+    if(t.decoded && t.enDSE && t.iDSE.op == op_tmrf && t.mrfLocked) begin
+      ///the mrf is locked for send msg, a move to mrf is waiting
+      t.threadState = ts_w_mrf;
+    end
+    
+    return 1;
   endfunction : can_issue
 
   function void fill_issue(input uchar tid);
@@ -1077,6 +1137,7 @@ class ip4_tlm_ise extends ovm_component;
     vn.rst[1].igb = t.iGrpBytes;
     vn.rst[1].en = 1;
     vn.rst[1].ejtag = t.ejtagMode;
+    vn.rst[1].pcUEret = t.pcUEret;
     
     if(t.enSPU) begin
       /// spu or scalar dse issue
@@ -1224,8 +1285,8 @@ class ip4_tlm_ise extends ovm_component;
     noFu = '{default: 0};
     if(noLd > 0) noLd--;
     if(noSt > 0) noSt--;
-    if(noSMsg > 0) noSMsg--;
-    if(noRMsg > 0) noRMsg--;
+    if(noTMsg > 0) noTMsg--;
+    if(noFMsg > 0) noFMsg--;
     
 ///    for(int i = STAGE_ISE_WSR; i > STAGE_ISE_RSR; i--) 
 ///      vn.fmSPU[i] = v.fmSPU[i - 1];
@@ -1295,7 +1356,7 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPA != null)
       noFu = v.fmSPA.noFu;
       
-    if(pendEIF.size() > 0 || v.fmEIF != null) begin
+    if(pendEIF.size() > 0 || (v.fmEIF != null && v.fmEIF.reqNo)) begin
       if(ciDSE[0] == null || !ciDSE[0].en) begin
         tr_eif2ise eif;
         if(pendEIF.size() > 0)
@@ -1306,8 +1367,8 @@ class ip4_tlm_ise extends ovm_component;
           eif = v.fmEIF;
         noLd += eif.noLd;
         noSt += eif.noSt;
-        noSMsg += eif.noSMsg;
-        noRMsg += eif.noRMsg;
+        noTMsg += eif.noTMsg;
+        noFMsg += eif.noFMsg;
         foreach(cntVrfWr[i])
           cntVrfWr[i] += eif.vecCnt;
         foreach(cntSrfWr[i])
@@ -1317,6 +1378,18 @@ class ip4_tlm_ise extends ovm_component;
       end
       else if(v.fmEIF != null)
         pendEIF.push_back(v.fmEIF);
+    end
+    
+    if(v.fmEIF != null) begin
+      tr_eif2ise eif = v.fmEIF;
+      fifoCleanUp = eif.reqCleanUp;
+      noSMsg = eif.noSMsg;
+      foreach(thread[i]) begin
+        thread[i].msgRdy = eif.msgRdy[i];
+        thread[i].mrfLocked = eif.mrfLocked[i];
+        if(!thread[i].mrfLocked && thread[i].threadState == ts_w_mrf)
+          thread[i].threadState = ts_rdy;
+      end
     end
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch
@@ -1376,8 +1449,9 @@ class ip4_tlm_ise extends ovm_component;
       
       t.privMode = v.rst[i].priv;
       t.pc = res;
+      t.pcUEret = v.rst[i].pcUEret;
       t.ejtagMode = v.rst[i].ejtag;
-  
+      
       if(v.rst[i].exp) begin
         if(v.rst[i].ejtag) begin
           t.pc = VADR_EJTAGS;

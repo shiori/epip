@@ -357,7 +357,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_WSRB];
       bit prPass = prSPU[STAGE_RRF_WSRB] || ise.op == op_tsync;
       
-      if(prPass && ise.op inside {op_s2gp, tlb_ops}) begin
+      if(prPass && ise.op inside {op_s2gp, tlb_ops, op_smsg, op_rmsg}) begin
         if(ise.srAdr inside {tlb_sr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;
@@ -366,11 +366,16 @@ class ip4_tlm_spu extends ovm_component;
           toTLB.tid = ise.tid;
           toTLB.srAdr = ise.srAdr;
         end
-        else if(ise.srAdr inside {[SR_MD0:SR_MD7], [SR_MCS0:SR_MCS2], SR_FFS}) begin
+        else if(ise.srAdr inside {[SR_MD0:SR_MD7], [SR_MCS0:SR_MCS2], SR_FFS}
+                && ise.op inside {op_smsg, op_rmsg}) begin
           if(toEIF == null) toEIF = tr_spu2eif::type_id::create("toEIF", this);
           toEIF.srReq = 1;
           toEIF.tid = ise.tid;
           toEIF.srAdr = ise.srAdr;
+          toEIF.op = ise.op;
+          toEIF.rt = ise.rt;
+          toEIF.ss = ise.ss;
+          toEIF.vs = ise.vs;
         end
         else begin
           if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
@@ -409,6 +414,11 @@ class ip4_tlm_spu extends ovm_component;
         if(vn.rfm[STAGE_RRF_SWBP] == null)
           vn.rfm[STAGE_RRF_SWBP] = tr_spu2rfm::type_id::create("toRFM", this);
         vn.rfm[STAGE_RRF_SWBP].res = v.fmISE[0].srRes;
+      end
+      else if(v.fmEIF != null && v.fmEIF.srRsp) begin
+        if(vn.rfm[STAGE_RRF_SWBP] == null)
+          vn.rfm[STAGE_RRF_SWBP] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_SWBP].res = v.fmEIF.srRes;
       end
     end
     

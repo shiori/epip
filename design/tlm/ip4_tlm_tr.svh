@@ -642,6 +642,7 @@ class tr_ise2spu extends ovm_sequence_item;
   
   rand bit srRsp;
   rand word srRes;
+  rand uchar rt, ss, vs;
   
   constraint valid_data{
     tid < NUM_THREAD;
@@ -713,6 +714,9 @@ class tr_ise2spu extends ovm_sequence_item;
 		`ovm_field_int(srAdr, OVM_ALL_ON)
 		`ovm_field_int(srRsp, OVM_ALL_ON)
 		`ovm_field_int(srRes, OVM_ALL_ON)
+    `ovm_field_int(rt, OVM_ALL_ON)
+    `ovm_field_int(ss, OVM_ALL_ON)
+    `ovm_field_int(vs, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2spu");
@@ -1152,22 +1156,29 @@ class tr_ise2eif extends ovm_sequence_item;
 endclass : tr_ise2eif
 
 class tr_eif2ise extends ovm_sequence_item;
-  rand uchar noLd, noSt, noSMsg, noRMsg, vecCnt, sclCnt;
+  rand uchar noLd, noSt, noTMsg, noFMsg, vecCnt, sclCnt;
+  rand bit reqCleanUp, reqNo, noSMsg, mrfLocked[NUM_THREAD];
+  rand bit[NUM_FIFO - 1 : 0] msgRdy[NUM_THREAD];
   
   constraint valid_var {
     noLd <= CYC_VEC;
     noSt <= CYC_VEC;
-    noSMsg <= CYC_VEC;
-    noRMsg <= CYC_VEC;
+    noTMsg <= CYC_VEC;
+    noFMsg <= CYC_VEC;
   }
     
   `ovm_object_utils_begin(tr_eif2ise)
 	  `ovm_field_int(noLd, OVM_ALL_ON)
 	  `ovm_field_int(noSt, OVM_ALL_ON)
-	  `ovm_field_int(noSMsg, OVM_ALL_ON)
-	  `ovm_field_int(noRMsg, OVM_ALL_ON)
+	  `ovm_field_int(noTMsg, OVM_ALL_ON)
+	  `ovm_field_int(noFMsg, OVM_ALL_ON)
 	  `ovm_field_int(vecCnt, OVM_ALL_ON)
 	  `ovm_field_int(sclCnt, OVM_ALL_ON)
+	  `ovm_field_int(reqCleanUp, OVM_ALL_ON)
+	  `ovm_field_int(reqNo, OVM_ALL_ON)
+	  `ovm_field_int(noSMsg, OVM_ALL_ON)
+	  `ovm_field_sarray_int(msgRdy, OVM_ALL_ON)
+	  `ovm_field_sarray_int(mrfLocked, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2ise");
@@ -1179,12 +1190,18 @@ endclass : tr_eif2ise
 class tr_spu2eif extends ovm_sequence_item;
   rand bit srReq, s2gp;
   rand uchar srAdr, tid;
+  rand opcode_e op;
+  rand uchar rt, ss, vs;
   
   `ovm_object_utils_begin(tr_spu2eif)
     `ovm_field_int(srReq, OVM_ALL_ON)
     `ovm_field_int(s2gp, OVM_ALL_ON)
     `ovm_field_int(srAdr, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(rt, OVM_ALL_ON)
+    `ovm_field_int(ss, OVM_ALL_ON)
+    `ovm_field_int(vs, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_spu2eif");
@@ -1194,9 +1211,11 @@ endclass : tr_spu2eif
 
 class tr_eif2spu extends ovm_sequence_item;
   rand word srRes;
+  rand bit srRsp;
   
   `ovm_object_utils_begin(tr_eif2spu)
     `ovm_field_int(srRes, OVM_ALL_ON)
+    `ovm_field_int(srRsp, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2spu");

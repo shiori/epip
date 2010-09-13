@@ -173,8 +173,9 @@ typedef struct packed{
 
 typedef struct packed{
   bit[14:0] dummy;
-  bit[7:0] fifos;
   bit[2:0] rt;
+  bit[7:0] fifos;
+  bit[2:0] mrt;
   bit[1:0] vs, ss;
   bit ft;
 }i_cmsg;
@@ -341,7 +342,8 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mMT, mSs, mVs, mUpdateAdr, mFun, mS, mRt, mT, mRfAdr, mFifos, srAdr;
+  uchar mMT, mSs, mVs, mUpdateAdr, mFun, mS, mRt, mT, mRfAdr, srAdr;
+  bit[NUM_FIFO - 1 : 0] mFifos;
   bit enSPU, enDSE, enFu;
   
   `ovm_object_utils_begin(inst_c)
@@ -729,6 +731,7 @@ class inst_c extends ovm_object;
       mFifos = inst.i.b.cmsg.fifos;
       mSs = inst.i.b.cmsg.ss;
       mVs = inst.i.b.cmsg.vs;
+      mRt = inst.i.b.cmsg.mrt;
 ///      prWrAdr[0] = inst.i.p;
 ///      prWrEn[0] = prWrAdr[0] != 0;
     end    
@@ -1084,6 +1087,9 @@ class inst_c extends ovm_object;
       spu.srfWrAdr = adrWr[0];
       spu.srfWrBk = bkWr[0];
       spu.srAdr = srAdr;
+      spu.rt = mRt;
+      spu.ss = mSs;
+      spu.vs = mVs;
     end
     else if(enDSE) begin
       spu.prRdAdrDSE = prRdAdr;
@@ -1141,17 +1147,17 @@ class inst_c extends ovm_object;
     end
   endfunction : fill_spa
 
-  function bit dse_block(input uchar noLd, noSt); ///, noSMsg, noRMsg
+  function bit dse_block(input uchar noLd, noSt, noTMsg, noFMsg);
     if(!decoded) decode();
     if(enSPU) begin
       if(noLd > 0 && op inside {ld_ops})
         return 1;
       if(noSt > 0 && op inside {st_ops})
         return 1;
-///      if(noSMsg > 0 && op == op_tmrf)
-///        return 1;
-///      if(noRMsg > 0 && op == op_fmrf)
-///        return 1;
+      if(noTMsg > 0 && op == op_tmrf)
+        return 1;
+      if(noFMsg > 0 && op == op_fmrf)
+        return 1;
     end
     return 0;
   endfunction : dse_block

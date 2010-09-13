@@ -325,7 +325,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self,
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_mrf,
   ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
 }thread_state_t;
 
@@ -478,10 +478,10 @@ typedef enum uchar {
   SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
   SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCO,
-  SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_FUFMC,       SR_CONTENT,
+  SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_EXEC,        SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC
+  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC[0:1]
 }special_reg_t;
 
 parameter special_reg_t tlb_sr[] = '{
@@ -490,7 +490,7 @@ parameter special_reg_t tlb_sr[] = '{
 };
 
 parameter special_reg_t non_kernel_sr[] = '{
-  SR_FUFMC,     SR_UEE,       SR_UER
+  SR_EXEC,     SR_UEE,       SR_UER
 };
 
 typedef enum uchar {
@@ -510,7 +510,7 @@ typedef enum uchar {
   UE_FFRTG = 'h50,
   UE_FFSTG = 'h60,
   UE_FFRFL = 'h70,
-  UE_FFRSL = 'h80,
+  UE_FFSFL = 'h80,
   UE_FFSYN = 'h90
 }user_event_os_t;
   
