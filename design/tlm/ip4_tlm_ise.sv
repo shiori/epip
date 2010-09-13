@@ -127,7 +127,7 @@ class ise_thread_inf extends ovm_component;
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   bit isLastLoad, isLastStore, isLastVecDse, lpRndMemMode, pendIFetchExp, iFetchExp;
-  uchar pendIFetch, pendExLoad, pendExStore, pendBr;
+  uchar pendIFetch, pendExLoad, pendExStore, pendSMsg, pendBr;
   uchar srThreadGrp, srFIFOMask, srUserEvent, srFIFOPend;
   round_mode_t srRndMode;
   uchar srExpMsk;
@@ -181,6 +181,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
     `ovm_field_int(pendExStore, OVM_ALL_ON)
     `ovm_field_int(pendExLoad, OVM_ALL_ON)
+    `ovm_field_int(pendSMsg, OVM_ALL_ON)
     `ovm_field_int(pendBr, OVM_ALL_ON)
     `ovm_field_sarray_int(vrfMap, OVM_ALL_ON)
     `ovm_field_sarray_int(srfMap, OVM_ALL_ON)
@@ -913,7 +914,7 @@ class ip4_tlm_ise extends ovm_component;
       return 0;
       
     ///issue disable check
-    if(t.iDSE.dse_block(noLd, noSt, noSMsg, noRMsg))
+    if(t.iDSE.dse_block(noLd, noSt)) ///, noSMsg, noRMsg
       return 0;
     
     foreach(noFu[i])
@@ -1262,6 +1263,7 @@ class ip4_tlm_ise extends ovm_component;
       ise_thread_inf t = thread[dse.tid];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
+      t.pendSMsg = dse.pendSMsg;
       if(t.pendExStore == 0 && t.threadState inside {ts_w_synst, ts_w_syna})
         t.threadState = ts_rdy;
       if(t.pendExLoad == 0 && t.threadState inside {ts_w_synld, ts_w_syna})
@@ -1464,12 +1466,12 @@ class ip4_tlm_ise extends ovm_component;
 ///      toSPA.cancel[dse.tid] = 1;
 ///    end
     
-    if(toDSE != null && toDSE.op inside {ld_ops, st_ops, op_smsg, op_rmsg}) begin
+    if(toDSE != null && toDSE.op inside {ld_ops, st_ops, op_tmrf, op_fmrf}) begin
       if(toEIF == null) toEIF = tr_ise2eif::type_id::create("toEIF", this);
       toEIF.issueLd = toDSE.op inside {ld_ops};
       toEIF.issueSt = toDSE.op inside {st_ops};
-      toEIF.issueRMsg = toDSE.op == op_rmsg;
-      toEIF.issueSMsg = toDSE.op == op_smsg;
+      toEIF.issueFMsg = toDSE.op == op_fmrf;
+      toEIF.issueTMsg = toDSE.op == op_tmrf;
     end
     
     ///------------req to other module----------------

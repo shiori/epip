@@ -896,7 +896,7 @@ class tr_dse2ise extends ovm_sequence_item;
            exp,     ///the whole req has exception
 ///           rdy,     ///one external access finished
            scl;
-  rand uchar tid, vecMode, pendExLoad, pendExStore;
+  rand uchar tid, vecMode, pendExLoad, pendExStore, pendSMsg;
   rand cause_dse_t cause;
   rand bit[CYC_VEC - 1 : 0] reRun;
 ///  rand bit pendLoad, pendStore;
@@ -922,6 +922,7 @@ class tr_dse2ise extends ovm_sequence_item;
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(pendExLoad, OVM_ALL_ON)
 	  `ovm_field_int(pendExStore, OVM_ALL_ON)
+	  `ovm_field_int(pendSMsg, OVM_ALL_ON)
 ///	  `ovm_field_int(pendMemAcc, OVM_ALL_ON)
 	  `ovm_field_enum(cause_dse_t, cause, OVM_ALL_ON)
   `ovm_object_utils_end
@@ -1135,14 +1136,14 @@ endclass : tr_eif2dse
 
 ///---------------------------trsaction ise_eif eif_ise------------------------
 class tr_ise2eif extends ovm_sequence_item;
-  rand bit rsp, issueLd, issueSt, issueRMsg, issueSMsg;
+  rand bit rsp, issueLd, issueSt, issueFMsg, issueTMsg;
     
   `ovm_object_utils_begin(tr_ise2eif)
     `ovm_field_int(rsp, OVM_ALL_ON)
     `ovm_field_int(issueLd, OVM_ALL_ON)
     `ovm_field_int(issueSt, OVM_ALL_ON)
-    `ovm_field_int(issueRMsg, OVM_ALL_ON)
-    `ovm_field_int(issueSMsg, OVM_ALL_ON)
+    `ovm_field_int(issueFMsg, OVM_ALL_ON)
+    `ovm_field_int(issueTMsg, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_ise2eif");

@@ -369,14 +369,14 @@ typedef enum uchar {
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
-  op_pref,    op_synci,   op_cache,   op_smsg,
-  op_rmsg,    op_syna,    op_synld,   op_synst,
+  op_pref,    op_synci,   op_cache,   op_tmrf,
+  op_fmrf,    op_syna,    op_synld,   op_synst,
   ///spu opcodes
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr,
-  op_mvs
+  op_mvs,     op_rmsg,    op_smsg
 } opcode_e;
 
 parameter opcode_e bp_ops[] = '{
@@ -434,7 +434,7 @@ parameter opcode_e dse_ops[] = '{
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
   op_pref,    op_syna,    op_synci,   op_cache,
-  op_smsg,    op_rmsg
+  op_tmrf,    op_fmrf
 };
 
 parameter opcode_e ld_ops[] = '{
@@ -481,7 +481,7 @@ typedef enum uchar {
   SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_FUFMC,       SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7],   SR_FFS,       SR_FFC
+  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC
 }special_reg_t;
 
 parameter special_reg_t tlb_sr[] = '{
@@ -505,8 +505,14 @@ typedef enum uchar {
 }cause_dse_t;
 
 typedef enum uchar {
-  UE_FFCLN,     UE_FFRCV[0:7],  UE_FFSEND[0:7]
-}user_event_t;
+  UE_FFCLN = 'h0,
+  UE_FFREV = 'h40,
+  UE_FFRTG = 'h50,
+  UE_FFSTG = 'h60,
+  UE_FFRFL = 'h70,
+  UE_FFRSL = 'h80,
+  UE_FFSYN = 'h90
+}user_event_os_t;
   
 typedef enum uchar {
   rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
@@ -516,7 +522,7 @@ typedef enum uchar {
   gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
   br_styp,      min_styp
 }storage_type_t;
-  
+
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128
                 VPN2_WIDTH   = 18,
