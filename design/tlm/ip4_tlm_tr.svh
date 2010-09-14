@@ -1140,10 +1140,11 @@ endclass : tr_eif2dse
 
 ///---------------------------trsaction ise_eif eif_ise------------------------
 class tr_ise2eif extends ovm_sequence_item;
-  rand bit rsp, issueLd, issueSt, issueFMsg, issueTMsg;
+  rand bit rsp, supClear, issueLd, issueSt, issueFMsg, issueTMsg;
     
   `ovm_object_utils_begin(tr_ise2eif)
     `ovm_field_int(rsp, OVM_ALL_ON)
+    `ovm_field_int(supClear, OVM_ALL_ON)
     `ovm_field_int(issueLd, OVM_ALL_ON)
     `ovm_field_int(issueSt, OVM_ALL_ON)
     `ovm_field_int(issueFMsg, OVM_ALL_ON)
@@ -1159,6 +1160,7 @@ class tr_eif2ise extends ovm_sequence_item;
   rand uchar noLd, noSt, noTMsg, noFMsg, vecCnt, sclCnt;
   rand bit reqCleanUp, reqNo, noSMsg, mrfLocked[NUM_THREAD];
   rand bit[NUM_FIFO - 1 : 0] msgRdy[NUM_THREAD];
+  rand bit supRdy;
   
   constraint valid_var {
     noLd <= CYC_VEC;
@@ -1177,6 +1179,7 @@ class tr_eif2ise extends ovm_sequence_item;
 	  `ovm_field_int(reqCleanUp, OVM_ALL_ON)
 	  `ovm_field_int(reqNo, OVM_ALL_ON)
 	  `ovm_field_int(noSMsg, OVM_ALL_ON)
+	  `ovm_field_int(supRdy, OVM_ALL_ON)
 	  `ovm_field_sarray_int(msgRdy, OVM_ALL_ON)
 	  `ovm_field_sarray_int(mrfLocked, OVM_ALL_ON)
   `ovm_object_utils_end

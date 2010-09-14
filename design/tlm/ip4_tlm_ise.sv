@@ -573,12 +573,15 @@ class ip4_tlm_ise extends ovm_component;
   local ip4_printer printer;
   local uchar pbId;
   local uint srExpBase;
-  local bit srSupMsgMask, srPerfCntMask, srTimerMask, srReducePower, srDisableTimer,
+  local bit srSupMsgMask, srTimerMask, srReducePower, srDisableTimer,
             srTimerPend,  srSupMsgPend;
   local bit[1:0] srPerfCntPend;
   local tr_ise2eif toEIF;
   local bit[STAGE_ISE_VWBP:0] cancel[NUM_THREAD];
   local bit noSMsg, fifoCleanUp;
+  local uint srCnt, srPCnt[2], srCmp;
+  local uchar srPCntES[2], tidPcnt[2], tidCnt, tidSup;
+  local bit srPCntK[2], srPCntU[2], srPCntIE[2], srPCntGS;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntVecProc, OVM_ALL_ON)
@@ -793,10 +796,11 @@ class ip4_tlm_ise extends ovm_component;
           if(thread[i].threadState == ts_disabled && op0[i])
             thread[i].threadState = ts_rdy;
         srDisableTimer = op0[25];
-        srReducePower = op0[26];
-        srTimerMask = op0[27];
-        srPerfCntMask = op0[29:28];
-        srSupMsgMask = op0[29];
+        srTimerMask = op0[26];
+        srTimerPend = op0[27];
+        srSupMsgMask = op0[28];
+        srSupMsgPend = op0[29];
+        srReducePower = op0[30];
       end
       SR_EBASE:
         srExpBase = op0;
@@ -827,6 +831,12 @@ class ip4_tlm_ise extends ovm_component;
         t.srLRID = op0[5:3];
         t.srLRRID = op0[13:6];
       end
+      SR_CNT:
+        srCnt = op0;
+      SR_PCNT0:
+        srPCnt[0] = op0;
+      SR_PCNT1:
+        srPCnt[1] = op0;
       endcase
     end
     op_s2gp:
@@ -843,10 +853,11 @@ class ip4_tlm_ise extends ovm_component;
         res[19:16] = pbId;
         res[23:20] = tid;
         res[25] = srDisableTimer;
-        res[26] = srReducePower;
-        res[27] = srTimerMask;
-        res[29:28] = srPerfCntMask;
-        res[29] = srSupMsgMask;
+        res[26] = srTimerMask;
+        res[27] = srTimerPend;
+        res[28] = srSupMsgMask;
+        res[29] = srSupMsgPend;
+        res[30] = srReducePower;
       end
       SR_EBASE:
         res = srExpBase;
@@ -882,6 +893,12 @@ class ip4_tlm_ise extends ovm_component;
         op0[5:3] = t.srLRID;
         op0[13:6] = t.srLRRID;
       end
+      SR_CNT:
+        op0 = srCnt;
+      SR_PCNT0:
+        op0 = srPCnt[0];
+      SR_PCNT1:
+        op0 = srPCnt[1];
       endcase
     end
     endcase

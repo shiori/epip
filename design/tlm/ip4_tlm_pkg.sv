@@ -496,7 +496,8 @@ parameter special_reg_t non_kernel_sr[] = '{
 typedef enum uchar {
   EC_NOEXP,     EC_TLBIFET,   EC_NOTEXE,    EC_EXEPRIV,
   EC_DECODE,    EC_SYSCAL,    EC_BREAK,     EC_SUPMSG,
-  EC_IFACC,     EC_LSACC,     EC_SCLFU,     EC_MSC
+  EC_IFACC,     EC_LSACC,     EC_SCLFU,     EC_MSC,
+  EC_CNT,       EC_PCNT[0:1]
 }cause_spu_t;
 
 typedef enum uchar {
