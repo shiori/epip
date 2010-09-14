@@ -87,13 +87,17 @@ class ip4_tlm_ise_vars extends ovm_component;
 ///    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
 
-  function new(string name, ovm_component parent);
-    super.new(name, parent);
+  virtual function void build();
     TIdFetchLast = 0;
     TIdIssueLast = 0;
     print_enabled = 0;
+    super.build();
     foreach(rst[i])
       rst[i] = new();
+  endfunction
+  
+  function new(string name, ovm_component parent);
+    super.new(name, parent);
   endfunction : new
 endclass : ip4_tlm_ise_vars
 
@@ -189,13 +193,27 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_sarray_object(iFu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
+  function new(string name, ovm_component parent);
+    super.new(name, parent);
+  endfunction : new
+    
   virtual function void build();
+    threadState = ts_disabled;
+    privMode = priv_user;
+    pc = CFG_START_ADR;
+    vecMode = CYC_VEC - 1;
+    decoded = 0;
+    decodeErr = 0;
+    pendIFetchExp = 0;
+    iFetchExp = 0;
+    print_enabled = 0;
     super.build();
-///    print_config_settings();
-///    apply_config_settings(1);
-///    $display($psprintf("pc is %0d", pc));
-  endfunction
-  
+    iSPU = new();
+    iDSE = new();
+    foreach(iFu[i])
+      iFu[i] = new();
+  endfunction : build
+
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
 	  if(get_report_verbosity_level() >= OVM_HIGH) begin
@@ -215,23 +233,6 @@ class ise_thread_inf extends ovm_component;
     `PAF2(srfGrp, OVM_DEC)
 	endfunction : do_print
 	
-  function new(string name, ovm_component parent);
-    super.new(name, parent);
-    iSPU = new();
-    iDSE = new();
-    foreach(iFu[i])
-      iFu[i] = new();
-    threadState = ts_disabled;
-    privMode = priv_user;
-    pc = CFG_START_ADR;
-    vecMode = CYC_VEC - 1;
-    decoded = 0;
-    decodeErr = 0;
-    pendIFetchExp = 0;
-    iFetchExp = 0;
-    print_enabled = 0;
-  endfunction : new
- 
   function void map_iadr(input bit v, uchar orgAdr, output uchar grp, adr);
     uchar adrBits =  v ? (WID_PRF_P_GRP - WID_VRF_BKS) : (WID_PRF_P_GRP - WID_SRF_BKS);
     adr = orgAdr & `GML(adrBits);
@@ -538,7 +539,6 @@ class ise_thread_inf extends ovm_component;
     ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GMH(WID_IFET);
     pendIFetch++;
   endfunction : fill_ife
-  
 endclass : ise_thread_inf
 
 ///---------------------------------------main component----------------------------------------
@@ -575,6 +575,7 @@ class ip4_tlm_ise extends ovm_component;
 
   local ip4_tlm_ise_vars v, vn;
   local ise_thread_inf thread[NUM_THREAD];
+  
   local ip4_printer printer;
   local uchar pbId;
   local uint srExpBase;

@@ -27,15 +27,9 @@ class ip4_tlm_core extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
   local ip4_tlm_core_vars v, vn;  
-  local uchar dm[];
-  local string dmFilePath;
-  local uint dmBase, dmSize;
   local uchar pbId;
   
   `ovm_component_utils_begin(ip4_tlm_core)
-    `ovm_field_string(dmFilePath, OVM_ALL_ON)
-    `ovm_field_int(dmSize, OVM_ALL_ON)
-    `ovm_field_int(dmBase, OVM_ALL_ON)
     `ovm_field_int(pbId, OVM_ALL_ON)
   `ovm_component_utils_end
 ///      
@@ -90,6 +84,7 @@ class ip4_tlm_core extends ovm_component;
     tlm_vif_object vifCfg;
     
     super.build();
+
     v = new("v", this);
     vn = new("vn", this);
     
@@ -97,9 +92,6 @@ class ip4_tlm_core extends ovm_component;
     failed_convert_interface: assert($cast(vifCfg, tmp));
     sysif = vifCfg.get_vif();  
     stamp = 0ns;
-    
-    dm = new[dmSize];
-    $readmemb(dmFilePath, dm);
   endfunction : build
 endclass : ip4_tlm_core
 

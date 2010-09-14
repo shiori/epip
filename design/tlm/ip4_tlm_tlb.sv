@@ -90,6 +90,9 @@ class ip4_tlm_tlb_vars extends ovm_component;
   
   function new (string name, ovm_component parent);
     super.new(name, parent);
+  endfunction : new
+  
+  virtual function void build();
     vpn2 = '{default : 0};
     pageTyp = '{default : 0};
     asid = '{default : 0};
@@ -107,7 +110,8 @@ class ip4_tlm_tlb_vars extends ovm_component;
     srEntryHi = 0;
     srContent = '{default : 0};
     ifeBufPtr = 0;
-  endfunction : new
+    super.build();
+  endfunction
 endclass : ip4_tlm_tlb_vars
 
 

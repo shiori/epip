@@ -415,7 +415,6 @@ class inst_c extends ovm_object;
 		  
 	function new (string name = "inst_c");
 		super.new(name);
-		decoded = 0;
 	endfunction : new
 
   function void set_rf_en(input uchar adr, inout rbk_sel_e sel, bit hasVec, 

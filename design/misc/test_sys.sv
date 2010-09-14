@@ -1,29 +1,5 @@
 ///`include "ip4_tlm.svh"
 
-///class testcomp extends ovm_component;
-///  uchar pbId;
-///  
-///  `ovm_component_utils_begin(testcomp)
-///    `ovm_field_int(pbId, OVM_ALL_ON)
-///  `ovm_component_utils_end
-///
-///  function new(string name, ovm_component parent);
-///    super.new(name, parent);
-///  endfunction : new
-///  
-///  virtual function void build();
-///    super.build();
-///    apply_config_settings(1);
-///  endfunction
-///
-///  virtual task run();
-///  endtask  
-///
-///  virtual function void connect();
-///    super.connect();
-///  endfunction
-///endclass
-
 class test_sys_env extends ovm_env;
   ip4_tlm_rfm rfm;  
   ip4_tlm_spa spa;
@@ -136,9 +112,8 @@ class ip4_sys_test extends ovm_test;
     set_config_string("*", "imFilePath", "../misc/code.txt");
     set_config_int("*", "pbId", 2);
    
-   set_config_int("*", "pc", 1234);
-    set_config_int("*", "vrfMap[0]", 0);
-    set_config_int("*", "vrfMap[1]", 1);
+    set_config_int("*thread0*", "vrfMap[0]", 0);
+    set_config_int("*thread0*", "vrfMap[1]", 1);
     set_config_int("*thread0*", "vrfMap[2]", 2);
     set_config_int("*thread0*", "vrfMap[3]", 3);
     
