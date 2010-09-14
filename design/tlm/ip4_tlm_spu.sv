@@ -16,6 +16,7 @@ class ip4_tlm_spu_vars extends ovm_component;
   tr_spa2spu fmSPA[STAGE_RRF_VWB:STAGE_RRF_CEM];
   tr_dse2spu fmDSE[STAGE_RRF_VWB:STAGE_RRF_DEM];
   tr_tlb2spu fmTLB;
+  tr_eif2spu fmEIF;
   tr_spu2rfm rfm[STAGE_RRF_SWBP:STAGE_RRF_EXS1];
   
   `ovm_component_utils_begin(ip4_tlm_spu_vars)
@@ -24,6 +25,7 @@ class ip4_tlm_spu_vars extends ovm_component;
     `ovm_field_sarray_object(fmDSE, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(fmSPA, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_object(fmTLB, OVM_ALL_ON + OVM_REFERENCE)
+    `ovm_field_object(fmEIF, OVM_ALL_ON + OVM_REFERENCE)
     `ovm_field_sarray_object(rfm, OVM_ALL_ON + OVM_REFERENCE)
   `ovm_component_utils_end
   
@@ -64,6 +66,7 @@ class ip4_tlm_spu extends ovm_component;
   ovm_nonblocking_transport_imp_rfm #(tr_rfm2spu, tr_rfm2spu, ip4_tlm_spu) rfm_tr_imp;
   ovm_nonblocking_transport_imp_dse #(tr_dse2spu, tr_dse2spu, ip4_tlm_spu) dse_tr_imp;
   ovm_nonblocking_transport_imp_tlb #(tr_tlb2spu, tr_tlb2spu, ip4_tlm_spu) tlb_tr_imp;
+  ovm_nonblocking_transport_imp_eif #(tr_eif2spu, tr_eif2spu, ip4_tlm_spu) eif_tr_imp;
   
   ovm_nonblocking_transport_port #(tr_spu2rfm, tr_spu2rfm) rfm_tr_port;
   ovm_nonblocking_transport_port #(tr_spu2ise, tr_spu2ise) ise_tr_port;
@@ -354,7 +357,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_WSRB];
       bit prPass = prSPU[STAGE_RRF_WSRB] || ise.op == op_tsync;
       
-      if(prPass && ise.op inside {op_s2gp, tlb_ops}) begin
+      if(prPass && ise.op inside {op_s2gp, tlb_ops, op_smsg, op_rmsg}) begin
         if(ise.srAdr inside {tlb_sr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;
@@ -363,11 +366,16 @@ class ip4_tlm_spu extends ovm_component;
           toTLB.tid = ise.tid;
           toTLB.srAdr = ise.srAdr;
         end
-        else if(ise.srAdr inside {[SR_MD0:SR_MD7]}) begin
+        else if(ise.srAdr inside {[SR_MD0:SR_MD7], [SR_MCS0:SR_MCS2], SR_FFS}
+                && ise.op inside {op_smsg, op_rmsg}) begin
           if(toEIF == null) toEIF = tr_spu2eif::type_id::create("toEIF", this);
           toEIF.srReq = 1;
           toEIF.tid = ise.tid;
           toEIF.srAdr = ise.srAdr;
+          toEIF.op = ise.op;
+          toEIF.rt = ise.rt;
+          toEIF.ss = ise.ss;
+          toEIF.vs = ise.vs;
         end
         else begin
           if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
@@ -406,6 +414,11 @@ class ip4_tlm_spu extends ovm_component;
         if(vn.rfm[STAGE_RRF_SWBP] == null)
           vn.rfm[STAGE_RRF_SWBP] = tr_spu2rfm::type_id::create("toRFM", this);
         vn.rfm[STAGE_RRF_SWBP].res = v.fmISE[0].srRes;
+      end
+      else if(v.fmEIF != null && v.fmEIF.srRsp) begin
+        if(vn.rfm[STAGE_RRF_SWBP] == null)
+          vn.rfm[STAGE_RRF_SWBP] = tr_spu2rfm::type_id::create("toRFM", this);
+        vn.rfm[STAGE_RRF_SWBP].res = v.fmEIF.srRes;
       end
     end
     
@@ -624,7 +637,17 @@ class ip4_tlm_spu extends ovm_component;
     vn.fmTLB = req;
     return 1;
   endfunction : nb_transport_tlb
-    
+
+  function bit nb_transport_eif(input tr_eif2spu req, output tr_eif2spu rsp);
+    ovm_report_info("spu_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_HIGH);
+    sync();
+    assert(req != null);
+    void'(begin_tr(req));
+    rsp = req;
+    vn.fmEIF = req;
+    return 1;
+  endfunction : nb_transport_eif
+      
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
@@ -660,6 +683,7 @@ class ip4_tlm_spu extends ovm_component;
     spa_tr_imp = new("spa_tr_imp", this);
     dse_tr_imp = new("dse_tr_imp", this);
     tlb_tr_imp = new("tlb_tr_imp", this);
+    eif_tr_imp = new("eif_tr_imp", this);
     
     rfm_tr_port = new("rfm_tr_port", this);
     ise_tr_port = new("ise_tr_port", this);

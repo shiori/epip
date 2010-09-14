@@ -58,6 +58,7 @@ class ip4_tlm_eif extends ovm_component;
   
   ovm_nonblocking_transport_port #(tr_eif2dse, tr_eif2dse) dse_tr_port;
   ovm_nonblocking_transport_port #(tr_eif2ise, tr_eif2ise) ise_tr_port;
+  ovm_nonblocking_transport_port #(tr_eif2spu, tr_eif2spu) spu_tr_port;
   
   function void comb_proc();
     
@@ -76,6 +77,7 @@ class ip4_tlm_eif extends ovm_component;
   function void req_proc();
     tr_eif2dse toDSE;
     tr_eif2ise toISE;
+    tr_eif2spu toEIF;
     
     ovm_report_info("EIF", "req_proc procing...", OVM_FULL); 
     
@@ -163,8 +165,8 @@ class ip4_tlm_eif extends ovm_component;
       toISE = tr_eif2ise::type_id::create("toISE", this);
       toISE.noLd = cnt;
       toISE.noSt = cnt; 
-      toISE.noSMsg = cnt;
-      toISE.noRMsg = cnt; 
+      toISE.noTMsg = cnt;
+      toISE.noFMsg = cnt; 
       toISE.vecCnt = cnt; 
       toISE.sclCnt = cnt;
       iseReqBuf.push_back(cnt);
@@ -197,6 +199,7 @@ class ip4_tlm_eif extends ovm_component;
     
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
+    if(toEIF != null) void'(spu_tr_port.nb_transport(toEIF, toEIF));
   endfunction
 
 ///------------------------------nb_transport functions---------------------------------------
@@ -267,6 +270,7 @@ class ip4_tlm_eif extends ovm_component;
     
     dse_tr_port = new("dse_tr_port", this);
     ise_tr_port = new("ise_tr_port", this);
+    spu_tr_port = new("spu_tr_port", this);
     
     v = new("v", this);
     vn = new("vn", this);

@@ -17,7 +17,7 @@ typedef enum bit[5:0] {
   iop_lw = 'b110000,        iop_sw = 'b110001,      iop_lh = 'b110010,        iop_sh = 'b110011,
   iop_lb = 'b110100,        iop_sb = 'b110101,      iop_ll = 'b110110,        iop_sc = 'b110111,
   iop_cmpxchg = 'b111000,   iop_fetadd = 'b111001,  iop_lhu = 'b111010,       iop_lbu = 'b111011,
-  iop_mctl = 'b111100,      iop_smsg = 'b001100,    iop_rmsg = 'b001101,
+  iop_mctl = 'b111100,      iop_mmsg = 'b001100,    iop_cmsg = 'b001101,
   iop_cmp = 'b001110,       iop_cmpu = 'b001111,    iop_cmpi = 'b010000,      iop_cmpiu = 'b010001,
   iop_cop = 'b010010,       iop_vxchg = 'b010100
 } iop_e;
@@ -162,29 +162,23 @@ typedef struct packed{
 
 typedef struct packed{
   irda_t rd;
-  bit dummy0;
-  isrsa_t rss;
-  bit[1:0] dummy1;
-  bit[2:0] rt;
-  irsa_t rvs;
-  bit dummy2;
+  irsa_t rs;
+  bit[8:0] dummy1;
   bit[4:0] s;
+  bit[1:0] dummy2;
   bit[1:0] t;
-  bit b;
-  bit[1:0] mid;
-}i_smsg;
+  bit[1:0] mrfa;
+  bit ft;
+}i_mmsg;
 
 typedef struct packed{
-  irda_t rvd;
-  irsa_t rsv;
-  bit dummy0;
-  isrda_t rd;
-  bit dummy1;
+  bit[14:0] dummy;
+  bit[2:0] rt;
   bit[7:0] fifos;
-  bit[3:0] dummy2;
-  bit b;
-  bit[1:0] mid;
-}i_rmsg;
+  bit[2:0] mrt;
+  bit[1:0] vs, ss;
+  bit ft;
+}i_cmsg;
 
 typedef struct packed{
   bit[4:0] dummy0;
@@ -236,8 +230,8 @@ typedef union packed{
   i_mctl mctl;
   i_fetadd fetadd;
   i_cmpxchg cmpxchg;
-  i_smsg smsg;
-  i_rmsg rmsg;
+  i_mmsg mmsg;
+  i_cmsg cmsg;
   i_cmp cmp;
   i_cmpi cmpi;
   i_cop cop;
@@ -329,10 +323,6 @@ parameter iop_e iop_ls_dse[] = '{
         iop_sb,     iop_ll,    iop_sc,   iop_lhu,   iop_lbu
         };
 
-parameter iop_e iop_msg[] = '{
-        iop_smsg,     iop_rmsg
-        };                                
-        
 parameter iop_e iop_cmps[] = '{
         iop_cmp,    iop_cmpu,   iop_cmpi,   iop_cmpiu
         };
@@ -343,8 +333,7 @@ class inst_c extends ovm_object;
   opcode_e op;
   rbk_sel_e rdBkSel[NUM_FU_RP];
   uchar CntVrfRd, CntSrfRd, prRdAdr, prWrAdr[2], fuid,
-        grpWr[2], adrWr[2], bkWr[2],
-        grpRMsg[2], adrRMsg[2], bkRMsg[2];
+        grpWr[2], adrWr[2], bkWr[2];
   uint imm, offSet;
   bit vrfEn[CYC_VEC][NUM_VRF_BKS], srfEn[CYC_VEC][NUM_SRF_BKS], 
       wrEn[2], prRdEn, prWrEn[2], brDep, fcRet, noExp;
@@ -353,7 +342,8 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mMT, mUpdateAdr, mFun, mS, mRt, mT, mMid, mFifos, srAdr;
+  uchar mMT, mSs, mVs, mUpdateAdr, mFun, mS, mRt, mT, mRfAdr, srAdr;
+  bit[NUM_FIFO - 1 : 0] mFifos;
   bit enSPU, enDSE, enFu;
   
   `ovm_object_utils_begin(inst_c)
@@ -396,7 +386,7 @@ class inst_c extends ovm_object;
 ///    `ovm_field_int(mS, OVM_ALL_ON)
 ///    `ovm_field_int(mRt, OVM_ALL_ON)
 ///    `ovm_field_int(mT, OVM_ALL_ON)
-///    `ovm_field_int(mMid, OVM_ALL_ON)
+///    `ovm_field_int(mRfAdr, OVM_ALL_ON)
 ///    `ovm_field_int(mFifos, OVM_ALL_ON)
   `ovm_object_utils_end
 
@@ -404,12 +394,14 @@ class inst_c extends ovm_object;
 		super.do_print(printer);
 		if(enDSE) begin
 		  `PF(mMT, OVM_BIN)
+		  `PF(mSs, OVM_BIN)
+		  `PF(mVs, OVM_BIN)
 		  `PF(mUpdateAdr, OVM_BIN)
 		  `PF(mFun, OVM_BIN)
 		  `PF(mS, OVM_BIN)
 		  `PF(mRt, OVM_BIN)
 		  `PF(mT, OVM_BIN)
-		  `PF(mMid, OVM_BIN)
+		  `PF(mRfAdr, OVM_BIN)
 		  `PF(mFifos, OVM_BIN)
 	  end
 	  if(enSPU) begin
@@ -719,28 +711,29 @@ class inst_c extends ovm_object;
           op = op_synci;
       end
     end
-    else if(inst.i.op == iop_smsg) begin
-      op = op_smsg;
-      adrWr[0] = inst.i.b.smsg.rd;
+    else if(inst.i.op == iop_mmsg) begin
+      op = inst.i.b.mmsg.ft ? op_fmrf : op_tmrf;
+      adrWr[0] = inst.i.b.mmsg.rd;
       wrEn[0] = 1;
-      set_rf_en(inst.i.b.smsg.rss, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      set_rf_en(inst.i.b.smsg.rvs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      mS = inst.i.b.smsg.s;
-      mMT = inst.i.b.smsg.t;
-      mT = inst.i.b.smsg.b;
-      mMid = inst.i.b.smsg.mid;
-    end
-    else if(inst.i.op == iop_rmsg) begin
-      op = op_rmsg;
-      mMid = inst.i.b.rmsg.mid;
-      mT = inst.i.b.rmsg.b;
-      mFifos = inst.i.b.rmsg.fifos;
-      adrWr[0] = inst.i.b.rmsg.rvd;
-      wrEn[0] = 1;
-      adrRMsg[0] = inst.i.b.rmsg.rd & `GMH(1);
-      adrRMsg[1] = adrRMsg[0] + 1;
+      set_rf_en(inst.i.b.mmsg.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+      mS = inst.i.b.mmsg.s;
+      mMT = inst.i.b.mmsg.t;
+      mRfAdr = inst.i.b.mmsg.mrfa;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = prWrAdr[0] != 0;
+    end
+    else if(inst.i.op == iop_cmsg) begin
+      op = inst.i.b.mmsg.ft ? op_rmsg : op_smsg;
+///      adrWr[0] = inst.i.b.cmsg.rd;
+///      wrEn[0] = 1;
+///      set_rf_en(inst.i.b.cmsg.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+///      mRfAdr = inst.i.b.cmsg.mrfa;
+      mFifos = inst.i.b.cmsg.fifos;
+      mSs = inst.i.b.cmsg.ss;
+      mVs = inst.i.b.cmsg.vs;
+      mRt = inst.i.b.cmsg.mrt;
+///      prWrAdr[0] = inst.i.p;
+///      prWrEn[0] = prWrAdr[0] != 0;
     end    
     else if(inst.i.op == iop_vxchg) begin
       if(inst.i.b.vxchg.t) begin
@@ -826,13 +819,6 @@ class inst_c extends ovm_object;
 		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
 		    adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
 		  end
-
-   foreach(adrRMsg[i]) begin
-      bkRMsg[i] = adrRMsg[i] & `GML(WID_SRF_BKS);
-      grpRMsg[i] = adrRMsg[i] >> WID_PRF_P_GRP;
-      adrRMsg[i] = (adrRMsg[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
-    end
-    
 	endfunction : decode
 	
 	function bit is_unc_br();
@@ -991,10 +977,6 @@ class inst_c extends ovm_object;
       
     foreach(prWrEn[i])
       pr += prWrEn[i];
-      
-    if(op == op_rmsg)
-      foreach(bkRMsg[i])
-        srf[bkRMsg[i]]++;
     
     if(enFu) begin
       wCntDep[gprv_styp] = 1;
@@ -1105,6 +1087,9 @@ class inst_c extends ovm_object;
       spu.srfWrAdr = adrWr[0];
       spu.srfWrBk = bkWr[0];
       spu.srAdr = srAdr;
+      spu.rt = mRt;
+      spu.ss = mSs;
+      spu.vs = mVs;
     end
     else if(enDSE) begin
       spu.prRdAdrDSE = prRdAdr;
@@ -1162,16 +1147,16 @@ class inst_c extends ovm_object;
     end
   endfunction : fill_spa
 
-  function bit dse_block(input uchar noLd, noSt, noSMsg, noRMsg);
+  function bit dse_block(input uchar noLd, noSt, noTMsg, noFMsg);
     if(!decoded) decode();
     if(enSPU) begin
-      if(noLd > 0 && op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu})
+      if(noLd > 0 && op inside {ld_ops})
         return 1;
-      if(noSt > 0 && op inside {iop_sw, iop_sh, iop_sb, iop_sc})
+      if(noSt > 0 && op inside {st_ops})
         return 1;
-      if(noSMsg > 0 && op == op_smsg)
+      if(noTMsg > 0 && op == op_tmrf)
         return 1;
-      if(noRMsg > 0 && op == op_rmsg)
+      if(noFMsg > 0 && op == op_fmrf)
         return 1;
     end
     return 0;
@@ -1188,8 +1173,6 @@ class inst_c extends ovm_object;
     else begin
       grpWr[0] = srf_map[grpWr[0]];
       grpWr[1] = grpWr[0];
-      grpRMsg[0] = srf_map[grpRMsg[0]];
-      grpRMsg[1] = grpRMsg[0];
     end
   endfunction : map_wr_grp
 endclass

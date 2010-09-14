@@ -128,7 +128,8 @@ parameter uint  NUM_SP            = 8,
 ///                NUM_STBUF_LINE    = LAT_XCHG,
                 NUM_STQUE         = 8,
                 NUM_LDQUE         = 16,
-                NUM_LLCK          = 4;
+                NUM_LLCK          = 4,
+                NUM_FIFO          = 8;
 
 parameter uint CFG_START_ADR      = 'hf000_0000,
                CFG_MAX_MSC        = 'hffff_fff0;
@@ -324,7 +325,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self,
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_mrf,
   ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
 }thread_state_t;
 
@@ -334,14 +335,14 @@ typedef enum uchar {
 
 ///the MOESI protocol plus a dirty state meaning no cc and modified
 typedef enum uchar {
-  cs_inv,     cs_shared,    cs_owner,     cs_exclusive,   cs_modified,
+  cs_inv,     cs_shared,    cs_owned,     cs_exclusive,   cs_modified,
   cs_dirty
 }cache_state_t;
 
 function automatic bit need_writeback(
   input cache_state_t s
 );
-  return s inside {cs_owner, cs_modified, cs_dirty};
+  return s inside {cs_owned, cs_modified, cs_dirty};
 endfunction
 
 typedef enum uchar {
@@ -368,14 +369,14 @@ typedef enum uchar {
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
-  op_pref,    op_synci,   op_cache,   op_smsg,
-  op_rmsg,    op_syna,    op_synld,   op_synst,
+  op_pref,    op_synci,   op_cache,   op_tmrf,
+  op_fmrf,    op_syna,    op_synld,   op_synst,
   ///spu opcodes
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
   op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr,
-  op_mvs
+  op_mvs,     op_rmsg,    op_smsg
 } opcode_e;
 
 parameter opcode_e bp_ops[] = '{
@@ -433,7 +434,7 @@ parameter opcode_e dse_ops[] = '{
   op_lb,      op_sb,      op_ll,      op_sc,
   op_cmpxchg, op_fetadd,  op_lhu,     op_lbu,
   op_pref,    op_syna,    op_synci,   op_cache,
-  op_smsg,    op_rmsg
+  op_tmrf,    op_fmrf
 };
 
 parameter opcode_e ld_ops[] = '{
@@ -477,10 +478,10 @@ typedef enum uchar {
   SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
   SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCO,
-  SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_FUFMC,       SR_CONTENT,
+  SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_EXEC,        SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7]
+  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC[0:1]
 }special_reg_t;
 
 parameter special_reg_t tlb_sr[] = '{
@@ -489,7 +490,7 @@ parameter special_reg_t tlb_sr[] = '{
 };
 
 parameter special_reg_t non_kernel_sr[] = '{
-  SR_FUFMC,     SR_UEE,       SR_UER
+  SR_EXEC,     SR_UEE,       SR_UER
 };
 
 typedef enum uchar {
@@ -504,8 +505,14 @@ typedef enum uchar {
 }cause_dse_t;
 
 typedef enum uchar {
-  UE_FFCLN,     UE_FFRCV[0:7],  UE_FFSEND[0:7]
-}user_event_t;
+  UE_FFCLN = 'h0,
+  UE_FFREV = 'h40,
+  UE_FFRTG = 'h50,
+  UE_FFSTG = 'h60,
+  UE_FFRFL = 'h70,
+  UE_FFSFL = 'h80,
+  UE_FFSYN = 'h90
+}user_event_os_t;
   
 typedef enum uchar {
   rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
@@ -515,7 +522,7 @@ typedef enum uchar {
   gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
   br_styp,      min_styp
 }storage_type_t;
-  
+
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128
                 VPN2_WIDTH   = 18,
