@@ -122,7 +122,7 @@ class ise_thread_inf extends ovm_component;
   bit[CYC_VEC - 1 : 0] noExt;
   uchar srLSID, srLRID;
   bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE, srLRRID, msgRdy;
-  
+
   uchar vrfMap[NUM_INST_VRF / NUM_PRF_P_GRP], 
         srfMap[NUM_INST_SRF / NUM_PRF_P_GRP];
   bit isLastLoad, isLastStore, isLastVecDse, lpRndMemMode, pendIFetchExp, iFetchExp;
@@ -189,6 +189,13 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_sarray_object(iFu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_component_utils_end
 
+  virtual function void build();
+    super.build();
+///    print_config_settings();
+///    apply_config_settings(1);
+///    $display($psprintf("pc is %0d", pc));
+  endfunction
+  
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
 	  if(get_report_verbosity_level() >= OVM_HIGH) begin
@@ -1685,7 +1692,7 @@ class ip4_tlm_ise extends ovm_component;
   virtual function void build();
     ovm_object tmp;
     tlm_vif_object vifCfg;
-    
+                
     super.build();
     ife_tr_imp = new("ife_tr_imp", this);
     spu_tr_imp = new("spu_tr_imp", this);
@@ -1703,14 +1710,15 @@ class ip4_tlm_ise extends ovm_component;
     
     v = new("v", this);
     vn = new("vn", this);
-    
+
+    foreach(thread[i])
+      thread[i] = new($psprintf("thread%0d", i), this);
+                
     no_virtual_interface: assert(get_config_object("vifCfg", tmp));
     failed_convert_interface: assert($cast(vifCfg, tmp));
     sysif = vifCfg.get_vif();  
     stamp = 0ns;
     
-    foreach(thread[i])
-      thread[i] = new($psprintf("thread%0d", i), this);
     thread[0].threadState = ts_rdy;
     thread[0].privMode = priv_kernel;
     

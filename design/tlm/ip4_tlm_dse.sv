@@ -314,7 +314,7 @@ class ip4_tlm_dse extends ovm_component;
     end
     
     ///**dc stage
-    if(smi[STAGE_RRF_DC] == null) begin
+    if(smi[STAGE_RRF_DC] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];

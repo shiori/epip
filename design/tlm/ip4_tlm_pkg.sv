@@ -578,6 +578,7 @@ endclass
 `include "ip4_tlm_eif.sv"
 `include "ip4_tlm_ife.sv"
 `include "ip4_tlm_agent.sv"
+`include "ip4_tlm_core.sv"
 
 `include "../misc/test_sys.sv"
 `include "../misc/test.sv"

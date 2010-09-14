@@ -1,5 +1,29 @@
 ///`include "ip4_tlm.svh"
 
+///class testcomp extends ovm_component;
+///  uchar pbId;
+///  
+///  `ovm_component_utils_begin(testcomp)
+///    `ovm_field_int(pbId, OVM_ALL_ON)
+///  `ovm_component_utils_end
+///
+///  function new(string name, ovm_component parent);
+///    super.new(name, parent);
+///  endfunction : new
+///  
+///  virtual function void build();
+///    super.build();
+///    apply_config_settings(1);
+///  endfunction
+///
+///  virtual task run();
+///  endtask  
+///
+///  virtual function void connect();
+///    super.connect();
+///  endfunction
+///endclass
+
 class test_sys_env extends ovm_env;
   ip4_tlm_rfm rfm;  
   ip4_tlm_spa spa;
@@ -9,10 +33,13 @@ class test_sys_env extends ovm_env;
   ip4_tlm_tlb tlb;
   ip4_tlm_dse dse;
   ip4_tlm_eif eif;
- 
+  ip4_tlm_core core;
+  uchar pbId;
+  
   virtual tlm_sys_if.mods sysif;
 
   `ovm_component_utils_begin(test_sys_env)
+    `ovm_field_int(pbId, OVM_ALL_ON)
   `ovm_component_utils_end
   
   virtual function void build();
@@ -26,6 +53,7 @@ class test_sys_env extends ovm_env;
     tlb = ip4_tlm_tlb::type_id::create("tlb", this);
     dse = ip4_tlm_dse::type_id::create("dse", this);
     eif = ip4_tlm_eif::type_id::create("eif", this);
+    core = ip4_tlm_core::type_id::create("core", this);
   endfunction
 
   virtual function void connect();
@@ -99,15 +127,25 @@ class ip4_sys_test extends ovm_test;
   `ovm_component_utils_end
 
   virtual function void build();
+    super.build();
     set_config_int("*", "runDelay", 6ns);
     set_config_int("*.sequencer", "count", 200);
     set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
     set_config_string("*", "imFilePath", "../misc/code.txt");
+    set_config_int("*", "pbId", 2);
+   
+   set_config_int("*", "pc", 1234);
+    set_config_int("*", "vrfMap[0]", 0);
+    set_config_int("*", "vrfMap[1]", 1);
+    set_config_int("*thread0*", "vrfMap[2]", 2);
+    set_config_int("*thread0*", "vrfMap[3]", 3);
     
+    set_config_int("*thread0*", "srfMap[0]", 0);
+    set_config_int("*thread0*", "srfMap[1]", 1);
+       
     env = new("env", this);
-    super.build();
   endfunction
 
 ///  virtual function void connect();
@@ -117,6 +155,12 @@ class ip4_sys_test extends ovm_test;
   virtual task run();
     set_report_verbosity_level_hier(OVM_HIGH);
   endtask
+
+///  function void start_of_simulation();
+///    set_report_id_action_hier("CFGOVR", OVM_DISPLAY);
+///    set_report_id_action_hier("CFGSET", OVM_DISPLAY);
+///    check_config_usage();
+///  endfunction
     
   function new(string name = "test_sys", ovm_component parent);
     super.new(name, parent);
