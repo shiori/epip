@@ -366,7 +366,7 @@ class ip4_tlm_spu extends ovm_component;
           toTLB.tid = ise.tid;
           toTLB.srAdr = ise.srAdr;
         end
-        else if(ise.srAdr inside {[SR_MD0:SR_MD7], [SR_MCS0:SR_MCS2], SR_FFS}
+        else if(ise.srAdr inside {[SR_MD0:SR_MD7], [SR_MCS0:SR_MCS2], SR_FFS, SR_SUPM0, SR_SUPM1}
                 && ise.op inside {op_smsg, op_rmsg}) begin
           if(toEIF == null) toEIF = tr_spu2eif::type_id::create("toEIF", this);
           toEIF.srReq = 1;

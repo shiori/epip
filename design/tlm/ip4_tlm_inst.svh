@@ -165,9 +165,8 @@ typedef struct packed{
   irsa_t rs;
   bit[8:0] dummy1;
   bit[4:0] s;
-  bit dummy2;
+  bit[1:0] dummy2;
   bit[1:0] st;
-  bit sup;
   bit[1:0] mrfa;
   bit ft;
 }i_mrfa;
@@ -342,7 +341,7 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mST, mSs, mVs, mUpdateAdr, mFun, mS, mRt, mT, mRfAdr, mSup, srAdr;
+  uchar mST, mSs, mVs, mUpdateAdr, mFun, mS, mRt, mT, mRfAdr, srAdr;
   bit[NUM_FIFO - 1 : 0] mFifos;
   bit enSPU, enDSE, enFu;
   
@@ -718,7 +717,6 @@ class inst_c extends ovm_object;
       set_rf_en(inst.i.b.mrfa.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       mS = inst.i.b.mrfa.s;
       mST = inst.i.b.mrfa.st;
-      mSup = inst.i.b.mrfa.sup;
       mRfAdr = inst.i.b.mrfa.mrfa;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = prWrAdr[0] != 0;

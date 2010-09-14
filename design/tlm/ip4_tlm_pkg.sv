@@ -475,13 +475,13 @@ parameter opcode_e ise_zw_ops[] = '{
 
 typedef enum uchar {
   SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
-  SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_CNT,
+  SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_TIMER,
   SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
   SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCO,
   SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_EXEC,        SR_CONTENT,
   SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
   SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC[0:1]
+  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC[0:1],    SR_SUPM[0:1]
 }special_reg_t;
 
 parameter special_reg_t tlb_sr[] = '{
@@ -497,7 +497,7 @@ typedef enum uchar {
   EC_NOEXP,     EC_TLBIFET,   EC_NOTEXE,    EC_EXEPRIV,
   EC_DECODE,    EC_SYSCAL,    EC_BREAK,     EC_SUPMSG,
   EC_IFACC,     EC_LSACC,     EC_SCLFU,     EC_MSC,
-  EC_CNT,       EC_PCNT[0:1]
+  EC_TIMER,     EC_PCNT[0:1]
 }cause_spu_t;
 
 typedef enum uchar {

@@ -20,8 +20,6 @@ class ip4_tlm_ise_rst extends ovm_object;
   priv_mode_t priv;
   uchar tid;
   bit en, roll, exp, sel, ejtag;
-///      pdLdRst,
-///      pdStRst;
 
   `ovm_object_utils_begin(ip4_tlm_ise_rst)
     `ovm_field_int(pc, OVM_ALL_ON)
@@ -579,8 +577,8 @@ class ip4_tlm_ise extends ovm_component;
   local tr_ise2eif toEIF;
   local bit[STAGE_ISE_VWBP:0] cancel[NUM_THREAD];
   local bit noSMsg, fifoCleanUp;
-  local uint srCnt, srPCnt[2], srCmp;
-  local uchar srPCntES[2], tidPcnt[2], tidCnt, tidSup;
+  local uint srTimer, srPCnt[2], srCmp;
+  local uchar srPCntES[2], tidInt;
   local bit srPCntK[2], srPCntU[2], srPCntIE[2], srPCntGS;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
@@ -831,8 +829,8 @@ class ip4_tlm_ise extends ovm_component;
         t.srLRID = op0[5:3];
         t.srLRRID = op0[13:6];
       end
-      SR_CNT:
-        srCnt = op0;
+      SR_TIMER:
+        srTimer = op0;
       SR_PCNT0:
         srPCnt[0] = op0;
       SR_PCNT1:
@@ -893,8 +891,8 @@ class ip4_tlm_ise extends ovm_component;
         op0[5:3] = t.srLRID;
         op0[13:6] = t.srLRRID;
       end
-      SR_CNT:
-        op0 = srCnt;
+      SR_TIMER:
+        op0 = srTimer;
       SR_PCNT0:
         op0 = srPCnt[0];
       SR_PCNT1:
@@ -1134,7 +1132,7 @@ class ip4_tlm_ise extends ovm_component;
     end
   endfunction : fill_issue
 
-  function void issue(input uchar tid, pbId);
+  function void issue(input uchar tid);
     ise_thread_inf t = thread[tid];
     
     vn.rst[1].priv = t.privMode;
@@ -1304,10 +1302,30 @@ class ip4_tlm_ise extends ovm_component;
     if(noSt > 0) noSt--;
     if(noTMsg > 0) noTMsg--;
     if(noFMsg > 0) noFMsg--;
+    if(!srDisableTimer) srTimer++;
+    if(srTimer == srCmp && !srTimerMask)
+      srTimerPend = 1;
     
-///    for(int i = STAGE_ISE_WSR; i > STAGE_ISE_RSR; i--) 
-///      vn.fmSPU[i] = v.fmSPU[i - 1];
-///    vn.fmSPU[STAGE_ISE_RSR] = null;
+    if((srPerfCntPend || srTimerPend || srSupMsgPend) 
+        && (thread[tidInt].threadState != ts_rdy || thread[tidInt].privMode != priv_kernel)) begin
+      ///need to find a thread a handle this timer interrupt
+      foreach(thread[i])
+        if(thread[i].threadState == ts_rdy && thread[i].privMode != priv_kernel) begin
+          if(srTimerPend)
+            thread[i].srCauseSPU = EC_SUPMSG;
+          else if(srTimerPend)
+            thread[i].srCauseSPU = EC_TIMER;
+          else if(srPerfCntPend[0])
+            thread[i].srCauseSPU = EC_PCNT0;
+          else
+            thread[i].srCauseSPU = EC_PCNT1;
+            
+          tidInt = i;
+          thread[i].flush();
+          restore_pc(i, 1, 0, 1);
+          break;
+        end
+    end
     
     ///SR Requests
     if(v.fmSPU != null && v.fmSPU.srReq) begin
@@ -1418,7 +1436,7 @@ class ip4_tlm_ise extends ovm_component;
       ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
       if(can_issue(tid)) begin
         ovm_report_info("issue", $psprintf("issuing thread %0d", tid), OVM_HIGH);
-        issue(tid, pbId);
+        issue(tid);
         vn.TIdIssueLast = tid;
         break;
       end
