@@ -305,8 +305,8 @@ class ise_thread_inf extends ovm_component;
       adrPkgBytes = grpStart.i.adrPkgB;
       numImms = grpStart.i.immPkgW;
       iGrpBytes = 2 + adrPkgBytes + numImms * WORD_BYTES + tmp * NUM_INST_BYTES;
-      enSPU = grpStart.i.unitEn[0];
-      enDSE = grpStart.i.unitEn[1];
+      enDSE = grpStart.i.unitEn[0];
+      enSPU = grpStart.i.unitEn[1];
       dseVec = grpStart.i.dv;
       noMsk = grpStart.i.nmsk;
       foreach(enFu[i])
