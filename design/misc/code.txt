@@ -65,8 +65,21 @@ nop ;
 options.g1
 options.const1.0x5
 options.const2.0x9
+lu v3 0x16526C9
+nop 
 mad.s v6 v27 v10 v9
 mad.s v4 v3 v1 v6
-add.si v2 v17 0x6a6b7
-lu v3 0x16526C9
-nop ;
+add.si v2 v17 0x6a6b7 ;
+// vid instruction
+options.g0
+vid ;
+// mrfrd inst
+options.g0
+mrfrd v3 0x2 ;
+// mrfwr inst
+options.g0
+mrfwr.mrsfr v5 v12 0x3 0x2 ;
+// smsg inst
+smsg 0x2 0x3 0x1 ;
+// gain msg inst
+gmsg 0x7 ;

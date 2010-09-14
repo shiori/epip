@@ -89,6 +89,7 @@ class asmig;
   bit coEn[NUM_BP_CO];
   int contNum;  
   uint adrBits;
+  bit[1:0] mrst;
   
   function new();
     ps = 1;
@@ -129,6 +130,7 @@ class asmig;
     contNum = 0;
     for(int i=0; i < NUM_BP_CO; i++)
       coEn[i] = 0;
+    mrst = 0;
   endfunction
 
   function bit pack_grp(ovm_verbosity verb);
@@ -798,14 +800,58 @@ class asmig;
               `asm_err("op number does not match with the op_code!");
               return 0;
             end
+          end        
+        "mrfrd": begin
+          if(immOp[i][1]) begin
+            inst[i].i.op = iop_mrfa;
+            inst[i].i.b.mrfa.st = mrst;
+            inst[i].i.b.mrfa.mrfa = imm[i][1];
+            inst[i].i.b.mrfa.ft = 1;
+          end  
+          else begin
+            `asm_err("op number does not match with the op_code!");
+            return 0;
           end
+        end
+        "mrfwr": begin
+          if(immOp[i][3]) begin
+            inst[i].i.op = iop_mrfa;
+            inst[i].i.b.mrfa.s = imm[i][3];
+            inst[i].i.b.mrfa.st = mrst;
+            inst[i].i.b.mrfa.mrfa = imm[i][2];
+            inst[i].i.b.mrfa.ft = 0;
+            one = 1;
+          end  
+          else begin
+            `asm_err("op number does not match with the op_code!");
+            return 0;
+          end
+        end
         "smsg" :
           begin
-            
+            if(immOp[i][2]) begin
+              inst[i].i.op = iop_cmsg;
+              inst[i].i.b.cmsg.sr = 1;
+              inst[i].i.b.cmsg.mrt = imm[i][0];
+              inst[i].i.b.cmsg.ss = imm[i][1];
+              inst[i].i.b.cmsg.vs = imm[i][2];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
-        "rmsg" :
+        "gmsg" :
           begin
-            
+            if(immOp[i][0]) begin
+              inst[i].i.op = iop_cmsg;
+              inst[i].i.b.cmsg.sr = 0;
+              inst[i].i.b.cmsg.fifos = imm[i][0];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end  
           end
         "cmp"  :
           begin
@@ -1036,6 +1082,11 @@ class asmig;
         "nop": begin
           nop[i] = 1;
           enOp[i] = 0;
+        end
+        "vid": begin
+          `asm_msg("it is vid inst", OVM_HIGH);
+          inst[i].i.op = iop_r2w1;      
+          inst[i].i.b.ir2w1.fun = iop21_vid; 
         end
       default: begin `asm_err("op not understood!"); return 0; end
       endcase
@@ -1472,6 +1523,7 @@ class ip4_assembler;
             `asm_msg($psprintf("trying to get a op for inst%0d", icnt), OVM_HIGH);
             brk_token(tk, {" ", ".", "\t", "\n"}, opts);
             cur.op[icnt] = opts.pop_front();
+            `asm_msg($psprintf("cur.op[%d]: %0d", icnt, cur.op[icnt]), OVM_HIGH);
             if(cur.op[icnt].tolower() != "options") begin
               cur.en[icnt] = 1;
               state ++;
@@ -1602,6 +1654,9 @@ class ip4_assembler;
               "andorcm" : cur.mtyp = 8;
               "penmsk" : cur.emsk = 1;
               "vxup" : cur.vxup = 1;
+              "mrsdev" : cur.mrst = 0;
+              "mrsfr" : cur.mrst = 2;
+              "mrsfl" : cur.mrst = 3;
               default : begin `asm_err("unkonwn options."); return 0; end
               endcase
             end
