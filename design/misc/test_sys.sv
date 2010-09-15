@@ -1,89 +1,20 @@
 ///`include "ip4_tlm.svh"
 
 class test_sys_env extends ovm_env;
-  ip4_tlm_rfm rfm;  
-  ip4_tlm_spa spa;
-  ip4_tlm_spu spu;
-  ip4_tlm_ise ise;
-  ip4_tlm_ife ife;
-  ip4_tlm_tlb tlb;
-  ip4_tlm_dse dse;
-  ip4_tlm_eif eif;
   ip4_tlm_core core;
-  uchar pbId;
   
   virtual tlm_sys_if.mods sysif;
 
   `ovm_component_utils_begin(test_sys_env)
-    `ovm_field_int(pbId, OVM_ALL_ON)
   `ovm_component_utils_end
   
   virtual function void build();
     super.build();
-     
-    rfm = ip4_tlm_rfm::type_id::create("rfm", this);
-    spa = ip4_tlm_spa::type_id::create("spa", this);
-    spu = ip4_tlm_spu::type_id::create("spu", this);
-    ise = ip4_tlm_ise::type_id::create("ise", this);
-    ife = ip4_tlm_ife::type_id::create("ife", this);
-    tlb = ip4_tlm_tlb::type_id::create("tlb", this);
-    dse = ip4_tlm_dse::type_id::create("dse", this);
-    eif = ip4_tlm_eif::type_id::create("eif", this);
     core = ip4_tlm_core::type_id::create("core", this);
   endfunction
 
   virtual function void connect();
     super.connect();
-    rfm.spa_tr_port.connect(spa.rfm_tr_imp);
-    spa.rfm_tr_port.connect(rfm.spa_tr_imp);
-    
-    rfm.spu_tr_port.connect(spu.rfm_tr_imp);
-    spu.rfm_tr_port.connect(rfm.spu_tr_imp);
-    
-///    rfm.ise_tr_port.connect(ise.rfm_tr_imp);
-    ise.rfm_tr_port.connect(rfm.ise_tr_imp);
-    
-    rfm.dse_tr_port.connect(dse.rfm_tr_imp);
-    dse.rfm_tr_port.connect(rfm.dse_tr_imp);
-    
-    ise.spa_tr_port.connect(spa.ise_tr_imp);
-    spa.ise_tr_port.connect(ise.spa_tr_imp);
-
-    spu.spa_tr_port.connect(spa.spu_tr_imp);
-    spa.spu_tr_port.connect(spu.spa_tr_imp);    
-
-    dse.spa_tr_port.connect(spa.dse_tr_imp);
-    spa.dse_tr_port.connect(dse.spa_tr_imp); 
-    
-    ise.spu_tr_port.connect(spu.ise_tr_imp);
-    spu.ise_tr_port.connect(ise.spu_tr_imp);
-
-    dse.spu_tr_port.connect(spu.dse_tr_imp);
-    spu.dse_tr_port.connect(dse.spu_tr_imp);
-
-    ise.ife_tr_port.connect(ife.ise_tr_imp);
-    ife.ise_tr_port.connect(ise.ife_tr_imp);
-
-    tlb.ife_tr_port.connect(ife.tlb_tr_imp);
-    ife.tlb_tr_port.connect(tlb.ife_tr_imp);
-
-    tlb.spu_tr_port.connect(spu.tlb_tr_imp);
-    spu.tlb_tr_port.connect(tlb.spu_tr_imp);
-    
-    dse.ise_tr_port.connect(ise.dse_tr_imp);
-    ise.dse_tr_port.connect(dse.ise_tr_imp);
-
-    dse.tlb_tr_port.connect(tlb.dse_tr_imp);
-    tlb.dse_tr_port.connect(dse.tlb_tr_imp);
-
-    dse.eif_tr_port.connect(eif.dse_tr_imp);
-    eif.dse_tr_port.connect(dse.eif_tr_imp);
-
-    ise.eif_tr_port.connect(eif.ise_tr_imp);
-    eif.ise_tr_port.connect(ise.eif_tr_imp);
-    
-    spu.eif_tr_port.connect(eif.spu_tr_imp);
-    eif.spu_tr_port.connect(spu.eif_tr_imp);
   endfunction
 
   virtual task run();
