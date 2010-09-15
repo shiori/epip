@@ -130,8 +130,9 @@ class ip4_tlm_rfm extends ovm_component;
       foreach(spa.fu[fid]) begin
         uchar tid = spa.fu[fid].tid,
               subVec = spa.fu[fid].subVec;
-        ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s...", fid, fu_cfg[fid].name), OVM_HIGH);
-        bk0 = spa.fu[fid].vrfWrBk & `GMH(1);
+        ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s, grp: %0d, adr %0d, bk %0d ...", fid, fu_cfg[fid].name,
+          spa.fu[fid].vrfWrGrp, spa.fu[fid].vrfWrAdr, spa.fu[fid].vrfWrBk), OVM_HIGH);
+        bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].vrfWrBk & `GMH(1)) : spa.fu[fid].vrfWrBk;
         bk1 = bk0 + 1;
         foreach(spa.fu[0].wrEn[sp])
           if(spa.fu[fid].wrEn[sp]) begin
@@ -156,12 +157,10 @@ class ip4_tlm_rfm extends ovm_component;
               SR_DSEEV: srDSEExp[tid][subVec][sp] = res0;
               endcase
                                 
-            if(spa.fu[fid].dw) begin
+            if(spa.fu[fid].wr[1])
               vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][bk1][spa.fu[fid].subVec][sp] = spa.fu[fid].res1[sp];
+            if(spa.fu[fid].wr[0])
               vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
-            end
-            else
-              vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][spa.fu[fid].vrfWrBk][spa.fu[fid].subVec][sp] = spa.fu[fid].res0[sp];
           end
       end
     end
@@ -173,7 +172,7 @@ class ip4_tlm_rfm extends ovm_component;
       if(dse.srfWr && !cancel[dse.tid][STAGE_RRF_SWB])
         srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       else foreach(dse.wrEn[sp])
-        if(dse.wrEn[sp] && !cancel[dse.tid][STAGE_RRF_VWB]) begin
+        if(dse.wrEn[sp] && dse.vrfWr && !cancel[dse.tid][STAGE_RRF_VWB]) begin
           vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
           if(dse.updateAdrWr)
             vrf[dse.updateAdrWrGrp][dse.updateAdrWrAdr][dse.updateAdrWrBk][dse.subVec][sp] = dse.updateAdrRes[sp];
@@ -197,9 +196,10 @@ class ip4_tlm_rfm extends ovm_component;
       tr_ise2rfm ise = v.fmISE[STAGE_RRF_RRC0 + subVec];
       
       if(ise == null) continue;
-      foreach(cvrf[bk,sp])
+                        
+      foreach(cvrf[bk, sp])
         cvrf[bk][sp] = vrf[ise.vrfRdGrp[bk]][ise.vrfRdAdr[bk]][bk][subVec][sp];
-
+      
       foreach(csrf[bk])
         csrf[bk] = srf[ise.srfRdGrp[bk]][ise.srfRdAdr[bk]][bk];  
                 

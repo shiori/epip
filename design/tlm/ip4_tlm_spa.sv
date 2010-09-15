@@ -11,7 +11,7 @@
 ///Created by Andy Chen on Apr 7 2010
 
 class ip4_tlm_sfu_stages extends ovm_object;
-  bit en[NUM_FU];
+  bit en[NUM_FU], wr[NUM_FU][2];
   word res0[NUM_FU][NUM_SP], res1[NUM_FU][NUM_SP];
   bit emsk[NUM_FU][NUM_SP];
   uchar subVec, tid, vrfWrBk[NUM_FU], vrfWrAdr[NUM_FU], vrfWrGrp[NUM_FU];
@@ -155,6 +155,7 @@ class ip4_tlm_spa extends ovm_component;
           vn.sfu[1].vrfWrBk[fid] = fu.vrfWrBk;
           vn.sfu[1].vrfWrAdr[fid] = fu.vrfWrAdr;
           vn.sfu[1].vrfWrGrp[fid] = fu.vrfWrGrp;
+          vn.sfu[1].wr[fid] = fu.wrEn;
           vn.sfu[1].tid = ise.tid;
           vn.sfu[1].subVec = ise.subVec;
           foreach(op[i])
@@ -172,6 +173,7 @@ class ip4_tlm_spa extends ovm_component;
           vn.rfm[1].fu[fid].vrfWrAdr = fu.vrfWrAdr;
           vn.rfm[1].fu[fid].vrfWrBk  = fu.vrfWrBk;       
           vn.rfm[1].fu[fid].wrEn = spu.fu[fid].emsk;
+          vn.rfm[1].fu[fid].wr = ise.fu[fid].wrEn;
           vn.rfm[1].fu[fid].tid = ise.tid;
           vn.rfm[1].fu[fid].subVec = ise.subVec;
           vn.rfm[1].fu[fid].en = 1;
@@ -241,6 +243,7 @@ class ip4_tlm_spa extends ovm_component;
         toRFM.fu[fid].res0 = sfu.res0[fid];
         toRFM.fu[fid].res1 = sfu.res1[fid];
         toRFM.fu[fid].wrEn = sfu.emsk[fid];
+        toRFM.fu[fid].wr = sfu.wr[fid];
         toRFM.fu[fid].tid = sfu.tid;
         toRFM.fu[fid].subVec = sfu.subVec;
         toRFM.fu[fid].en = 1;

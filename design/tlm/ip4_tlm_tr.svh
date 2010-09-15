@@ -222,7 +222,7 @@ endclass : tr_rfm2spa
 
 class spa2rfm_fu extends ovm_object;
   rand word res0[NUM_SP],	res1[NUM_SP];///, res_vsbp;
-  rand bit dw, wrEn[NUM_SP], s2gp, gp2s;
+  rand bit wr[2], wrEn[NUM_SP], s2gp, gp2s;
   rand uchar vrfWrGrp, vrfWrAdr, vrfWrBk, subVec, tid;
   rand uint expFlag[NUM_SP];
   rand uchar srAdr;
@@ -242,7 +242,7 @@ class spa2rfm_fu extends ovm_object;
     `ovm_field_sarray_int(res0, OVM_ALL_ON)
     `ovm_field_sarray_int(res1, OVM_ALL_ON)
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
-    `ovm_field_int(dw, OVM_ALL_ON)
+    `ovm_field_sarray_int(wr, OVM_ALL_ON)
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(s2gp, OVM_ALL_ON)
     `ovm_field_int(gp2s, OVM_ALL_ON)
@@ -303,7 +303,7 @@ endclass : tr_spa2rfm
 
 class tr_dse2rfm extends ovm_sequence_item;
 	rand word res[NUM_SP], updateAdrRes[NUM_SP];
-	rand bit wrEn[NUM_SP], srfWr, updateAdrWr, exp;
+	rand bit wrEn[NUM_SP], srfWr, vrfWr, updateAdrWr, exp;
 	rand uchar tid, expVec[NUM_SP];
 	rand uchar wrGrp, wrAdr, wrBk, 
 	           updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, 
@@ -346,6 +346,7 @@ class tr_dse2rfm extends ovm_sequence_item;
 		`ovm_field_int(vecMode, OVM_ALL_ON)
 		`ovm_field_int(vecModeExp, OVM_ALL_ON)
 		`ovm_field_int(srfWr, OVM_ALL_ON)
+		`ovm_field_int(vrfWr, OVM_ALL_ON)
 		`ovm_field_int(updateAdrWr, OVM_ALL_ON)
 		`ovm_field_int(exp, OVM_ALL_ON)
   `ovm_object_utils_end
@@ -384,7 +385,7 @@ endclass : tr_rfm2dse
 ///---------------------------trsaction spa_ise ise_spa------------------------
 
 class ise2spa_fu extends ovm_object;
-  rand bit en;
+  rand bit en, wrEn[2];
   rand opcode_e op;
   rand cmp_opcode_e cop;
   rand uchar vrfWrBk, vrfWrAdr, vrfWrGrp;
@@ -406,6 +407,7 @@ class ise2spa_fu extends ovm_object;
     
   `ovm_object_utils_begin(ise2spa_fu)
     `ovm_field_int(en, OVM_ALL_ON)
+    `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
 	  `ovm_field_int(vrfWrBk, OVM_ALL_ON)
@@ -629,7 +631,8 @@ class tr_ise2spu extends ovm_sequence_item;
            enDSE,
            sclDSE,
            enSPU,
-           brPred;
+           brPred,
+           wrEn;
   
   rand uchar srfWrBk, srfWrGrp, srfWrAdr;
   rand uchar prWrAdr0, prWrAdr1, ///fu pr write adr
@@ -681,6 +684,7 @@ class tr_ise2spu extends ovm_sequence_item;
   
 	`ovm_object_utils_begin(tr_ise2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
+	  `ovm_field_int(wrEn, OVM_ALL_ON)
 	  `ovm_field_int(brPred, OVM_ALL_ON)
 	  `ovm_field_int(brDep, OVM_ALL_ON)
 	  `ovm_field_int(brDepDSE, OVM_ALL_ON)
@@ -855,11 +859,12 @@ endclass : tr_dse2spa
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
              updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, updateAdrWr, updatePr, nonBlock, noExt, burst, sendRotRight;
+  rand bit priv, vec, en, wr, updateAdrWr, updatePr, nonBlock, noExt, burst, sendRotRight;
   rand opcode_e op;
   rand uchar vecMode, subVec;
   
 	`ovm_object_utils_begin(tr_ise2dse)
+	  `ovm_field_int(wr, OVM_ALL_ON)
 	  `ovm_field_int(wrBk, OVM_ALL_ON)
 	  `ovm_field_int(wrAdr, OVM_ALL_ON)
 	  `ovm_field_int(wrGrp, OVM_ALL_ON)

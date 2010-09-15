@@ -84,7 +84,7 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_EPS] != null && expFu)
       cancel[v.fmISE[STAGE_RRF_EPS].tid] |= `GML(STAGE_RRF_EPS);
     if(v.fmISE[STAGE_RRF_CBR] != null && brCancel)
-      cancel[v.fmISE[STAGE_RRF_EPS].tid] |= `GML(STAGE_RRF_CBR);
+      cancel[v.fmISE[STAGE_RRF_CBR].tid] |= `GML(STAGE_RRF_CBR);
     brCancel = 0;
     expFu = 0;
     
@@ -302,7 +302,7 @@ class ip4_tlm_spu extends ovm_component;
       endcase
       vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
       vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_BITS-1:0];
-      vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp;
+      vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp && ise.wrEn;
       vn.rfm[STAGE_RRF_EXS1].expFu = exp;
       vn.rfm[STAGE_RRF_EXS1].tid = ise.tid;
       vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecMode;
@@ -421,17 +421,19 @@ class ip4_tlm_spu extends ovm_component;
     end
     
     ///check for valid branch
-    if(v.fmISE[STAGE_RRF_CEM] != null && v.fmSPA[STAGE_RRF_CEM] != null)begin /// && 
+    if(v.fmISE[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM].op inside {op_br, op_fcr}) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
-      tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_CEM];
       uchar tid = ise.tid, subVec = ise.subVec;
-      ushort popcnt = rfm == null ? 0 : rfm.op0;
+      ushort popcnt;
       bit b_inv = ise.prInvSPU, b_nmsk = ise.prNMskSPU;
       bit is_nop = ise.mop == mop_nop;
       bit emsk[NUM_SP];
       
       ovm_report_info("spu", $psprintf("process branch for thread %0d", tid), OVM_HIGH);
       
+      if(v.fmRFM[STAGE_RRF_CEM] != null)
+        popcnt = v.fmRFM[STAGE_RRF_CEM].op0;
+        
       emsk = ise.prRdAdrSPU == 0 ? '{default:1} : pr[tid][ise.prRdAdrSPU][subVec];
       
       for(int i = 0; i < NUM_SP; i++) begin
@@ -509,15 +511,15 @@ class ip4_tlm_spu extends ovm_component;
         mscNext[0] = '{default : 0};
       endcase
       
-      if(v.fmISE[STAGE_RRF_CEM].subVec == v.fmISE[STAGE_RRF_CEM].vecMode) begin
-        bit updateMSC = 0, updateMSK = 0, missBr = 0;
+      if(ise.subVec == ise.vecMode) begin
+        bit updateMSC = 0, updateMSK = 0, missBr = 0, brTaken = 0;
         
         if(is_nop)
-          toISE.brTaken = 0;
+          brTaken = 0;
         else
           case(ise.bop)
-          bop_naz  :  toISE.brTaken = !emskAllZero;
-          bop_az   :  toISE.brTaken = emskAllZero;
+          bop_naz  :  brTaken = !emskAllZero;
+          bop_az   :  brTaken = emskAllZero;
           endcase
              
         case(ise.mop)
@@ -545,7 +547,7 @@ class ip4_tlm_spu extends ovm_component;
           mskWEn[i] = updateMSK;
         end
         
-        missBr = ise.brPred != toISE.brTaken;
+        missBr = ise.brPred != brTaken;
         expMSC = expMSC && updateMSC;
         
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
@@ -553,6 +555,7 @@ class ip4_tlm_spu extends ovm_component;
         toISE.mscExp = 0;
         toISE.vecMode = ise.vecMode;
         toISE.mscExp = expMSC;
+        toISE.brTaken = brTaken;
         if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
         toRFM.missBr = missBr;
         toRFM.expMSC = expMSC;

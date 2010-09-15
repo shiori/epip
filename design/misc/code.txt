@@ -1,6 +1,9 @@
 //test asm file
+(p0) vid v21 ;
+cmpi.unc.>= p0 p1 v21 3 ; 
+
 options.g0
-$tag1 (p0) li v23 0x16526C9 ;
+$tag1 (p1) li v23 0x16526C9 ;
 options.g0
 add.si v2 v23 0x6a6b7 ;
 options.g0

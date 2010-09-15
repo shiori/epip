@@ -505,8 +505,9 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op == iop_r2w1) begin
-      set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      if(!(inst.i.op inside {iop11_ops}))
+      if(inst.i.op != iop21_vid)
+        set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+      if(!(inst.i.op inside {iop11_ops, iop21_vid}))
         set_rf_en(inst.i.b.ir2w1.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
         wrEn = '{default : 1};
@@ -555,7 +556,7 @@ class inst_c extends ovm_object;
       iop21_mv2s  : begin op = op_mvs; rdBkSel[1] = selii; if(CntVrfRd > CntSrfRd) CntSrfRd = CntVrfRd; end
       iop21_umax  : begin op = op_umax; end
       iop21_umin  : begin op = op_umin; end
-      iop21_vid   : begin op = op_vid; rdBkSel[1] = selii; end
+      iop21_vid   : begin op = op_vid; rdBkSel[0] = selnull; rdBkSel[1] = selnull;end
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
@@ -637,13 +638,14 @@ class inst_c extends ovm_object;
       endcase
       prWrAdr[0] = inst.i.b.cmp.pr0;
       prWrAdr[1] = inst.i.b.cmp.pr1;
-      prWrEn[0] = prWrAdr[0] == 0;
-      prWrEn[1] = prWrAdr[1] == 0;
+      prWrEn[0] = prWrAdr[0] != 0;
+      prWrEn[1] = prWrAdr[1] != 0;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse}) begin
       rdBkSel[2] = selii;
       mT = inst.i.b.ld.t;
       mUpdateAdr = inst.i.b.ld.ua;
+      wrEn[1] = mUpdateAdr != 0 ? 1 : 0;
       adrWr[0] = inst.i.b.ld.rd;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = (mT == 1 && prWrAdr[0] != 0);
@@ -659,6 +661,7 @@ class inst_c extends ovm_object;
       
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
+        wrEn[0] = 1;
         set_rf_en(inst.i.b.ld.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
         case(inst.i.op)
         iop_lw    : op = op_lw;
@@ -682,12 +685,14 @@ class inst_c extends ovm_object;
       end
       else if(inst.i.op == iop_cmpxchg) begin
         op = op_cmpxchg;
+        wrEn[0] = 1;
         imm = {inst.i.b.cmpxchg.os2, inst.i.b.cmpxchg.os1, inst.i.b.cmpxchg.os0};
         set_rf_en(inst.i.b.cmpxchg.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
         set_rf_en(inst.i.b.cmpxchg.rs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       end
       else if(inst.i.op == iop_fetadd) begin
         op = op_fetadd;
+        wrEn[0] = 1;
         imm = {inst.i.b.fetadd.os1, inst.i.b.fetadd.os0};
         set_rf_en(inst.i.b.fetadd.rb, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
         set_rf_en(inst.i.b.fetadd.rs, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
@@ -1093,6 +1098,7 @@ class inst_c extends ovm_object;
       spu.ss = mSs;
       spu.vs = mVs;
       spu.enSPU = 1;
+      spu.wrEn = wrEn[0];
     end
     else if(enDSE) begin
       spu.prRdAdrDSE = prRdAdr;
@@ -1121,10 +1127,11 @@ class inst_c extends ovm_object;
       dse.wrBk = bkWr[0];
       dse.wrGrp = grpWr[0];
       dse.updateAdrWrBk = (rdBkSel[0] >= selv0 && rdBkSel[0] <= selv_e) ? rdBkSel[0] - selv0 : 0;
-      dse.updateAdrWr = mUpdateAdr != 0 ? 1 : 0;
+      dse.updateAdrWr = wrEn[1];
       dse.updatePr = mT == 1; ///todo
       dse.op = op;
       dse.vec = isVec;
+      dse.wr = wrEn[0];
       dse.burst = mT == 0;
     end
   endfunction : fill_dse
@@ -1144,6 +1151,7 @@ class inst_c extends ovm_object;
       spa.fu[fuid].en = 1;
       spa.fu[fuid].op = op;
       spa.fu[fuid].cop = cmpOp;
+      spa.fu[fuid].wrEn = wrEn;
       foreach(spa.fu[0].bpSel[i])
         spa.fu[fuid].bpSel[i] = rdBkSel[i];
       spa.fu[fuid].vrfWrBk = bkWr[0];

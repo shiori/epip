@@ -55,7 +55,7 @@ endfunction
 
 class asmig;
   int ps; /// source operation point
-  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bp0Op, bp1Op, bp2Op, tidOp, pdrOp, constOp;  /// operation
+  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bp0Op, bp1Op, bp2Op, pdrOp, constOp;  /// operation tidOp
   bit[3:0] tagOp;  /// operation
   bit[4:0] nop;
   uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
@@ -124,7 +124,7 @@ class asmig;
     s = 0;
     si = 0;
     isVec = '{default : 0};
-    chkGrp = 0;
+    chkGrp = 1;
     grpMsk = 0;
     adrcnt = 0;
     contNum = 0;
@@ -855,13 +855,14 @@ class asmig;
           end
         "cmp"  :
           begin
+            isVec[i] = 1;
             ps = 2;
             if(enOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmp;
               inst[i].i.b.cmp.ctyp = ctyp;
               inst[i].i.b.cmp.mtyp = mtyp;
               inst[i].i.b.cmp.pr0 = adr[i][0];
-              inst[i].i.b.cmp.pr0 = adr[i][1];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
               two = 1;
             end
             else begin
@@ -872,12 +873,13 @@ class asmig;
         "cmpu" :
           begin
             ps = 2;
+            isVec[i] = 1;
              if(enOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmpu;
               inst[i].i.b.cmp.ctyp = ctyp;
               inst[i].i.b.cmp.mtyp = mtyp;
               inst[i].i.b.cmp.pr0 = adr[i][0];
-              inst[i].i.b.cmp.pr0 = adr[i][1];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
               two = 1;
             end
             else begin
@@ -888,13 +890,14 @@ class asmig;
         "cmpi" :
           begin
             ps = 2;
+            isVec[i] = 1;
             if(immOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmpi;
               inst[i].i.b.cmpi.ctyp = ctyp;
               inst[i].i.b.cmpi.mtyp = mtyp;
               {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
               inst[i].i.b.cmp.pr0 = adr[i][0];
-              inst[i].i.b.cmp.pr0 = adr[i][1];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
               one = 1;
             end
             else begin
@@ -905,13 +908,14 @@ class asmig;
         "cmpiu" :
           begin
             ps = 2;
+            isVec[i] = 1;
             if(immOp[i][3] && pdrOp[i][1]) begin
               inst[i].i.op = iop_cmpiu;
               inst[i].i.b.cmpi.ctyp = ctyp;
               inst[i].i.b.cmpi.mtyp = mtyp;
               {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
               inst[i].i.b.cmp.pr0 = adr[i][0];
-              inst[i].i.b.cmp.pr0 = adr[i][1];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
               one = 1;
             end
             else begin
@@ -1158,10 +1162,10 @@ class asmig;
           bksel[j] = 14;
           break;
         end
-        if(tidOp[i][ps + j]) begin
-          bksel[j] = 11;
-          break;
-        end
+///        if(tidOp[i][ps + j]) begin
+///          bksel[j] = 11;
+///          break;
+///        end
         if(!enOp[i][ps + j]) begin
           `asm_msg("enop is not enable!");   
           break;
@@ -1673,20 +1677,20 @@ class ip4_assembler;
 ///            cur.constOp[icnt][opcnt] = tk0.tolower() == "c";
             cur.pdrOp[icnt][opcnt] = tk0.tolower() == "p";
             cur.tagOp[opcnt] = tk0.tolower() == "$";
-            cur.bp0Op[icnt][opcnt] = tk0.tolower() == "bp0";
-            cur.bp1Op[icnt][opcnt] = tk0.tolower() == "bp1";
-            cur.bp2Op[icnt][opcnt] = tk0.tolower() == "bp2";
-            cur.tidOp[icnt][opcnt] = tk0.tolower() == "tid";
+            cur.bp0Op[icnt][opcnt] = tk.tolower() == "bp0";
+            cur.bp1Op[icnt][opcnt] = tk.tolower() == "bp1";
+            cur.bp2Op[icnt][opcnt] = tk.tolower() == "bp2";
+///            cur.tidOp[icnt][opcnt] = tk0.tolower() == "tid";
             cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
             cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
             cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
-                                     && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt] && !cur.tidOp[icnt][opcnt]
+                                     && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt]/// && !cur.tidOp[icnt][opcnt]
                                      && !cur.pdrOp[icnt][opcnt];
             if(cur.tagOp[opcnt])
               cur.tag = tk1n;
             else if(cur.immOp[icnt][opcnt])
               cur.imm[icnt][opcnt] = get_imm(tk);
-            else if(!cur.zeroOp[icnt][opcnt] && !cur.pdrOp[icnt][opcnt])
+            else if(!cur.zeroOp[icnt][opcnt])/// && !cur.pdrOp[icnt][opcnt])
               cur.adr[icnt][opcnt] = tk1n.atoi();
             `asm_msg($psprintf("tag branch %s", cur.tag), OVM_HIGH);
             `asm_msg($psprintf("tagOp:%0d, vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d, icnt:%0d, enOp: %0d", cur.tagOp[opcnt], cur.vecOp[icnt][opcnt],

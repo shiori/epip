@@ -1075,9 +1075,12 @@ class ip4_tlm_dse extends ovm_component;
         vn.eif[STAGE_RRF_DEM].priv = ise.priv;
         vn.eif[STAGE_RRF_DEM].state = cache[selCacheIdx][selCacheAso].state[selCacheGrp];
         
+        vn.rfm[STAGE_RRF_DEM].vrfWr = ise.vec && ise.wr;
+        vn.rfm[STAGE_RRF_DEM].srfWr = !ise.vec && ise.wr;
         vn.rfm[STAGE_RRF_DEM].wrGrp = ise.wrGrp;
         vn.rfm[STAGE_RRF_DEM].wrAdr = ise.wrAdr;
         vn.rfm[STAGE_RRF_DEM].wrBk = ise.wrBk;
+        vn.rfm[STAGE_RRF_DEM].updateAdrWrBk = ise.updateAdrWr;
         vn.rfm[STAGE_RRF_DEM].updateAdrWrBk = ise.updateAdrWrBk;
         vn.rfm[STAGE_RRF_DEM].updateAdrWrAdr = ise.updateAdrWrAdr;
         vn.rfm[STAGE_RRF_DEM].updateAdrWrGrp = ise.updateAdrWrGrp;
