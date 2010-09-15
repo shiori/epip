@@ -84,7 +84,7 @@ class ip4_tlm_spa extends ovm_component;
   extern function void proc_data(input opcode_e, cmp_opcode_e, pr_merge_e, uchar, uchar,
                                       const ref bit emsk[NUM_SP], word o[NUM_FU_RP][NUM_SP],
                                       ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
-                                      inout uchar expFlag[NUM_SP]);
+                                      inout uint expFlag[NUM_SP]);
   // endfunction
 
   function void comb_proc();
@@ -190,8 +190,9 @@ class ip4_tlm_spa extends ovm_component;
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
                     vn.rfm[1].fu[fid].expFlag);
-          if(vn.rfm[1].fu[fid].expFlag != 0)
-            exeExp = 1;
+          foreach(vn.rfm[1].fu[0].expFlag[sp])
+            if(vn.rfm[1].fu[fid].expFlag[sp] != 0)
+              exeExp = 1;
         end
         if(fu.op inside {op_cmp, op_ucmp}) begin
           if(vn.spu[1] == null) vn.spu[1] = tr_spa2spu::type_id::create("toSPU", this);
@@ -209,28 +210,10 @@ class ip4_tlm_spa extends ovm_component;
         vn.ise[1].exp = exeExp && !ise.noExp;
         vn.ise[1].tid = ise.tid;
         vn.rfm[1].tid = ise.tid;
-///        vn.rfm[1].cancel = exeExp && !ise.noExp;
         exeExp = 0;
       end
     end
     
-    ///log spa exp to cancel
-///    if(v.ise[STAGE_EXE_VWBP] != null) begin
-///      tr_spa2ise ise = v.ise[STAGE_EXE_VWBP];
-///      vn.cancel[ise.tid] = ise.exp;
-///    end
-        
-    ///canceling from ise
-///    if(v.fmISE[0] != null) begin
-///      foreach(vn.cancel[i])
-///        vn.cancel[i] |= v.fmISE[0].cancel[i];
-///    end
-///    
-///    foreach(vn.rfm[i])
-///      if(vn.rfm[i] != null && v.cancel[vn.rfm[i].fu[0].tid]) begin
-///        vn.rfm[i] = null;
-///        ovm_report_info("spa", $psprintf("canceling tid:%0d, at stage %0d", vn.rfm[i].fu[0].tid, i), OVM_HIGH);
-///      end
   endfunction
   
   function void req_proc();
@@ -382,7 +365,7 @@ endclass : ip4_tlm_spa
 function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_merge_e prMerge, 
                                     uchar subVec, exeMode, const ref bit emsk[NUM_SP], word o[NUM_FU_RP][NUM_SP],
                                     ref bit pres0[NUM_SP], pres1[NUM_SP], word res0[NUM_SP], r1[NUM_SP],
-                                    inout uchar expFlag[NUM_SP]);
+                                    inout uint expFlag[NUM_SP]);
   bit pres[NUM_SP];
   bit[WORD_BITS:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
   

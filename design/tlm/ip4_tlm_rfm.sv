@@ -203,7 +203,7 @@ class ip4_tlm_rfm extends ovm_component;
       foreach(csrf[bk])
         csrf[bk] = srf[ise.srfRdGrp[bk]][ise.srfRdAdr[bk]][bk];  
                 
-      if(ise.start) begin
+      if(ise.cyc == 0) begin
         bpCoLast = ise.bpCo;
       end
       
@@ -230,7 +230,7 @@ class ip4_tlm_rfm extends ovm_component;
         read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpCo, ise.dseImm);
       end
             
-      if(ise.spuEn && subVec == 0) begin
+      if(ise.spuEn && ise.cyc < 2) begin
         ovm_report_info("RFM_RD", $psprintf("Read for spu cyc %0d ...", ise.cyc), OVM_HIGH);
         if(vn.spu[ise.cyc] == null) vn.spu[ise.cyc] = tr_rfm2spu::type_id::create("toSPU", this);
         read_rf(vn.spu[ise.cyc].op0, ise.spuRdBk[0], 0, cvrf, csrf, ise.bpCo, ise.spuImm);
@@ -239,7 +239,8 @@ class ip4_tlm_rfm extends ovm_component;
     end
     
     for(int subVec = 0; subVec < CYC_VEC; subVec++)
-      if(v.fmISE[STAGE_RRF_RRC0 + subVec] != null && v.fmISE[STAGE_RRF_RRC0 + subVec].vecEnd) begin
+      ///possible of shorting the CYC_VEC read cycles
+      if(v.fmISE[STAGE_RRF_RRC0 + subVec] != null && v.fmISE[STAGE_RRF_RRC0 + subVec].cyc == v.fmISE[STAGE_RRF_RRC0 + subVec].vecMode) begin
         toSPA = vn.spa[subVec];
         vn.spa[subVec] = null;
         break;
@@ -250,11 +251,11 @@ class ip4_tlm_rfm extends ovm_component;
       toDSE.st = dseSt[1][v.fmISE[STAGE_RRF_RRC1].cyc];
     end
     
-///    if(v.fmISE[STAGE_RRF_RRC0] != null && v.fmISE[STAGE_RRF_RRC0].sclEnd) begin
-    toSPU = vn.spu[1];
-    vn.spu[1] = null;
-///    end
-      
+    if(v.fmISE[STAGE_RRF_RRC1] != null && v.fmISE[STAGE_RRF_RRC1].spuEn) begin
+      toSPU = vn.spu[1];
+      vn.spu[1] = null;
+    end
+  
     ///------------req to other module----------------
     if(toSPA != null) void'(spa_tr_port.nb_transport(toSPA, toSPA));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));

@@ -28,10 +28,10 @@ class tr_ise2rfm extends ovm_sequence_item;
 	
 	rand ise2rfm_fu fu[NUM_FU];
 	rand rbk_sel_e dseRdBk[4], spuRdBk[2];
-	rand bit vecEnd, sclEnd, start;
+///	rand bit vecEnd;///, sclEnd, start;
 	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
-	rand uchar cyc, tid;
+	rand uchar cyc, vecMode, tid;
 	
 	constraint valid_var {
 	  cyc < CYC_VEC;
@@ -66,10 +66,11 @@ class tr_ise2rfm extends ovm_sequence_item;
 		`ovm_field_int(tid, OVM_ALL_ON)
 		`ovm_field_int(spuEn, OVM_ALL_ON)
 		`ovm_field_int(dseEn, OVM_ALL_ON)
-	  `ovm_field_int(vecEnd, OVM_ALL_ON)
-		`ovm_field_int(sclEnd, OVM_ALL_ON)
-		`ovm_field_int(start, OVM_ALL_ON)
+///	  `ovm_field_int(vecEnd, OVM_ALL_ON)
+///		`ovm_field_int(sclEnd, OVM_ALL_ON)
+///		`ovm_field_int(start, OVM_ALL_ON)
 		`ovm_field_int(cyc, OVM_ALL_ON)
+		`ovm_field_int(vecMode, OVM_ALL_ON)
 		`ovm_field_sarray_int(vrfRdGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(vrfRdAdr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srfRdGrp, OVM_ALL_ON + OVM_DEC)
@@ -223,7 +224,8 @@ class spa2rfm_fu extends ovm_object;
   rand word res0[NUM_SP],	res1[NUM_SP];///, res_vsbp;
   rand bit dw, wrEn[NUM_SP], s2gp, gp2s;
   rand uchar vrfWrGrp, vrfWrAdr, vrfWrBk, subVec, tid;
-  rand uchar expFlag[NUM_SP], srAdr;
+  rand uint expFlag[NUM_SP];
+  rand uchar srAdr;
   rand bit en;   ///used only for printing
   
 	constraint valid_vars{
@@ -620,9 +622,7 @@ class tr_ise2spu extends ovm_sequence_item;
   rand opcode_e op;
   
   rand uchar tid, subVec, vecMode, srAdr;
-  rand bit start,   ///signal spu normal op to start
-           brEnd,  ///signal the last subVec of a br
-           brDep,
+  rand bit brDep, ///brEnd,  ///signal the last subVec of a br
            brDepDSE,
            brDepSPA,
            enFu[NUM_FU],
@@ -685,7 +685,7 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_int(brDep, OVM_ALL_ON)
 	  `ovm_field_int(brDepDSE, OVM_ALL_ON)
 	  `ovm_field_int(brDepSPA, OVM_ALL_ON)
-	  `ovm_field_int(start, OVM_ALL_ON)
+///	  `ovm_field_int(start, OVM_ALL_ON)start,   ///signal spu normal op to start
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr0, OVM_ALL_ON)

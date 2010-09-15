@@ -7,11 +7,11 @@ options.g0
 lu v2 0x16526C9 ;
 //7+3=10 2r1w noimm
 options.g0
-lu s0 0x380000 ;
+lu s0 0x38 ;
 options.g0
-lu s1 0x180000 ;
+lu s1 0x18 ;
 options.g0
-add.s s3 s7 s5 ;
+add.s s3 s0 s1 ;
 //3r1w mad 7*3+8
 lu v23 0x400000 ;
 mad.s v6 v13 v10 v23 ;

@@ -924,6 +924,7 @@ class inst_c extends ovm_object;
     op = op_nop;
     CntSrfRd = 0;
     CntVrfRd = 0;
+    vecRd = 0;
     
     foreach(inst.b[i])
       inst.b[i] = data[start+i];
@@ -938,7 +939,7 @@ class inst_c extends ovm_object;
 	endfunction : set_data
 	
   function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
-                            s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfCnt, srfCnt, dseCnt,
+                            s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vecBusy, sclBusy, dseBusy,
                             ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
                             ref bit[4:0] wCntDep);
     if(!decoded) decode();
@@ -948,17 +949,25 @@ class inst_c extends ovm_object;
     foreach(srfEn[i,j])
       s_en[i][j] = s_en[i][j] | srfEn[i][j];
     
-    if(CntSrfRd > srfCnt)
-      srfCnt = CntSrfRd;
-    if(CntVrfRd > vrfCnt)
-      vrfCnt = CntVrfRd;
-    if(vmode > vrfCnt)
-      vrfCnt = vmode;
-    if(isVec)
-      dseCnt = vmode;
-    else
-      dseCnt = 1;
-
+    if(CntSrfRd > sclBusy)
+      sclBusy = CntSrfRd;
+    if(is_br() && !is_unc_br())
+      sclBusy = vmode + 1;
+    if(enSPU && sclBusy == 0)
+      sclBusy = 1;
+        
+    if(CntVrfRd > vecBusy)
+      vecBusy = CntVrfRd;
+    if(vmode > vecBusy && isVec)
+      vecBusy = vmode + 1;
+    
+    if(enDSE) begin
+      if(isVec && isVec)
+        dseBusy = vmode + 1;
+      else
+        dseBusy = 1;
+    end
+    
     foreach(wrEn[i])
       if(wrEn[i]) begin
         if(isVec)
@@ -1083,6 +1092,7 @@ class inst_c extends ovm_object;
       spu.rt = mRt;
       spu.ss = mSs;
       spu.vs = mVs;
+      spu.enSPU = 1;
     end
     else if(enDSE) begin
       spu.prRdAdrDSE = prRdAdr;
@@ -1157,19 +1167,19 @@ class inst_c extends ovm_object;
     return 0;
   endfunction : dse_block
 
-  function void map_wr_grp(const ref uchar
-        vrf_map[NUM_INST_VRF/NUM_PRF_P_GRP], 
-        srf_map[NUM_INST_SRF/NUM_PRF_P_GRP]);
-    if(!decoded) decode();
-    if(isVec) begin
-      grpWr[0] = vrf_map[grpWr[0]];
-      grpWr[1] = grpWr[0];
-    end
-    else begin
-      grpWr[0] = srf_map[grpWr[0]];
-      grpWr[1] = grpWr[0];
-    end
-  endfunction : map_wr_grp
+///  function void map_wr_grp(const ref uchar
+///        vrf_map[NUM_INST_VRF / NUM_PRF_P_GRP], 
+///        srf_map[NUM_INST_SRF / NUM_PRF_P_GRP]);
+///    if(!decoded) decode();
+///    if(isVec) begin
+///      grpWr[0] = vrf_map[grpWr[0]];
+///      grpWr[1] = grpWr[0];
+///    end
+///    else begin
+///      grpWr[0] = srf_map[grpWr[0]];
+///      grpWr[1] = grpWr[0];
+///    end
+///  endfunction : map_wr_grp
 endclass
 
 class inst_fg_c extends ovm_object;

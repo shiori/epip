@@ -245,77 +245,75 @@ class ip4_tlm_spu extends ovm_component;
       bit[WORD_BITS:0] op0, op1, r0;
       word o0, o1;
       bit prTmp[CYC_VEC][NUM_SP];
+      bit exp;
       
       if(rfm != null) begin
         o0 = rfm.op0;
         o1 = rfm.op1;
       end
-      
-      if(ise.start) begin
-        bit exp;
-        ovm_report_info("spu", "process spu inst", OVM_FULL);
-        foreach(prTmp[i,j]) begin
-          prTmp[i][j] = ise.prRdAdrSPU == 0 ? 1 : pr[ise.tid][ise.prRdAdrSPU][i][j];
-          if(ise.prInvSPU)
-            prTmp[i][j] = !prTmp[i][j];
-          if(!ise.prNMskSPU)
-           prTmp[i][j] = prTmp[i][j] && ilm[ise.tid][i][j] && cm[ise.tid][i][j];
-          prSPU[STAGE_RRF_EXS1] |= prTmp[i][j];
-        end
-
-        op0 = {o0[WORD_BITS-1], o0};
-        op1 = {o1[WORD_BITS-1], o1};
         
-        case(ise.op)
-        op_nop,
-        op_s2gp,
-        op_bp0:    r0 = op0;
-        op_bp1:    r0 = op1;
-        
-        op_and:    r0 = op0 & op1;
-        op_or:     r0 = op0 | op1;
-        op_xor:    r0 = op0 ^ op1;
-        op_nor:    r0 = ~(op0 | op1);
-        op_add:    r0 = signed'(op0) + signed'(op1);
-        op_uadd:   r0 = op0 + op1;
-        op_sub:    r0 = signed'(op0) - signed'(op1);
-        op_usub:   r0 = op0 - op1;
-        op_srl:    r0 = op0 >> op1;
-        op_sra:    r0 = op0 >>> op1;
-        op_sll:    r0 = op0 << op1;
-        op_ror:    r0 = {o0, o0} >> o1;
-///        op_umul:   r0 = unsigned'(o0) * unsigned'(o1);
-///        op_smul:   r0 = signed'(op0) * signed'(op1);
-        op_clo:   ovm_report_warning("SPU_UNIMP", "clo is not implemented yet");
-        op_clz:   ovm_report_warning("SPU_UNIMP", "clz is not implemented yet");
-        op_ext:   ovm_report_warning("SPU_UNIMP", "ext is not implemented yet");
-        op_ins:   ovm_report_warning("SPU_UNIMP", "ins is not implemented yet");
-        op_seb:   ovm_report_warning("SPU_UNIMP", "seb is not implemented yet");
-        op_she:   ovm_report_warning("SPU_UNIMP", "she is not implemented yet");
-        op_wsbh:  ovm_report_warning("SPU_UNIMP", "wsbh is not implemented yet");
-        op_gp2s:
-        begin
-///          if(ise.srAdr == SR_MSCG)
-///            for(int i = 0; i < CYC_VEC; i++)
-///              for(int j = 0; j < NUM_SP; j++)
-///                msc[ise.tid][i][j][WORD_BITS - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
-        end
-        endcase
-        vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
-        vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_BITS-1:0];
-        vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp;
-        vn.rfm[STAGE_RRF_EXS1].expFu = exp;
-        vn.rfm[STAGE_RRF_EXS1].tid = ise.tid;
-        vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecMode;
-        vn.rfm[STAGE_RRF_EXS1].srfWrBk   = ise.srfWrBk;
-        vn.rfm[STAGE_RRF_EXS1].srfWrGrp  = ise.srfWrGrp;
-        vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
-        expFu = exp;
-        if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
-        toISE.sclExp = exp;
-        toISE.vecModeSclExp = ise.vecMode;
-        toISE.tidSclExp = ise.tid;
+      ovm_report_info("spu", "process spu inst", OVM_HIGH);
+      foreach(prTmp[i,j]) begin
+        prTmp[i][j] = ise.prRdAdrSPU == 0 ? 1 : pr[ise.tid][ise.prRdAdrSPU][i][j];
+        if(ise.prInvSPU)
+          prTmp[i][j] = !prTmp[i][j];
+        if(!ise.prNMskSPU)
+         prTmp[i][j] = prTmp[i][j] && ilm[ise.tid][i][j] && cm[ise.tid][i][j];
+        prSPU[STAGE_RRF_EXS1] |= prTmp[i][j];
       end
+
+      op0 = {o0[WORD_BITS-1], o0};
+      op1 = {o1[WORD_BITS-1], o1};
+      
+      case(ise.op)
+      op_nop,
+      op_s2gp,
+      op_bp0:    r0 = op0;
+      op_bp1:    r0 = op1;
+      
+      op_and:    r0 = op0 & op1;
+      op_or:     r0 = op0 | op1;
+      op_xor:    r0 = op0 ^ op1;
+      op_nor:    r0 = ~(op0 | op1);
+      op_add:    r0 = signed'(op0) + signed'(op1);
+      op_uadd:   r0 = op0 + op1;
+      op_sub:    r0 = signed'(op0) - signed'(op1);
+      op_usub:   r0 = op0 - op1;
+      op_srl:    r0 = op0 >> op1;
+      op_sra:    r0 = op0 >>> op1;
+      op_sll:    r0 = op0 << op1;
+      op_ror:    r0 = {o0, o0} >> o1;
+///      op_umul:   r0 = unsigned'(o0) * unsigned'(o1);
+///      op_smul:   r0 = signed'(op0) * signed'(op1);
+      op_clo:   ovm_report_warning("SPU_UNIMP", "clo is not implemented yet");
+      op_clz:   ovm_report_warning("SPU_UNIMP", "clz is not implemented yet");
+      op_ext:   ovm_report_warning("SPU_UNIMP", "ext is not implemented yet");
+      op_ins:   ovm_report_warning("SPU_UNIMP", "ins is not implemented yet");
+      op_seb:   ovm_report_warning("SPU_UNIMP", "seb is not implemented yet");
+      op_she:   ovm_report_warning("SPU_UNIMP", "she is not implemented yet");
+      op_wsbh:  ovm_report_warning("SPU_UNIMP", "wsbh is not implemented yet");
+      op_gp2s:
+      begin
+///        if(ise.srAdr == SR_MSCG)
+///          for(int i = 0; i < CYC_VEC; i++)
+///            for(int j = 0; j < NUM_SP; j++)
+///              msc[ise.tid][i][j][WORD_BITS - 1] = vn.rfm[STAGE_RRF_EXS1].res[i * NUM_SP + j];
+      end
+      endcase
+      vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
+      vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_BITS-1:0];
+      vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp;
+      vn.rfm[STAGE_RRF_EXS1].expFu = exp;
+      vn.rfm[STAGE_RRF_EXS1].tid = ise.tid;
+      vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecMode;
+      vn.rfm[STAGE_RRF_EXS1].srfWrBk   = ise.srfWrBk;
+      vn.rfm[STAGE_RRF_EXS1].srfWrGrp  = ise.srfWrGrp;
+      vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
+      expFu = exp;
+      if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
+      toISE.sclExp = exp;
+      toISE.vecModeSclExp = ise.vecMode;
+      toISE.tidSclExp = ise.tid;
     end
 
     if(v.fmISE[STAGE_RRF_RSRB] != null && v.fmISE[STAGE_RRF_RSRB] != null) begin
@@ -511,7 +509,7 @@ class ip4_tlm_spu extends ovm_component;
         mscNext[0] = '{default : 0};
       endcase
       
-      if(v.fmISE[STAGE_RRF_CEM].brEnd) begin
+      if(v.fmISE[STAGE_RRF_CEM].subVec == v.fmISE[STAGE_RRF_CEM].vecMode) begin
         bit updateMSC = 0, updateMSK = 0, missBr = 0;
         
         if(is_nop)
