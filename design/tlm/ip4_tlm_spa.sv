@@ -147,7 +147,7 @@ class ip4_tlm_spa extends ovm_component;
         if(!fu.en) continue;
         ovm_report_info("spa", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
         
-        if(fu.op inside {spu_only_ops}) begin
+        if(fu.op inside {sfu_only_ops}) begin
           ///long operations
           if (vn.sfu[1] == null) vn.sfu[1] = new();
           vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;

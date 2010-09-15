@@ -838,11 +838,11 @@ class inst_c extends ovm_object;
 	  uchar tCnt[6] = '{default : 0};
 	  if(!decoded) decode();
 	  ///long cyc instructions
-    if(op inside {spu_only_ops}) begin
+    if(op inside {sfu_only_ops}) begin
       if(isVec)
-        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
-      else
         tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+      else
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
     end
     else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
       ///sr write back
@@ -861,9 +861,9 @@ class inst_c extends ovm_object;
 	  end
 	  else if(op inside {ld_ops}) begin
       if(isVec)
-        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+        tCnt[gprv_styp] = STAGE_RRF_VWBP;
       else
-        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+        tCnt[gprs_styp] = STAGE_RRF_SWBP;
 	    ///load write pr
       if(mT != 2)
        tCnt[pr_styp] = STAGE_RRF_DEM;
@@ -891,9 +891,9 @@ class inst_c extends ovm_object;
 	  end
 	  else begin
       if(isVec)
-        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+        tCnt[gprv_styp] = STAGE_RRF_VWBP;
       else
-        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+        tCnt[gprs_styp] = STAGE_RRF_SWBP;
 	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWBP + vm : STAGE_RRF_SWBP);
 	  end
 	  
@@ -933,14 +933,14 @@ class inst_c extends ovm_object;
       enDSE = 1;
     else if(vec)  
       enFu = 1;
-    else if(op inside {spu_only_ops, spu_com_ops})
+    else if(op inside {spu_ops, spu_com_ops})
       enSPU = 1;    
 	endfunction : set_data
 	
   function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
                             s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfCnt, srfCnt, dseCnt,
                             ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
-                            ref bit wCntDep[5]);
+                            ref bit[4:0] wCntDep);
     if(!decoded) decode();
     foreach(vrfEn[i,j])
       v_en[i][j] = v_en[i][j] | vrfEn[i][j];
@@ -1003,7 +1003,7 @@ class inst_c extends ovm_object;
       enSPU = 1;
     else if(isVec) begin
       enFu = 1;
-      if(op inside {spu_only_ops}) begin
+      if(op inside {sfu_only_ops}) begin
         foreach(fu_cfg[i])
           if(fu_cfg[i] == sfu) begin
             fu[i] = 1;
@@ -1035,25 +1035,25 @@ class inst_c extends ovm_object;
       cvt_sel = rbk_sel_e'(s - i * NUM_SRF_BKS);
   endfunction
   
-  function void fill_rfm(input tr_ise2rfm rfm, uchar i);
+  function void fill_rfm(input tr_ise2rfm rfm, uchar subVec);
     if(!decoded) decode();
     if(enSPU) begin
       rfm.spuEn = 1;
       rfm.spuImm = imm;
       foreach(rfm.spuRdBk[i])
-        rfm.spuRdBk[i] = cvt_sel(rdBkSel[i], i);
+        rfm.spuRdBk[i] = cvt_sel(rdBkSel[i], subVec);
     end
     else if(enDSE) begin
       rfm.dseEn = 1;
       rfm.dseImm = imm;
       foreach(rfm.dseRdBk[i])
-        rfm.dseRdBk[i] = cvt_sel(rdBkSel[i], i);
+        rfm.dseRdBk[i] = cvt_sel(rdBkSel[i], subVec);
     end
     else begin
       rfm.fu[fuid].en = 1;
       rfm.fu[fuid].imm = imm;
       foreach(rfm.fu[0].rdBkSel[i])
-        rfm.fu[fuid].rdBkSel[i] = cvt_sel(rdBkSel[i], i);
+        rfm.fu[fuid].rdBkSel[i] = cvt_sel(rdBkSel[i], subVec);
     end
   endfunction : fill_rfm
 
@@ -1072,6 +1072,7 @@ class inst_c extends ovm_object;
         spu.op = op;
       spu.srfWrAdr = adrWr[0];
       spu.srfWrBk = bkWr[0];
+      spu.srfWrGrp = grpWr[0];
       spu.prRdAdrSPU = prRdAdr;
       spu.prInvSPU = 0;
       spu.prNMskSPU = 0;
@@ -1108,6 +1109,7 @@ class inst_c extends ovm_object;
     if(enDSE) begin
       dse.wrAdr = adrWr[0];
       dse.wrBk = bkWr[0];
+      dse.wrGrp = grpWr[0];
       dse.updateAdrWrBk = (rdBkSel[0] >= selv0 && rdBkSel[0] <= selv_e) ? rdBkSel[0] - selv0 : 0;
       dse.updateAdrWr = mUpdateAdr != 0 ? 1 : 0;
       dse.updatePr = mT == 1; ///todo
@@ -1136,6 +1138,7 @@ class inst_c extends ovm_object;
         spa.fu[fuid].bpSel[i] = rdBkSel[i];
       spa.fu[fuid].vrfWrBk = bkWr[0];
       spa.fu[fuid].vrfWrAdr = adrWr[0];
+      spa.fu[fuid].vrfWrGrp = grpWr[0];
     end
   endfunction : fill_spa
 

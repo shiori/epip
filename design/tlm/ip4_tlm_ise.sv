@@ -121,8 +121,8 @@ class ise_thread_inf extends ovm_component;
       cancel,
       noMsk;
   uchar wCnt[NUM_W_CNT][5], wCntBr, wCntNext[7], vecMode;
+  bit[4:0] wCntDep;
   bit[NUM_W_CNT - 1 : 0] wCntSel;
-  bit wCntDep[5];
   bit[CYC_VEC - 1 : 0] noExt;
   uchar srLSID, srLRID;
   bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE, srLRRID, msgRdy;
@@ -153,7 +153,8 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_enum(priv_mode_t, privEret, OVM_ALL_ON)
     `ovm_field_int(ejtagMode, OVM_ALL_ON)
     `ovm_field_queue_int(iBuf, OVM_ALL_ON)
-    `ovm_field_int(wCntSel, OVM_ALL_ON)
+    `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
+    `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
     `ovm_field_int(wCntBr, OVM_ALL_ON)
     `ovm_field_int(iGrpBytes, OVM_ALL_ON)
     `ovm_field_int(adrPkgBytes, OVM_ALL_ON)
@@ -170,7 +171,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_sarray_int(enFu, OVM_ALL_ON)
     `ovm_field_int(enVec, OVM_ALL_ON)
 ///    `ovm_field_sarray_int(wCnt, OVM_ALL_ON)
-    `ovm_field_sarray_int(wCntNext, OVM_ALL_ON)
+    `ovm_field_sarray_int(wCntNext, OVM_ALL_ON + OVM_UNSIGNED)
     `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
@@ -217,20 +218,22 @@ class ise_thread_inf extends ovm_component;
 	virtual function void do_print(ovm_printer printer);
 		super.do_print(printer);
 	  if(get_report_verbosity_level() >= OVM_HIGH) begin
-	    `PAF3(wCnt, OVM_DEC)
-  		if(enSPU)
-  		  printer.print_object("spu", iSPU);
-  		if(enDSE)
-  		  printer.print_object("dse", iDSE);
-  		foreach(enFu[i])
-  		  if(enFu[i])
-  		    printer.print_object($psprintf("fu%0d", i), iFu[i]);
+	    `PAF2(wCnt, OVM_UNSIGNED)
+///  		if(enSPU)
+///  		  printer.print_object("spu", iSPU);
+///  		if(enDSE)
+///  		  printer.print_object("dse", iDSE);
+///  		foreach(enFu[i])
+///  		  if(enFu[i])
+///  		    printer.print_object($psprintf("fu%0d", i), iFu[i]);
     end
-	    
-    `PAF2(vrfAdr, OVM_DEC)
-    `PAF2(srfAdr, OVM_DEC)
-    `PAF2(vrfGrp, OVM_DEC)
-    `PAF2(srfGrp, OVM_DEC)
+	  
+	  if(get_report_verbosity_level() >= OVM_FULL) begin  
+      `PAF2(vrfAdr, OVM_UNSIGNED)
+      `PAF2(srfAdr, OVM_UNSIGNED)
+      `PAF2(vrfGrp, OVM_UNSIGNED)
+      `PAF2(srfGrp, OVM_UNSIGNED)
+    end
 	endfunction : do_print
 	
   function void map_iadr(input bit v, uchar orgAdr, output uchar grp, adr);
@@ -459,7 +462,24 @@ class ise_thread_inf extends ovm_component;
     decodeErr |= iDSE.decodeErr;
     
     decoded = 1;
-    ovm_report_info("decode_igrp", {"\n", sprint()}, OVM_HIGH);
+    
+    foreach(iFu[i])
+      foreach(iFu[0].grpWr[j])
+        iFu[i].grpWr[j] = iFu[i].isVec ? vrfMap[iFu[i].grpWr[j]] : srfMap[iFu[i].grpWr[j]];
+    
+    foreach(iDSE.grpWr[i])
+      iDSE.grpWr[i] = iDSE.isVec ? vrfMap[iDSE.grpWr[i]] : srfMap[iDSE.grpWr[i]];
+
+    foreach(iSPU.grpWr[i])
+      iSPU.grpWr[i] = srfMap[iSPU.grpWr[i]];
+            
+    if(enSPU)
+      ovm_report_info("decode_igrp", {"spu:\n", iSPU.sprint()}, OVM_HIGH);
+    if(enDSE)
+      ovm_report_info("decode_igrp", {"dse:\n", iDSE.sprint()}, OVM_HIGH);
+    foreach(enFu[i])
+      if(enFu[i])
+        ovm_report_info("decode_igrp", {$psprintf("fu%0d:\n", i), iFu[i].sprint()}, OVM_HIGH);
   endfunction : decode_igrp
 
   function void flush();
@@ -1213,14 +1233,14 @@ class ip4_tlm_ise extends ovm_component;
     ///update wcnt
     begin
       uchar sel;
-      for(sel = 0; t.wCntSel[sel] != 0; sel++);
-      if(sel >= NUM_W_CNT)
-        sel = 0;
+      foreach(t.wCntSel[i])
+        if(t.wCntSel[i])
+          sel = i;
       foreach(t.wCntDep[i])
         if(t.wCntNext[i] > t.wCnt[sel][i])
           t.wCnt[sel][i] = t.wCntNext[i];
-      if(t.wCntDep[br_styp] > t.wCntBr)
-        t.wCntBr = t.wCntDep[br_styp];
+      if(t.wCntNext[br_styp] > t.wCntBr)
+        t.wCntBr = t.wCntNext[br_styp];
     end
                 
     cntSrfRd = t.cntSrfRd;
@@ -1238,7 +1258,8 @@ class ip4_tlm_ise extends ovm_component;
       cntVecProc = t.vecMode;
 
     ///rdy to issue the ig 
-    fill_issue(tid); 
+    fill_issue(tid);
+    ovm_report_info("issue", {"\n", t.sprint()}, OVM_HIGH);
   endfunction : issue
       
   function void comb_proc();
@@ -1436,7 +1457,7 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch
-    ovm_report_info("iinf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
+    ovm_report_info("ise inf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdIssueLast;
       tid = tid & `GML(WID_TID);
@@ -1717,12 +1738,9 @@ class ip4_tlm_ise extends ovm_component;
                 
     no_virtual_interface: assert(get_config_object("vifCfg", tmp));
     failed_convert_interface: assert($cast(vifCfg, tmp));
-    sysif = vifCfg.get_vif();  
+    sysif = vifCfg.get_vif();
     stamp = 0ns;
-    
-    thread[0].threadState = ts_rdy;
-    thread[0].privMode = priv_kernel;
-    
+   
     cntVrfRd = 0;
     cntSrfRd = 0;
     cntDSERd = 0;

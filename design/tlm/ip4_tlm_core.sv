@@ -109,6 +109,9 @@ class ip4_tlm_core extends ovm_component;
     tlb = ip4_tlm_tlb::type_id::create("tlb", this);
     dse = ip4_tlm_dse::type_id::create("dse", this);
     eif = ip4_tlm_eif::type_id::create("eif", this);
+    
+    set_config_int("*thread0*", "threadState", ts_rdy);
+    set_config_int("*thread0*", "privMode", priv_kernel);
   endfunction : build
 
   virtual function void connect();

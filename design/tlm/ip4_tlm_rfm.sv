@@ -263,7 +263,7 @@ class ip4_tlm_rfm extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2rfm req, output tr_ise2rfm rsp);
-    ovm_report_info("RFM_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("rfm_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));

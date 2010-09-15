@@ -389,7 +389,7 @@ parameter opcode_e bp_ops[] = '{
   op_max,     op_min,     op_umin,    op_umax
 };
 
-parameter opcode_e spu_only_ops[] = '{
+parameter opcode_e sfu_only_ops[] = '{
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures
 };
