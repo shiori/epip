@@ -1,6 +1,5 @@
 // 3*3 Arithmetic Average filter
-// the window size
-li s12 0x9 ; 
+// image: 8*8
 // filter template 3*3
 li s1 0x1 ;
 li s2 0x1 ;
@@ -13,50 +12,55 @@ li s8 0x1 ;
 li s9 0x1 ;
 // the template coefficient for udiv
 li s10 0x9 ;
-// the final pixel location
+// the final-1 row location
 li s11 224 ;
 // rb 
 li s0 32 ;
+// rb copy
+$tag2 add.u s12 s0 0 ;
+// the end of a line
+add.u s13 s0 24 ;
 // load data from memory
-$tag1 ld.lhu.lnua.ldbst v0 s0 0x0 ;
-mad.u v1 s1 v0 zero ;
-mad.u v2 s2 v0 zero ;
-mad.u v3 s3 v0 zero ;
-mad.u v4 s4 v0 zero ;
-mad.u v5 s5 v0 zero ;
-mad.u v6 s6 v0 zero ;
-mad.u v7 s7 v0 zero ;
-mad.u v8 s8 v0 zero ;
-mad.u v9 s9 v0 zero ;
-ld.lhu.lnua.ldbst v0 s0 0x1 ;
-mad.u v10 s1 v0 zero ;
-mad.u v11 s2 v0 zero ;
-mad.u v12 s3 v0 zero ;
-mad.u v13 s4 v0 zero ;
-mad.u v14 s5 v0 zero ;
-mad.u v15 s6 v0 zero ;
-mad.u v16 s7 v0 zero ;
-mad.u v17 s8 v0 zero ;
-mad.u v18 s9 v0 zero ;
-ld.lhu.lnua.ldbst v0 s0 0x2 ;
-mad.u v19 s1 v0 zero ;
-mad.u v20 s2 v0 zero ;
-mad.u v21 s3 v0 zero ;
-mad.u v22 s4 v0 zero ;
-mad.u v23 s5 v0 zero ;
-mad.u v24 s6 v0 zero ;
-mad.u v25 s7 v0 zero ;
-mad.u v26 s8 v0 zero ;
-mad.u v27 s9 v0 zero ;
+$tag1 add.u s12 s12 4 ;
+// the upper line
+add.u s12 s12 -32 ;
+ld.lhu.lnua.ldbst v4 s12 -4 ;
+ld.lhu.lnua.ldbst v5 s12 0 ;
+ld.lhu.lnua.ldbst v6 s12 4 ;
+mad.u v14 s4 v4 zero ;
+mad.u v15 s5 v5 zero ;
+mad.u v16 s6 v6 zero ;
+// the next line
+add.u s12 s12 64 ;
+ld.lhu.lnua.ldbst v7 s12 -4 ;
+ld.lhu.lnua.ldbst v8 s12 0 ;
+ld.lhu.lnua.ldbst v9 s12 4 ;
+mad.u v17 s7 v7 zero ;
+mad.u v18 s8 v8 zero ;
+mad.u v19 s9 v9 zero ;
+// current line
+add.u s12 s12 -32 ;
+ld.lhu.lnua.ldbst v1 s12 -4 ;
+ld.lhu.lnua.ldbst v2 s12 0 ;
+ld.lhu.lnua.ldbst v3 s12 4 ;
+mad.u v11 s1 v1 zero ;
+mad.u v12 s2 v2 zero ;
+mad.u v13 s3 v3 zero ;
 // sum 
-add.u v28 v1 v10 v19 ;
-add.u v29 v2 v11 v20 ;
-add.u v30 v3 v12 v21 ;
-add.u v31 v28 v29 v30 ;
-udiv v1 v31 s10 ;
-// rb update to rb+3
+add.u v11 v11 v12 v13 ;
+add.u v14 v14 v15 v16 ;
+add.u v17 v17 v18 v19 ;
+add.u v10 v11 v14 v17 ;
+udiv v10 v10 s10 ;
+// write back
+st.sh.snua.stbst s12 v10 0 ; 
+// column-wise
+// <= the last pixel in the row
+cmp.unc.<= p1 p0 s12 s13 ; 
+(p1) b.naz.bc.pop2n $tag1 0 ;
+// rb update row-wise the next row 
 add.u s0 s0 32 ;
 // <= the final pixel location
 cmp.unc.<= p1 p0 s0 s11 ; 
-(p1) b.naz.bc.pop2n $tag1 0;
+(p1) b.naz.bc.pop2n $tag2 0 ;
 
