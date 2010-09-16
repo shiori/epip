@@ -19,12 +19,13 @@ class ip4_tlm_ise_rst extends ovm_object;
   uint pc, bpc, igb, pcUEret;
   priv_mode_t priv;
   uchar tid;
-  bit en, roll, exp, sel, ejtag;
+  bit en, roll, exp, sel, ejtag, bpcOW;
 
   `ovm_object_utils_begin(ip4_tlm_ise_rst)
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON)
     `ovm_field_int(bpc, OVM_ALL_ON)
+    `ovm_field_int(bpcOW, OVM_ALL_ON + OVM_NOCOPY)
     `ovm_field_int(pcUEret, OVM_ALL_ON)
     `ovm_field_int(igb, OVM_ALL_ON)
     `ovm_field_int(roll, OVM_ALL_ON + OVM_NOCOPY)
@@ -44,6 +45,7 @@ class ip4_tlm_ise_rst extends ovm_object;
     en = 0;
     sel = 0;
     exp = 0;
+    bpcOW = 0;
   endfunction
   
   function new (string name = "rst_vars");
@@ -250,38 +252,53 @@ class ise_thread_inf extends ovm_component;
 ///    if(wExpCnt != 0) wExpCnt--;
   endfunction : cyc_new
 
-  function uint br_pred();
-    pendBr++;
-    
-    ///simple prediction
-    brPred = iSPU.offSet == 0;
-
-    if(brPred) begin
-      threadState = ts_b_self;
-      br_pred = pc + iGrpBytes;
-      if(iSPU.op == op_fcr) begin
-        ///function call
-        if(iSPU.op == op_fcr && brPred) begin
+  function void br_pred(output uint bpc, bit bpcOW);
+    if(!enSPU || !iSPU.is_br())
+      return;
+      
+    if(!iSPU.is_unc_br()) begin
+      pendBr++;
+      
+      ///simple prediction
+      brPred = iSPU.offSet == 0;
+  
+      if(brPred) begin
+        lpRndMemMode =  (enDSE && iDSE.mT == 1 && iSPU.offSet == 0
+              && iDSE.prWrAdr[0] == iSPU.prRdAdr && iSPU.brDep);
+        bpc = pc + iGrpBytes;
+        
+        if(iSPU.op == op_fcr) begin
+          ///function call
           if(iSPU.rdBkSel[0] == selfu2) begin
             while(fcrRet.size() > NUM_FCR_RET)
               void'(fcrRet.pop_back());
-            fcrRet.push_front(pc);
+            fcrRet.push_front(pc + iGrpBytes);
+            pc = pc + iSPU.offSet;
           end
-          ///function return
-          else if(iSPU.fcRet && fcrRet.size() > 0)
-            pc = fcrRet.pop_front();
+          else begin
+            bpcOW = 1;
+            ///function return
+            if(iSPU.fcRet && fcrRet.size() > 0)
+              pc = fcrRet.pop_front();
+          end
         end
+        else
+          pc = pc + iSPU.offSet;
       end
-      else
-        pc = pc + iSPU.offSet;
+      else begin
+        bpc = pc + iSPU.offSet;
+        pc = pc + iGrpBytes;
+      end
+      
+      brHistory = brHistory << 1;
+      brHistory[0] = brPred;
+      threadState = (threadState == ts_rdy) ? ts_w_b : ts_b_pred;
     end
     else begin
-      threadState = (threadState == ts_rdy) ? ts_w_b : ts_b_pred;
-      br_pred = pc + iSPU.offSet;
+      ///unconditional branch
       pc = pc + iGrpBytes;
+      bpc = pc;
     end
-    brHistory = brHistory << 1;
-    brHistory[0] = brPred;
   endfunction : br_pred
     
   function void decode_igrp_start();
@@ -706,7 +723,7 @@ class ip4_tlm_ise extends ovm_component;
 
   function void resolve_br(input uchar tid, bit br);
     ise_thread_inf t = thread[tid];
-    if(t.threadState inside {ts_w_b, ts_b_pred, ts_b_self} && !cancel[tid][STAGE_ISE_CBR]) begin
+    if(t.threadState inside {ts_w_b, ts_b_pred} && !cancel[tid][STAGE_ISE_CBR]) begin
       if(t.pendBr == 0)
         t.threadState = ts_rdy;
       ///miss prediction
@@ -950,7 +967,7 @@ class ip4_tlm_ise extends ovm_component;
         enFuTmp[i] = t.enFu[i];
       
       foreach(t.wCntDep[i])
-        if(finalCnt[i] > tmp && i != br_styp)
+        if(finalCnt[i] > tmp && i != br_styp && t.wCntDep[i])
           tmp = finalCnt[i];
           
       ovm_report_info("can_issue",
@@ -999,7 +1016,7 @@ class ip4_tlm_ise extends ovm_component;
     if(!t.lpRndMemMode && t.pendExLoad > 0)
       return 0;
     
-    if(!(t.threadState inside {ts_rdy, ts_w_b, ts_b_self}))
+    if(!(t.threadState inside {ts_rdy, ts_w_b, ts_b_pred}))
       return 0;
         
     foreach(t.wCntDep[i])
@@ -1188,10 +1205,10 @@ class ip4_tlm_ise extends ovm_component;
         void'(exe_ise(tid, t.iSPU.op));
     end
 
-    if(t.enSPU && !t.iSPU.is_unc_br() && t.iSPU.is_br())
-      vn.rst[1].bpc = t.br_pred();
-    else
-      vn.rst[1].bpc = t.pc + t.iGrpBytes;
+    if(t.enSPU && t.iSPU.is_br())
+      t.br_pred(vn.rst[1].bpc, vn.rst[1].bpcOW);
+///    else
+///      vn.rst[1].bpc = t.pc + t.iGrpBytes;
       
     ///branch taken
     if(t.enSPU && t.iSPU.is_br() && t.brPred) begin
@@ -1212,16 +1229,13 @@ class ip4_tlm_ise extends ovm_component;
     end
             
     if(t.enDSE) begin
-      cntDSEBusy = t.cntDSEBusy;
+///      cntDSEBusy = t.cntDSEBusy;
 ///      t.pendMemAcc++;
       if(t.iDSE.op inside {op_lw, op_lh, op_lhu, op_lb, op_lbu})
         t.isLastLoad = 1;
       else if(t.iDSE.op inside {op_sw, op_sh, op_sb})
         t.isLastStore = 1;
       t.isLastVecDse = t.iDSE.isVec;
-      t.lpRndMemMode =  (t.iDSE.mT == 1 && t.enSPU && t.iSPU.is_br()
-        && t.threadState == ts_b_self && t.iSPU.prWrAdr[0] == t.iDSE.prRdAdr
-        && t.iDSE.prRdAdr != 0 && t.brPred);
     end
     
     ///update wcnt
@@ -1240,6 +1254,10 @@ class ip4_tlm_ise extends ovm_component;
     cntSclBusy = t.cntSclBusy;
     cntVecBusy = t.cntVecBusy;
     cntDSEBusy = t.cntDSEBusy;
+    if(cntSclBusy > cntDSEBusy)
+      cntDSEBusy = cntSclBusy;
+    if(cntVecBusy > cntDSEBusy)
+      cntDSEBusy = cntVecBusy;
     cntPRWr += t.cntPRWr;
   
     foreach(cntVrfWr[i])

@@ -820,12 +820,12 @@ class inst_c extends ovm_object;
 	
 	function bit is_unc_br();
 	  if(!decoded) decode();
-    return (inst.i.op inside {op_br, op_fcr}) && (brOp == bop_naz && prRdAdr == 0);
+    return (op inside {op_br, op_fcr}) && (brOp == bop_naz && prRdAdr == 0);
 	endfunction : is_unc_br
 
 	function bit is_br();
 	  if(!decoded) decode();
-    return inst.i.op inside {op_br, op_fcr};
+    return op inside {op_br, op_fcr};
 	endfunction : is_br
 		
 	function bit is_priv();
@@ -930,6 +930,7 @@ class inst_c extends ovm_object;
     CntSrfRd = 0;
     CntVrfRd = 0;
     vecRd = 0;
+    fcRet = 0;
     
     foreach(inst.b[i])
       inst.b[i] = data[start+i];

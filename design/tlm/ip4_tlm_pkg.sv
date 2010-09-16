@@ -325,7 +325,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_b_self, ts_w_mrf,
+  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_w_mrf,
   ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
 }thread_state_t;
 
