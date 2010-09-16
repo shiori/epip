@@ -61,10 +61,14 @@ class ip4_tlm_ife extends ovm_component;
     if(v.fmISE != null && v.fmISE.fetchReq) begin
       tr_ise2ife ise = v.fmISE;
       uchar data[NUM_IFET_BYTES];
+      foreach(vn.ise[i])
+        if(vn.ise[i] != null && ise.cancel[vn.ise[i].tid])
+          vn.ise[i] = null;
+          
       if(ise.pc inside {[imBase:imBase+imSize]}) begin
         uint adr = ise.pc - imBase;
         foreach(data[i])
-          data[i] = im[adr+i];
+          data[i] = im[adr + i];
       end
         
       if(vn.ise[1] == null) vn.ise[1] = tr_ife2ise::type_id::create("toISE", this);
@@ -72,9 +76,6 @@ class ip4_tlm_ife extends ovm_component;
       vn.ise[1].tid = ise.tid;
       vn.ise[1].fetchGrp.ex = 1;
       vn.ise[1].fetchGrp.fill(data);
-      foreach(vn.ise[i])
-        if(vn.ise[i] != null && ise.cancel[vn.ise[i].tid])
-          vn.ise[i] = null;
     end
   endfunction
   

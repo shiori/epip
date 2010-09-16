@@ -109,7 +109,7 @@ class ip4_tlm_rfm extends ovm_component;
       if(spu.expFu)
         cancel[spu.tid] |= `GML(STAGE_RRF_SWB);
       if(spu.missBr || spu.expMSC)
-        cancel[spu.tid] |=  `GML(STAGE_RRF_CBR);
+        cancel[spu.tid] |=  `GML(STAGE_RRF_CEM);
     end
     
     if(v.fmDSE != null && v.fmDSE.exp)
@@ -123,6 +123,9 @@ class ip4_tlm_rfm extends ovm_component;
     ovm_report_info("rfm", "req_proc procing...", OVM_FULL); 
    
     ///----------------------write back results---------------------
+    if(v.fmSPA != null && cancel[v.fmSPA.tid][STAGE_RRF_VWB])
+      ovm_report_info("rfm", "spa write back canceled...", OVM_HIGH); 
+    
     if(v.fmSPA != null && !cancel[v.fmSPA.tid][STAGE_RRF_VWB]) begin
       tr_spa2rfm spa = v.fmSPA;
       uchar bk0, bk1;
@@ -169,25 +172,38 @@ class ip4_tlm_rfm extends ovm_component;
       tr_dse2rfm dse = v.fmDSE;
       ovm_report_info("RFM_WR", "Write Back dse...", OVM_HIGH);
       srDSEExp[dse.tid][dse.subVec] = dse.expVec;
-      if(dse.srfWr && !cancel[dse.tid][STAGE_RRF_SWB])
-        srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
-      else foreach(dse.wrEn[sp])
-        if(dse.wrEn[sp] && dse.vrfWr && !cancel[dse.tid][STAGE_RRF_VWB]) begin
-          vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
-          if(dse.updateAdrWr)
-            vrf[dse.updateAdrWrGrp][dse.updateAdrWrAdr][dse.updateAdrWrBk][dse.subVec][sp] = dse.updateAdrRes[sp];
-        end
+      if(dse.srfWr) begin
+        if(cancel[dse.tid][STAGE_RRF_SWB])
+          ovm_report_info("rfm", "dse scl write back canceled...", OVM_HIGH); 
+        else
+          srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
+      end
+      else begin
+        if(cancel[dse.tid][STAGE_RRF_VWB])
+          ovm_report_info("rfm", "dse vec write back canceled...", OVM_HIGH); 
+        else
+          foreach(dse.wrEn[sp])
+            if(dse.wrEn[sp] && dse.vrfWr) begin
+              vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
+              if(dse.updateAdrWr)
+                vrf[dse.updateAdrWrGrp][dse.updateAdrWrAdr][dse.updateAdrWrBk][dse.subVec][sp] = dse.updateAdrRes[sp];
+            end
+      end
     end
     
     if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_SWB]) begin
       tr_spu2rfm spu = v.fmSPU;
       ovm_report_info("RFM_WR", "Write Back spu...", OVM_HIGH);
-      if(spu.wrSrMSC) begin
-        srMSCU[spu.tid][spu.subVec] = spu.mscu;
-        srMSCO[spu.tid][spu.subVec] = spu.msco;
+      if(cancel[v.fmSPU.tid][STAGE_RRF_SWB])
+        ovm_report_info("rfm", "spu write back canceled...", OVM_HIGH); 
+      else begin
+        if(spu.wrSrMSC) begin
+          srMSCU[spu.tid][spu.subVec] = spu.mscu;
+          srMSCO[spu.tid][spu.subVec] = spu.msco;
+        end
+        if(spu.wrEn)
+          srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = spu.res;
       end
-      if(spu.wrEn)
-        srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = spu.res;
     end
          
     ///----------read registers---------------------

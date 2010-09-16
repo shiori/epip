@@ -159,11 +159,11 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_CEM + CYC_VEC] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM + CYC_VEC];
       if(mskWEn[CYC_VEC]) begin
-        ilm[ise.tid][ise.subVec] = ilmNext[CYC_VEC];
-        cm[ise.tid][ise.subVec] = cmNext[CYC_VEC];
+        ilm[ise.tid][ise.subVecSPU] = ilmNext[CYC_VEC];
+        cm[ise.tid][ise.subVecSPU] = cmNext[CYC_VEC];
       end
       if(stkWEn[CYC_VEC])
-        msc[ise.tid][ise.subVec] = mscNext[CYC_VEC];
+        msc[ise.tid][ise.subVecSPU] = mscNext[CYC_VEC];
     end
           
     ///write back cmp predication register results
@@ -171,8 +171,8 @@ class ip4_tlm_spu extends ovm_component;
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
       tr_spa2spu spa = v.fmSPA[STAGE_RRF_CEM];
       ovm_report_info("spu", "write back spa pres", OVM_FULL);
-      pr[ise.tid][ise.prWrAdr0][ise.subVec] = spa.presCmp0;
-      pr[ise.tid][ise.prWrAdr1][ise.subVec] = spa.presCmp1;
+      pr[ise.tid][ise.prWrAdr0][ise.subVecFu] = spa.presCmp0;
+      pr[ise.tid][ise.prWrAdr1][ise.subVecFu] = spa.presCmp1;
     end
     
     ///write back dse predication register results
@@ -181,7 +181,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_dse2spu dse = v.fmDSE[STAGE_RRF_CEM];
       ovm_report_info("spu", "write back dse pres", OVM_FULL);
       if(dse.wrEn)
-        pr[ise.tid][ise.prWrAdr2][ise.subVec] = dse.pres;
+        pr[ise.tid][ise.prWrAdr2][ise.subVecDSE] = dse.pres;
     end
         
     ///predication register read
@@ -190,13 +190,13 @@ class ip4_tlm_spu extends ovm_component;
       foreach(toSPA.fu[fid]) begin
         if(!ise.enFu[fid]) continue;
         if(toSPA == null) toSPA = tr_spu2spa::type_id::create("toSPA", this);
-        toSPA.fu[fid].emsk = ise.prRdAdr[fid] == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdr[fid]][ise.subVec];
+        toSPA.fu[fid].emsk = ise.prRdAdr[fid] == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdr[fid]][ise.subVecFu];
         if(ise.prInv[fid])
           foreach(toSPA.fu[fid].emsk[i])
             toSPA.fu[fid].emsk[i] = !toSPA.fu[fid].emsk[i];
         if(!ise.prNMsk[fid])
           foreach(toSPA.fu[fid].emsk[i])
-            toSPA.fu[fid].emsk[i] = toSPA.fu[fid].emsk[i] && ilm[ise.tid][ise.subVec][i] && cm[ise.tid][ise.subVec][i];
+            toSPA.fu[fid].emsk[i] = toSPA.fu[fid].emsk[i] && ilm[ise.tid][ise.subVecFu][i] && cm[ise.tid][ise.subVecFu][i];
       end
     end
     
@@ -204,18 +204,18 @@ class ip4_tlm_spu extends ovm_component;
       tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC0];
       toDSE = tr_spu2dse::type_id::create("toDSE", this);
       
-      if(ise.sclDSE && ise.subVec == 0)
+      if(ise.sclDSE && ise.subVecDSE == 0)
         toDSE.emsk[0] = 1;
       else
-        toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][ise.subVec];
+        toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][ise.subVecDSE];
         
       foreach(toDSE.emsk[i]) begin
         if(ise.prInvDSE)
           toDSE.emsk[i] = !toDSE.emsk[i];
         if(!ise.prNMskDSE)
-          toDSE.emsk[i] = toDSE.emsk[i] && ilm[ise.tid][ise.subVec][i] && cm[ise.tid][ise.subVec][i];
+          toDSE.emsk[i] = toDSE.emsk[i] && ilm[ise.tid][ise.subVecDSE][i] && cm[ise.tid][ise.subVecDSE][i];
       end
-      toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][ise.subVec];
+      toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][ise.subVecDSE];
     end
     
     ///scalar dse enable
@@ -224,7 +224,7 @@ class ip4_tlm_spu extends ovm_component;
       bit res = 0;
       if(toDSE) toDSE = tr_spu2dse::type_id::create("toDSE", this);
       if(ise.sclDSE) begin
-        for(int subVec = 0; subVec <= ise.vecMode; subVec++) begin
+        for(int subVec = 0; subVec <= ise.vecModeDSE; subVec++) begin
           bit tmp[NUM_SP];
           tmp = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tid][ise.prRdAdrDSE][subVec];
           foreach(tmp[i]) begin
@@ -305,14 +305,14 @@ class ip4_tlm_spu extends ovm_component;
       vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp && ise.wrEn;
       vn.rfm[STAGE_RRF_EXS1].expFu = exp;
       vn.rfm[STAGE_RRF_EXS1].tid = ise.tid;
-      vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecMode;
+      vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecModeFu;
       vn.rfm[STAGE_RRF_EXS1].srfWrBk   = ise.srfWrBk;
       vn.rfm[STAGE_RRF_EXS1].srfWrGrp  = ise.srfWrGrp;
       vn.rfm[STAGE_RRF_EXS1].srfWrAdr  = ise.srfWrAdr;
       expFu = exp;
       if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
       toISE.sclExp = exp;
-      toISE.vecModeSclExp = ise.vecMode;
+      toISE.vecModeSclExp = ise.vecModeFu;
       toISE.tidSclExp = ise.tid;
     end
 
@@ -424,14 +424,11 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM].op inside {op_br, op_fcr}) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_CEM];
-      uchar tid = ise.tid, subVec = ise.subVec;
+      uchar tid = ise.tid, subVec = ise.subVecSPU;
       ushort popcnt;
       bit b_inv = ise.prInvSPU, b_nmsk = ise.prNMskSPU;
       bit is_nop = ise.mop == mop_nop;
       bit emsk[NUM_SP];
-      
-      ovm_report_info("spu", $psprintf("process branch for thread %0d", tid), OVM_HIGH);
-      
       if(rfm != null)
         popcnt = rfm.op0;
         
@@ -451,6 +448,8 @@ class ip4_tlm_spu extends ovm_component;
         if(emsk[i] == 1) 
           emskAllZero = 0;
       end
+      ovm_report_info("spu", $psprintf("process branch for thread %0d, subVec %0d, az: %0d, %s, %s, %s",
+                                        tid, ise.subVecSPU, emskAllZero, ise.bop.name, ise.mop.name, ise.sop.name), OVM_HIGH);      
       
       case(ise.mop)
       mop_guard :
@@ -512,7 +511,7 @@ class ip4_tlm_spu extends ovm_component;
         mscNext[0] = '{default : 0};
       endcase
       
-      if(ise.subVec == ise.vecMode) begin
+      if(ise.subVecSPU == ise.vecModeSPU) begin
         bit updateMSC = 0, updateMSK = 0, missBr = 0, brTaken = 0;
         
         if(is_nop)
@@ -543,7 +542,7 @@ class ip4_tlm_spu extends ovm_component;
         updateMSK &= cancel[tid][STAGE_RRF_CEM];
         updateMSC &= cancel[tid][STAGE_RRF_CEM];
                       
-        for(int i = 0; i <= ise.vecMode; i++) begin
+        for(int i = 0; i <= ise.vecModeSPU; i++) begin
           stkWEn[i] = updateMSC;
           mskWEn[i] = updateMSK;
         end
@@ -557,7 +556,7 @@ class ip4_tlm_spu extends ovm_component;
         toISE.brRsp = 1;
         toISE.tid = tid;
         toISE.mscExp = 0;
-        toISE.vecMode = ise.vecMode;
+        toISE.vecMode = ise.vecModeSPU;
         toISE.mscExp = expMSC;
         toISE.brTaken = brTaken;
         toISE.missBr = missBr;
@@ -581,7 +580,7 @@ class ip4_tlm_spu extends ovm_component;
       toRFM.wrSrMSC = 1;
       toRFM.msco = mscOF[CYC_VEC];
       toRFM.mscu = mscUF[CYC_VEC];
-      toRFM.subVec = ise.subVec;
+      toRFM.subVec = ise.subVecSPU;
     end
     
     ///send bpc to ise

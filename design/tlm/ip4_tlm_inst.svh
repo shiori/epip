@@ -253,12 +253,12 @@ typedef bit[2:0] iga_t;
 parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;
 
 typedef struct packed{
-  bit t;
-  bit[1:0] chkGrp;
-  bit[4:0] unitEn;
   bit[2:0] adrPkgB;
   bit[1:0] coPkgW;
   bit dv, nmsk, a;
+  bit t;
+  bit[1:0] chkGrp;
+  bit[4:0] unitEn;
 }i_gs1_t;
 
 typedef union packed{
@@ -592,7 +592,7 @@ class inst_c extends ovm_object;
       2'b10 : mscOp = sop_store;
       2'b11 : begin mscOp = sop_zero; priv = 1; end
       endcase
-      case(inst.i.b.b.sop)
+      case(inst.i.b.b.mop)
       3'b000 : mskOp = mop_nop;
       3'b001 : mskOp = mop_bc;
       3'b010 : mskOp = mop_rstor;
@@ -846,9 +846,9 @@ class inst_c extends ovm_object;
 	  ///long cyc instructions
     if(op inside {sfu_only_ops}) begin
       if(isVec)
-        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
       else
-        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWBP;
+        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
     end
     else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
       ///sr write back
@@ -861,15 +861,15 @@ class inst_c extends ovm_object;
 	  else if(op inside {op_fcr, op_br}) begin
 	    ///need to resolve br, only change sr
 	    if(!is_unc_br()) begin
-	      tCnt[sr_styp] = STAGE_RRF_CBR;
-	      tCnt[br_styp] = STAGE_RRF_CBR + vm;
+	      tCnt[sr_styp] = STAGE_RRF_CBR - 1;
+	      tCnt[br_styp] = STAGE_RRF_CBR + vm - 1;
 	    end
 	  end
 	  else if(op inside {ld_ops}) begin
       if(isVec)
-        tCnt[gprv_styp] = STAGE_RRF_VWBP;
+        tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
       else
-        tCnt[gprs_styp] = STAGE_RRF_SWBP;
+        tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
 	    ///load write pr
       if(mT != 2)
        tCnt[pr_styp] = STAGE_RRF_DEM;
@@ -897,10 +897,10 @@ class inst_c extends ovm_object;
 	  end
 	  else begin
       if(isVec)
-        tCnt[gprv_styp] = STAGE_RRF_VWBP;
+        tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
       else
-        tCnt[gprs_styp] = STAGE_RRF_SWBP;
-	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWBP + vm : STAGE_RRF_SWBP);
+        tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
+	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB - 1 + vm : STAGE_RRF_SWB - 1);
 	  end
 	  
 	  foreach(tCnt[i])
@@ -908,7 +908,7 @@ class inst_c extends ovm_object;
 	      wCnt[i] = tCnt[i];
 	      
 	  foreach(tCnt[i])
-	    if(wCnt[i] != 0 && tCnt[i] < wCnt[min_styp])
+	    if((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0)
 	      wCnt[min_styp] = wCnt[i];
 	endfunction : set_wcnt
 		

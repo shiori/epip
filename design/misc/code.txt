@@ -1,13 +1,22 @@
 //test asm file
 (p0) vid v21 ;
-cmpi.unc.>= p0 p1 v21 3 ; 
-(p1) b.az.bc.pop2n $tag1 0x0 ;
-(p1) li v23 0x16526C9 ;
+cmpi.unc.>= p0 p1 v21 3 ;
+nop
+(p1) b.naz.bc.pop2n $tag1 0x0
+li v0 0xffffffff
+nop
+nop ;
+options.gn
+(p1) li v0 0x16526C9 ;
+(p1) li v1 0x16526C9 ;
+(p1) li v2 0x16526C9 ;
+$tag1 lu s1 0x18 ;
+(p1) li v3 0x16526C9 ;
+(p1) li v4 0x16526C9 ;
 add.si v2 v23 0x6a6b7 ;
 lu v2 0x16526C9 ;
 //7+3=10 2r1w noimm
 lu s0 0x38 ;
-$tag1 lu s1 0x18 ;
 add.s s3 s0 s1 ;
 //3r1w mad 7*3+8
 lu v23 0x400000 ;

@@ -626,7 +626,10 @@ class tr_ise2spu extends ovm_sequence_item;
   rand br_opcode_e bop;
   rand opcode_e op;
   
-  rand uchar tid, subVec, vecMode, srAdr;
+  rand uchar tid, srAdr, /// subVec, vecMode, 
+             subVecFu, vecModeFu,
+             subVecDSE, vecModeDSE,
+             subVecSPU, vecModeSPU;
   rand bit brDep, ///brEnd,  ///signal the last subVec of a br
            brDepDSE,
            brDepSPA,
@@ -656,8 +659,8 @@ class tr_ise2spu extends ovm_sequence_item;
     tid < NUM_THREAD;
     brDep dist {0:=6, 1:=4};
     brDep -> brDepDSE || brDepSPA;
-    subVec dist {0:=5, 1:=5};
-    vecMode < CYC_VEC; ///inside {[1:CYC_VEC]};
+///    subVec dist {0:=5, 1:=5};
+///    vecMode < CYC_VEC; ///inside {[1:CYC_VEC]};
     prRdAdrSPU == 0 -> brDep == 0;
     op inside {spu_ops, spu_com_ops};
     op != op_br -> sop == sop_p2n && mop == mop_nop && bop == bop_az;
@@ -676,16 +679,16 @@ class tr_ise2spu extends ovm_sequence_item;
     solve op before sop, mop, bop;
   }
   
-  function void post_randomize();
-    static uchar last_cycs = 0, last_subs=0, lastSubVec = 0;
-		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
-			lastSubVec = subVec;
-		end
-		else begin
-		  lastSubVec++;
-			subVec = lastSubVec;
-	  end    
-  endfunction
+///  function void post_randomize();
+///    static uchar last_cycs = 0, last_subs=0, lastSubVec = 0;
+///		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
+///			lastSubVec = subVec;
+///		end
+///		else begin
+///		  lastSubVec++;
+///			subVec = lastSubVec;
+///	  end    
+///  endfunction
   
 	`ovm_object_utils_begin(tr_ise2spu)
 	  `ovm_field_int(tid, OVM_ALL_ON)
@@ -697,8 +700,14 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_int(brSrf, OVM_ALL_ON)
 	  `ovm_field_int(predPc, OVM_ALL_ON)
 ///	  `ovm_field_int(start, OVM_ALL_ON)start,   ///signal spu normal op to start
-    `ovm_field_int(subVec, OVM_ALL_ON)
-    `ovm_field_int(vecMode, OVM_ALL_ON)
+///    `ovm_field_int(subVec, OVM_ALL_ON)
+///    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(subVecFu, OVM_ALL_ON)
+    `ovm_field_int(vecModeFu, OVM_ALL_ON)
+    `ovm_field_int(subVecDSE, OVM_ALL_ON)
+    `ovm_field_int(vecModeDSE, OVM_ALL_ON)
+    `ovm_field_int(subVecSPU, OVM_ALL_ON)
+    `ovm_field_int(vecModeSPU, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr0, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr1, OVM_ALL_ON)
 	  `ovm_field_int(prWrAdr2, OVM_ALL_ON)
