@@ -257,7 +257,7 @@ typedef struct packed{
   bit[1:0] chkGrp;
   bit[4:0] unitEn;
   bit[2:0] adrPkgB;
-  bit[1:0] immPkgW;
+  bit[1:0] coPkgW;
   bit dv, nmsk, a;
 }i_gs1_t;
 
@@ -269,7 +269,7 @@ typedef union packed{
 typedef struct packed{
   bit t;
   bit[1:0] chkGrp;
-  bit unitEn, adrPkgB, immPkgW, nmsk, a;
+  bit unitEn, adrPkgB, coPkgW, nmsk, a;
 }i_gs0_t;
 
 typedef struct packed{
@@ -560,9 +560,9 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
-      fcRet = inst.i.b.fcr.ja == 0;
       offSet = {{WORD_BITS{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       set_rf_en(inst.i.b.fcr.ja, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+      fcRet = inst.i.b.fcr.ja == 0;
       op = op_fcr;
       case(inst.i.op)
       iop_fcr   : begin brDep = 0; brOp = bop_az; end
@@ -577,6 +577,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_bs}) begin
       imm = inst.i.b.b.sc;
+      rdBkSel[0] = selii;
       offSet = {{WORD_BITS{inst.i.b.b.offSet[$bits(inst.i.b.b.offSet)-1]}}, inst.i.b.b.offSet};
       op = op_br;
       case(inst.i.op)

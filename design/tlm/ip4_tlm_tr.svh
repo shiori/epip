@@ -589,16 +589,19 @@ endclass : tr_spa2spu
 ///---------------------------trsaction ise_spu spu_ise------------------------
 
 class tr_spu2ise extends ovm_sequence_item;
-  rand bit brRsp, brTaken, mscExp, sclExp;
+  rand bit brRsp, brTaken, missBr, mscExp, sclExp;
   rand uchar tid, tidSclExp;
   rand word op0;
   rand bit srReq, s2gp;
   rand opcode_e op;
   rand uchar srAdr, vecMode, vecModeSclExp;
-    
+  rand uint bpc;
+  
 	`ovm_object_utils_begin(tr_spu2ise)
 	  `ovm_field_int(brRsp, OVM_ALL_ON)
 	  `ovm_field_int(brTaken, OVM_ALL_ON)
+	  `ovm_field_int(missBr, OVM_ALL_ON)
+	  `ovm_field_int(bpc, OVM_ALL_ON)
 	  `ovm_field_int(mscExp, OVM_ALL_ON)
 	  `ovm_field_int(sclExp, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
@@ -627,6 +630,7 @@ class tr_ise2spu extends ovm_sequence_item;
   rand bit brDep, ///brEnd,  ///signal the last subVec of a br
            brDepDSE,
            brDepSPA,
+           brSrf,
            enFu[NUM_FU],
            enDSE,
            sclDSE,
@@ -646,6 +650,7 @@ class tr_ise2spu extends ovm_sequence_item;
   rand bit srRsp;
   rand word srRes;
   rand uchar rt, ss, vs;
+  rand uint predPc;
   
   constraint valid_data{
     tid < NUM_THREAD;
@@ -689,6 +694,8 @@ class tr_ise2spu extends ovm_sequence_item;
 	  `ovm_field_int(brDep, OVM_ALL_ON)
 	  `ovm_field_int(brDepDSE, OVM_ALL_ON)
 	  `ovm_field_int(brDepSPA, OVM_ALL_ON)
+	  `ovm_field_int(brSrf, OVM_ALL_ON)
+	  `ovm_field_int(predPc, OVM_ALL_ON)
 ///	  `ovm_field_int(start, OVM_ALL_ON)start,   ///signal spu normal op to start
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)

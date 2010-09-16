@@ -423,6 +423,7 @@ class ip4_tlm_spu extends ovm_component;
     ///check for valid branch
     if(v.fmISE[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM].op inside {op_br, op_fcr}) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
+      tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_CEM];
       uchar tid = ise.tid, subVec = ise.subVec;
       ushort popcnt;
       bit b_inv = ise.prInvSPU, b_nmsk = ise.prNMskSPU;
@@ -431,8 +432,8 @@ class ip4_tlm_spu extends ovm_component;
       
       ovm_report_info("spu", $psprintf("process branch for thread %0d", tid), OVM_HIGH);
       
-      if(v.fmRFM[STAGE_RRF_CEM] != null)
-        popcnt = v.fmRFM[STAGE_RRF_CEM].op0;
+      if(rfm != null)
+        popcnt = rfm.op0;
         
       emsk = ise.prRdAdrSPU == 0 ? '{default:1} : pr[tid][ise.prRdAdrSPU][subVec];
       
@@ -548,14 +549,18 @@ class ip4_tlm_spu extends ovm_component;
         end
         
         missBr = ise.brPred != brTaken;
+        if(brTaken && ise.brSrf && rfm != null && ise.predPc != rfm.op0)
+          missBr = 1;
         expMSC = expMSC && updateMSC;
         
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
+        toISE.brRsp = 1;
         toISE.tid = tid;
         toISE.mscExp = 0;
         toISE.vecMode = ise.vecMode;
         toISE.mscExp = expMSC;
         toISE.brTaken = brTaken;
+        toISE.missBr = missBr;
         if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
         toRFM.missBr = missBr;
         toRFM.expMSC = expMSC;
@@ -577,6 +582,12 @@ class ip4_tlm_spu extends ovm_component;
       toRFM.msco = mscOF[CYC_VEC];
       toRFM.mscu = mscUF[CYC_VEC];
       toRFM.subVec = ise.subVec;
+    end
+    
+    ///send bpc to ise
+    if(v.fmISE[STAGE_RRF_EXS0] != null && v.fmISE[STAGE_RRF_EXS0].brSrf && v.fmRFM[STAGE_RRF_EXS0] != null) begin
+      if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
+      toISE.bpc = v.fmRFM[STAGE_RRF_EXS0].op0;
     end
     
     ///------------req to other module----------------

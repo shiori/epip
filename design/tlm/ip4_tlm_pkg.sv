@@ -220,6 +220,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_EEX_VWB     = STAGE_EEX_VWBP + 1,             ///29
                 STAGE_ISE         = LAT_ISE - 1,                    ///1
                 STAGE_IFE         = LAT_IFE - 1,                    ///1
+                STAGE_ISE_EXS1    = LAT_ISE + STAGE_RRF_EXS1,       ///
+                STAGE_ISE_EXS2    = LAT_ISE + STAGE_RRF_EXS2,       ///
                 STAGE_ISE_EXE     = LAT_ISE + STAGE_RRF_EXE,        ///11
                 STAGE_ISE_VWBP    = LAT_ISE + STAGE_RRF_VWBP,       ///12
                 STAGE_ISE_SWBP    = LAT_ISE + STAGE_RRF_SWBP,       ///10
@@ -325,7 +327,7 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_w_b, ts_b_pred, ts_w_mrf,
+  ts_disabled, ts_rdy, ts_b_pred, ts_w_mrf,
   ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
 }thread_state_t;
 
@@ -555,7 +557,7 @@ parameter uint SGRP_SIZE = NUM_SP * NUM_SMEM_GRP_W * 4,
                                
 class ip4_printer extends ovm_table_printer;
   virtual function void print_object (string name, ovm_object value, byte scope_separator=".");
-    ovm_component comp; //only print components
+    ovm_component comp; ///only print components
     ovm_port_component_base p;
     if($cast(comp, value)) begin
       if(!$cast(p, value)) begin

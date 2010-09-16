@@ -1337,7 +1337,7 @@ class asmig;
       `asm_msg($psprintf("the allAdr[adrcnt-1][0] :%0d, allAdr[%d-1]:%0d,", allAdr[adrcnt-1][0],adrcnt, allAdr[adrcnt-1]), OVM_HIGH);
             
       if(contNum < 5)
-        gs1.i.immPkgW = contNum;
+        gs1.i.coPkgW = contNum;
       else
         `asm_err("Constant Package num out of bound!");
         
@@ -1351,7 +1351,7 @@ class asmig;
         gs1.i.unitEn[i] = !nop[i];
       
       if(contNum < 5)
-        gs1.i.immPkgW = contNum;
+        gs1.i.coPkgW = contNum;
       else
         `asm_err("Constant Package num out of bound!");
         
