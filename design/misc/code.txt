@@ -1,19 +1,13 @@
 //test asm file
 (p0) vid v21 ;
 cmpi.unc.>= p0 p1 v21 3 ; 
-
-options.g0
-$tag1 (p1) li v23 0x16526C9 ;
-options.g0
+(p1) b.az.bc.pop2n $tag1 0x0 ;
+(p1) li v23 0x16526C9 ;
 add.si v2 v23 0x6a6b7 ;
-options.g0
 lu v2 0x16526C9 ;
 //7+3=10 2r1w noimm
-options.g0
 lu s0 0x38 ;
-options.g0
-lu s1 0x18 ;
-options.g0
+$tag1 lu s1 0x18 ;
 add.s s3 s0 s1 ;
 //3r1w mad 7*3+8
 lu v23 0x400000 ;
@@ -26,11 +20,9 @@ srlv s4 s3 s1 ;
 lu v5 0x400000 ;
 mad.s v6 v3 v1 v5 ;
 // FCR os = 11
-fcr.jc.su.mu s4 0xb ;
-// Branch tag1
-b.bpb.pop2n $tag1 0x5 ;
+fcr.az.su.mu s4 0xb ;
 //FCR tag1 
-fcr.jc.su.mu rpc $tag1 ; 
+fcr.az.su.mu rpc $tag1 ; 
 // load lb
 ld.lb.lprua.ldran s7 s3 0x12 ;
 // load lw
@@ -73,9 +65,6 @@ nop
 mad.s v6 v27 v10 v9
 mad.s v4 v3 v1 v6
 add.si v2 v17 0x6a6b7 ;
-// vid instruction
-options.g0
-vid ;
 // mrfrd inst
 options.g0
 mrfrd v3 0x2 ;
