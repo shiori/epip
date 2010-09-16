@@ -64,7 +64,7 @@ class asmig;
   string op[5];
   bit[4:0] en, s, si;  /// option
   bit mu, su, fcrl, emsk, vxup, alocd, s2g, r3w1d;  /// option
-  bit fcrPc, fcrPb, fcrJc, bPb, bBc;
+  bit fcrPc, pb, az;
   bit ldH, ldB, ldLk, ldHu, ldBu;
   bit stH, stB, stCn;
   bit[1:0] sop, devcah, opcah, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, mcty;  /// option
@@ -103,10 +103,8 @@ class asmig;
     nop = 0;
     r3w1d = 0;
     fcrPc = 0;
-    fcrPb = 0;
-    fcrJc = 0;
-    bPb = 0;
-    bBc = 0;
+    pb = 0;
+    az = 0;
     mu = 0;
     su = 0;
     fcrl = 0;
@@ -626,7 +624,7 @@ class asmig;
         "fcr"   :
           begin
             ps = 0;
-            case({fcrPb, fcrJc})
+            case({pb, az})
                 2'b00 : inst[i].i.op = iop_fcr;
                 2'b01 : inst[i].i.op = iop_fcrn;
                 2'b10 : inst[i].i.op = iop_fcrp;
@@ -652,7 +650,7 @@ class asmig;
           begin
             `asm_msg($psprintf("branch tagop: %0d", tagOp[0]), OVM_HIGH);
             if(tagOp[0]) begin
-              case({bPb, bBc})
+              case({pb, az})
                 2'b00 : inst[i].i.op = iop_b;
                 2'b01 : inst[i].i.op = iop_bn;
                 2'b10 : inst[i].i.op = iop_bp;
@@ -1549,13 +1547,12 @@ class ip4_assembler;
               "gn"  : cur.chkGrp = 0;
               "nmsk" : cur.grpMsk = 1;
               "r3w1d" : cur.r3w1d = 1; 
-              "pb" : cur.fcrPb = 1;
-              "jc" : cur.fcrJc = 1;
               "mu" : cur.mu = 1;
               "su" : cur.su = 1;
               "fcrl": cur.fcrl = 1;
-              "bpb" : cur.bPb = 1;
-              "bbc" : cur.bBc = 1;
+              "pb" : cur.pb = 1;
+              "az" : cur.az = 1;
+              "naz" : cur.az = 0;
               "mnop" : cur.mop= 0;
               "bc"  : cur.mop = 1;
               "rest": cur.mop = 2;
