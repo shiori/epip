@@ -1054,7 +1054,7 @@ class inst_c extends ovm_object;
       cvt_sel = rbk_sel_e'(s - i * NUM_VRF_BKS);
     if(s inside {[(sels0 + i * NUM_SRF_BKS) : (sels0 + (i + 1) * NUM_SRF_BKS - 1)]})
       cvt_sel = rbk_sel_e'(s - i * NUM_SRF_BKS);
-    $display($psprintf("%s, %s, %0d", s.name, cvt_sel.name, i));
+///    $display($psprintf("%s, %s, %0d", s.name, cvt_sel.name, i));
   endfunction
   
   function void fill_rfm(input tr_ise2rfm rfm, uchar subVec);

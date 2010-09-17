@@ -159,11 +159,18 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_CEM + CYC_VEC] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM + CYC_VEC];
       if(mskWEn[CYC_VEC]) begin
+        ovm_report_info("update mask", $psprintf("tid: %0d, subVec: %0d, ", ise.tid, ise.subVecSPU), OVM_HIGH);
         ilm[ise.tid][ise.subVecSPU] = ilmNext[CYC_VEC];
         cm[ise.tid][ise.subVecSPU] = cmNext[CYC_VEC];
+        for(int i = 0; i < NUM_SP; i++)
+          ovm_report_info("update mask", $psprintf("ilm: %0d, cm: %0d", ilmNext[CYC_VEC][i], cmNext[CYC_VEC][i]), OVM_HIGH);
       end
-      if(stkWEn[CYC_VEC])
+      if(stkWEn[CYC_VEC]) begin
+        ovm_report_info("update msc", $psprintf("tid: %0d, subVec: %0d, ", ise.tid, ise.subVecSPU), OVM_HIGH);
         msc[ise.tid][ise.subVecSPU] = mscNext[CYC_VEC];
+        for(int i = 0; i < NUM_SP; i++)
+          ovm_report_info("update msc", $psprintf("msc: %0d", mscNext[CYC_VEC][i]), OVM_HIGH);
+      end
     end
           
     ///write back cmp predication register results
@@ -539,8 +546,8 @@ class ip4_tlm_spu extends ovm_component;
         else/// if(ise.sop == sop_p2nc)
           updateMSC = emskAllZero;
 
-        updateMSK &= cancel[tid][STAGE_RRF_CEM];
-        updateMSC &= cancel[tid][STAGE_RRF_CEM];
+        updateMSK &= !cancel[tid][STAGE_RRF_CEM];
+        updateMSC &= !cancel[tid][STAGE_RRF_CEM];
                       
         for(int i = 0; i <= ise.vecModeSPU; i++) begin
           stkWEn[i] = updateMSC;

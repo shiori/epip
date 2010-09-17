@@ -2,7 +2,7 @@
 (p0) vid v21 ;
 cmpi.unc.>= p0 p1 v21 3 ;
 nop
-(p1) b.naz.bc.pop2n $tag1 0x0
+(p1) b.naz.loop.storemsc $tag1 0x0
 add.si v3 v0 0xffffffff
 add.si v3 v4 0xffffffff
 add.si v5 v12 0xffffffff ;

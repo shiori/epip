@@ -25,7 +25,7 @@ class test_sys_env extends ovm_env;
   endfunction : new
 endclass
 
-/// vsim +OVM_TESTNAME=ip4_sys_test work.top
+/// vsim +OVM_TESTNAME=ip4_sys_test work.top -c -do "run 90ns ; quit -f"
 /// -novopt
 
 class ip4_sys_test extends ovm_test;
