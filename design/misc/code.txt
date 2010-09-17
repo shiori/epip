@@ -4,15 +4,15 @@ cmpi.unc.>= p0 p1 v21 3 ;
 nop
 (p1) b.naz.loop.storemsc $tag1 0x0
 add.si v3 v0 0xffffffff
-add.si v3 v4 0xffffffff
+add.si v4 v4 0xffffffff
 add.si v5 v12 0xffffffff ;
 options.gn
 (p1) li v0 0x16526C9 ;
 (p1) li v1 0x16526C9 ;
 (p1) li v2 0x16526C9 ;
 $tag1 lu s1 0x18 ;
-(p1) li v3 0x16526C9 ;
-(p1) li v4 0x16526C9 ;
+li v6 0x16526C9 ;
+li v7 0x16526C9 ;
 add.si v2 v23 0x6a6b7 ;
 lu v2 0x16526C9 ;
 //7+3=10 2r1w noimm
