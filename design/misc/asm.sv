@@ -88,9 +88,10 @@ class asmig;
   bit[3:0][7:0] co[NUM_BP_CO];
   bit coEn[NUM_BP_CO];
   int contNum;  
-  uint adrBytes;
   bit[1:0] mrst;
-  
+  uchar adrBytes;
+  uchar modBytes;
+      
   function new();
     ps = 1;
     nop = 0;
@@ -1262,10 +1263,23 @@ class asmig;
     
     /// calculate the group size
     v_icnt = 0;
-    if(adrcnt == 0)
-      adrBytes = 0;
+    
+    `asm_msg($psprintf("adrcnt :%0d", adrcnt), OVM_FULL);
+    if(adrcnt >= 1) begin
+        modBytes = (adrcnt  * 3) % 8;
+        `asm_msg($psprintf("modBytes :%0d", modBytes), OVM_FULL);
+        if(modBytes != 0) begin
+          if(modBytes == 1)
+            adrBytes = adrcnt * 3 / 8;
+          else
+            adrBytes = (adrcnt * 3 / 8) + 1;
+        end
+    end
     else
-      adrBytes = adrcnt * 3 / 8 + 1;
+      adrBytes = 0;
+    
+    `asm_msg($psprintf("adrBytes :%0d", adrBytes), OVM_FULL);
+    
     if(en == 'b01) begin
       grpsize = (8 + (icnt + 1) * 40 +  contNum * 32) / 8 + adrBytes; 
       `asm_msg($psprintf("gs0 icnt grpsize %0d", icnt), OVM_FULL);
@@ -1287,31 +1301,12 @@ class asmig;
   
   function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
     bit[7:0] constPkg[NUM_BP_CO][4];
-    uchar adrBytes ;
-    uchar modBytes;
-    bit gadr_flag;
     bit[8:0][7:0] tmp0;
     bit[23:0][2:0] tmp1;
     
     $fwrite(fo, "%s", $psprintf("//pc: 0x%0h --------------------------------\n", pc));
+    `asm_msg($psprintf("//pc: 0x%0h --------------------------------", pc));
     
-    gadr_flag = 0;
-    `asm_msg($psprintf("adrcnt :%0d", adrcnt), OVM_FULL);
-    if(adrcnt >= 1) begin
-        modBytes = (adrcnt  * 3) % 8;
-        `asm_msg($psprintf("modBytes :%0d", modBytes), OVM_FULL);
-        if(modBytes != 0) begin
-          if(modBytes == 1) begin
-            adrBytes = adrcnt  * 3 / 8;
-            gadr_flag = 1;
-          end
-          else
-            adrBytes = (adrcnt  * 3 / 8) + 1;
-        end
-    end
-    else
-      adrBytes = 0;
-
     if(tagOp[0] && tag2ig.exists(tag)) begin
       foreach(inst[i]) begin
         if(inst[i].i.op inside {iop_fcr, iop_fcrn, iop_fcrp, iop_fcrpn}) begin
@@ -1339,7 +1334,7 @@ class asmig;
       gs0.unitEn = isVec[0];
       gs0.adrPkgB = adrBytes;
       gs0.nmsk = grpMsk;
-      gs0.a = gadr_flag?allAdr[adrcnt-1][2]:0;
+      gs0.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
       
       `asm_msg($psprintf("the allAdr[adrcnt-1][0] :%0d, allAdr[%d-1]:%0d,", allAdr[adrcnt-1][0],adrcnt, allAdr[adrcnt-1]), OVM_FULL);
             
@@ -1371,7 +1366,7 @@ class asmig;
       gs1.i.chkGrp = chkGrp;
       gs1.i.adrPkgB = adrBytes;
       gs0.nmsk = grpMsk;
-      gs1.i.a = gadr_flag?allAdr[adrcnt-1][2]:0;
+      gs1.i.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
       `asm_msg($psprintf("the first address is %0d", allAdr[0]), OVM_FULL);
       
       $fwrite(fo, "%8b\n", gs1.b[0]);
@@ -1678,8 +1673,8 @@ class ip4_assembler;
 ///            cur.srOp[icnt][opcnt] = tk0.tolower() == "u";
 ///            cur.constOp[icnt][opcnt] = tk0.tolower() == "c";
             cur.pdrOp[icnt][opcnt] = tk0.tolower() == "p";
-              if(cur.op[icnt] inside {"b", "fcr"}) begin
-                cur.tagOp[opcnt] = tk0.tolower() == "$";
+            if(cur.op[icnt] inside {"b", "fcr"}) begin
+              cur.tagOp[opcnt] = tk0.tolower() == "$";
               if(cur.tagOp[opcnt])
                 cur.tag = tk1n;
             end

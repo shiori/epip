@@ -285,8 +285,8 @@ typedef enum uchar {
   selii, selspu, seldse, selfu[0:15]
 } rbk_sel_e;
   
-parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS - 1),
-                    sels_e = rbk_sel_e'(sels0 + NUM_SRF_BKS - 1),
+parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS * CYC_VEC - 1),
+                    sels_e = rbk_sel_e'(sels0 + NUM_SRF_BKS * CYC_VEC - 1),
                     selc_e = rbk_sel_e'(selc0 + NUM_BP_CO - 1);
 
 typedef enum uchar {

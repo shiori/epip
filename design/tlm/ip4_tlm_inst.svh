@@ -946,7 +946,7 @@ class inst_c extends ovm_object;
 	endfunction : set_data
 	
   function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
-                            s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vecBusy, sclBusy, dseBusy,
+                            s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfBusy, srfBusy, dseBusy, spuBusy, fuBusy,
                             ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
                             ref bit[4:0] wCntDep);
     if(!decoded) decode();
@@ -956,20 +956,25 @@ class inst_c extends ovm_object;
     foreach(srfEn[i,j])
       s_en[i][j] = s_en[i][j] | srfEn[i][j];
     
-    if(CntSrfRd > sclBusy)
-      sclBusy = CntSrfRd;
-    if(is_br() && !is_unc_br())
-      sclBusy = vmode + 1;
-    if(enSPU && sclBusy == 0)
-      sclBusy = 1;
-        
-    if(CntVrfRd > vecBusy)
-      vecBusy = CntVrfRd;
-    if(vmode > vecBusy && isVec)
-      vecBusy = vmode + 1;
+    if(CntSrfRd > srfBusy)
+      srfBusy = CntSrfRd;
+    if(CntVrfRd > vrfBusy)
+      vrfBusy = CntVrfRd;
     
+    if(enSPU) begin
+      if(is_br() && !is_unc_br())
+        spuBusy = vmode + 1;
+      else
+        spuBusy = 1;
+    end
+    
+    if(enFu) begin
+      if(isVec)
+        fuBusy = vmode + 1;
+    end
+  
     if(enDSE) begin
-      if(isVec && isVec)
+      if(isVec)
         dseBusy = vmode + 1;
       else
         dseBusy = 1;
@@ -1045,10 +1050,11 @@ class inst_c extends ovm_object;
     cvt_sel = s;
     if(s inside {[selv0:selv_e], [sels0:sels_e]})
       cvt_sel = selnull;
-    if(s inside {[selv0 + i * NUM_VRF_BKS : selv0 + (i + 1) * NUM_VRF_BKS - 1]})
+    if(s inside {[(selv0 + i * NUM_VRF_BKS) : (selv0 + (i + 1) * NUM_VRF_BKS - 1)]})
       cvt_sel = rbk_sel_e'(s - i * NUM_VRF_BKS);
-    if(s inside {[sels0 + i * NUM_SRF_BKS : sels0 + (i + 1) * NUM_SRF_BKS - 1]})
+    if(s inside {[(sels0 + i * NUM_SRF_BKS) : (sels0 + (i + 1) * NUM_SRF_BKS - 1)]})
       cvt_sel = rbk_sel_e'(s - i * NUM_SRF_BKS);
+    $display($psprintf("%s, %s, %0d", s.name, cvt_sel.name, i));
   endfunction
   
   function void fill_rfm(input tr_ise2rfm rfm, uchar subVec);
