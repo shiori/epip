@@ -699,8 +699,11 @@ class ip4_tlm_ise extends ovm_component;
       v.rst[stage].exp = exp;
       v.rst[stage].sel = sel;
       t.threadState = ts_w_rst;
-      if(v.rst[stage].tid != tid || !v.rst[stage].en)
+      if(v.rst[stage].tid != tid || !v.rst[stage].en) begin
         ovm_report_warning("restore_pc", "rst info inconsistent!");
+        for(int j = STAGE_ISE_VWB_END; j > 0; j--)
+          ovm_report_info("rollback", $psprintf("stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d", j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_HIGH);  
+      end
     end
   endfunction
   
@@ -1233,26 +1236,7 @@ class ip4_tlm_ise extends ovm_component;
         void'(exe_ise(tid, t.iSPU.op));
     end
 
-///    if(t.enSPU && t.iSPU.is_br())
     t.br_pred(vn.rst[1].bpc, vn.rst[1].brSrf);
-      
-    ///branch taken
-///    if(t.enSPU && t.iSPU.is_br() && t.brPred) begin
-///      ///jmp to current?
-///      if(t.iSPU.offSet == 0)
-///        t.decoded = 1;
-///      else begin
-///        t.flush();
-///        t.decoded = 0;
-///      end
-///    end
-///    ///not branch or branch not taken
-///    else begin
-///      t.pc += t.iGrpBytes;
-///      t.decoded = 0;
-///      t.iBuf = t.iBuf[t.iGrpBytes:$];
-///      t.decodeErr = 0;
-///    end
             
     if(t.enDSE) begin
       if(t.iDSE.op inside {op_lw, op_lh, op_lhu, op_lb, op_lbu})
@@ -1424,7 +1408,7 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 3 dse exp or cache miss
     if(v.fmDSE != null && v.fmDSE.rsp) begin
       tr_dse2ise dse = v.fmDSE;
-      uchar st = STAGE_ISE_DEM;
+      uchar st = STAGE_ISE_DBR;
       ise_thread_inf t = thread[dse.tid];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
@@ -1433,26 +1417,27 @@ class ip4_tlm_ise extends ovm_component;
         t.threadState = ts_rdy;
       if(t.pendExLoad == 0 && t.threadState inside {ts_w_synld, ts_w_syna})
         t.threadState = ts_rdy;
-      if(dse.scl) st += t.vecMode;
-      if(dse.exp && !cancel[dse.tid][STAGE_ISE_DEM]) begin
+      st += t.vecMode;
+      if(dse.exp && !cancel[dse.tid][STAGE_ISE_DBR]) begin
         t.srCauseDSE = dse.cause;
         t.cancel = 1;  
         t.flush();
-        restore_pc(dse.tid, 1, st, 1);
-        cancel[dse.tid] |= `GML(STAGE_ISE_DEM + dse.vecMode);
+        restore_pc(dse.tid, 0, st, 1);
+        cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
       end
-      else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DEM]) begin
+      else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DBR]) begin
         t.cancel = 1;   
         t.flush();
         restore_pc(dse.tid, 1, st);
-        cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
+        cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
       end
-      else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DEM]) begin
+      else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DBR]) begin
+        ///todo rerun is not in dbr!!
         t.cancel = 1;   
         t.flush();
         restore_pc(dse.tid, 0, st);
         t.noExt = ~dse.reRun;
-        cancel[dse.tid] |= `GML(STAGE_ISE_DEM);
+        cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
       end
     end
     
@@ -1554,11 +1539,8 @@ class ip4_tlm_ise extends ovm_component;
       t.pcUEret = v.rst[i].pcUEret;
       t.ejtagMode = v.rst[i].ejtag;
       
-      ovm_report_info("rollback", $psprintf("stage %0d, pc 0x%0h, %s", i, res, t.privMode.name), OVM_HIGH);  
+      ovm_report_info("rollback", $psprintf("stage %0d, exp %0d, pc 0x%0h, %s", i, v.rst[i].exp, res, t.privMode.name), OVM_HIGH);  
       
-      for(int j = STAGE_ISE_VWB_END; j > 0; j--)
-        ovm_report_info("rollback", $psprintf("stage %0d, bpc 0x%0h, sel: %0d", j, v.rst[j].bpc, v.rst[j].sel), OVM_HIGH);  
-        
       if(v.rst[i].exp) begin
         if(v.rst[i].ejtag) begin
           t.pc = VADR_EJTAGS;

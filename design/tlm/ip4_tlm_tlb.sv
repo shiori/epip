@@ -155,6 +155,10 @@ class ip4_tlm_tlb extends ovm_component;
     vn.fmDSE = null;
     vn.fmSPU = null;
     
+    toDSE = null;
+    toIFE = null;
+    toSPU = null;
+    
     ///serve dse or ife?
     if(v.fmDSE == null || (v.fmDSE != null && !v.fmDSE.req)) begin
       rspIFE = v.fmIFE[0] != null && v.fmIFE[0].req;
@@ -234,7 +238,6 @@ class ip4_tlm_tlb extends ovm_component;
         toIFE.pfn = varPFN;///varPAdr;
         toIFE.tid = v.fmIFE[0].tid;
         toIFE.rsp = 1;
-        toIFE.hit = find;
         toIFE.exp = exp;
         toIFE.k = varK;
         toIFE.ex = varEx;
@@ -245,13 +248,13 @@ class ip4_tlm_tlb extends ovm_component;
         if(toDSE == null) toDSE = tr_tlb2dse::type_id::create("toDSE", this);
         toDSE.pfn = varPFN;///varPAdr;
         toDSE.eobit = evenOddBit;
-        toDSE.hit = find;
         toDSE.exp = exp;
         toDSE.writeAlloc = (varC >> 2) & 'b01;
         toDSE.writeThru = (varC >> 3) & 'b01;
         toDSE.coherency = (varC >> 1) & 'b01;
         toDSE.cached = varC & 'b01;
         toDSE.endian = varE;
+        toDSE.cause = cause;
       end   
     end   
     
@@ -387,7 +390,7 @@ class ip4_tlm_tlb extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_dse(input tr_dse2tlb req, output tr_dse2tlb rsp);
-    ovm_report_info("tlb_tr", "Get dse Transaction...", OVM_HIGH);
+    ovm_report_info("tlb_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -397,7 +400,7 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction : nb_transport_dse
   
   function bit nb_transport_spu(input tr_spu2tlb req, output tr_spu2tlb rsp);
-    ovm_report_info("tlb_tr", "Get spu Transaction...", OVM_HIGH);
+    ovm_report_info("tlb_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -407,7 +410,7 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_ife(input tr_ife2tlb req, output tr_ife2tlb rsp);
-    ovm_report_info("tlb_tr", "Get ife Transaction...", OVM_HIGH);
+    ovm_report_info("tlb_tr", $psprintf("Get ife Transaction:\n%s", req.sprint()), OVM_HIGH);
     sync();
     assert(req != null);
     void'(begin_tr(req));

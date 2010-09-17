@@ -229,7 +229,7 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_RRC] != null && v.fmISE[STAGE_RRF_RRC].enDSE) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC];
       bit res = 0;
-      if(toDSE) toDSE = tr_spu2dse::type_id::create("toDSE", this);
+      if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
       if(ise.sclDSE) begin
         for(int subVec = 0; subVec <= ise.vecModeDSE; subVec++) begin
           bit tmp[NUM_SP];

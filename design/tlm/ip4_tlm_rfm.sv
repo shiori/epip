@@ -52,9 +52,9 @@ class ip4_tlm_rfm extends ovm_component;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
   local word srExpFlag[NUM_THREAD][CYC_VEC][NUM_SP];
-  local uchar srDSEExp[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit srMSCO[NUM_THREAD][CYC_VEC][NUM_SP],
-            srMSCU[NUM_THREAD][CYC_VEC][NUM_SP];
+            srMSCU[NUM_THREAD][CYC_VEC][NUM_SP],
+            srDSEExp[NUM_THREAD][CYC_VEC][NUM_SP];
   
   local word dseSt[2][CYC_VEC][NUM_SP];
   local bit[STAGE_RRF_VWB:1] cancel[NUM_THREAD];
@@ -113,7 +113,7 @@ class ip4_tlm_rfm extends ovm_component;
     end
     
     if(v.fmDSE != null && v.fmDSE.exp)
-      cancel[v.fmSPA.tid] |= `GML(STAGE_RRF_DEM + v.fmDSE.vecModeExp);
+      cancel[v.fmDSE.tidExp] |= `GML(STAGE_RRF_DPRW + v.fmDSE.vecModeExp);
   endfunction
   
   function void req_proc();

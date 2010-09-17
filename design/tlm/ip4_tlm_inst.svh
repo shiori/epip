@@ -341,7 +341,7 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mST, mSs, mVs, mFun, mS, mRt, mT, mRfAdr, srAdr;
+  uchar mST, mSs, mVs, mFun, mRt, mT, mrfAdr, srAdr;
   bit[NUM_FIFO - 1 : 0] mFifos;
   bit enSPU, enDSE, enFu;
   update_adr_t mua;
@@ -387,7 +387,7 @@ class inst_c extends ovm_object;
 ///    `ovm_field_int(mS, OVM_ALL_ON)
 ///    `ovm_field_int(mRt, OVM_ALL_ON)
 ///    `ovm_field_int(mT, OVM_ALL_ON)
-///    `ovm_field_int(mRfAdr, OVM_ALL_ON)
+///    `ovm_field_int(mrfAdr, OVM_ALL_ON)
 ///    `ovm_field_int(mFifos, OVM_ALL_ON)
   `ovm_object_utils_end
 
@@ -399,10 +399,10 @@ class inst_c extends ovm_object;
 		  `PF(mVs, OVM_BIN)
 ///		  `PF(mUpdateAdr, OVM_BIN)
 		  `PF(mFun, OVM_BIN)
-		  `PF(mS, OVM_BIN)
+///		  `PF(mS, OVM_BIN)
 		  `PF(mRt, OVM_BIN)
 ///		  `PF(mT, OVM_BIN)
-		  `PF(mRfAdr, OVM_BIN)
+		  `PF(mrfAdr, OVM_BIN)
 		  `PF(mFifos, OVM_BIN)
 		  `PE(mua)
 		  `PE(mat)
@@ -716,9 +716,9 @@ class inst_c extends ovm_object;
       adrWr[0] = inst.i.b.mrfa.rd;
       wrEn[0] = 1;
       set_rf_en(inst.i.b.mrfa.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      mS = inst.i.b.mrfa.s;
+      imm = inst.i.b.mrfa.s;
       mST = inst.i.b.mrfa.st;
-      mRfAdr = inst.i.b.mrfa.mrfa;
+      mrfAdr = inst.i.b.mrfa.mrfa;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = prWrAdr[0] != 0;
     end
@@ -1128,6 +1128,7 @@ class inst_c extends ovm_object;
   function void fill_dse(input tr_ise2dse dse);
     if(!decoded) decode();
     if(enDSE) begin
+      dse.en = 1;
       dse.wrAdr = adrWr[0];
       dse.wrBk = bkWr[0];
       dse.wrGrp = grpWr[0];
@@ -1140,6 +1141,8 @@ class inst_c extends ovm_object;
       dse.wr = wrEn[0];
       dse.ua = mua;
       dse.at = mat;
+      dse.sendRotRight = mST;
+      dse.mrfAdr = mrfAdr;
     end
   endfunction : fill_dse
 

@@ -1,5 +1,5 @@
 //test asm file
-ld.nua.burst v0 zero 0x0 ;
+ld.nua.burst v0 zero 0x10 ;
 (p0) vid v21 ;
 cmpi.unc.>= p0 p1 v21 3 ;
 nop
