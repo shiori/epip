@@ -65,9 +65,9 @@ class asmig;
   bit[4:0] en, s, si;  /// option
   bit mu, su, fcrl, emsk, vxup, alocd, s2g, r3w1d;  /// option
   bit fcrPc, pb, az;
-  bit ldH, ldB, ldLk, ldHu, ldBu;
-  bit stH, stB, stCn;
-  bit[1:0] sop, devcah, opcah, ldua, ldty, stua, stty, cmpxua, cmpxty, fetaua, fetaty, mcty;  /// option
+  bit ldLk, mhalfu, mbyteu;
+  bit mhalf, mbyte, stCn;
+  bit[1:0] sop, devcah, opcah, ua, ty, mcty;  /// option
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
   uchar icnt;  
@@ -111,13 +111,11 @@ class asmig;
     fcrl = 0;
     emsk = 0;
     vxup = 0;
-    ldH = 0;
-    ldB = 0;
-    ldHu = 0;
-    ldBu = 0;
+    mhalfu = 0;
+    mbyteu = 0;
     ldLk = 0;
-    stH = 0;
-    stB = 0;
+    mhalf = 0;
+    mbyte = 0;
     stCn = 0;
     en = 0;
     s = 0;
@@ -673,15 +671,15 @@ class asmig;
         "ld"    :
           begin
             if(immOp[i][2]) begin
-              if(ldH) inst[i].i.op = iop_lh;
-              else if(ldB) inst[i].i.op = iop_lb;
+              if(mhalf) inst[i].i.op = iop_lh;
+              else if(mbyte) inst[i].i.op = iop_lb;
               else if(ldLk) inst[i].i.op = iop_ll;
-              else if(ldHu) inst[i].i.op = iop_lhu;
-              else if(ldBu) inst[i].i.op = iop_lbu;
+              else if(mhalfu) inst[i].i.op = iop_lhu;
+              else if(mbyteu) inst[i].i.op = iop_lbu;
               else inst[i].i.op = iop_lw;
               {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][2];
-              inst[i].i.b.ld.ua = ldua;
-              inst[i].i.b.ld.t = ldty;
+              inst[i].i.b.ld.ua = ua;
+              inst[i].i.b.ld.t = ty;
               one = 1;
             end
             else begin
@@ -693,13 +691,13 @@ class asmig;
           begin
             ps = 0;
             if(immOp[i][2]) begin
-              if(stH) inst[i].i.op = iop_sh;
-              else if(stB) inst[i].i.op = iop_sb;
+              if(mhalf) inst[i].i.op = iop_sh;
+              else if(mbyte) inst[i].i.op = iop_sb;
               else if(stCn) inst[i].i.op = iop_sc;
               else inst[i].i.op = iop_sw;
               {inst[i].i.b.st.os2, inst[i].i.b.st.os1, inst[i].i.b.st.os0} = imm[i][2];
-              inst[i].i.b.st.ua = stua;
-              inst[i].i.b.st.t = stty;
+              inst[i].i.b.st.ua = ua;
+              inst[i].i.b.st.t = ty;
               two = 1;
             end
           else begin
@@ -713,8 +711,8 @@ class asmig;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_cmpxchg;
               {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][2];
-              inst[i].i.b.cmpxchg.ua = cmpxua;
-              inst[i].i.b.cmpxchg.t = cmpxty;
+              inst[i].i.b.cmpxchg.ua = ua;
+              inst[i].i.b.cmpxchg.t = ty;
               two = 1;
             end
             else begin
@@ -727,8 +725,8 @@ class asmig;
             if(immOp[i][3]) begin
               inst[i].i.op = iop_fetadd;
               {inst[i].i.b.ld.os1, inst[i].i.b.ld.os0} = imm[i][3];
-              inst[i].i.b.ld.ua = fetaua;
-              inst[i].i.b.ld.t  = fetaty;
+              inst[i].i.b.ld.ua = ua;
+              inst[i].i.b.ld.t  = ty;
               two = 1;
             end
             else begin
@@ -1585,38 +1583,18 @@ class ip4_assembler;
                 cur.coEn[3] = 1;
                 cur.contNum = cur.contNum + 1;
               end
-              "lh" : cur.ldH = 1;
-              "lb" : cur.ldB = 1;
-              "lhu" : cur.ldHu = 1;
-              "lbu" : cur.ldBu = 1;
-              "ldl" : cur.ldLk = 1;
-              "lprua" : cur.ldua = 1;
-              "lnua" : cur.ldua = 0;
-              "lptua" : cur.ldua = 2;
-              "ldbst" : cur.ldty = 0;
-              "ldran" : cur.ldty = 1;
-              "ldrnu" : cur.ldty = 2;
-              "sh" : cur.stH = 1;
-              "sb" : cur.stB = 1;
-              "sc" : cur.stCn = 1;
-              "sprua" : cur.stua = 1;
-              "snua" : cur.stua = 0;
-              "sptua" : cur.stua = 2;
-              "stbst" : cur.stty = 0;
-              "stran" : cur.stty = 1;
-              "strnu" : cur.stty = 2;
-              "cmpxpua" : cur.cmpxua = 1;
-              "cmpxnua" : cur.cmpxua = 0;
-              "cmpxtua" : cur.cmpxua = 2;
-              "cmpxbst" : cur.cmpxty = 0;
-              "cmpxran" : cur.cmpxty = 1;
-              "cmpxrnu" : cur.cmpxty = 2;
-              "fetapua" : cur.fetaua = 1;
-              "fetanua" : cur.fetaua = 0;
-              "fetatua" : cur.fetaua = 2;
-              "fetabst" : cur.fetaty = 0;
-              "fetaran" : cur.fetaty = 1;
-              "fetarnu" : cur.fetaty = 2;
+              "halfu" : cur.mhalfu = 1;
+              "byteu" : cur.mbyteu = 1;
+              "half" : cur.mhalf = 1;
+              "byte" : cur.mbyte = 1;
+              "cond" : cur.stCn = 1;
+              "link" : cur.ldLk = 1;
+              "preua" : cur.ua = 1;
+              "nua" : cur.ua = 0;
+              "postua" : cur.ua = 2;
+              "burst" : cur.ty = 0;
+              "rand" : cur.ty = 1;
+              "randnu" : cur.ty = 2;
               "alocd" : cur.alocd = 1;
               "s2g" : cur.s2g = 1;
               "g2s" : cur.s2g = 0; 

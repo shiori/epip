@@ -1153,6 +1153,7 @@ class ip4_tlm_ise extends ovm_component;
         ciDSE[i].nonBlock = t.lpRndMemMode;
         ciDSE[i].tid = tid;
         ciDSE[i].noExt = t.noExt[i];
+        ciDSE[i].priv = t.privMode == priv_kernel;
         ciSPU[i].vecModeDSE = t.vecMode;
         ciSPU[i].subVecDSE = i;
         t.noExt[i] = 0;

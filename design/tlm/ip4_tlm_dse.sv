@@ -1080,13 +1080,14 @@ class ip4_tlm_dse extends ovm_component;
         vn.rfm[STAGE_RRF_DEM].wrGrp = ise.wrGrp;
         vn.rfm[STAGE_RRF_DEM].wrAdr = ise.wrAdr;
         vn.rfm[STAGE_RRF_DEM].wrBk = ise.wrBk;
-        vn.rfm[STAGE_RRF_DEM].updateAdrWrBk = ise.updateAdrWr;
-        vn.rfm[STAGE_RRF_DEM].updateAdrWrBk = ise.updateAdrWrBk;
-        vn.rfm[STAGE_RRF_DEM].updateAdrWrAdr = ise.updateAdrWrAdr;
-        vn.rfm[STAGE_RRF_DEM].updateAdrWrGrp = ise.updateAdrWrGrp;
+        vn.rfm[STAGE_RRF_DEM].uaWrEn = ise.uaWrEn;
+        vn.rfm[STAGE_RRF_DEM].uaWrBk = ise.uaWrBk;
+        vn.rfm[STAGE_RRF_DEM].uaWrAdr = ise.uaWrAdr;
+        vn.rfm[STAGE_RRF_DEM].uaWrGrp = ise.uaWrGrp;
         vn.rfm[STAGE_RRF_DEM].subVec = ise.subVec;
+        vn.rfm[STAGE_RRF_DEM].uaRes = rfm.base; ///ise.ua == ua_post ?? todo
         vn.spu[STAGE_RRF_DEM].tid = ise.tid;
-        vn.spu[STAGE_RRF_DEM].wrEn = ise.updatePr;
+        vn.spu[STAGE_RRF_DEM].wrEn = ise.ua != ua_no;
       end
 
       ///finish one half wrap or whole request
@@ -1392,9 +1393,9 @@ class ip4_tlm_dse extends ovm_component;
         vn.rfm[STAGE_RRF_SXG0].wrGrp = ldQue[eif.id].wrGrp;
         vn.rfm[STAGE_RRF_SXG0].wrAdr = ldQue[eif.id].wrAdr;
         vn.rfm[STAGE_RRF_SXG0].wrBk = ldQue[eif.id].wrBk;
-        vn.rfm[STAGE_RRF_SXG0].updateAdrWrBk = 0;
-        vn.rfm[STAGE_RRF_SXG0].updateAdrWrAdr = 0;
-        vn.rfm[STAGE_RRF_SXG0].updateAdrWrGrp = 0;
+        vn.rfm[STAGE_RRF_SXG0].uaWrBk = 0;
+        vn.rfm[STAGE_RRF_SXG0].uaWrAdr = 0;
+        vn.rfm[STAGE_RRF_SXG0].uaWrGrp = 0;
         vn.rfm[STAGE_RRF_SXG0].subVec = ldQue[eif.id].subVec;
         
         if(cacheFlush[STAGE_RRF_SEL] || allocFail) begin
@@ -1442,7 +1443,7 @@ class ip4_tlm_dse extends ovm_component;
         foreach(spu.emsk[i]) begin
           if(spu.emsk[i]) begin
             rfm.base[i] = rfm.base[i] + rfm.os;
-            if(ise.burst || ise.op == op_tmrf) begin
+            if(ise.at == at_burst || ise.op == op_tmrf) begin
               if(ise.op inside {op_lw, op_ll, op_sw, op_sc})
                 rfm.base[i] += (i + NUM_SP * ise.subVec) << 2;
               else if(ise.op inside {op_lh, op_lhu, op_sh})

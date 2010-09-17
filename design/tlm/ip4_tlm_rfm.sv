@@ -185,8 +185,8 @@ class ip4_tlm_rfm extends ovm_component;
           foreach(dse.wrEn[sp])
             if(dse.wrEn[sp] && dse.vrfWr) begin
               vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
-              if(dse.updateAdrWr)
-                vrf[dse.updateAdrWrGrp][dse.updateAdrWrAdr][dse.updateAdrWrBk][dse.subVec][sp] = dse.updateAdrRes[sp];
+              if(dse.uaWrEn)
+                vrf[dse.uaWrGrp][dse.uaWrAdr][dse.uaWrBk][dse.subVec][sp] = dse.uaRes[sp];
             end
       end
     end

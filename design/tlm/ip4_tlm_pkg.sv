@@ -335,6 +335,23 @@ typedef enum uchar {
   priv_user,    priv_kernel,  priv_event
 }priv_mode_t;
 
+typedef enum uchar {
+  ua_no,    ua_pre,     ua_post
+}update_adr_t;
+
+typedef enum uchar {
+  at_burst,   at_rand,    at_randnu
+}access_typ_t;
+
+typedef enum uchar {
+  rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
+}round_mode_t;
+
+typedef enum uchar {
+  gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
+  br_styp,      min_styp
+}storage_type_t;
+
 ///the MOESI protocol plus a dirty state meaning no cc and modified
 typedef enum uchar {
   cs_inv,     cs_shared,    cs_owned,     cs_exclusive,   cs_modified,
@@ -516,15 +533,6 @@ typedef enum uchar {
   UE_FFSFL = 'h80,
   UE_FFSYN = 'h90
 }user_event_os_t;
-  
-typedef enum uchar {
-  rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
-}round_mode_t;
-
-typedef enum uchar {
-  gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
-  br_styp,      min_styp
-}storage_type_t;
 
 parameter uchar INDEX_ENT    = 7 , /// entry bits
                 NUM_TLB_E    = 1 << INDEX_ENT,  ///128

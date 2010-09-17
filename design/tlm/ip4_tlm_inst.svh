@@ -341,9 +341,11 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mST, mSs, mVs, mUpdateAdr, mFun, mS, mRt, mT, mRfAdr, srAdr;
+  uchar mST, mSs, mVs, mFun, mS, mRt, mT, mRfAdr, srAdr;
   bit[NUM_FIFO - 1 : 0] mFifos;
   bit enSPU, enDSE, enFu;
+  update_adr_t mua;
+  access_typ_t mat;
   
   `ovm_object_utils_begin(inst_c)
     `ovm_field_int(decoded, OVM_ALL_ON)
@@ -395,13 +397,15 @@ class inst_c extends ovm_object;
 		  `PF(mST, OVM_BIN)
 		  `PF(mSs, OVM_BIN)
 		  `PF(mVs, OVM_BIN)
-		  `PF(mUpdateAdr, OVM_BIN)
+///		  `PF(mUpdateAdr, OVM_BIN)
 		  `PF(mFun, OVM_BIN)
 		  `PF(mS, OVM_BIN)
 		  `PF(mRt, OVM_BIN)
-		  `PF(mT, OVM_BIN)
+///		  `PF(mT, OVM_BIN)
 		  `PF(mRfAdr, OVM_BIN)
 		  `PF(mFifos, OVM_BIN)
+		  `PE(mua)
+		  `PE(mat)
 	  end
 	  if(enSPU) begin
 	    `PF(srAdr, OVM_DEC)
@@ -644,21 +648,13 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse}) begin
       rdBkSel[2] = selii;
-      mT = inst.i.b.ld.t;
-      mUpdateAdr = inst.i.b.ld.ua;
-      wrEn[1] = mUpdateAdr != 0 ? 1 : 0;
+      mat = access_typ_t'(inst.i.b.ld.t);
+      mua = update_adr_t'(inst.i.b.ld.ua);
+      wrEn[1] = mua != ua_no ? 1 : 0;
       adrWr[0] = inst.i.b.ld.rd;
       prWrAdr[0] = inst.i.p;
-      prWrEn[0] = (mT == 1 && prWrAdr[0] != 0);
+      prWrEn[0] = (mat == at_rand && prWrAdr[0] != 0);
       if(!prWrEn[0]) prWrAdr[0] = 0;
-///      if(mT == 0) begin
-///        if(inst.i.op inside {iop_lw, iop_sw, iop_ll, iop_sc})
-///          rdBkSel[2] = selb2;
-///        else if(inst.i.op inside {iop_lh, iop_lhu, iop_sh})
-///          rdBkSel[2] = selb1;
-///        else if(inst.i.op inside {iop_lb, iop_lbu, iop_sb})
-///          rdBkSel[2] = selb0;
-///      end
       
       if(inst.i.op inside {iop_lw, iop_lh, iop_lb, iop_ll, iop_lhu, iop_lbu}) begin
         imm = {inst.i.b.ld.os1, inst.i.b.ld.os0};
@@ -871,7 +867,7 @@ class inst_c extends ovm_object;
       else
         tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
 	    ///load write pr
-      if(mT != 2)
+      if(mat != at_randnu)
        tCnt[pr_styp] = STAGE_RRF_DEM;
       ///load generate exp
       tCnt[br_styp] = STAGE_RRF_SEL + vm;
@@ -884,9 +880,10 @@ class inst_c extends ovm_object;
 	  ///store are non blocking
 	  else if(op inside {st_ops}) begin
 	    ///store write dc
-      tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
+	    if(!nb)
+        tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
       ///store write pr
-     if(mT != 2)
+     if(mat != at_randnu)
        tCnt[pr_styp] = STAGE_RRF_DEM;
       ///store generate exp
       tCnt[br_styp] = STAGE_RRF_SEL + vm;
@@ -1005,7 +1002,7 @@ class inst_c extends ovm_object;
     if(enDSE) begin
       wCntDep[gprv_styp] = 1;
       wCntDep[gprs_styp] = 1;
-      if(op inside {ld_ops} && mT != 1) ///todo mem acc type not finalized
+      if(op inside {ld_ops})/// && mat != at_rand)
         wCntDep[mem_styp] = 1;
     end
     
@@ -1134,13 +1131,15 @@ class inst_c extends ovm_object;
       dse.wrAdr = adrWr[0];
       dse.wrBk = bkWr[0];
       dse.wrGrp = grpWr[0];
-      dse.updateAdrWrBk = (rdBkSel[0] >= selv0 && rdBkSel[0] <= selv_e) ? rdBkSel[0] - selv0 : 0;
-      dse.updateAdrWr = wrEn[1];
-      dse.updatePr = mT == 1; ///todo
+      dse.uaWrBk = (rdBkSel[0] >= selv0 && rdBkSel[0] <= selv_e) ? rdBkSel[0] - selv0 : 0;
+      dse.uaWrGrp = 0;
+      dse.uaWrAdr = 0; ///todo no way to know those yet
+      dse.uaWrEn = wrEn[1];
       dse.op = op;
       dse.vec = isVec;
       dse.wr = wrEn[0];
-      dse.burst = mT == 0;
+      dse.ua = mua;
+      dse.at = mat;
     end
   endfunction : fill_dse
 

@@ -302,11 +302,11 @@ endclass : tr_spa2rfm
 ///---------------------------trsaction dse_rfm rfm_dse------------------------
 
 class tr_dse2rfm extends ovm_sequence_item;
-	rand word res[NUM_SP], updateAdrRes[NUM_SP];
-	rand bit wrEn[NUM_SP], srfWr, vrfWr, updateAdrWr, exp;
+	rand word res[NUM_SP], uaRes[NUM_SP];
+	rand bit wrEn[NUM_SP], srfWr, vrfWr, uaWrEn, exp;
 	rand uchar tid, expVec[NUM_SP];
 	rand uchar wrGrp, wrAdr, wrBk, 
-	           updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, 
+	           uaWrGrp, uaWrAdr, uaWrBk, 
 	           subVec, vecMode, vecModeExp;
 	
 	constraint valid_dse{
@@ -333,21 +333,21 @@ class tr_dse2rfm extends ovm_sequence_item;
 	`ovm_object_utils_begin(tr_dse2rfm)
 		`ovm_field_sarray_int(res, OVM_ALL_ON)
 		`ovm_field_sarray_int(wrEn, OVM_ALL_ON)
-		`ovm_field_sarray_int(updateAdrRes, OVM_ALL_ON)
+		`ovm_field_sarray_int(uaRes, OVM_ALL_ON)
 		`ovm_field_sarray_int(expVec, OVM_ALL_ON)
 		`ovm_field_int(wrGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(wrAdr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(wrBk, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(updateAdrWrGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(updateAdrWrAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(updateAdrWrBk, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(uaWrGrp, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(uaWrAdr, OVM_ALL_ON + OVM_DEC)
+		`ovm_field_int(uaWrBk, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_int(tid, OVM_ALL_ON)
 		`ovm_field_int(subVec, OVM_ALL_ON)
 		`ovm_field_int(vecMode, OVM_ALL_ON)
 		`ovm_field_int(vecModeExp, OVM_ALL_ON)
 		`ovm_field_int(srfWr, OVM_ALL_ON)
 		`ovm_field_int(vrfWr, OVM_ALL_ON)
-		`ovm_field_int(updateAdrWr, OVM_ALL_ON)
+		`ovm_field_int(uaWrEn, OVM_ALL_ON)
 		`ovm_field_int(exp, OVM_ALL_ON)
   `ovm_object_utils_end
   
@@ -874,32 +874,36 @@ endclass : tr_dse2spa
 
 class tr_ise2dse extends ovm_sequence_item;
   rand uchar wrGrp, wrAdr, wrBk,
-             updateAdrWrGrp, updateAdrWrAdr, updateAdrWrBk, tid;
-  rand bit priv, vec, en, wr, updateAdrWr, updatePr, nonBlock, noExt, burst, sendRotRight;
+             uaWrGrp, uaWrAdr, uaWrBk, tid;
+  rand bit priv, vec, en, wr, uaWrEn, nonBlock, noExt, sendRotRight;
   rand opcode_e op;
   rand uchar vecMode, subVec;
+  rand update_adr_t ua;
+  rand access_typ_t at;
   
 	`ovm_object_utils_begin(tr_ise2dse)
 	  `ovm_field_int(wr, OVM_ALL_ON)
 	  `ovm_field_int(wrBk, OVM_ALL_ON)
 	  `ovm_field_int(wrAdr, OVM_ALL_ON)
 	  `ovm_field_int(wrGrp, OVM_ALL_ON)
-	  `ovm_field_int(updateAdrWrBk, OVM_ALL_ON)
-	  `ovm_field_int(updateAdrWrAdr, OVM_ALL_ON)
-	  `ovm_field_int(updateAdrWrGrp, OVM_ALL_ON)
+	  `ovm_field_int(uaWrBk, OVM_ALL_ON)
+	  `ovm_field_int(uaWrAdr, OVM_ALL_ON)
+	  `ovm_field_int(uaWrGrp, OVM_ALL_ON)
 	  `ovm_field_int(priv, OVM_ALL_ON)
 	  `ovm_field_int(en, OVM_ALL_ON)
 	  `ovm_field_int(sendRotRight, OVM_ALL_ON)
 	  `ovm_field_int(noExt, OVM_ALL_ON)
-	  `ovm_field_int(burst, OVM_ALL_ON)
+///	  `ovm_field_int(burst, OVM_ALL_ON)
 	  `ovm_field_int(nonBlock, OVM_ALL_ON)
-	  `ovm_field_int(updateAdrWr, OVM_ALL_ON)
-	  `ovm_field_int(updatePr, OVM_ALL_ON)
+	  `ovm_field_int(uaWrEn, OVM_ALL_ON)
+///	  `ovm_field_int(updatePr, OVM_ALL_ON)
 	  `ovm_field_int(vec, OVM_ALL_ON)
 	  `ovm_field_int(vecMode, OVM_ALL_ON)
 	  `ovm_field_int(subVec, OVM_ALL_ON)
 	  `ovm_field_int(tid, OVM_ALL_ON)
 	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+	  `ovm_field_enum(update_adr_t, ua, OVM_ALL_ON)
+	  `ovm_field_enum(access_typ_t, at, OVM_ALL_ON)
   `ovm_object_utils_end
   
   constraint valid_vars{
