@@ -148,35 +148,34 @@ class ise_thread_inf extends ovm_component;
   
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(thread_state_t, threadState, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decodeErr, OVM_ALL_ON)
     `ovm_field_int(cancel, OVM_ALL_ON)
+    `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
+    `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
+    `ovm_field_int(wCntBr, OVM_ALL_ON)
+    `ovm_field_sarray_int(wCntNext, OVM_ALL_ON + OVM_UNSIGNED)
+    `ovm_field_int(enSPU, OVM_ALL_ON)
+    `ovm_field_int(enDSE, OVM_ALL_ON)
+    `ovm_field_sarray_int(enFu, OVM_ALL_ON)
+    `ovm_field_int(enVec, OVM_ALL_ON)
     `ovm_field_enum(priv_mode_t, privMode, OVM_ALL_ON)
     `ovm_field_enum(priv_mode_t, privEret, OVM_ALL_ON)
     `ovm_field_int(ejtagMode, OVM_ALL_ON)
     `ovm_field_queue_int(iBuf, OVM_ALL_ON)
-    `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
-    `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
-    `ovm_field_int(wCntBr, OVM_ALL_ON)
     `ovm_field_int(iGrpBytes, OVM_ALL_ON)
     `ovm_field_int(adrPkgBytes, OVM_ALL_ON)
     `ovm_field_int(numConst, OVM_ALL_ON)
+    `ovm_field_sarray_int(co, OVM_ALL_ON)
     `ovm_field_int(cntSrfBusy, OVM_ALL_ON)
     `ovm_field_int(cntVrfBusy, OVM_ALL_ON)
     `ovm_field_int(cntDSEBusy, OVM_ALL_ON)
     `ovm_field_int(cntFuBusy, OVM_ALL_ON)
     `ovm_field_int(cntSPUBusy, OVM_ALL_ON)
-    `ovm_field_sarray_int(co, OVM_ALL_ON)
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
-    `ovm_field_int(enSPU, OVM_ALL_ON)
-    `ovm_field_int(enDSE, OVM_ALL_ON)
-    `ovm_field_sarray_int(enFu, OVM_ALL_ON)
-    `ovm_field_int(enVec, OVM_ALL_ON)
-///    `ovm_field_sarray_int(wCnt, OVM_ALL_ON)
-    `ovm_field_sarray_int(wCntNext, OVM_ALL_ON + OVM_UNSIGNED)
-    `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(pcEret, OVM_ALL_ON)
@@ -250,8 +249,8 @@ class ise_thread_inf extends ovm_component;
   function void cyc_new();
     cancel = 0;
     foreach(wCnt[i, j])
-      if(wCnt[i][j] != 0) wCnt[i][j]--;
-    if(wCntBr != 0) wCntBr--;
+      if(wCnt[i][j] > 0) wCnt[i][j]--;
+    if(wCntBr > 0) wCntBr--;
   endfunction : cyc_new
 
   function void br_pred(output uint bpc, bit brSrf);
@@ -292,8 +291,9 @@ class ise_thread_inf extends ovm_component;
           end
         end
           
-        lpRndMemMode =  (enDSE && iDSE.mT == 1 && brSrf
-              && iDSE.prWrAdr[0] == iSPU.prRdAdr && iSPU.brDep);
+        lpRndMemMode =  (enDSE && iDSE.mat == at_rand && brSrf
+              && iDSE.prWrAdr[0] == iSPU.prRdAdr && iSPU.brDep && iSPU.op == op_br
+              && iSPU.mscOp == mop_bc && iSPU.mskOp == sop_p2n && iSPU.imm == 0);
       end
       else
         goNext = 1;
@@ -1539,7 +1539,7 @@ class ip4_tlm_ise extends ovm_component;
       t.pcUEret = v.rst[i].pcUEret;
       t.ejtagMode = v.rst[i].ejtag;
       
-      ovm_report_info("rollback", $psprintf("stage %0d, exp %0d, pc 0x%0h, %s", i, v.rst[i].exp, res, t.privMode.name), OVM_HIGH);  
+      ovm_report_info("rollback", $psprintf("stage %0d, exp %0d, pc 0x%0h, srExpBase 0x%0h, %s", i, v.rst[i].exp, res, srExpBase, t.privMode.name), OVM_HIGH);  
       
       if(v.rst[i].exp) begin
         if(v.rst[i].ejtag) begin

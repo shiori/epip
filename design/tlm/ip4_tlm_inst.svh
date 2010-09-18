@@ -341,7 +341,7 @@ class inst_c extends ovm_object;
   msc_opcode_e mscOp;
   msk_opcode_e mskOp;
   br_opcode_e brOp;
-  uchar mST, mSs, mVs, mFun, mRt, mT, mrfAdr, srAdr;
+  uchar mST, mSs, mVs, mFun, mRt, mrfAdr, srAdr;
   bit[NUM_FIFO - 1 : 0] mFifos;
   bit enSPU, enDSE, enFu;
   update_adr_t mua;
@@ -565,6 +565,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op inside {iop_fcrs}) begin
       offSet = {{WORD_BITS{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
+      imm = 0;
       set_rf_en(inst.i.b.fcr.ja, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       fcRet = inst.i.b.fcr.ja == 0;
       op = op_fcr;
@@ -817,7 +818,7 @@ class inst_c extends ovm_object;
 	
 	function bit is_unc_br();
 	  if(!decoded) decode();
-    return (op inside {op_br, op_fcr}) && (brOp == bop_naz && prRdAdr == 0);
+    return (op inside {op_br, op_fcr}) && (brOp == bop_naz && !prRdEn);
 	endfunction : is_unc_br
 
 	function bit is_br();
@@ -831,12 +832,6 @@ class inst_c extends ovm_object;
 	endfunction : is_priv
 		
 	function void set_wcnt(inout uchar wCnt[7], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
-///	  uchar l = 0,    ///when sr dc gpr pr is rdy for next grp to access (longest)
-///	        s = STAGE_RRF_VWBP,  ///when sr dc gpr pr is writeback (queskest)
-///	        e = 0;    ///when exception / branch is resolved
-///	  ///sometimes l is opt to 0, but s & e must set correct, if no sr dc gpr pr
-///	  ///changes, s set to max
-
 	  uchar tCnt[6] = '{default : 0};
 	  if(!decoded) decode();
 	  ///long cyc instructions
@@ -855,11 +850,11 @@ class inst_c extends ovm_object;
 	  end
 	  ///branchs are predicted, no need to wait
 	  else if(op inside {op_fcr, op_br}) begin
-	    ///need to resolve br, only change sr
-	    if(!is_unc_br()) begin
-	      tCnt[sr_styp] = STAGE_RRF_CBR - 1;
-	      tCnt[br_styp] = STAGE_RRF_CBR + vm - 1;
-	    end
+	    ///need to resolve br, only change sr, gen exp
+///	    if(!is_unc_br()) begin
+      tCnt[sr_styp] = STAGE_RRF_CBR - 1;
+      tCnt[br_styp] = STAGE_RRF_CBR + vm - 1;
+///	    end
 	  end
 	  else if(op inside {ld_ops}) begin
       if(isVec)
@@ -897,15 +892,16 @@ class inst_c extends ovm_object;
         tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
       else
         tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
-	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB - 1 + vm : STAGE_RRF_SWB - 1);
+	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB : STAGE_RRF_SWB);
 	  end
 	  
 	  foreach(tCnt[i])
 	    if(tCnt[i] > wCnt[i])
 	      wCnt[i] = tCnt[i];
-	      
+	  
+	  ///min_styp don't need br_styp
 	  foreach(tCnt[i])
-	    if((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0)
+	    if(((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0) && i != br_styp)
 	      wCnt[min_styp] = wCnt[i];
 	endfunction : set_wcnt
 		
@@ -1006,7 +1002,7 @@ class inst_c extends ovm_object;
         wCntDep[mem_styp] = 1;
     end
     
-    if(prRdAdr != 0) wCntDep[pr_styp] = 1;
+    if(prRdEn) wCntDep[pr_styp] = 1;
   endfunction : analyze
   
   ///reallocate en set by set_data

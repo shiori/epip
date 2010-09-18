@@ -112,8 +112,9 @@ class ip4_tlm_rfm extends ovm_component;
         cancel[spu.tid] |=  `GML(STAGE_RRF_CEM);
     end
     
+    ///dse self cancel, rfm only cancel next group
     if(v.fmDSE != null && v.fmDSE.exp)
-      cancel[v.fmDSE.tidExp] |= `GML(STAGE_RRF_DPRW + v.fmDSE.vecModeExp);
+      cancel[v.fmDSE.tidExp] |= `GML(STAGE_RRF_DEM);
   endfunction
   
   function void req_proc();
@@ -123,18 +124,19 @@ class ip4_tlm_rfm extends ovm_component;
     ovm_report_info("rfm", "req_proc procing...", OVM_FULL); 
    
     ///----------------------write back results---------------------
-    if(v.fmSPA != null && cancel[v.fmSPA.tid][STAGE_RRF_VWB])
-      ovm_report_info("rfm", "spa write back canceled...", OVM_HIGH); 
-    
     if(v.fmSPA != null && !cancel[v.fmSPA.tid][STAGE_RRF_VWB]) begin
       tr_spa2rfm spa = v.fmSPA;
       uchar bk0, bk1;
       
+      if(cancel[spa.tid][STAGE_RRF_VWB])
+        ovm_report_info("rfm", "spa write back canceled...", OVM_HIGH); 
+        
       foreach(spa.fu[fid]) begin
         uchar tid = spa.fu[fid].tid,
               subVec = spa.fu[fid].subVec;
         ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s, grp: %0d, adr %0d, bk %0d ...", fid, fu_cfg[fid].name,
           spa.fu[fid].vrfWrGrp, spa.fu[fid].vrfWrAdr, spa.fu[fid].vrfWrBk), OVM_HIGH);
+        if(cancel[spa.tid][STAGE_RRF_VWB]) continue;
         bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].vrfWrBk & `GMH(1)) : spa.fu[fid].vrfWrBk;
         bk1 = bk0 + 1;
         foreach(spa.fu[0].wrEn[sp])
