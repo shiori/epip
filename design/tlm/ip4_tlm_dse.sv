@@ -96,8 +96,11 @@ class ip4_tlm_dse extends ovm_component;
   local bit cacheFlush[STAGE_RRF_LXG:STAGE_RRF_DEM],
             exReq[STAGE_RRF_LXG:STAGE_RRF_DEM],
             endian[STAGE_RRF_LXG:STAGE_RRF_DEM],
-            expReq[STAGE_RRF_LXG:STAGE_RRF_DEM];
+            expReq[STAGE_RRF_LXG:STAGE_RRF_DEM],
+            exQueAlloc[STAGE_RRF_LXG:STAGE_RRF_DEM];
+  local uchar exQueId[STAGE_RRF_LXG:STAGE_RRF_DEM];
   local cause_dse_t expCause[STAGE_RRF_LXG:STAGE_RRF_DEM];
+  
   local bit[STAGE_RRF_LXG:0] cancel[NUM_THREAD];
 
   local word tlbReqVAdr[STAGE_RRF_SEL:STAGE_RRF_TAG];
@@ -106,7 +109,7 @@ class ip4_tlm_dse extends ovm_component;
   
   local bit selExRdy, selExp, selExpReq, selValidReq, selNoCache,
             selNeedLock2CL, selLock2CL, selCacheRdy, selEndian, selCoherency,
-            selWriteAlloc = 0;
+            selWriteAlloc, selQueRdy;
   local exadr_t selExAdr;
   local cause_dse_t selCause;
   local uint selCacheIdx;
@@ -116,14 +119,12 @@ class ip4_tlm_dse extends ovm_component;
   local uint srMapBase;
   local bit cacheGrpEn[NUM_SMEM_GRP];
   local bit sendExp;
-  local bit[CYC_VEC - 1 : 0] dprbReRun;
+  local bit[CYC_VEC - 1 : 0] dcReRun;
   
   local sm_t ck[LAT_XCHG],
              smi[STAGE_RRF_LXG:STAGE_RRF_DEM];
 ///  local sp_t spi[STAGE_RRF_LXG:STAGE_RRF_SXG0];
   
-  local bit dprbQueRdy;
-  local uchar dprbQueId;
   local wordu dcXhgData[STAGE_RRF_LXG:STAGE_RRF_LXG0][NUM_SP],
               dcFlushData[STAGE_RRF_LXG:STAGE_RRF_LXG0][NUM_SP];
   local bit dcVrfWEn[STAGE_RRF_LXG:STAGE_RRF_LXG0][NUM_SP];
@@ -435,7 +436,7 @@ class ip4_tlm_dse extends ovm_component;
       end
     end
     
-    ///now exception & cancel is resolved, allocate que
+    ///now exception & cancel is resolved
     if(v.fmISE[STAGE_RRF_DPRB] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DPRB];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DPRB];
@@ -448,129 +449,47 @@ class ip4_tlm_dse extends ovm_component;
         exRsp = 1;
         last = eif.last;
       end
-                    
-      if(smi[STAGE_RRF_DPRB] == null) begin
-        ovm_report_warning("dprb", "previous data missing");
-      end
-      ///ex rsp
-      else if(exRsp) begin
-        dprbQueRdy = 0;
-
-      end
-      else begin
-        ///dse que fill
-        if(exReq[STAGE_RRF_DPRB] && ise != null && !cancel[ise.tid][STAGE_RRF_DPRB]) begin
-          uchar cyc = ise.subVec & `GML(WID_DCHE_CL),
-                queId = 0;
-          bit found = 0, noVecSt = 0, noSglSt = 0, noLd = 0;
-          if(v.eif[STAGE_RRF_DPRB] == null) v.eif[STAGE_RRF_DPRB] = tr_dse2eif::type_id::create("toEIF", this);
-          if(v.fmEIF[STAGE_RRF_AG] != null) begin
-            noVecSt = v.fmEIF[STAGE_RRF_AG].noVecSt;
-            noSglSt = v.fmEIF[STAGE_RRF_AG].noSglSt;
-            noLd = v.fmEIF[STAGE_RRF_AG].noLd;
-          end
-          
-          if(ise.op inside {ld_ops}) begin
-            if(!dprbQueRdy && ise.subVec == 0) begin
-              foreach(ldQue[i])
-                if(!ldQue[i].en) begin
-                  ldQue[i].en = 1;
-                  queId = i;
-                  found = 1;
-                  dprbQueRdy = 1;
-                  dprbQueId = i;
-                  break;
-                end
-              if(!found)
-                ovm_report_info("dc", "ld queue overrun!", OVM_HIGH);
-            end
-            else begin
-              queId = dprbQueId;
-              found = 1;
-            end
-            if(!found)
-              dprbReRun[ise.subVec] = 1;
-            else if(noLd && ise.subVec == 0)
-              dprbReRun = '1;
-              
-            if(!dprbReRun[ise.subVec] && ise.subVec == 0) begin
-              ldQue[queId].en = 1;
-              ldQue[queId].wrGrp = ise.wrGrp;
-              ldQue[queId].wrBk = ise.wrBk;
-              ldQue[queId].wrAdr = ise.wrAdr;
-              ldQue[queId].tid = ise.tid;
-              ldQue[queId].op = ise.op;
-  ///            if(v.eif[STAGE_RRF_DPRB] != null)
-  ///              ldQue[queId].exAdr = v.eif[STAGE_RRF_DPRB].exAdr;
-            end
-            ldQue[queId].wrEn[cyc] = smi[STAGE_RRF_DPRB].oc;
-            ldQue[queId].xhg[cyc] = smi[STAGE_RRF_DPRB].xhg;
-            if(last)
-              ldQue[queId].subVec = ise.subVec;
-          end
-          else if(ise.op inside {st_ops}) begin
-            if(!dprbQueRdy) begin
-              foreach(stQue[i])
-                if(!stQue[i].en) begin
-                  stQue[i].en = 1;
-                  queId = i;
-                  found = 1;
-                  dprbQueRdy = 1;
-                  dprbQueId = i;
-                  break;
-                end
-              if(!found)
-                ovm_report_info("dc", "ld queue overrun!", OVM_HIGH);
-            end
-            else begin
-              queId = dprbQueId;       
-              found = 1;
-            end
-            if(!found)
-              dprbReRun[ise.subVec] = 1;
-            else if(noVecSt && ise.vec && ise.vecMode != 0 && ise.subVec == 0)
-              dprbReRun = '1;
-            else if(noSglSt && (ise.vecMode == 0 || !ise.vec) && ise.subVec == 0)
-              dprbReRun = '1;
-                
-            if(!dprbReRun[ise.subVec]) begin
-              stQue[queId].en = 1;
-              stQue[queId].tid = ise.tid;
-  ///            if(v.eif[STAGE_RRF_DPRB] != null)
-  ///              stQue[queId].exAdr = v.eif[STAGE_RRF_DPRB].exAdr;
-            end
-          end
-          v.eif[STAGE_RRF_DPRB].id = queId;
-          
-          if(last)
-            dprbQueRdy = 0;
-        end
-        
-        if(cancel[ise.tid][STAGE_RRF_DPRB]) begin
-///          dcVrfWEn[STAGE_RRF_DPRB] = '{default : 0};
-          if(v.rfm[STAGE_RRF_DPRB] != null) begin
-            v.rfm[STAGE_RRF_DPRB].srfWr = 0;
-            v.rfm[STAGE_RRF_DPRB].vrfWr = 0;
-            v.rfm[STAGE_RRF_DPRB].uaWrEn = 0;
-            v.rfm[STAGE_RRF_DPRB].exp = 0;
-          end
-          if(v.spu[STAGE_RRF_DPRB] != null)
-            v.spu[STAGE_RRF_DPRB].wrEn = 0;
-        end
+      
+      if(exReq[STAGE_RRF_DPRB]) begin
+        if(v.eif[STAGE_RRF_DPRB] == null) v.eif[STAGE_RRF_DPRB] = tr_dse2eif::type_id::create("toEIF", this);
+        v.eif[STAGE_RRF_DPRB].id = exQueId[STAGE_RRF_DPRB];
       end
       
-      ///todo rerun need rethink
-///      if(ise.vecMode == ise.subVec) begin
-///        if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
-///        dprbReRun = 0;
-///        toISE.reRun = dprbReRun;
-///      end
+      if(cancel[ise.tid][STAGE_RRF_DPRB]) begin
+        if(v.rfm[STAGE_RRF_DPRB] != null) begin
+          v.rfm[STAGE_RRF_DPRB].srfWr = 0;
+          v.rfm[STAGE_RRF_DPRB].vrfWr = 0;
+          v.rfm[STAGE_RRF_DPRB].uaWrEn = 0;
+          v.rfm[STAGE_RRF_DPRB].exp = 0;
+        end
+        if(v.spu[STAGE_RRF_DPRB] != null)
+          v.spu[STAGE_RRF_DPRB].wrEn = 0;
+        if(ise.op inside {ld_ops, st_ops, op_tmrf} && v.eif[STAGE_RRF_DPRB] != null)
+          v.eif[STAGE_RRF_DPRB].op = op_nop;
+        if(exQueAlloc[STAGE_RRF_DPRB]) begin
+          if(ise.op inside {ld_ops})
+            ldQue[exQueId[STAGE_RRF_DPRB]].en = 0;
+          else if(ise.op inside {st_ops})
+            stQue[exQueId[STAGE_RRF_DPRB]].en = 0;
+        end
+      end
     end
     
     ///send exp to other module
     if(v.fmISE[STAGE_RRF_DEM] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DEM];
-      if(ise.vecMode == ise.subVec) begin ///ise.op inside {ld_ops, st_ops} && 
+      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DEM];
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_DEM];
+      bit last = 0, exRsp = 0;
+      
+      if(ise.en)
+        last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      if(eif != null && (eif.loadRsp || eif.storeRsp)) begin
+        exRsp = 1;
+        last = eif.last;
+      end
+      
+      if(ise.vecMode == ise.subVec) begin
         if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
         toISE.rsp = 1;
         toISE.exp = expReq[STAGE_RRF_DEM];
@@ -580,6 +499,8 @@ class ip4_tlm_dse extends ovm_component;
         toISE.pendExLoad = 0;
         toISE.pendExStore = 0;
         toISE.cause = expCause[STAGE_RRF_DEM];
+        toISE.reRun = dcReRun;
+        dcReRun = 0;
         foreach(ldQue[i])
           if(ldQue[i].en && ldQue[i].tid == ise.tid)
             toISE.pendExLoad++;
@@ -594,7 +515,6 @@ class ip4_tlm_dse extends ovm_component;
           toSPU.tidCancel = ise.tid;
           toRFM.exp = 1;
           toRFM.tidExp = ise.tid;
-///          sendExp = 1;
         end
       end
     end
@@ -748,8 +668,12 @@ class ip4_tlm_dse extends ovm_component;
       cacheFlush[i] = cacheFlush[i - 1];
       exReq[i] = exReq[i - 1];
       endian[i] = endian[i - 1];
+      exQueId[i] = exQueId[i - 1];
+      exQueAlloc[i] = exQueAlloc[i - 1];
     end
     smi[STAGE_RRF_DEM] = null;
+    exQueAlloc[STAGE_RRF_DEM] = 0;
+    
 ///    for(int i = STAGE_RRF_LXG; i > STAGE_RRF_SEL; i--)
 ///      smi[i] = smi[i - 1];
 ///    smi[STAGE_RRF_SEL] = null;
@@ -1471,7 +1395,106 @@ class ip4_tlm_dse extends ovm_component;
           ldQue[eif.id].en = 0;
       end
     end
+    
+    ///allocate que, current only dse req need allocate que
+    if(v.fmISE[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL].op inside {ld_ops, st_ops}) begin
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
+      bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      uchar cyc = ise.subVec & `GML(WID_DCHE_CL);
 
+///      tr_eif2dse eif = v.fmEIF[STAGE_RRF_SEL];
+///      if(smi[STAGE_RRF_DEM] == null) begin
+///        ovm_report_warning("dprb", "previous data missing");
+///      end
+///      ///ex rsp
+///      else if(exRsp)
+///        selQueRdy = 0;
+///      else begin
+        ///dse que fill
+      if(exReq[STAGE_RRF_DEM] && !cancel[ise.tid][STAGE_RRF_DEM]) begin
+        uchar queId = 0;
+        bit found = 0, noVecSt = 0, noSglSt = 0, noLd = 0;
+        if(v.fmEIF[STAGE_RRF_AG] != null) begin
+          noVecSt = v.fmEIF[STAGE_RRF_AG].noVecSt;
+          noSglSt = v.fmEIF[STAGE_RRF_AG].noSglSt;
+          noLd = v.fmEIF[STAGE_RRF_AG].noLd;
+        end
+        
+        if(ise.op inside {ld_ops}) begin
+          if(!selQueRdy && ise.subVec == 0) begin
+            foreach(ldQue[i])
+              if(!ldQue[i].en) begin
+                ldQue[i].en = 1;
+                queId = i;
+                found = 1;
+                selQueRdy = 1;
+                exQueId[STAGE_RRF_DEM] = i;
+                exQueAlloc[STAGE_RRF_DEM] = 1;
+                break;
+              end
+              if(!found)
+                ovm_report_info("dc", "ld queue overrun!", OVM_HIGH);
+          end
+          else begin
+            queId = exQueId[STAGE_RRF_DEM];
+            found = 1;
+          end
+          if(!found)
+            dcReRun[ise.subVec] = 1;
+          else if(noLd && ise.subVec == 0)
+            dcReRun = '1;
+            
+          if(!dcReRun[ise.subVec] && ise.subVec == 0) begin
+            ldQue[queId].en = 1;
+            ldQue[queId].wrGrp = ise.wrGrp;
+            ldQue[queId].wrBk = ise.wrBk;
+            ldQue[queId].wrAdr = ise.wrAdr;
+            ldQue[queId].tid = ise.tid;
+            ldQue[queId].op = ise.op;
+          end
+          ldQue[queId].wrEn[cyc] = smi[STAGE_RRF_DPRB].oc;
+          ldQue[queId].xhg[cyc] = smi[STAGE_RRF_DPRB].xhg;
+          if(last)
+            ldQue[queId].subVec = ise.subVec;
+        end
+        else if(ise.op inside {st_ops}) begin
+          if(!selQueRdy) begin
+            foreach(stQue[i])
+              if(!stQue[i].en) begin
+                stQue[i].en = 1;
+                queId = i;
+                found = 1;
+                selQueRdy = 1;
+                exQueId[STAGE_RRF_DEM] = i;
+                exQueAlloc[STAGE_RRF_DEM] = 1;
+                break;
+              end
+            if(!found)
+              ovm_report_info("dc", "ld queue overrun!", OVM_HIGH);
+          end
+          else begin
+            queId = exQueId[STAGE_RRF_DEM];       
+            found = 1;
+          end
+          if(!found)
+            dcReRun[ise.subVec] = 1;
+          else if(noVecSt && ise.vec && ise.vecMode != 0 && ise.subVec == 0)
+            dcReRun = '1;
+          else if(noSglSt && (ise.vecMode == 0 || !ise.vec) && ise.subVec == 0)
+            dcReRun = '1;
+            
+          if(!dcReRun[ise.subVec]) begin
+            stQue[queId].en = 1;
+            stQue[queId].tid = ise.tid;
+          end
+        end
+///        v.eif[STAGE_RRF_DPRB].id = queId;
+        
+        if(last)
+          selQueRdy = 0;
+      end
+    end  
+      
     for (int i = STAGE_RRF_SEL; i > STAGE_RRF_TAG; i--) 
       tlbReqVAdr[i] = tlbReqVAdr[i - 1];    
 
