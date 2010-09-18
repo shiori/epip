@@ -122,7 +122,7 @@ class ise_thread_inf extends ovm_component;
       decodeErr,
       cancel,
       noMsk;
-  uchar wCnt[NUM_W_CNT][5], wCntBr, wCntNext[7], vecMode;
+  uchar wCnt[NUM_W_CNT][5], wCntBr, wCntWr, wCntNext[7], vecMode;
   bit[4:0] wCntDep;
   bit[NUM_W_CNT - 1 : 0] wCntSel;
   bit[CYC_VEC - 1 : 0] noExt;
@@ -155,6 +155,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
     `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
     `ovm_field_int(wCntBr, OVM_ALL_ON)
+    `ovm_field_int(wCntWr, OVM_ALL_ON)
     `ovm_field_sarray_int(wCntNext, OVM_ALL_ON + OVM_UNSIGNED)
     `ovm_field_int(enSPU, OVM_ALL_ON)
     `ovm_field_int(enDSE, OVM_ALL_ON)
@@ -251,6 +252,7 @@ class ise_thread_inf extends ovm_component;
     foreach(wCnt[i, j])
       if(wCnt[i][j] > 0) wCnt[i][j]--;
     if(wCntBr > 0) wCntBr--;
+    if(wCntWr > 0) wCntWr--;
   endfunction : cyc_new
 
   function void br_pred(output uint bpc, bit brSrf);
@@ -394,10 +396,14 @@ class ise_thread_inf extends ovm_component;
       offSet = 1;
 ///      if(adrPkgBytes != 0) adrPkgBytes --;???
       iSPU.set_data(iBuf, offSet, 0, dseVec);
+      if(iSPU.op inside {spu_com_ops})
+        iSPU.noExp = srExpMsk;
       iDSE.set_data(iBuf, offSet, 0, dseVec);
-      foreach(iFu[i])
+      foreach(iFu[i]) begin
         iFu[i].set_data(iBuf, offSet, i, 1);
-        
+        iFu[i].noExp = srExpMsk;
+      end
+      
       offSet += NUM_INST_BYTES;
       iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
       iSPU.analyze_fu(enSPU, enDSE, enFu);
@@ -420,6 +426,8 @@ class ise_thread_inf extends ovm_component;
       if(enSPU) begin
         iSPU.set_data(iBuf, offSet, 0, 0);
         iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+        if(iSPU.op inside {spu_com_ops})
+          iSPU.noExp = srExpMsk;
         offSet += NUM_INST_BYTES;
         iSPU.enSPU = 1;
       end
@@ -436,6 +444,7 @@ class ise_thread_inf extends ovm_component;
           iFu[i].enFu = 1;
           iFu[i].set_data(iBuf, offSet, i, 1);
           iFu[i].analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+          iFu[i].noExp = srExpMsk;
           offSet += NUM_INST_BYTES;          
         end
 
@@ -998,8 +1007,8 @@ class ip4_tlm_ise extends ovm_component;
           tmp = finalCnt[i];
           
       ovm_report_info("can_issue",
-        $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.pc, t.enSPU, t.enDSE,
+        $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, wrCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
+                   t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.wCntWr, t.pc, t.enSPU, t.enDSE,
                    enFuTmp, t.dseVec, t.wCntSel),
         OVM_HIGH);
     end
@@ -1035,6 +1044,14 @@ class ip4_tlm_ise extends ovm_component;
     if(cntDSEBusy > 0 && t.cntDSEBusy > 0)
       return 0;
 
+    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] < t.wCntBr)
+      return 0;
+
+    ///because 3 lane can issue back to back in cycle, 
+    ///if previous has exp, following vrf write may not be cancelled
+    if(t.wCntBr > 0 && t.wCntWr > 0)
+      return 0;
+            
     /// write buf overflow check
     if(cntPRWr + t.cntPRWr > CYC_VEC)
       return 0;
@@ -1056,9 +1073,6 @@ class ip4_tlm_ise extends ovm_component;
     foreach(t.wCntDep[i])
       if(t.wCntDep[i] && finalCnt[i] > 0)
         return 0;
-    
-    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] < t.wCntBr)
-      return 0;
     
     ///start event only in user mode
     if(t.privMode == priv_user) begin
@@ -1244,8 +1258,14 @@ class ip4_tlm_ise extends ovm_component;
       else if(t.iDSE.op inside {op_sw, op_sh, op_sb})
         t.isLastStore = 1;
       t.isLastVecDse = t.iDSE.isVec;
+      if(t.iDSE.isVec)
+        t.wCntWr = t.vecMode + 1;
     end
     
+    foreach(t.enFu[i])
+      if(t.enFu[i])
+        t.wCntWr = t.vecMode + 1;
+        
     ///update wcnt
     begin
       uchar sel;

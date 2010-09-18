@@ -351,6 +351,7 @@ class inst_c extends ovm_object;
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decodeErr, OVM_ALL_ON)
     `ovm_field_int(isVec, OVM_ALL_ON)
+    `ovm_field_int(noExp, OVM_ALL_ON)
     `ovm_field_int(fuid, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(inst, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
@@ -564,6 +565,7 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
+      noExp = 0;
       offSet = {{WORD_BITS{inst.i.b.fcr.os2[$bits(inst.i.b.fcr.os2)-1]}}, inst.i.b.fcr.os2, inst.i.b.fcr.os1, inst.i.b.fcr.os0};
       imm = 0;
       set_rf_en(inst.i.b.fcr.ja, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
@@ -581,6 +583,7 @@ class inst_c extends ovm_object;
       mscOp = inst.i.b.fcr.su ? (inst.i.b.fcr.l ? sop_store : sop_p2nc) : sop_p2n;
     end
     else if(inst.i.op inside {iop_bs}) begin
+      noExp = 0;
       imm = inst.i.b.b.sc;
       rdBkSel[0] = selii;
       offSet = {{WORD_BITS{inst.i.b.b.offSet[$bits(inst.i.b.b.offSet)-1]}}, inst.i.b.b.offSet};
@@ -648,6 +651,7 @@ class inst_c extends ovm_object;
       prWrEn[1] = prWrAdr[1] != 0;
     end
     else if(inst.i.op inside {iop_sp_dse, iop_ls_dse}) begin
+      noExp = 0;
       rdBkSel[2] = selii;
       mat = access_typ_t'(inst.i.b.ld.t);
       mua = update_adr_t'(inst.i.b.ld.ua);
