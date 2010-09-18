@@ -220,6 +220,7 @@ class ip4_tlm_dse extends ovm_component;
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_LXG0; i--) begin
       dcXhgData[i] = dcXhgData[i - 1];
       dcFlushData[i] = dcFlushData[i - 1];
+      dcVrfWEn[i] = dcVrfWEn[i - 1];
     end
       
     if(v.fmTLB != null)
@@ -385,9 +386,9 @@ class ip4_tlm_dse extends ovm_component;
              grp = smi[STAGE_RRF_DC].sMemGrp[bk],
              adr2 = adr ^ 'b01;   ///flip last bit
         if(exFlush)
-          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr2][bk];
+          dcFlushData[STAGE_RRF_LXG0][bk] = sharedMem[grp][adr2][bk];
         else if(exRd)
-          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr][bk];
+          dcFlushData[STAGE_RRF_LXG0][bk] = sharedMem[grp][adr][bk];
         
         if(exFlush)
           xhgData[bk] = smWData[bk];
@@ -400,6 +401,8 @@ class ip4_tlm_dse extends ovm_component;
           
       ///load data exchange
       for(int sp = 0; sp < NUM_SP; sp++) begin
+        bit wEn[NUM_SP];
+        uchar cmp;
         ///dcXhgData dcVrfWEn initial value
         if(per || shf4 || tmsg) begin
           dcXhgData[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].stData[sp];
@@ -408,36 +411,39 @@ class ip4_tlm_dse extends ovm_component;
           else
             dcVrfWEn[STAGE_RRF_LXG0][sp] = spu.emsk[sp];
         end
-        
+        else ///ld reqs
+          dcVrfWEn[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].oc[sp] || smi[STAGE_RRF_DC].ex[sp];
+          
+        if(per || tmsg) begin
+          cmp = cyc + LAT_XCHG;
+          if(spu != null)
+            wEn = spu.emsk;
+        end
+        else if(shf4) begin
+          cmp = CYC_VEC;    ///not exchange, finished in sxg stages
+        end
+        else begin ///ld ex
+          cmp = cyc;
+///          foreach(wEn[i])
+///            wEn[i] = smi[st].oc[i] || smi[st].ex[i];              
+        end
+                    
         for(int slot = 0; slot < LAT_XCHG; slot++) begin
-          uchar st = STAGE_RRF_LXG0 + slot, bk, cmp;
-          bit wEn[NUM_SP];
+          uchar sts = STAGE_RRF_DC + slot,
+                stt = STAGE_RRF_LXG0 + slot,
+                bk;
           
-          if(smi[st] == null) continue;
-          bk = smi[st].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK);
-          if(per || tmsg) begin
-            cmp = cyc + LAT_XCHG;
-            if(spu != null)
-              wEn = v.fmSPU[st].emsk;
-          end
-          else if(shf4) begin
-            cmp = CYC_VEC;    ///not exchange, finished in sxg stages
-          end
-          else begin
-            ///st tmsg
-            cmp = cyc;
-            foreach(wEn[i])
-              wEn[i] = smi[st].oc[i] || smi[st].ex[i];              
-          end
+          if(smi[sts] == null) continue;
+          bk = smi[sts].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK);
           
-          if(smi[st].slot[sp] == cmp) begin
-            dcXhgData[st][sp] = xhgData[bk];
+          if(smi[sts].slot[sp] == cmp) begin
+            dcXhgData[stt][sp] = xhgData[bk];
             if(vXhgEn)
-              dcVrfWEn[st][sp] = wEn[bk];
-            else
-              dcVrfWEn[st][sp] = wEn[sp];
+              dcVrfWEn[stt][sp] = wEn[bk];
+///            else
+///              dcVrfWEn[stt][sp] = wEn[sp];
             ovm_report_info("dc_lxg", $psprintf("slot %0d, sp %0d, cmp %0d, bk %0d, dcXhgData[st][sp] 0x%0h, dcVrfWEn[st][sp] %0d",
-                            slot, sp, cmp, bk, xhgData[bk], dcVrfWEn[st][sp]), OVM_HIGH);
+                            slot, sp, cmp, bk, xhgData[bk], dcVrfWEn[stt][sp]), OVM_HIGH);
           end
         end
       end
@@ -918,15 +924,17 @@ class ip4_tlm_dse extends ovm_component;
               oc = 0;
             end
             
-            for(int s = 0; s < LAT_XCHG; s++) begin
-              bit res = oc;
-              oc = 0;
-              if((ck[s].sMemAdr[bk] == adr && ck[s].sMemGrp[bk] == grp) || !ck[s].sMemOpy[bk]) begin
-                ck[s].sMemOpy[bk] = res;
-                slot = s;
-                oc = res;
-                break;
+            begin
+              bit find = 0;
+              for(int s = 0; s < LAT_XCHG; s++) begin
+                if((ck[s].sMemAdr[bk] == adr && ck[s].sMemGrp[bk] == grp) || !ck[s].sMemOpy[bk]) begin
+                  ck[s].sMemOpy[bk] = oc;
+                  slot = s;
+                  find = 1;
+                  break;
+                end
               end
+              oc = oc && find;
             end
           end
           
