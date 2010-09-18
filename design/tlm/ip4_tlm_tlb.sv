@@ -51,8 +51,9 @@ class ip4_tlm_tlb_vars extends ovm_component;
   uchar asid[NUM_TLB_E];
   
   uint  pfn2e[NUM_TLB_E], pfn2o[NUM_TLB_E];
-  bit[NUM_TLB_E-1:0] ex[2], k[2], e[2], d[2], v[2], g[2];
-  bit[NUM_TLB_E-1:0][2:0] c[2];
+  bit[1:0] ex[NUM_TLB_E], k[NUM_TLB_E], e[NUM_TLB_E], d[NUM_TLB_E], v[NUM_TLB_E];
+  bit g[NUM_TLB_E];
+  bit[1:0][2:0] c[NUM_TLB_E];
   
   word srIndex;
   word srRandom;
@@ -197,10 +198,10 @@ class ip4_tlm_tlb extends ovm_component;
             ///match found, select even/odd page
             bit eosel = virAdr[evenOddBit];
             varPFN = eosel ? v.pfn2o[i] : v.pfn2e[i];
-            varV   = v.v[eosel];
-            varC   = v.c[eosel];
-            varEx  = v.ex[eosel];
-            varD   = v.d[eosel];
+            varV   = v.v[i][eosel];
+            varC   = v.c[i][eosel];
+            varEx  = v.ex[i][eosel];
+            varD   = v.d[i][eosel];
 
             if(varV == 0) begin
               ovm_report_info("TLB_Invalid", "tlb Invalid exception!!!", OVM_HIGH); 
@@ -216,7 +217,7 @@ class ip4_tlm_tlb extends ovm_component;
               ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
               exp = 1;
             end
-            else if(!varK && varKC) begin
+            else if(varK && !varKC) begin
               ovm_report_info("TLB_EX", "tlb PRIVILEGE exception!!!", OVM_HIGH); 
               exp = 1;
               cause = EC_TLBPRIV;
@@ -286,21 +287,21 @@ class ip4_tlm_tlb extends ovm_component;
           vn.srEntryHi[ASID_WIDTH-1:0] = v.asid[i];
           
           vn.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2o[i];
-          vn.srEntryLo1[9] = v.ex[1][i];
-          vn.srEntryLo1[8:5] = v.c[1][i];
-          vn.srEntryLo1[4] = v.k[1][i];
-          vn.srEntryLo1[3] = v.e[1][i];
-          vn.srEntryLo1[2] = v.d[1][i];
-          vn.srEntryLo1[1] = v.v[1][i];
+          vn.srEntryLo1[9] = v.ex[i][1];
+          vn.srEntryLo1[8:5] = v.c[i][1];
+          vn.srEntryLo1[4] = v.k[i][1];
+          vn.srEntryLo1[3] = v.e[i][1];
+          vn.srEntryLo1[2] = v.d[i][1];
+          vn.srEntryLo1[1] = v.v[i][1];
           vn.srEntryLo1[0] = v.g[i];
                     
           vn.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2e[i];
-          vn.srEntryLo0[9] = v.ex[0][i];
-          vn.srEntryLo0[8:5] = v.c[0][i];
-          vn.srEntryLo0[4] = v.k[0][i];
-          vn.srEntryLo0[3] = v.e[0][i];
-          vn.srEntryLo0[2] = v.d[0][i];
-          vn.srEntryLo0[1] = v.v[0][i];
+          vn.srEntryLo0[9] = v.ex[i][0];
+          vn.srEntryLo0[8:5] = v.c[i][0];
+          vn.srEntryLo0[4] = v.k[i][0];
+          vn.srEntryLo0[3] = v.e[i][0];
+          vn.srEntryLo0[2] = v.d[i][0];
+          vn.srEntryLo0[1] = v.v[i][0];
           vn.srEntryLo0[0] = v.g[i];
         end
      end   
@@ -315,18 +316,18 @@ class ip4_tlm_tlb extends ovm_component;
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
         
         vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
-        vn.ex[1][i] = v.srEntryLo1[8];
-        vn.c[1][i] = v.srEntryLo1[7:5];
-        vn.k[1][i] = v.srEntryLo1[4];
-        vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2];
-        vn.v[1][i] = v.srEntryLo1[1];
+        vn.ex[i][1] = v.srEntryLo1[8];
+        vn.c[i][1] = v.srEntryLo1[7:5];
+        vn.k[i][1] = v.srEntryLo1[4];
+        vn.e[i][1] = v.srEntryLo1[3]; vn.d[i][1] = v.srEntryLo1[2];
+        vn.v[i][1] = v.srEntryLo1[1];
         
         vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
-        vn.ex[0][i] = v.srEntryLo0[8];
-        vn.c[0][i] = v.srEntryLo0[7:5];
-        vn.k[0][i] = v.srEntryLo0[4];
-        vn.e[0][i] = v.srEntryLo0[3]; vn.d[0][i] = v.srEntryLo0[2];
-        vn.v[0][i] = v.srEntryLo0[1];
+        vn.ex[i][0] = v.srEntryLo0[8];
+        vn.c[i][0] = v.srEntryLo0[7:5];
+        vn.k[i][0] = v.srEntryLo0[4];
+        vn.e[i][0] = v.srEntryLo0[3]; vn.d[i][0] = v.srEntryLo0[2];
+        vn.v[i][0] = v.srEntryLo0[1];
       end
       /// TLBWR
       op_tlbwr:
@@ -338,11 +339,19 @@ class ip4_tlm_tlb extends ovm_component;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH - 1 : 0];
         vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
         vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : 9] & ~varMask;
-        vn.ex[1][i] = v.srEntryLo1[8]; vn.c[1][i] = v.srEntryLo1[7:5]; vn.k[1][i] = v.srEntryLo1[4];
-        vn.e[1][i] = v.srEntryLo1[3]; vn.d[1][i] = v.srEntryLo1[2]; vn.v[1][i] = v.srEntryLo1[1];
+        vn.ex[i][1] = v.srEntryLo1[8];
+        vn.c[i][1] = v.srEntryLo1[7:5];
+        vn.k[i][1] = v.srEntryLo1[4];
+        vn.e[i][1] = v.srEntryLo1[3];
+        vn.d[i][1] = v.srEntryLo1[2];
+        vn.v[i][1] = v.srEntryLo1[1];
         vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : 9] & ~varMask;
-        vn.ex[0][i] = v.srEntryLo0[8]; vn.c[0][i] = v.srEntryLo0[7:5]; vn.k[0][i] = v.srEntryLo0[4];
-        vn.e[0][i] = v.srEntryLo0[3]; vn.d[0][i] = v.srEntryLo0[2]; vn.v[0][i] = v.srEntryLo0[1];
+        vn.ex[i][0] = v.srEntryLo0[8];
+        vn.c[i][0] = v.srEntryLo0[7:5];
+        vn.k[i][0] = v.srEntryLo0[4];
+        vn.e[i][0] = v.srEntryLo0[3];
+        vn.d[i][0] = v.srEntryLo0[2];
+        vn.v[i][0] = v.srEntryLo0[1];
       end
       /// GP2S
       op_gp2s:

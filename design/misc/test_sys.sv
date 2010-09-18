@@ -52,7 +52,15 @@ class ip4_sys_test extends ovm_test;
     
     set_config_int("*thread0*", "srfMap[0]", 0);
     set_config_int("*thread0*", "srfMap[1]", 1);
-       
+    
+    set_config_int("*tlb*", "vpn2[0]", 0);
+    set_config_int("*tlb*", "pageTyp[0]", page_64K);
+///    set_config_int("*tlb*", "pfn2e[0]", 0);
+    set_config_int("*tlb*", "pfn2e[0]", (SMEM_OFFSET + 2 * SMEM_SIZE) >> VADR_START);
+///    set_config_int("*tlb*", "pfn2o[0]", (SMEM_OFFSET + 2 * SMEM_SIZE) >> VADR_START);
+    set_config_int("*tlb*", "v[0]", 2'b01);
+    set_config_int("*tlb*", "d[0]", 2'b01);
+    
     env = new("env", this);
   endfunction
 

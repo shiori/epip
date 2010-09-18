@@ -323,7 +323,8 @@ class ip4_tlm_dse extends ovm_component;
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_DC];
       
       wordu xhgData[NUM_SP], eifRes[NUM_SP], spRes[NUM_SP], smWData[NUM_SP];
-      uchar st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG);
+      uchar st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG),
+            cyc;
       bit last = 0, exRsp = 0, shf4 = 0, per = 0, tmsg = 0, fmsg = 0, 
           vXhgEn, exWrSM, exRd = 0, exFlush = 0;
       if(ise != null && ise.en) begin
@@ -333,6 +334,7 @@ class ip4_tlm_dse extends ovm_component;
         vXhgEn = ise.op inside {op_pera, op_shf4a, op_tmrf};
         tmsg = ise.op == op_tmrf;
         fmsg = ise.op == op_fmrf;
+        cyc = ise.subVec & `GML(WID_DCHE_CL);
       end
       if(eif != null) begin
         bit allocFail = 0;
@@ -371,8 +373,10 @@ class ip4_tlm_dse extends ovm_component;
           foreach(wEn[os])
             wEn[os] = eif.byteEn[bk][os];
         foreach(wEn[os])
-          if(wEn[os])
+          if(wEn[os]) begin
             sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
+            ovm_report_info("dc_wr", $psprintf("grp %0d, adr %0d, bk %0d, os %0d, data 0x%0h", grp, adr, bk, os, smWData[bk].b[os]), OVM_HIGH);
+          end
       end
       
       ///sharedMem read
@@ -391,6 +395,7 @@ class ip4_tlm_dse extends ovm_component;
           xhgData[bk] = rfm.st[bk];
         else
           xhgData[bk] = sharedMem[grp][adr][bk];
+        ovm_report_info("dc_rd", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH);
       end
           
       ///load data exchange
@@ -411,7 +416,7 @@ class ip4_tlm_dse extends ovm_component;
           if(smi[st] == null) continue;
           bk = smi[st].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK);
           if(per || tmsg) begin
-            cmp = slot + LAT_XCHG;
+            cmp = cyc + LAT_XCHG;
             if(spu != null)
               wEn = v.fmSPU[st].emsk;
           end
@@ -420,7 +425,7 @@ class ip4_tlm_dse extends ovm_component;
           end
           else begin
             ///st tmsg
-            cmp = slot;
+            cmp = cyc;
             foreach(wEn[i])
               wEn[i] = smi[st].oc[i] || smi[st].ex[i];              
           end
@@ -431,6 +436,8 @@ class ip4_tlm_dse extends ovm_component;
               dcVrfWEn[st][sp] = wEn[bk];
             else
               dcVrfWEn[st][sp] = wEn[sp];
+            ovm_report_info("dc_lxg", $psprintf("slot %0d, sp %0d, cmp %0d, bk %0d, dcXhgData[st][sp] 0x%0h, dcVrfWEn[st][sp] %0d",
+                            slot, sp, cmp, bk, xhgData[bk], dcVrfWEn[st][sp]), OVM_HIGH);
           end
         end
       end
@@ -773,7 +780,7 @@ class ip4_tlm_dse extends ovm_component;
           end
           nc = !tlb.cached;
           for(int j = (VADR_START + tlb.eobit); j < PADR_WIDTH; j++)
-            padr = tlb.pfn[j - VADR_START];
+            padr[j] = tlb.pfn[j - VADR_START];
         end
         else begin
           if(tlb == null)
@@ -854,7 +861,9 @@ class ip4_tlm_dse extends ovm_component;
                 end
               end
             end
-            
+            else
+              oc = 0;
+              
             ///case when ex can fail, then bank select is not necessory
             if(needExOc && selExRdy && selExAdr != (padr >> (WID_SMEM_BK + WID_WORD)))
               oc = 0;
@@ -863,7 +872,7 @@ class ip4_tlm_dse extends ovm_component;
             if(oc) begin
               oc = 0;
               for(int s = 0; s <= maxSlot; s++) begin
-                if((ck[s].sMemAdr[bk] == adr && ck[s].sMemGrp[bk] == grp) || ck[s].sMemOpy[bk]) begin
+                if((ck[s].sMemAdr[bk] == adr && ck[s].sMemGrp[bk] == grp) || !ck[s].sMemOpy[bk]) begin
                   ck[s].sMemOpy[bk] = 1;
                   slot = s;
                   oc = 1;
@@ -912,7 +921,7 @@ class ip4_tlm_dse extends ovm_component;
             for(int s = 0; s < LAT_XCHG; s++) begin
               bit res = oc;
               oc = 0;
-              if((ck[s].sMemAdr[bk] == adr && ck[s].sMemGrp[bk] == grp) || ck[s].sMemOpy[bk]) begin
+              if((ck[s].sMemAdr[bk] == adr && ck[s].sMemGrp[bk] == grp) || !ck[s].sMemOpy[bk]) begin
                 ck[s].sMemOpy[bk] = res;
                 slot = s;
                 oc = res;
@@ -971,7 +980,6 @@ class ip4_tlm_dse extends ovm_component;
           if(oc) begin
             ck[slot].sMemAdr[bk] = adr;
             ck[slot].sMemGrp[bk] = grp;
-  ///          ck[slot][bk].ocEn = oc;
           end
           
           ocWEn = (ise.op inside {st_ops}) && oc;
@@ -999,7 +1007,7 @@ class ip4_tlm_dse extends ovm_component;
         end
         
         ///        spi[STAGE_RRF_SXG0] = new();
-        ck[cyc].xhg[sp] = padr[sp] & `GML(WID_DCHE_CL + WID_SMEM_BK + WID_WORD);
+        ck[cyc].xhg[sp] = padr & `GML(WID_DCHE_CL + WID_SMEM_BK + WID_WORD);
         ck[cyc].exp[sp] = exp;
         ck[cyc].oc[sp] = oc;
         ck[cyc].ex[sp] = ex;
@@ -1007,8 +1015,8 @@ class ip4_tlm_dse extends ovm_component;
         ck[cyc].slot[sp] = slot;
         selValidReq |= oc || ex;
         exReq[STAGE_RRF_DEM] |= ex;
-        ovm_report_info("sel dse", $psprintf("sp %0d, ex %0d, oc %0d, exp %0d %s, slot %0d, re %0d, xhg %0d", 
-                        sp, ex, oc, exp, selCause.name, slot, ck[slot].re[sp], ck[slot].xhg[sp]), OVM_HIGH);  
+        ovm_report_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, slot %0d, re %0d, xhg %0d", 
+                        sp, grp, adr, bk, ex, oc, exp, selCause.name, slot, ck[slot].re[sp], ck[slot].xhg[sp]), OVM_HIGH);  
       end
         
       expCause[STAGE_RRF_DEM] = selCause;
@@ -1088,7 +1096,7 @@ class ip4_tlm_dse extends ovm_component;
           cs_dirty:     cache[selCacheIdx][selCacheAso].state[selCacheGrp] = cs_modified;
           endcase
         end
-        ovm_report_info("sel dse last", $psprintf("cyc %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
+        ovm_report_info("sel_dse_last", $psprintf("cyc %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
                         cyc, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_DEM]), OVM_HIGH);  
         for(int i = 0; i <= cyc; i++)
           smi[STAGE_RRF_DEM + i] = ck[LAT_XCHG - 1 - i];

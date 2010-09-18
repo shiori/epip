@@ -69,8 +69,8 @@ parameter uchar WORD_BYTES        = 4,
 
 typedef bit[HALF_BYTES - 1 : 0][7:0] halfb;
 typedef bit [HALF_BITS - 1: 0] half;
-typedef bit[WORD_BYTES - 1 : 0][7:0] word;
-typedef bit [WORD_BITS - 1: 0] wordb;
+typedef bit[WORD_BYTES - 1 : 0][7:0] wordb;
+typedef bit [WORD_BITS - 1: 0] word;
 typedef bit [1:0][HALF_BITS - 1: 0] wordh;
 
 typedef union packed{
