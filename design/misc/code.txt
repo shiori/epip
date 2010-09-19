@@ -1,5 +1,10 @@
 //test asm file
-ld.word.nua.burst v0 zero 0x10 ;
+shuffle4 v1 v3 v2 0x249 ; 
+udiv v10 v10 s10 ;
+vid v1 ;
+st.byte.nua.burst v0 v1 0x3 ;
+options.gn
+ld.byte.nua.burst v0 zero 0x3 ;
 options.gn
 li v3 0x16526C9 ;
 (p0) vid v21 ;
