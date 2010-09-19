@@ -148,6 +148,7 @@ class ip4_tlm_spa extends ovm_component;
         ovm_report_info("spa", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
         
         if(fu.op inside {sfu_only_ops}) begin
+          uint expFlag[NUM_SP];
           ///long operations
           if (vn.sfu[1] == null) vn.sfu[1] = new();
           vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
@@ -163,8 +164,7 @@ class ip4_tlm_spa extends ovm_component;
           
           ///exp check is disabled for long ops
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
-                    presCmp0, presCmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid],
-                    vn.rfm[1].fu[fid].expFlag);
+                    presCmp0, presCmp1, vn.sfu[1].res0[fid], vn.sfu[1].res1[fid], expFlag);
         end
         else begin
           ///normal operations
@@ -201,8 +201,12 @@ class ip4_tlm_spa extends ovm_component;
           vn.spu[1].presCmp0 = presCmp0;
           vn.spu[1].presCmp1 = presCmp1;
         end
-        vn.rfm[1].fu[fid].gp2s = fu.op == op_gp2s;
-        vn.rfm[1].fu[fid].s2gp = fu.op == op_s2gp;
+        
+        if(fu.op inside {op_gp2s, op_s2gp}) begin
+          if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("toRFM", this);
+          vn.rfm[1].fu[fid].gp2s = fu.op == op_gp2s;
+          vn.rfm[1].fu[fid].s2gp = fu.op == op_s2gp;
+        end
       end
       
       ///signal exp when whole request finished
@@ -442,13 +446,38 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   
   op_cmp,
   op_ucmp,  
-  op_div:   foreach(r0[i]) begin r0[i] = op0[i] / op1[i]; r1[i] = op0[i] % op1[i]; end
-  op_udiv:  foreach(r0[i]) begin r0[i] = o[0][i] / o[1][i]; r1[i] = o[0][i] % o[1][i]; end
-  op_quo:   foreach(r0[i]) r0[i] = op0[i] / op1[i];
-  op_uquo:  foreach(r0[i]) r0[i] = o[0][i] / o[1][i];
-  op_res:   foreach(r0[i]) r0[i] = op0[i] % op1[i];
-  op_ures:  foreach(r0[i]) r0[i] = o[0][i] % o[1][i];
-
+  op_div:
+    foreach(r0[i]) begin
+      if(op1[i] == 0) continue;
+      r0[i] = op0[i] / op1[i];
+      r1[i] = op0[i] % op1[i];
+    end
+  op_udiv:
+    foreach(r0[i]) begin
+      if(op1[i] == 0) continue;
+      r0[i] = o[0][i] / o[1][i];
+      r1[i] = o[0][i] % o[1][i];
+    end
+  op_quo:
+    foreach(r0[i]) begin
+      if(op1[i] == 0) continue;
+      r0[i] = op0[i] / op1[i];
+    end
+  op_uquo:
+    foreach(r0[i]) begin
+      if(op1[i] == 0) continue;
+      r0[i] = o[0][i] / o[1][i];
+    end
+  op_res:
+    foreach(r0[i]) begin
+      if(op1[i] == 0) continue;
+      r0[i] = op0[i] % op1[i];
+    end
+  op_ures:
+    foreach(r0[i]) begin
+      if(op1[i] == 0) continue;
+      r0[i] = o[0][i] % o[1][i];
+    end
   op_gp2s:
   begin
     foreach(expFlag[i]) expFlag[i] = op0[i];

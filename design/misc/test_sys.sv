@@ -25,7 +25,7 @@ class test_sys_env extends ovm_env;
   endfunction : new
 endclass
 
-/// vsim +OVM_TESTNAME=ip4_sys_test work.top -c -do "run 90ns ; quit -f" > ..\tlm\log.txt
+/// vsim +OVM_TESTNAME=ip4_sys_test work.top -c -do "transcript off ; run 90ns ; quit -f" > ..\tlm\log.txt
 /// -novopt
 /// cd E:\work\ip4\design\sim
 /// vlog -sv ..\tlm\ip4.sv +incdir+..\tlm\ +incdir+d:\questasim_6.6b\verilog_src\ovm-2.1.1\src\
@@ -39,7 +39,7 @@ class ip4_sys_test extends ovm_test;
     super.build();
     set_config_int("*", "runDelay", 6ns);
     set_config_int("*.sequencer", "count", 200);
-    set_config_int("*", "recording_detail", 1);
+///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
     set_config_string("*", "imFilePath", "../misc/code.txt"); ///average_filter

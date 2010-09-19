@@ -23,7 +23,7 @@ class test_alg_env extends ovm_env;
   endfunction : new
 endclass
 
-/// vsim +OVM_TESTNAME=ip4_alg_test work.top
+/// vsim +OVM_TESTNAME=ip4_alg_test work.top -c -do "transcript off ; run 90ns ; quit -f" > ..\tlm\log.txt
 /// -novopt
 
 class ip4_alg_test extends ovm_test;
@@ -35,7 +35,7 @@ class ip4_alg_test extends ovm_test;
     super.build();
     set_config_int("*", "runDelay", 6ns);
     set_config_int("*.sequencer", "count", 200);
-    set_config_int("*", "recording_detail", 1);
+///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
     set_config_string("*", "imFilePath", "../misc/average_filter.txt");
@@ -62,7 +62,8 @@ class ip4_alg_test extends ovm_test;
   endfunction
 
   virtual task run();
-    set_report_verbosity_level_hier(OVM_MEDIUM);
+    set_report_verbosity_level_hier(OVM_MEDIUM); ///OVM_MEDIUM OVM_HIGH
+    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);
   endtask
     
   function new(string name = "test_sys", ovm_component parent);

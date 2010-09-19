@@ -603,7 +603,7 @@ class ise_thread_inf extends ovm_component;
 
   function void fill_ife(input tr_ise2ife ife);
     ife.fetchReq = 1;
-    ife.pc = (pc + NUM_IFET_BYTES * pendIFetch) & `GMH(WID_IFET);
+    ife.pc = (pc + iBuf.size() + NUM_IFET_BYTES * pendIFetch) & `GMH(WID_IFET);
     pendIFetch++;
   endfunction : fill_ife
 endclass : ise_thread_inf

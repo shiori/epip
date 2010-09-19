@@ -1051,7 +1051,10 @@ class ip4_tlm_dse extends ovm_component;
         for(int i = 0; i <= ise.subVec; i++)
           expReq[STAGE_RRF_DEM + i] = res;
         sendExp = res;            
-      
+        
+        if(res)
+          ovm_report_info("sel", "access exception", OVM_MEDIUM);
+        
         selExpReq = 0;
         selValidReq = 0;
       end
@@ -1117,6 +1120,9 @@ class ip4_tlm_dse extends ovm_component;
         end
         ovm_report_info("sel_dse_last", $psprintf("cyc %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
                         cyc, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_DEM]), OVM_HIGH);  
+        if(exReq[STAGE_RRF_DEM])
+          ovm_report_info("sel", "external access needed", OVM_MEDIUM);
+          
         for(int i = 0; i <= cyc; i++)
           sxg[STAGE_RRF_DEM + i] = sxgBuf[LAT_XCHG - 1 - i];
         selExp = 0;
@@ -1156,12 +1162,14 @@ class ip4_tlm_dse extends ovm_component;
           xhg = xhg & `GML(WID_SMEM_BK);
         end
 
-        sxg[STAGE_RRF_SXG0].slot[sp] = slot;
-        sxg[STAGE_RRF_SXG0].xhg[sp] = xhg << WID_WORD;
+///        sxg[STAGE_RRF_SXG0].slot[sp] = slot;
+///        sxg[STAGE_RRF_SXG0].xhg[sp] = xhg << WID_WORD;
+        sxgBuf[cyc].slot[sp] = slot;
+        sxgBuf[cyc].xhg[sp] = xhg << WID_WORD;
         sxgBuf[cyc].sMemAdr[sp] = xhg;
         sxgBuf[cyc].sMemGrp[sp] = slot;
         
-        sxg[STAGE_RRF_SXG0] = new();                  
+///        sxg[STAGE_RRF_SXG0] = new();                  
         for(int i = 0; i < LAT_XCHG; i++) begin
           if(cyc == sxgBuf[i].sMemGrp[sp]) begin
             sxgBuf[i].stData[sp] = rfm.st[sxgBuf[i].sMemAdr[sp]];
@@ -1170,10 +1178,10 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
                 
-        sxg[STAGE_RRF_SXG0].exp[sp] = 0;
-        sxg[STAGE_RRF_SXG0].ex[sp] = 0;
-        sxg[STAGE_RRF_SXG0].re[sp] = 0;
-        sxg[STAGE_RRF_SXG0].oc[sp] = 1;
+        sxgBuf[cyc].exp[sp] = 0;
+        sxgBuf[cyc].ex[sp] = 0;
+        sxgBuf[cyc].re[sp] = 0;
+        sxgBuf[cyc].oc[sp] = 1;
       end
           
       sxgBuf[cyc].sMemWEn = '{default : 0};
@@ -1209,13 +1217,13 @@ class ip4_tlm_dse extends ovm_component;
         endian[STAGE_RRF_DEM] = eif.endian;
         if(eif.loadRsp) begin
           for(int sp = 0; sp < NUM_SP; sp++) begin
-            sxg[STAGE_RRF_SXG0] = new();
-            sxg[STAGE_RRF_SXG0].xhg[sp] = ldQue[eif.id].xhg[eif.cyc][sp];
-            sxg[STAGE_RRF_SXG0].exp[sp] = 0;
-            sxg[STAGE_RRF_SXG0].oc[sp] = ldQue[eif.id].wrEn[eif.cyc][sp];
-            sxg[STAGE_RRF_SXG0].ex[sp] = 0;
-            sxg[STAGE_RRF_SXG0].re[sp] = 0;
-            sxg[STAGE_RRF_SXG0].slot[sp] = ldQue[eif.id].xhg[eif.cyc][sp] >> (WID_WORD + WID_SMEM_BK);
+///            sxgBuf[cyc] = new();
+            sxgBuf[cyc].xhg[sp] = ldQue[eif.id].xhg[eif.cyc][sp];
+            sxgBuf[cyc].exp[sp] = 0;
+            sxgBuf[cyc].oc[sp] = ldQue[eif.id].wrEn[eif.cyc][sp];
+            sxgBuf[cyc].ex[sp] = 0;
+            sxgBuf[cyc].re[sp] = 0;
+            sxgBuf[cyc].slot[sp] = ldQue[eif.id].xhg[eif.cyc][sp] >> (WID_WORD + WID_SMEM_BK);
           end
         end
 

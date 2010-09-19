@@ -10,6 +10,16 @@ function automatic int get_imm(string tk);
   string tk1 = tk.substr(1, 1);
   string tk1n = tk.substr(1, tk.len() - 1);
   string tk2n = tk.substr(2, tk.len() - 1);
+  bit neg = 0;
+  
+  if(tk0 == "-") begin
+    neg = 1;
+    tk0 = tk.substr(1, 1);
+    tk1 = tk.substr(2, 2);
+    tk1n = tk.substr(2, tk.len() - 1);
+    tk2n = tk.substr(3, tk.len() - 1);    
+  end
+  
   if(tk0.tolower() == "o")
     get_imm = tk1n.atooct();
   else if(tk0.tolower() == "h")
@@ -22,6 +32,9 @@ function automatic int get_imm(string tk);
     get_imm = tk1n.atoi();
   else
     get_imm = tk.atoi();
+  
+  if(neg)
+    get_imm = ~get_imm + 1'b1;
 endfunction
 
 function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
@@ -91,7 +104,8 @@ class asmig;
   bit[1:0] mrst;
   uchar adrBytes;
   uchar modBytes;
-      
+  uint lid;
+  
   function new();
     ps = 1;
     nop = 0;
@@ -1302,7 +1316,7 @@ class asmig;
     bit[8:0][7:0] tmp0;
     bit[23:0][2:0] tmp1;
     
-    $fwrite(fo, "%s", $psprintf("//pc: 0x%0h --------------------------------\n", pc));
+    $fwrite(fo, "%s", $psprintf("//pc: 0x%0h, source line %0d --------------------------------\n", pc, lid));
     `asm_msg($psprintf("//pc: 0x%0h --------------------------------", pc));
     
     if(tagOp[0] && tag2ig.exists(tag)) begin
@@ -1428,7 +1442,8 @@ class ip4_assembler;
   asmig tag2ig[string];
   asmig cur;
   asmig igs[$];
-    
+  uint lid = 1;
+  
   function bit translate();
     string s;
     uchar icnt = 0;
@@ -1483,6 +1498,7 @@ class ip4_assembler;
           icnt = 0;
           isInst = 0;
           cur.pc = pc;
+          cur.lid = lid;
           pc += cur.grpsize;
           igs.push_back(cur);
           cur = null;
@@ -1681,6 +1697,7 @@ class ip4_assembler;
         end   
       end
       icnt += isInst;
+      lid++;
     end
     
     ///second pass
