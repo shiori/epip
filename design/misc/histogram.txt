@@ -1,0 +1,24 @@
+// Histogram
+// image size 32*32
+// image gray level 32
+// each PE count one gray-scale
+(p0) vid v0 ;
+// rb
+li s0 0 ;
+// count
+li s1 0 ;
+// offset
+li s2 0 ;
+// the final row
+li s3 992;
+// the current line final address
+$tag2 add.u s4 s0 31 ;
+$tag1 ld.byte.nua.burst v1 s0 s2 ;
+cmp.unc.= p1 p2 v1 v0 ; 
+(p1) add.u s1 s1 1 ;
+add.u s2 s2 1 ;
+cmp.unc.<= p3 p0 s2 s4 ;
+(p3) b.naz.bc.pop2n $tag1 0 ;
+add.u s0 s0 32 ; 
+cmp.unc.<= p4 p0 s0 s3 ;
+(p4) b.naz.bc.pop2n $tag2 0 ;
