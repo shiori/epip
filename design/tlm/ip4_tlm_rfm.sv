@@ -47,6 +47,9 @@ class ip4_tlm_rfm extends ovm_component;
              srIIDz[NUM_THREAD][CYC_VEC][NUM_SP];
   
   local ip4_tlm_rfm_vars v, vn;
+  local word bpCoFu[NUM_BP_CO],
+             bpCoDSE[NUM_BP_CO],
+             bpCoSPU[NUM_BP_CO];
   local tr_rfm2spa toSPA;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
@@ -219,41 +222,48 @@ class ip4_tlm_rfm extends ovm_component;
       
       foreach(csrf[bk])
         csrf[bk] = srf[ise.srfRdGrp[bk]][ise.srfRdAdr[bk]][bk];  
-
+                
+      if(ise.cycFu == 0)
+        bpCoFu = ise.bpCo;
+      if(ise.dseEn && ise.cycDSE)
+        bpCoDSE = ise.bpCo;
+      if(ise.spuEn && ise.cycSPU)
+        bpCoSPU = ise.bpCo;
+      
       foreach(ise.fu[fid]) begin
         if(!ise.fu[fid].en) continue;
         ovm_report_info("RFM_RD", $psprintf("Read for spa subVec %0d, cyc %0d, Fu%0d : %s ...",
-                        subVec, ise.cyc, fid, fu_cfg[fid].name), OVM_HIGH);
+                        subVec, ise.cycFu, fid, fu_cfg[fid].name), OVM_HIGH);
         if(vn.spa[subVec] == null) vn.spa[subVec] = tr_rfm2spa::type_id::create("toSPA", this);
         vn.spa[subVec].fu[fid].en = 1;
         foreach(vn.spa[subVec].fu[fid].rp[rp])
           foreach(vn.spa[subVec].fu[fid].rp[rp].op[sp])
             read_rf(vn.spa[subVec].fu[fid].rp[rp].op[sp], ise.fu[fid].rdBkSel[rp],
-                    sp, cvrf, csrf, ise.bpCoFu, ise.fu[fid].imm);
+                    sp, cvrf, csrf, bpCoFu, ise.fu[fid].imm);
       end
       
-      if(ise.dseEn && ise.cyc < 2) begin  /// && subVec == 0
+      if(ise.dseEn && ise.cycDSE < 2) begin  /// && subVec == 0
         ovm_report_info("RFM_RD", $psprintf("Read for dse subVec %0d, cyc %0d ...",
-                        subVec, ise.cyc), OVM_HIGH);
+                        subVec, ise.cycDSE), OVM_HIGH);
         if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
         foreach(toDSE.base[sp]) begin
-          read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, ise.bpCoDSE, ise.dseImm);
-          read_rf(dseSt[ise.cyc][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpCoDSE, ise.dseImm);
+          read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, bpCoDSE, ise.dseImm);
+          read_rf(dseSt[ise.cycDSE][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, bpCoDSE, ise.dseImm);
         end
-        read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpCoDSE, ise.dseImm);
+        read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, bpCoDSE, ise.dseImm);
       end
             
-      if(ise.spuEn && ise.cyc < 2) begin
-        ovm_report_info("RFM_RD", $psprintf("Read for spu cyc %0d ...", ise.cyc), OVM_HIGH);
-        if(vn.spu[ise.cyc] == null) vn.spu[ise.cyc] = tr_rfm2spu::type_id::create("toSPU", this);
-        read_rf(vn.spu[ise.cyc].op0, ise.spuRdBk[0], 0, cvrf, csrf, ise.bpCoSPU, ise.spuImm);
-        read_rf(vn.spu[ise.cyc].op1, ise.spuRdBk[1], 0, cvrf, csrf, ise.bpCoSPU, ise.spuImm);          
+      if(ise.spuEn && ise.cycSPU < 2) begin
+        ovm_report_info("RFM_RD", $psprintf("Read for spu cyc %0d ...", ise.cycSPU), OVM_HIGH);
+        if(vn.spu[ise.cycSPU] == null) vn.spu[ise.cycSPU] = tr_rfm2spu::type_id::create("toSPU", this);
+        read_rf(vn.spu[ise.cycSPU].op0, ise.spuRdBk[0], 0, cvrf, csrf, bpCoSPU, ise.spuImm);
+        read_rf(vn.spu[ise.cycSPU].op1, ise.spuRdBk[1], 0, cvrf, csrf, bpCoSPU, ise.spuImm);          
       end
     end
     
     for(int subVec = 0; subVec < CYC_VEC; subVec++)
       ///possible of shorting the CYC_VEC read cycles
-      if(v.fmISE[STAGE_RRF_RRC0 + subVec] != null && v.fmISE[STAGE_RRF_RRC0 + subVec].cyc == v.fmISE[STAGE_RRF_RRC0 + subVec].vecMode) begin
+      if(v.fmISE[STAGE_RRF_RRC0 + subVec] != null && v.fmISE[STAGE_RRF_RRC0 + subVec].cycFu == v.fmISE[STAGE_RRF_RRC0 + subVec].vecModeFu) begin
         toSPA = vn.spa[subVec];
         vn.spa[subVec] = null;
         break;
@@ -261,7 +271,7 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmISE[STAGE_RRF_RRC1] != null && v.fmISE[STAGE_RRF_RRC1].dseEn) begin
       if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
-      toDSE.st = dseSt[1][v.fmISE[STAGE_RRF_RRC1].cyc];
+      toDSE.st = dseSt[1][v.fmISE[STAGE_RRF_RRC1].cycDSE];
     end
     
     if(v.fmISE[STAGE_RRF_RRC1] != null && v.fmISE[STAGE_RRF_RRC1].spuEn) begin

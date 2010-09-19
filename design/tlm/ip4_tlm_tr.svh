@@ -28,15 +28,15 @@ class tr_ise2rfm extends ovm_sequence_item;
 	
 	rand ise2rfm_fu fu[NUM_FU];
 	rand rbk_sel_e dseRdBk[4], spuRdBk[2];
-	rand word bpCoFu[NUM_BP_CO],
-	          bpCoDSE[NUM_BP_CO],
-	          bpCoSPU[NUM_BP_CO],
-	          dseImm, spuImm;
+///	rand bit vecEnd;///, sclEnd, start;
+	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
-	rand uchar cyc, vecMode, tid;
+	rand uchar cycFu, cycDSE, cycSPU, vecModeFu, tid;
 	
 	constraint valid_var {
-	  cyc < CYC_VEC;
+	  cycFu < CYC_VEC;
+	  cycDSE < CYC_VEC;
+	  cycSPU < CYC_VEC;
 		foreach(vrfRdGrp[i]) {
 			vrfRdGrp[i] inside {[0:NUM_PHY_VRF_GRP-1]};
 			vrfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
@@ -68,17 +68,17 @@ class tr_ise2rfm extends ovm_sequence_item;
 		`ovm_field_int(tid, OVM_ALL_ON)
 		`ovm_field_int(spuEn, OVM_ALL_ON)
 		`ovm_field_int(dseEn, OVM_ALL_ON)
-		`ovm_field_int(cyc, OVM_ALL_ON)
-		`ovm_field_int(vecMode, OVM_ALL_ON)
+		`ovm_field_int(cycFu, OVM_ALL_ON)
+		`ovm_field_int(cycDSE, OVM_ALL_ON)
+		`ovm_field_int(cycSPU, OVM_ALL_ON)
+		`ovm_field_int(vecModeFu, OVM_ALL_ON)
 		`ovm_field_sarray_int(vrfRdGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(vrfRdAdr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srfRdGrp, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_int(srfRdAdr, OVM_ALL_ON + OVM_DEC)
 		`ovm_field_sarray_enum(rbk_sel_e, dseRdBk, OVM_ALL_ON)
 		`ovm_field_sarray_enum(rbk_sel_e, spuRdBk, OVM_ALL_ON)
-		`ovm_field_sarray_int(bpCoFu, OVM_ALL_ON)
-		`ovm_field_sarray_int(bpCoDSE, OVM_ALL_ON)
-		`ovm_field_sarray_int(bpCoSPU, OVM_ALL_ON)
+		`ovm_field_sarray_int(bpCo, OVM_ALL_ON)
 		`ovm_field_int(dseImm, OVM_ALL_ON)
 		`ovm_field_int(spuImm, OVM_ALL_ON)
   `ovm_object_utils_end
