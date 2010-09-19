@@ -1587,6 +1587,7 @@ class ip4_assembler;
               "byteu" : cur.mbyteu = 1;
               "half" : cur.mhalf = 1;
               "byte" : cur.mbyte = 1;
+              "word" : begin cur.mhalfu = 0; cur.mbyteu = 0; cur.mhalf = 0; cur.mbyte = 0; end
               "cond" : cur.stCn = 1;
               "link" : cur.ldLk = 1;
               "preua" : cur.ua = 1;

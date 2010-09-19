@@ -1,5 +1,5 @@
 //test asm file
-ld.nua.burst v0 zero 0x10 ;
+ld.word.nua.burst v0 zero 0x10 ;
 options.gn
 li v3 0x16526C9 ;
 (p0) vid v21 ;
