@@ -131,13 +131,13 @@ class ip4_tlm_rfm extends ovm_component;
       uchar bk0, bk1;
       
       if(cancel[spa.tid][STAGE_RRF_VWB])
-        ovm_report_info("rfm", "spa write back canceled...", OVM_HIGH); 
+        ovm_report_info("rfm_wr", "spa write back canceled...", OVM_MEDIUM); 
         
       foreach(spa.fu[fid]) begin
         uchar tid = spa.fu[fid].tid,
               subVec = spa.fu[fid].subVec;
-        ovm_report_info("RFM_WR", $psprintf("Write Back FU%0d : %s, grp: %0d, adr %0d, bk %0d ...", fid, fu_cfg[fid].name,
-          spa.fu[fid].vrfWrGrp, spa.fu[fid].vrfWrAdr, spa.fu[fid].vrfWrBk), OVM_HIGH);
+        ovm_report_info("rfm_wr", $psprintf("Write Back FU%0d : %s, grp: %0d, adr %0d, bk %0d ...", fid, fu_cfg[fid].name,
+          spa.fu[fid].vrfWrGrp, spa.fu[fid].vrfWrAdr, spa.fu[fid].vrfWrBk), OVM_MEDIUM);
         if(cancel[spa.tid][STAGE_RRF_VWB]) continue;
         bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].vrfWrBk & `GMH(1)) : spa.fu[fid].vrfWrBk;
         bk1 = bk0 + 1;
@@ -174,17 +174,17 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmDSE != null) begin
       tr_dse2rfm dse = v.fmDSE;
-      ovm_report_info("RFM_WR", "Write Back dse...", OVM_HIGH);
+      ovm_report_info("rfm_wr", "Write Back dse...", OVM_MEDIUM);
       srDSEExp[dse.tid][dse.subVec] = dse.expVec;
       if(dse.srfWr) begin
         if(cancel[dse.tid][STAGE_RRF_SWB])
-          ovm_report_info("rfm", "dse scl write back canceled...", OVM_HIGH); 
+          ovm_report_info("rfm_wr", "dse scl write back canceled...", OVM_MEDIUM); 
         else
           srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       end
       else begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
-          ovm_report_info("rfm", "dse vec write back canceled...", OVM_HIGH); 
+          ovm_report_info("rfm_wr", "dse vec write back canceled...", OVM_MEDIUM); 
         else
           foreach(dse.wrEn[sp])
             if(dse.wrEn[sp] && dse.vrfWr) begin
@@ -197,9 +197,9 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_SWB]) begin
       tr_spu2rfm spu = v.fmSPU;
-      ovm_report_info("RFM_WR", "Write Back spu...", OVM_HIGH);
+      ovm_report_info("rfm_wr", "Write Back spu...", OVM_MEDIUM);
       if(cancel[v.fmSPU.tid][STAGE_RRF_SWB])
-        ovm_report_info("rfm", "spu write back canceled...", OVM_HIGH); 
+        ovm_report_info("rfm_wr", "spu write back canceled...", OVM_MEDIUM); 
       else begin
         if(spu.wrSrMSC) begin
           srMSCU[spu.tid][spu.subVec] = spu.mscu;
@@ -232,7 +232,7 @@ class ip4_tlm_rfm extends ovm_component;
       
       foreach(ise.fu[fid]) begin
         if(!ise.fu[fid].en) continue;
-        ovm_report_info("RFM_RD", $psprintf("Read for spa subVec %0d, cyc %0d, Fu%0d : %s ...",
+        ovm_report_info("rfm_rd", $psprintf("Read for spa subVec %0d, cyc %0d, Fu%0d : %s ...",
                         subVec, ise.cycFu, fid, fu_cfg[fid].name), OVM_HIGH);
         if(vn.spa[subVec] == null) vn.spa[subVec] = tr_rfm2spa::type_id::create("toSPA", this);
         vn.spa[subVec].fu[fid].en = 1;
@@ -243,7 +243,7 @@ class ip4_tlm_rfm extends ovm_component;
       end
       
       if(ise.dseEn && ise.cycDSE < 2) begin  /// && subVec == 0
-        ovm_report_info("RFM_RD", $psprintf("Read for dse subVec %0d, cyc %0d ...",
+        ovm_report_info("rfm_rd", $psprintf("Read for dse subVec %0d, cyc %0d ...",
                         subVec, ise.cycDSE), OVM_HIGH);
         if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
         foreach(toDSE.base[sp]) begin
@@ -254,7 +254,7 @@ class ip4_tlm_rfm extends ovm_component;
       end
             
       if(ise.spuEn && ise.cycSPU < 2) begin
-        ovm_report_info("RFM_RD", $psprintf("Read for spu cyc %0d ...", ise.cycSPU), OVM_HIGH);
+        ovm_report_info("rfm_rd", $psprintf("Read for spu cyc %0d ...", ise.cycSPU), OVM_HIGH);
         if(vn.spu[ise.cycSPU] == null) vn.spu[ise.cycSPU] = tr_rfm2spu::type_id::create("toSPU", this);
         read_rf(vn.spu[ise.cycSPU].op0, ise.spuRdBk[0], 0, cvrf, csrf, bpCoSPU, ise.spuImm);
         read_rf(vn.spu[ise.cycSPU].op1, ise.spuRdBk[1], 0, cvrf, csrf, bpCoSPU, ise.spuImm);          
@@ -297,7 +297,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_spu(input tr_spu2rfm req, output tr_spu2rfm rsp);
-    ovm_report_info("rfm_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("rfm_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_MEDIUM);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -307,7 +307,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_dse(input tr_dse2rfm req, output tr_dse2rfm rsp);
-    ovm_report_info("rfm_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("rfm_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_MEDIUM);
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -317,7 +317,7 @@ class ip4_tlm_rfm extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_spa(input tr_spa2rfm req, output tr_spa2rfm rsp);
-    ovm_report_info("rfm_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH);
+    ovm_report_info("rfm_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_MEDIUM);
     sync();
     assert(req != null);
     void'(begin_tr(req));

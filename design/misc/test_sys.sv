@@ -42,7 +42,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
-    set_config_string("*", "imFilePath", "../misc/code.txt");
+    set_config_string("*", "imFilePath", "../misc/average_filter.txt"); ///code.txt
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    
@@ -53,6 +53,8 @@ class ip4_sys_test extends ovm_test;
     
     set_config_int("*thread0*", "srfMap[0]", 0);
     set_config_int("*thread0*", "srfMap[1]", 1);
+    
+    set_config_int("*thread0*", "srExpMsk", 1);
     
     set_config_int("*tlb*", "vpn2[0]", 0);
     set_config_int("*tlb*", "pageTyp[0]", page_64K);

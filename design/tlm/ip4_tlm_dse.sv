@@ -140,6 +140,8 @@ class ip4_tlm_dse extends ovm_component;
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
     `ovm_field_string(smFilePath, OVM_ALL_ON)
+    `ovm_field_int(srCacheGrp, OVM_ALL_ON)
+    `ovm_field_int(srMapBase, OVM_ALL_ON)
   `ovm_component_utils_end
       
   ovm_nonblocking_transport_imp_ise #(tr_ise2dse, tr_ise2dse, ip4_tlm_dse) ise_tr_imp;
