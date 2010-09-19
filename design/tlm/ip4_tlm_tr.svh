@@ -1137,10 +1137,12 @@ class tr_eif2dse extends ovm_sequence_item;
            rd, wr, alloc, noSglSt, noLd, endian,
            queryCacheState, queryAndUpdate;
   rand uchar id, cyc;
-  rand word data[NUM_SP];
   rand exadr_t exAdr;
   rand cache_state_t state;
+  
+  ///those 2 comes late
   rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
+  rand word data[NUM_SP];
   
   `ovm_object_utils_begin(tr_eif2dse)
     `ovm_field_int(loadRsp, OVM_ALL_ON)
