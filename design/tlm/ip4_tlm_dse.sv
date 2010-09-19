@@ -122,6 +122,7 @@ class ip4_tlm_dse extends ovm_component;
   local bit[CYC_VEC - 1 : 0] dcReRun;
   
   local sxg_t sxgBuf[LAT_XCHG],
+              sxglxg[LAT_XCHG],
               sxg[STAGE_RRF_LXG:STAGE_RRF_DEM];
   
   local wordu dcFlushData[STAGE_RRF_LXG:STAGE_RRF_DC][NUM_SP];
@@ -328,7 +329,6 @@ class ip4_tlm_dse extends ovm_component;
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC], eif2 = v.fmEIF[st];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_DC];
-      sxg_t sxglxg[LAT_XCHG];
       
       bit last = 0, shf4 = 0, per = 0, tmsg = 0, fmsg = 0, 
           vXhgEn, exDataSel, exRd = 0;
@@ -450,6 +450,8 @@ class ip4_tlm_dse extends ovm_component;
             ovm_report_info("dc_lxg", $psprintf("stage %0d, slot %0d, sp %0d, bk %0d, data 0x%0h, vrfWEn %0d",
                             j, slot, sp, bk, lxgBuf[slot].data[sp], lxgBuf[slot].vrfWEn[sp]), OVM_HIGH);
           end
+          else
+            ovm_report_info("dc_lxg", $psprintf("not match stage %0d, slot %0d, sp %0d, bk %0d", j, slot, sp, bk), OVM_HIGH);
         end
       end
       
