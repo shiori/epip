@@ -1,5 +1,5 @@
 // Histogram
-// image size 32*32
+// image size 128*128
 // image gray level 32
 // each PE count one gray-scale
 // all pixel traversed by each PE
@@ -11,18 +11,18 @@ li v2 0 ;
 // offset
 li s2 0 ;
 // the final row
-li s3 992 ;
+li s3 16256 ;
 // the current line final address
-$tag2 add.u v6 v1 32 ;
+$tag2 add.u v6 v1 127 ;
 add.u v7 v1 0 ;
 $tag1 ld.byte.nua.rand v3 v7 0 ;
 cmp.unc.= p1 p2 v3 v0 ; 
 (p1) add.u v2 v2 1 ;
 add.u v4 v7 1 ;
-and.i v5 v4 31 ;
+and.i v5 v4 127 ;
 cmp.unc.<= p3 p0 v4 v6 ;
 (p3) add.u v7 v5 0 ;
 (p3) b.naz.bc.pop2n $tag1 0 ;
-add.u v1 v1 32 ; 
+add.u v1 v1 128 ; 
 cmp.unc.<= p4 p0 v1 s3 ;
 (p4) b.naz.bc.pop2n $tag2 0 ;
