@@ -444,9 +444,9 @@ class ip4_tlm_dse extends ovm_component;
           end
           
           if(slot == cyc) begin
-            lxgBuf[slot].data[sp] = xhgData[bk];
+            lxgBuf[j].data[sp] = xhgData[bk];
             if(vXhgEn)
-              lxgBuf[slot].vrfWEn[sp] = wEn[bk];
+              lxgBuf[j].vrfWEn[sp] = wEn[bk];
             ovm_report_info("dc_lxg", $psprintf("stage %0d, slot %0d, sp %0d, bk %0d, data 0x%0h, vrfWEn %0d",
                             j, slot, sp, bk, lxgBuf[slot].data[sp], lxgBuf[slot].vrfWEn[sp]), OVM_HIGH);
           end
@@ -575,21 +575,15 @@ class ip4_tlm_dse extends ovm_component;
       if(rfmReq) begin
         if(v.rfm[STAGE_RRF_LXG] == null) v.rfm[STAGE_RRF_LXG] = tr_dse2rfm::type_id::create("toRFM", this);
         for(int sp = 0; sp < NUM_SP; sp++) begin
-          uchar os = sxg[STAGE_RRF_LXG].xhg[sp] & `GML(WORD_BYTES);
+          uchar os = sxg[STAGE_RRF_LXG].xhg[sp] & `GML(WID_WORD);
           wordu res = lxg[STAGE_RRF_LXG].data[sp];
           case(op)
-          op_shf4a, 
-          op_shf4b, 
-          op_pera, 
-          op_perb,
-          op_lw:    v.rfm[STAGE_RRF_LXG].res[sp] = res;
-          op_lh:    v.rfm[STAGE_RRF_LXG].res[sp] = {{WORD_BITS{res.h[os >> WID_HALF].h[HALF_BITS - 1]}}, res.h[os >> WID_HALF]};
-          op_lhu:   v.rfm[STAGE_RRF_LXG].res[sp] = res.h[os >> WID_HALF];
-          op_lb:    v.rfm[STAGE_RRF_LXG].res[sp] = res.b[os];
-          op_lbu:   v.rfm[STAGE_RRF_LXG].res[sp] = {{WORD_BITS{res.b[os][7]}}, res.b[os]};
-          op_fmrf:  v.rfm[STAGE_RRF_LXG].res[sp] = res;
-          op_tmrf:  v.rfm[STAGE_RRF_LXG].res[sp] = res;
+          op_lh:    res = {{HALF_BITS{res.h[os >> WID_HALF].h[HALF_BITS - 1]}}, res.h[os >> WID_HALF]};
+          op_lhu:   res = res.h[os >> WID_HALF];
+          op_lb:    res = res.b[os];
+          op_lbu:   res = {{(WORD_BITS - 8){res.b[os][7]}}, res.b[os]};
           endcase
+          v.rfm[STAGE_RRF_LXG].res[sp] = res;
         end
         v.rfm[STAGE_RRF_LXG].wrEn = lxg[STAGE_RRF_LXG].vrfWEn;
         v.rfm[STAGE_RRF_LXG].expVec = sxg[STAGE_RRF_LXG].exp;
@@ -747,7 +741,7 @@ class ip4_tlm_dse extends ovm_component;
         bit oc = spu.emsk[sp] && ise.en,
             ex = spu.emsk[sp] && ise.en && !ise.noExt,
             ocWEn;
-        uchar grp, adr, bk, os, slot, bk2;
+        uchar grp, adr, bk, os, slot;
         wordu res;
         wordu st = rfm.st[sp];
                 
@@ -874,15 +868,11 @@ class ip4_tlm_dse extends ovm_component;
             if(oc) begin
               bit found = 0;
               for(int s = 0; s <= maxSlot; s++) begin
-                for(int bks = 0; bks < NUM_SP; bks++) begin
-                  if((sxgBuf[s].sMemAdr[bks] == adr && sxgBuf[s].sMemGrp[bks] == grp) || !sxgBuf[s].sMemOpy[bks]) begin
-                    sxgBuf[s].sMemOpy[bks] = 1;
-                    slot = s;
-                    found = 1;
-                    bk2 = bks;
-                    break;
-                  end
-                  if(found) break;
+                if((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]) begin
+                  sxgBuf[s].sMemOpy[bk] = 1;
+                  slot = s;
+                  found = 1;
+                  break;
                 end
               end
               oc = found;
@@ -928,14 +918,11 @@ class ip4_tlm_dse extends ovm_component;
             begin
               bit found = 0;
               for(int s = 0; s < LAT_XCHG; s++) begin
-                for(int bks = 0; bks < NUM_SP; bks++) begin
-                  if((sxgBuf[s].sMemAdr[bks] == adr && sxgBuf[s].sMemGrp[bks] == grp) || !sxgBuf[s].sMemOpy[bks]) begin
-                    sxgBuf[s].sMemOpy[bks] = oc;
-                    slot = s;
-                    found = 1;
-                    bk2 = bks;
-                    break;
-                  end
+                if((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]) begin
+                  sxgBuf[s].sMemOpy[bk] = oc;
+                  slot = s;
+                  found = 1;
+                  break;
                 end
                 if(found) break;
               end
@@ -991,30 +978,30 @@ class ip4_tlm_dse extends ovm_component;
           
           ///sxg stage, filling sxgBuf, exchange data
           if(oc) begin
-            sxgBuf[slot].sMemAdr[bk2] = adr;
-            sxgBuf[slot].sMemGrp[bk2] = grp;
+            sxgBuf[slot].sMemAdr[bk] = adr;
+            sxgBuf[slot].sMemGrp[bk] = grp;
           end
           
           ocWEn = (ise.op inside {st_ops}) && oc;
           case(ise.op)
           op_sw   : 
             for(int j = 0; j < WORD_BYTES; j++) begin
-              sxgBuf[slot].stData[bk2].b[j] = st.b[j];
-              sxgBuf[slot].sMemWEn[bk2][j] = ocWEn;
-              sxgBuf[slot].exEn[bk2][j] = ex;
+              sxgBuf[slot].stData[bk].b[j] = st.b[j];
+              sxgBuf[slot].sMemWEn[bk][j] = ocWEn;
+              sxgBuf[slot].exEn[bk][j] = ex;
             end
           op_sh   :
             for(int j = 0; j < HALF_BYTES; j++) begin
               uchar adr2 = os & `GML(WID_HALF);
-              sxgBuf[slot].stData[bk2].b[adr2 + j] = st.b[adr2 + j];
-              sxgBuf[slot].sMemWEn[bk2][adr2 + j] = ocWEn;
-              sxgBuf[slot].exEn[bk2][adr2 + j] = ex;
+              sxgBuf[slot].stData[bk].b[adr2 + j] = st.b[adr2 + j];
+              sxgBuf[slot].sMemWEn[bk][adr2 + j] = ocWEn;
+              sxgBuf[slot].exEn[bk][adr2 + j] = ex;
             end
           op_sb   :
           begin
-            sxgBuf[slot].stData[bk2].b[os] = st.b[os];
-            sxgBuf[slot].sMemWEn[bk2][os] = ocWEn;
-            sxgBuf[slot].exEn[bk2][os] = ex;
+            sxgBuf[slot].stData[bk].b[os] = st.b[os];
+            sxgBuf[slot].sMemWEn[bk][os] = ocWEn;
+            sxgBuf[slot].exEn[bk][os] = ex;
           end
           endcase
         end
