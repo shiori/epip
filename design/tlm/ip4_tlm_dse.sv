@@ -125,19 +125,21 @@ class ip4_tlm_dse extends ovm_component;
              smi[STAGE_RRF_LXG:STAGE_RRF_DEM];
 ///  local sp_t spi[STAGE_RRF_LXG:STAGE_RRF_SXG0];
   
-  local wordu dcXhgData[STAGE_RRF_LXG:STAGE_RRF_LXG0][NUM_SP],
-              dcFlushData[STAGE_RRF_LXG:STAGE_RRF_LXG0][NUM_SP];
-  local bit dcVrfWEn[STAGE_RRF_LXG:STAGE_RRF_LXG0][NUM_SP];
+  local wordu dcXhgData[STAGE_RRF_LXG:STAGE_RRF_DC][NUM_SP],
+              dcFlushData[STAGE_RRF_LXG:STAGE_RRF_DC][NUM_SP];
+  local bit dcVrfWEn[STAGE_RRF_LXG:STAGE_RRF_DC][NUM_SP];
     
   local ldQue_t ldQue[NUM_LDQUE];
   local stQue_t stQue[NUM_STQUE];
   local uchar pbId;
+  local string smFilePath;
   
   local ll_ck_t llCk[NUM_LLCK];
   local uchar llNext;
   
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
+    `ovm_field_string(smFilePath, OVM_ALL_ON)
   `ovm_component_utils_end
       
   ovm_nonblocking_transport_imp_ise #(tr_ise2dse, tr_ise2dse, ip4_tlm_dse) ise_tr_imp;
@@ -217,7 +219,7 @@ class ip4_tlm_dse extends ovm_component;
       vn.eif[i] = v.eif[i - 1];
     vn.eif[STAGE_RRF_SXG0] = null;
     
-    for(int i = STAGE_RRF_LXG; i > STAGE_RRF_LXG0; i--) begin
+    for(int i = STAGE_RRF_LXG; i > STAGE_RRF_DC; i--) begin
       dcXhgData[i] = dcXhgData[i - 1];
       dcFlushData[i] = dcFlushData[i - 1];
       dcVrfWEn[i] = dcVrfWEn[i - 1];
@@ -339,7 +341,7 @@ class ip4_tlm_dse extends ovm_component;
       end
       if(eif != null) begin
         bit allocFail = 0;
-        exFlush = cacheFlush[STAGE_RRF_LXG];
+        exFlush = cacheFlush[STAGE_RRF_DC];
         exRd = eif.rd;
         if(v.eif[STAGE_RRF_DC] != null)
           allocFail = v.eif[STAGE_RRF_DC].allocFail;
@@ -386,9 +388,9 @@ class ip4_tlm_dse extends ovm_component;
              grp = smi[STAGE_RRF_DC].sMemGrp[bk],
              adr2 = adr ^ 'b01;   ///flip last bit
         if(exFlush)
-          dcFlushData[STAGE_RRF_LXG0][bk] = sharedMem[grp][adr2][bk];
+          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr2][bk];
         else if(exRd)
-          dcFlushData[STAGE_RRF_LXG0][bk] = sharedMem[grp][adr][bk];
+          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr][bk];
         
         if(exFlush)
           xhgData[bk] = smWData[bk];
@@ -405,14 +407,14 @@ class ip4_tlm_dse extends ovm_component;
         uchar cmp;
         ///dcXhgData dcVrfWEn initial value
         if(per || shf4 || tmsg) begin
-          dcXhgData[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].stData[sp];
+          dcXhgData[STAGE_RRF_DC][sp] = smi[STAGE_RRF_DC].stData[sp];
           if(vXhgEn)
-            dcVrfWEn[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].sMemOpy[sp];
+            dcVrfWEn[STAGE_RRF_DC][sp] = smi[STAGE_RRF_DC].sMemOpy[sp];
           else
-            dcVrfWEn[STAGE_RRF_LXG0][sp] = spu.emsk[sp];
+            dcVrfWEn[STAGE_RRF_DC][sp] = spu.emsk[sp];
         end
         else ///ld reqs
-          dcVrfWEn[STAGE_RRF_LXG0][sp] = smi[STAGE_RRF_DC].oc[sp] || smi[STAGE_RRF_DC].ex[sp];
+          dcVrfWEn[STAGE_RRF_DC][sp] = smi[STAGE_RRF_DC].oc[sp] || smi[STAGE_RRF_DC].ex[sp];
           
         if(per || tmsg) begin
           cmp = cyc + LAT_XCHG;
@@ -429,21 +431,20 @@ class ip4_tlm_dse extends ovm_component;
         end
                     
         for(int slot = 0; slot < LAT_XCHG; slot++) begin
-          uchar sts = STAGE_RRF_DC + slot,
-                stt = STAGE_RRF_LXG0 + slot,
+          uchar st = STAGE_RRF_DC + slot,
                 bk;
           
-          if(smi[sts] == null) continue;
-          bk = smi[sts].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK);
+          if(smi[st] == null) continue;
+          bk = smi[st].xhg[sp] >> WID_WORD & `GML(WID_SMEM_BK);
           
-          if(smi[sts].slot[sp] == cmp) begin
-            dcXhgData[stt][sp] = xhgData[bk];
+          if(smi[st].slot[sp] == cmp) begin
+            dcXhgData[st][sp] = xhgData[bk];
             if(vXhgEn)
-              dcVrfWEn[stt][sp] = wEn[bk];
+              dcVrfWEn[st][sp] = wEn[bk];
 ///            else
 ///              dcVrfWEn[stt][sp] = wEn[sp];
             ovm_report_info("dc_lxg", $psprintf("slot %0d, sp %0d, cmp %0d, bk %0d, dcXhgData[st][sp] 0x%0h, dcVrfWEn[st][sp] %0d",
-                            slot, sp, cmp, bk, xhgData[bk], dcVrfWEn[stt][sp]), OVM_HIGH);
+                            slot, sp, cmp, bk, xhgData[bk], dcVrfWEn[st][sp]), OVM_HIGH);
           end
         end
       end
@@ -1671,6 +1672,9 @@ class ip4_tlm_dse extends ovm_component;
     srCacheGrp = 0;
     foreach(ck[i])
       ck[i] = new();
+      
+    if(smFilePath != "")
+      $readmemh(smFilePath, sharedMem);
   endfunction : build
 endclass : ip4_tlm_dse
 

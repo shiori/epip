@@ -43,6 +43,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
     set_config_string("*", "imFilePath", "../misc/code.txt");
+    set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    
     set_config_int("*thread0*", "vrfMap[0]", 0);

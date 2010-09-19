@@ -152,14 +152,16 @@ class ip4_tlm_ife extends ovm_component;
     failed_convert_interface: assert($cast(vifCfg, tmp));
     sysif = vifCfg.get_vif();  
     stamp = 0ns;
-
-    asm = new();
-    asm.i = imFilePath;
-    asm.o = "code.asm";
-    asm.verb = OVM_HIGH;
-    assert(asm.translate());
-    im = new[imSize];
-    $readmemb("code.asm", im);
+    
+    if(imFilePath != "") begin
+      asm = new();
+      asm.i = imFilePath;
+      asm.o = "code.asm";
+      asm.verb = OVM_HIGH;
+      assert(asm.translate());
+      im = new[imSize];
+      $readmemb("code.asm", im);
+    end
   endfunction : build
 endclass : ip4_tlm_ife
 

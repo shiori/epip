@@ -39,6 +39,7 @@ class ip4_alg_test extends ovm_test;
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
     set_config_string("*", "imFilePath", "../misc/average_filter.txt");
+    set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    
     set_config_int("*thread0*", "vrfMap[0]", 0);
@@ -48,12 +49,19 @@ class ip4_alg_test extends ovm_test;
     
     set_config_int("*thread0*", "srfMap[0]", 0);
     set_config_int("*thread0*", "srfMap[1]", 1);
+    
+    set_config_int("*tlb*", "vpn2[0]", 0);
+    set_config_int("*tlb*", "pageTyp[0]", page_64K);
+    set_config_int("*tlb*", "pfn2e[0]", (SMEM_OFFSET + 2 * SMEM_SIZE) >> VADR_START);
+    set_config_int("*tlb*", "v[0]", 2'b01);
+    set_config_int("*tlb*", "d[0]", 2'b01);
        
     env = new("env", this);
   endfunction
 
   virtual task run();
-    set_report_verbosity_level_hier(OVM_HIGH);
+    set_report_verbosity_level_hier(OVM_MEDIUM);
+    env.core.rfm.set_report_verbosity_level_hier(OVM_HIGH);
   endtask
     
   function new(string name = "test_sys", ovm_component parent);

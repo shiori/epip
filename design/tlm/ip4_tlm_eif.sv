@@ -280,8 +280,10 @@ class ip4_tlm_eif extends ovm_component;
     sysif = vifCfg.get_vif();  
     stamp = 0ns;
     
-    dm = new[dmSize];
-    $readmemb(dmFilePath, dm);
+    if(dmFilePath != "") begin
+      dm = new[dmSize];
+      $readmemb(dmFilePath, dm);
+    end
   endfunction : build
 endclass : ip4_tlm_eif
 

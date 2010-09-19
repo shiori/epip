@@ -684,7 +684,7 @@ class ip4_tlm_ise extends ovm_component;
       1:  res = npc;
       2:  res = bpc;
       endcase
-      ovm_report_info("restore_pc", $psprintf("stage0 pc to 0x%0h", res), OVM_HIGH);
+      ovm_report_info("restore_pc", $psprintf("stage0 pc to 0x%0h", res), OVM_MEDIUM);
       if(exp)
         t.privMode = priv_kernel;
       t.pc = res;
@@ -703,7 +703,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     else begin
-      ovm_report_info("restore_pc", $psprintf("log stage %0d, sel %0d", stage, sel), OVM_HIGH);      
+      ovm_report_info("restore_pc", $psprintf("log stage %0d, sel %0d", stage, sel), OVM_MEDIUM);      
       v.rst[stage].roll = 1;
       v.rst[stage].exp = exp;
       v.rst[stage].sel = sel;

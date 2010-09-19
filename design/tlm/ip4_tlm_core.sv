@@ -28,14 +28,14 @@ class ip4_tlm_core extends ovm_component;
   local time stamp;
   local ip4_tlm_core_vars v, vn;  
   local uchar pbId;
-  local ip4_tlm_rfm rfm;  
-  local ip4_tlm_spa spa;
-  local ip4_tlm_spu spu;
-  local ip4_tlm_ise ise;
-  local ip4_tlm_ife ife;
-  local ip4_tlm_tlb tlb;
-  local ip4_tlm_dse dse;
-  local ip4_tlm_eif eif;
+  ip4_tlm_rfm rfm;  
+  ip4_tlm_spa spa;
+  ip4_tlm_spu spu;
+  ip4_tlm_ise ise;
+  ip4_tlm_ife ife;
+  ip4_tlm_tlb tlb;
+  ip4_tlm_dse dse;
+  ip4_tlm_eif eif;
   
   `ovm_component_utils_begin(ip4_tlm_core)
     `ovm_field_int(pbId, OVM_ALL_ON)
