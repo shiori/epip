@@ -1,5 +1,5 @@
 // 3*3 Arithmetic Average filter
-// image: 32*32
+// image: 130*130
 // filter template 3*3
 li s1 0x1 ;
 li s2 0x1 ;
@@ -13,17 +13,17 @@ li s9 0x1 ;
 // the template coefficient for udiv
 li s10 0x9 ;
 // the final-1 row location
-li s11 1986 ;
+li s11 33280 ;
 // rb 
-li s0 66 ;
+li s0 262 ;
 // rb copy
 $tag2 add.u s12 s0 0 ;
 // the end of a line
-add.u s13 s0 60 ;
+add.u s13 s0 254 ;
 // load data from memory
-$tag1 add.u s12 s12 2 ;
+$tag1 add.u s12 s12 64 ;
 // the upper line
-add.u s12 s12 -64 ;
+add.u s12 s12 -260 ;
 ld.half.nua.burst v4 s12 -2 ;
 ld.half.nua.burst v5 s12 0 ;
 ld.half.nua.burst v6 s12 2 ;
@@ -31,7 +31,7 @@ mad.u v14 s4 v4 zero ;
 mad.u v15 s5 v5 zero ;
 mad.u v16 s6 v6 zero ;
 // the next line
-add.u s12 s12 128 ;
+add.u s12 s12 520 ;
 ld.half.nua.burst v7 s12 -2 ;
 ld.half.nua.burst v8 s12 0 ;
 ld.half.nua.burst v9 s12 2 ;
@@ -39,7 +39,7 @@ mad.u v17 s7 v7 zero ;
 mad.u v18 s8 v8 zero ;
 mad.u v19 s9 v9 zero ;
 // current line
-add.u s12 s12 -64 ;
+add.u s12 s12 -260 ;
 ld.half.nua.burst v1 s12 -2 ;
 ld.half.nua.burst v2 s12 0 ;
 ld.half.nua.burst v3 s12 2 ;
@@ -59,7 +59,7 @@ st.half.nua.burst s12 v10 0 ;
 cmp.unc.<= p1 p0 s12 s13 ; 
 (p1) b.naz.bc.pop2n $tag1 0 ;
 // rb update row-wise the next row 
-add.u s0 s0 64 ;
+add.u s0 s0 260 ;
 // <= the final pixel location
 cmp.unc.<= p1 p0 s0 s11 ; 
 (p1) b.naz.bc.pop2n $tag2 0 ;
