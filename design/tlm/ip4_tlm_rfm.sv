@@ -47,7 +47,6 @@ class ip4_tlm_rfm extends ovm_component;
              srIIDz[NUM_THREAD][CYC_VEC][NUM_SP];
   
   local ip4_tlm_rfm_vars v, vn;
-  local word bpCoLast[NUM_BP_CO];
   local tr_rfm2spa toSPA;
   local tr_rfm2spu toSPU;
   local tr_rfm2dse toDSE;
@@ -220,11 +219,7 @@ class ip4_tlm_rfm extends ovm_component;
       
       foreach(csrf[bk])
         csrf[bk] = srf[ise.srfRdGrp[bk]][ise.srfRdAdr[bk]][bk];  
-                
-      if(ise.cyc == 0) begin
-        bpCoLast = ise.bpCo;
-      end
-      
+
       foreach(ise.fu[fid]) begin
         if(!ise.fu[fid].en) continue;
         ovm_report_info("RFM_RD", $psprintf("Read for spa subVec %0d, cyc %0d, Fu%0d : %s ...",
@@ -234,7 +229,7 @@ class ip4_tlm_rfm extends ovm_component;
         foreach(vn.spa[subVec].fu[fid].rp[rp])
           foreach(vn.spa[subVec].fu[fid].rp[rp].op[sp])
             read_rf(vn.spa[subVec].fu[fid].rp[rp].op[sp], ise.fu[fid].rdBkSel[rp],
-                    sp, cvrf, csrf, bpCoLast, ise.fu[fid].imm);
+                    sp, cvrf, csrf, ise.bpCoFu, ise.fu[fid].imm);
       end
       
       if(ise.dseEn && ise.cyc < 2) begin  /// && subVec == 0
@@ -242,17 +237,17 @@ class ip4_tlm_rfm extends ovm_component;
                         subVec, ise.cyc), OVM_HIGH);
         if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
         foreach(toDSE.base[sp]) begin
-          read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
-          read_rf(dseSt[ise.cyc][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpCo, ise.dseImm);
+          read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, ise.bpCoDSE, ise.dseImm);
+          read_rf(dseSt[ise.cyc][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, ise.bpCoDSE, ise.dseImm);
         end
-        read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpCo, ise.dseImm);
+        read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, ise.bpCoDSE, ise.dseImm);
       end
             
       if(ise.spuEn && ise.cyc < 2) begin
         ovm_report_info("RFM_RD", $psprintf("Read for spu cyc %0d ...", ise.cyc), OVM_HIGH);
         if(vn.spu[ise.cyc] == null) vn.spu[ise.cyc] = tr_rfm2spu::type_id::create("toSPU", this);
-        read_rf(vn.spu[ise.cyc].op0, ise.spuRdBk[0], 0, cvrf, csrf, ise.bpCo, ise.spuImm);
-        read_rf(vn.spu[ise.cyc].op1, ise.spuRdBk[1], 0, cvrf, csrf, ise.bpCo, ise.spuImm);          
+        read_rf(vn.spu[ise.cyc].op0, ise.spuRdBk[0], 0, cvrf, csrf, ise.bpCoSPU, ise.spuImm);
+        read_rf(vn.spu[ise.cyc].op1, ise.spuRdBk[1], 0, cvrf, csrf, ise.bpCoSPU, ise.spuImm);          
       end
     end
     
