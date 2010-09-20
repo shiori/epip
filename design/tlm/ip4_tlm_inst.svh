@@ -934,12 +934,12 @@ class inst_c extends ovm_object;
       inst.b[i] = data[start+i];
       
     decode();
-    if(op inside {dse_ops})
-      enDSE = 1;
-    else if(vec)  
-      enFu = 1;
-    else if(op inside {spu_ops, spu_com_ops})
-      enSPU = 1;    
+///    if(op inside {dse_ops})
+///      enDSE = 1;
+///    else if(vec)  
+///      enFu = 1;
+///    else if(op inside {spu_ops, spu_com_ops})
+///      enSPU = 1;    
 	endfunction : set_data
 	
   function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 

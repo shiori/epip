@@ -21,9 +21,9 @@ $tag2 add.u s12 s0 0 ;
 // the end of a line
 add.u s13 s0 254 ;
 // load data from memory
-$tag1 add.u s12 s12 64 ;
+$tag1 add.u s12 s12 -196 ;
 // the upper line
-add.u s12 s12 -260 ;
+//add.u s12 s12 -260 ;
 ld.half.nua.burst v4 s12 -2 ;
 ld.half.nua.burst v5 s12 0 ;
 ld.half.nua.burst v6 s12 2 ;

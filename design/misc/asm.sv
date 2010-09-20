@@ -1212,8 +1212,8 @@ class asmig;
           end
         end
         else if(enOp[i][ps + j] && !immOp[i][ps + j]) begin
-          if(adr[ps + j] > 15) begin
-            `asm_err("scl reg out of bound!");
+          if(adr[i][ps + j] > 15) begin
+            `asm_err($psprintf("scl reg out of bound! %0d", adr[i][ps + j]));
             return 0;
           end
           `asm_msg("scalar reg alloc!", OVM_FULL);

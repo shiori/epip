@@ -397,7 +397,7 @@ class ise_thread_inf extends ovm_component;
     if(!grpStart.t) begin
       tmp = 1;
       offSet = 1;
-///      if(adrPkgBytes != 0) adrPkgBytes --;???
+
       iSPU.set_data(iBuf, offSet, 0, dseVec);
       if(iSPU.op inside {spu_com_ops})
         iSPU.noExp = srExpMsk;
@@ -409,14 +409,11 @@ class ise_thread_inf extends ovm_component;
       
       offSet += NUM_INST_BYTES;
       iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+      iDSE.enDSE = enDSE;
+      foreach(enFu[i])
+        iFu[i].enFu = enFu[i];
       iSPU.analyze_fu(enSPU, enDSE, enFu);
       gsa = grpStart.a;
-///      if(adrPkgBytes) begin
-///        i_ap0_t AdrPkg = iBuf[offSet];
-///        foreach(AdrPkg.a[i])
-///          adrs[i] = AdrPkg.a[i];
-///        offSet ++;
-///      end
     end
     else begin
       i_gs1_u grpStart;
@@ -424,28 +421,27 @@ class ise_thread_inf extends ovm_component;
         grpStart.b[i] = iBuf[i];
       offSet = 2;
       tmp = 1;
-///      if(adrPkgBytes != 0) adrPkgBytes --; why is this???
       
+      if(enDSE) begin
+        iDSE.set_data(iBuf, offSet, 0, dseVec);
+        iDSE.enDSE = 1;
+        iDSE.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+        offSet += NUM_INST_BYTES;
+      end
+                  
       if(enSPU) begin
         iSPU.set_data(iBuf, offSet, 0, 0);
+        iSPU.enSPU = 1;
         iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
         if(iSPU.op inside {spu_com_ops})
           iSPU.noExp = srExpMsk;
-        offSet += NUM_INST_BYTES;
-        iSPU.enSPU = 1;
-      end
-      
-      if(enDSE) begin
-        iSPU.enDSE = 1;
-        iDSE.set_data(iBuf, offSet, 0, dseVec);
-        iDSE.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
         offSet += NUM_INST_BYTES;
       end
       
       foreach(iFu[i])
         if(enFu[i]) begin
-          iFu[i].enFu = 1;
           iFu[i].set_data(iBuf, offSet, i, 1);
+          iFu[i].enFu = 1;
           iFu[i].analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
           iFu[i].noExp = srExpMsk;
           offSet += NUM_INST_BYTES;          

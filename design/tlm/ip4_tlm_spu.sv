@@ -57,6 +57,7 @@ class ip4_tlm_spu extends ovm_component;
             stkWEn[CYC_VEC:0],
             mskWEn[CYC_VEC:0];
   local word mscNext[CYC_VEC][NUM_SP];
+  local bit brAllZero[STAGE_RRF_VWB:STAGE_RRF_RRC];
   
   `ovm_component_utils_begin(ip4_tlm_spu)
   `ovm_component_utils_end
@@ -129,7 +130,10 @@ class ip4_tlm_spu extends ovm_component;
     for(int i = STAGE_RRF_SWBP; i > STAGE_RRF_EXS1; i--)
       prSPU[i] = prSPU[i - 1];
     prSPU[STAGE_RRF_EXS1] = 0;
-          
+   
+    for(int i = STAGE_RRF_VWB; i > STAGE_RRF_RRC; i--)
+      brAllZero[i] = brAllZero[i - 1];
+    
     if(v.fmISE[0] != null) end_tr(v.fmISE[0]);
     if(v.fmRFM[STAGE_RRF_EXS0] != null) end_tr(v.fmRFM[STAGE_RRF_EXS0]);
     if(v.fmSPA[STAGE_RRF_CEM] != null) end_tr(v.fmSPA[STAGE_RRF_CEM]);
@@ -244,7 +248,30 @@ class ip4_tlm_spu extends ovm_component;
       end
       toDSE.sclEn = res;
     end
-        
+    
+    ///br fcr without bypass
+    if(v.fmISE[STAGE_RRF_RRC] != null && !v.fmISE[STAGE_RRF_RRC].brDep
+       && v.fmISE[STAGE_RRF_RRC].subVecSPU == v.fmISE[STAGE_RRF_RRC].vecModeSPU) begin
+      tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC];
+      brAllZero[STAGE_RRF_RRC] = 1;
+      for(int subVec = 0; subVec <= ise.vecModeDSE; subVec++) begin
+        for(int i = 0; i <= NUM_SP; i++) begin
+          bit res = 0;
+          res = ise.prRdAdrDSE == 0 ? 1 : pr[ise.tid][ise.prRdAdrDSE][subVec][i];          
+          if(ise.prInvDSE)
+            res = !res;
+          if(!ise.prNMskDSE)
+            res = res && ilm[ise.tid][subVec][i] && cm[ise.tid][subVec][i];
+          if(res) begin
+            brAllZero[STAGE_RRF_RRC] = 0;
+            break;
+          end
+          if(!brAllZero[STAGE_RRF_RRC])
+            break;
+        end
+      end
+    end
+            
     ///processing normal spu instructions
     if(v.fmISE[STAGE_RRF_EXS0] != null && v.fmISE[STAGE_RRF_EXS0].enSPU) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_EXS0];
@@ -455,8 +482,9 @@ class ip4_tlm_spu extends ovm_component;
         if(emsk[i] == 1) 
           emskAllZero = 0;
       end
-      ovm_report_info("spu", $psprintf("process branch for thread %0d, subVec %0d, az: %0d, %s, %s, %s",
-                                        tid, ise.subVecSPU, emskAllZero, ise.bop.name, ise.mop.name, ise.sop.name), OVM_HIGH);      
+      ovm_report_info("spu", $psprintf("process branch for thread %0d, subVec %0d, dep %0d, az %0d %0d, %s, %s, %s",
+                                        tid, ise.subVecSPU, ise.brDep, emskAllZero, brAllZero[STAGE_RRF_CEM], 
+                                        ise.bop.name, ise.mop.name, ise.sop.name), OVM_HIGH);      
       
       case(ise.mop)
       mop_guard :
@@ -521,6 +549,9 @@ class ip4_tlm_spu extends ovm_component;
       if(ise.subVecSPU == ise.vecModeSPU) begin
         bit updateMSC = 0, updateMSK = 0, missBr = 0, brTaken = 0;
         
+        if(!ise.brDep)
+          emskAllZero = brAllZero[STAGE_RRF_CEM];
+          
         if(is_nop)
           brTaken = 0;
         else
