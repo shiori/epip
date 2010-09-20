@@ -407,13 +407,14 @@ class ise_thread_inf extends ovm_component;
         iFu[i].noExp = srExpMsk;
       end
       
-      offSet += NUM_INST_BYTES;
-      iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+      iSPU.analyze_fu(enSPU, enDSE, enFu);      
       iDSE.enDSE = enDSE;
       foreach(enFu[i])
         iFu[i].enFu = enFu[i];
-      iSPU.analyze_fu(enSPU, enDSE, enFu);
+      
+      iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
       gsa = grpStart.a;
+      offSet += NUM_INST_BYTES;
     end
     else begin
       i_gs1_u grpStart;
@@ -1269,9 +1270,10 @@ class ip4_tlm_ise extends ovm_component;
         
     ///update wcnt
     begin
+      ///select a wCnt it not depend
       uchar sel;
       foreach(t.wCntSel[i])
-        if(t.wCntSel[i])
+        if(t.wCntSel[i] == 0)
           sel = i;
       foreach(t.wCntDep[i])
         if(t.wCntNext[i] > t.wCnt[sel][i])

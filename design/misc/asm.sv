@@ -135,7 +135,7 @@ class asmig;
     s = 0;
     si = 0;
     isVec = '{default : 0};
-    chkGrp = 1;
+    chkGrp = -1;
     grpMsk = 0;
     adrcnt = 0;
     contNum = 0;
