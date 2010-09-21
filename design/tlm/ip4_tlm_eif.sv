@@ -62,7 +62,7 @@ class ip4_tlm_eif extends ovm_component;
   
   function void comb_proc();
     
-    ovm_report_info("EIF", "comb_proc procing...", OVM_FULL); 
+    `ip4_info("EIF", "comb_proc procing...", OVM_FULL) 
     for(int i = LAT_EXM - 1; i > 0; i--)
       vn.fmDSE[i] = v.fmDSE[i - 1];
     for(int i = STAGE_ISE_DC; i > 0; i--)
@@ -79,7 +79,7 @@ class ip4_tlm_eif extends ovm_component;
     tr_eif2ise toISE;
     tr_eif2spu toEIF;
     
-    ovm_report_info("EIF", "req_proc procing...", OVM_FULL); 
+    `ip4_info("EIF", "req_proc procing...", OVM_FULL) 
     
     begin
       tr_dse2eif dse = v.fmDSE[LAT_EXM - 1];
@@ -206,7 +206,7 @@ class ip4_tlm_eif extends ovm_component;
  
 
   function bit nb_transport_dse(input tr_dse2eif req, output tr_dse2eif rsp);
-    ovm_report_info("eif_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("eif_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -216,7 +216,7 @@ class ip4_tlm_eif extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_ise(input tr_ise2eif req, output tr_ise2eif rsp);
-    ovm_report_info("eif_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("eif_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -226,7 +226,7 @@ class ip4_tlm_eif extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_spu(input tr_spu2eif req, output tr_spu2eif rsp);
-    ovm_report_info("eif_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("eif_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -237,11 +237,11 @@ class ip4_tlm_eif extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
        return;
      end
     stamp = $time;
-    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();
@@ -280,11 +280,14 @@ class ip4_tlm_eif extends ovm_component;
     sysif = vifCfg.get_vif();  
     stamp = 0ns;
     
+  endfunction : build
+  
+  virtual function void start_of_simulation();
     if(dmFilePath != "") begin
       dm = new[dmSize];
       $readmemb(dmFilePath, dm);
     end
-  endfunction : build
+  endfunction
 endclass : ip4_tlm_eif
 
 ///-------------------------------------other functions-----------------------------------------

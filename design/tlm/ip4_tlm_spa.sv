@@ -88,7 +88,7 @@ class ip4_tlm_spa extends ovm_component;
   // endfunction
 
   function void comb_proc();
-    ovm_report_info("spa", "comb_proc procing...", OVM_FULL); 
+    `ip4_info("spa", "comb_proc procing...", OVM_FULL) 
     if(v.fmISE[STAGE_RRF_EXE0] != null) end_tr(v.fmISE[STAGE_RRF_EXE0]);
     if(v.fmSPU != null) end_tr(v.fmSPU);
     if(v.fmRFM != null) end_tr(v.fmRFM);
@@ -145,7 +145,7 @@ class ip4_tlm_spa extends ovm_component;
       foreach(ise.fu[fid]) begin
         ise2spa_fu fu = ise.fu[fid];
         if(!fu.en) continue;
-        ovm_report_info("spa", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH); 
+        `ip4_info("spa", $psprintf("Process FU%0d : %s ...", fid, fu_cfg[fid].name), OVM_HIGH) 
         
         if(fu.op inside {sfu_only_ops}) begin
           uint expFlag[NUM_SP];
@@ -227,7 +227,7 @@ class ip4_tlm_spa extends ovm_component;
     tr_spa2ise toISE;
     tr_spa2spu toSPU;
     tr_spa2dse toDSE;
-    ovm_report_info("spa", "req_proc procing...", OVM_FULL); 
+    `ip4_info("spa", "req_proc procing...", OVM_FULL) 
         
     toRFM = v.rfm[STAGE_EXE_VWBP];
     toISE = v.ise[STAGE_EXE_VWBP];
@@ -239,7 +239,7 @@ class ip4_tlm_spa extends ovm_component;
       ip4_tlm_sfu_stages sfu = v.sfu[STAGE_EEX];
       foreach(sfu.en[fid]) begin
         if(!sfu.en[fid]) continue;
-        ovm_report_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_HIGH);
+        `ip4_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_HIGH)
         if(toRFM == null) toRFM = tr_spa2rfm::type_id::create("toRFM", this);
         toRFM.fu[fid].vrfWrGrp = sfu.vrfWrGrp[fid];
         toRFM.fu[fid].vrfWrAdr = sfu.vrfWrAdr[fid];
@@ -274,20 +274,20 @@ class ip4_tlm_spa extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2spa req, output tr_ise2spa rsp);
-    ovm_report_info("spa_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("spa_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
 ///    if(v.cancel[req.tid])
-///      ovm_report_info("spa_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
+///      `ip4_info("spa_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH)
 ///    else
     vn.fmISE[0] = req;
     return 1;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2spa req, output tr_rfm2spa rsp);
-    ovm_report_info("spa_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("spa_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -297,7 +297,7 @@ class ip4_tlm_spa extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spu(input tr_spu2spa req, output tr_spu2spa rsp);
-    ovm_report_info("spa_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("spa_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -307,7 +307,7 @@ class ip4_tlm_spa extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_dse(input tr_dse2spa req, output tr_dse2spa rsp);
-    ovm_report_info("spa_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("spa_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -319,11 +319,11 @@ class ip4_tlm_spa extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
        return;
      end
     stamp = $time;
-    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();
@@ -564,5 +564,5 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal prMerge!!!");
   endcase
   
-///  ovm_report_info("SPA_PROC_DATA", $psprintf("subVec:%0d, op:%s, res0:%0h, op1:%0h, o1:%0h", subVec, op.name, res0[0], op1[0], o[1][0]), OVM_HIGH);
+///  `ip4_info("SPA_PROC_DATA", $psprintf("subVec:%0d, op:%s, res0:%0h, op1:%0h, o1:%0h", subVec, op.name, res0[0], op1[0], o[1][0]), OVM_HIGH)
 endfunction : proc_data

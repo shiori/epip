@@ -160,7 +160,7 @@ class ip4_tlm_dse extends ovm_component;
         
   function void comb_proc();
              
-    ovm_report_info("dse", "comb_proc procing...", OVM_FULL); 
+    `ip4_info("dse", "comb_proc procing...", OVM_FULL) 
    
     if(v.fmISE[0] != null) end_tr(v.fmISE[0]);
     if(v.fmRFM[STAGE_RRF_AG] != null) end_tr(v.fmRFM[STAGE_RRF_AG]); 
@@ -279,7 +279,7 @@ class ip4_tlm_dse extends ovm_component;
     tr_dse2ise toISE;
     tr_dse2tlb toTLB;
     
-    ovm_report_info("dse", "req_proc procing...", OVM_FULL); 
+    `ip4_info("dse", "req_proc procing...", OVM_FULL) 
          
     toSPU = v.spu[STAGE_RRF_DPRB];
     toRFM = v.rfm[STAGE_RRF_VWBP];
@@ -385,7 +385,7 @@ class ip4_tlm_dse extends ovm_component;
         foreach(wEn[os])
           if(wEn[os]) begin
             sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
-            ovm_report_info("dc_wr", $psprintf("grp %0d, adr %0d, bk %0d, os %0d, data 0x%0h", grp, adr, bk, os, smWData[bk].b[os]), OVM_HIGH);
+            `ip4_info("dc_wr", $psprintf("grp %0d, adr %0d, bk %0d, os %0d, data 0x%0h", grp, adr, bk, os, smWData[bk].b[os]), OVM_HIGH)
           end
       end
       
@@ -401,16 +401,16 @@ class ip4_tlm_dse extends ovm_component;
         
         if(exDataSel) begin ///data from ex, use smWData
           xhgData[bk] = smWData[bk];
-          ovm_report_info("dc_rd ex_data", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH);
+          `ip4_info("dc_rd ex_data", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH)
         end
         else if((per || shf4 || st2Ex) && rfm != null) begin
           ///data from rfm
           xhgData[bk] = rfm.st[bk];
-          ovm_report_info("dc_rd vxhg ex_st", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH);
+          `ip4_info("dc_rd vxhg ex_st", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH)
         end
         else if(ldReq) begin
           xhgData[bk] = sharedMem[grp][adr][bk];
-          ovm_report_info("dc_rd ld_ops", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH);
+          `ip4_info("dc_rd ld_ops", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_HIGH)
         end
       end
           
@@ -458,11 +458,11 @@ class ip4_tlm_dse extends ovm_component;
             lxgBuf[j].data[sp] = xhgData[bk];
             if(vXhgEn)
               lxgBuf[j].vrfWEn[sp] = wEn[bk];
-            ovm_report_info("dc_lxg", $psprintf("stage %0d, slot %0d, sp %0d, bk %0d, data 0x%0h, vrfWEn %0d",
-                            j, slot, sp, bk, lxgBuf[slot].data[sp], lxgBuf[slot].vrfWEn[sp]), OVM_HIGH);
+            `ip4_info("dc_lxg", $psprintf("stage %0d, slot %0d, sp %0d, bk %0d, data 0x%0h, vrfWEn %0d",
+                            j, slot, sp, bk, lxgBuf[slot].data[sp], lxgBuf[slot].vrfWEn[sp]), OVM_HIGH)
           end
           else
-            ovm_report_info("dc_lxg", $psprintf("not match stage %0d, slot %0d, sp %0d, bk %0d", j, slot, sp, bk), OVM_HIGH);
+            `ip4_info("dc_lxg", $psprintf("not match stage %0d, slot %0d, sp %0d, bk %0d", j, slot, sp, bk), OVM_HIGH)
         end
       end
       
@@ -1029,8 +1029,8 @@ class ip4_tlm_dse extends ovm_component;
         sxgBuf[cyc].slot[sp] = slot;
         selValidReq |= oc || ex;
         exReq[STAGE_RRF_DEM] |= ex;
-        ovm_report_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, slot %0d, re %0d, xhg %0d", 
-                        sp, grp, adr, bk, ex, oc, exp, selCause.name, slot, sxgBuf[slot].re[sp], sxgBuf[slot].xhg[sp]), OVM_HIGH);  
+        `ip4_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, slot %0d, re %0d, xhg %0d", 
+                        sp, grp, adr, bk, ex, oc, exp, selCause.name, slot, sxgBuf[slot].re[sp], sxgBuf[slot].xhg[sp]), OVM_HIGH)  
       end
         
       expCause[STAGE_RRF_DEM] = selCause;
@@ -1053,7 +1053,7 @@ class ip4_tlm_dse extends ovm_component;
         sendExp = res;            
         
         if(res)
-          ovm_report_info("sel", "access exception", OVM_MEDIUM);
+          `ip4_info("sel", "access exception", OVM_MEDIUM)
         
         selExpReq = 0;
         selValidReq = 0;
@@ -1118,10 +1118,10 @@ class ip4_tlm_dse extends ovm_component;
           cs_dirty:     cache[selCacheIdx][selCacheAso].state[selCacheGrp] = cs_modified;
           endcase
         end
-        ovm_report_info("sel_dse_last", $psprintf("cyc %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
-                        cyc, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_DEM]), OVM_HIGH);  
+        `ip4_info("sel_dse_last", $psprintf("cyc %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
+                        cyc, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_DEM]), OVM_HIGH)  
         if(exReq[STAGE_RRF_DEM])
-          ovm_report_info("sel", "external access needed", OVM_MEDIUM);
+          `ip4_info("sel", "external access needed", OVM_MEDIUM)
           
         for(int i = 0; i <= cyc; i++)
           sxg[STAGE_RRF_DEM + i] = sxgBuf[LAT_XCHG - 1 - i];
@@ -1472,7 +1472,7 @@ class ip4_tlm_dse extends ovm_component;
                 break;
               end
               if(!found)
-                ovm_report_info("dc", "ld queue overrun!", OVM_HIGH);
+                `ip4_info("dc", "ld queue overrun!", OVM_HIGH)
           end
           else begin
             queId = exQueId[STAGE_RRF_DEM];
@@ -1496,7 +1496,7 @@ class ip4_tlm_dse extends ovm_component;
                 break;
               end
             if(!found)
-              ovm_report_info("dc", "ld queue overrun!", OVM_HIGH);
+              `ip4_info("dc", "ld queue overrun!", OVM_HIGH)
           end
           else begin
             queId = exQueId[STAGE_RRF_DEM];       
@@ -1545,7 +1545,7 @@ class ip4_tlm_dse extends ovm_component;
               else
                 rfm.base[i] += vecId;
             end
-            ovm_report_info("ag", $psprintf("vec %0d adr: 0x%0h", vecId, rfm.base[i]), OVM_HIGH);
+            `ip4_info("ag", $psprintf("vec %0d adr: 0x%0h", vecId, rfm.base[i]), OVM_HIGH)
             if(rfm.base[i] >= VADR_MAPPED && rfm.base[i] < VADR_NMAPNC) begin
              found = 1;
              vadr = rfm.base[i];
@@ -1576,7 +1576,7 @@ class ip4_tlm_dse extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_ise(input tr_ise2dse req, output tr_ise2dse rsp);
-    ovm_report_info("dse_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("dse_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1586,7 +1586,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2dse req, output tr_rfm2dse rsp);
-    ovm_report_info("dse_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("dse_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1598,7 +1598,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spu(input tr_spu2dse req, output tr_spu2dse rsp);
-    ovm_report_info("dse_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("dse_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1608,7 +1608,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_spa(input tr_spa2dse req, output tr_spa2dse rsp);
-    ovm_report_info("dse_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("dse_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1618,7 +1618,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_spa
 
   function bit nb_transport_tlb(input tr_tlb2dse req, output tr_tlb2dse rsp);
-    ovm_report_info("dse_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("dse_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1628,7 +1628,7 @@ class ip4_tlm_dse extends ovm_component;
   endfunction : nb_transport_tlb
 
   function bit nb_transport_eif(input tr_eif2dse req, output tr_eif2dse rsp);
-    ovm_report_info("dse_tr", $psprintf("Get EIF Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("dse_tr", $psprintf("Get EIF Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1640,11 +1640,11 @@ class ip4_tlm_dse extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
        return;
      end
     stamp = $time;
-    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();
@@ -1694,9 +1694,12 @@ class ip4_tlm_dse extends ovm_component;
     foreach(lxgBuf[i])
       lxgBuf[i] = new();
             
+  endfunction : build
+  
+  virtual function void start_of_simulation();
     if(smFilePath != "")
       $readmemh(smFilePath, sharedMem);
-  endfunction : build
+  endfunction
 endclass : ip4_tlm_dse
 
 ///-------------------------------------other functions-----------------------------------------

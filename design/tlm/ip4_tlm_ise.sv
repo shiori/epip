@@ -369,10 +369,10 @@ class ise_thread_inf extends ovm_component;
       foreach(enFuTmp[i])
         enFuTmp[i] = enFu[i];
         
-      ovm_report_info("decode_igrp_start",
+      `ip4_info("decode_igrp_start",
         $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, adrPkgB:%0d, coPkgW:%0d", 
                    iGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, adrPkgBytes, numConst),
-        OVM_HIGH);
+        OVM_HIGH)
     end
   endfunction : decode_igrp_start
     
@@ -478,7 +478,7 @@ class ise_thread_inf extends ovm_component;
       for(int j = 0; j < NUM_VRF_BKS; j++)
         if(vrfRdEn[i][j]) begin
           map_iadr(1, adrs[tmp], vrfGrp[i][j], vrfAdr[i][j]);
-          ovm_report_info("assign adr", $psprintf("get vrf adr %0d, cnt %0d", adrs[tmp], tmp), OVM_HIGH);
+          `ip4_info("assign adr", $psprintf("get vrf adr %0d, cnt %0d", adrs[tmp], tmp), OVM_HIGH)
           tmp++;
         end
         else if(j > 0) begin
@@ -489,7 +489,7 @@ class ise_thread_inf extends ovm_component;
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfRdEn[i][j]) begin
           map_iadr(0, adrs[tmp], srfGrp[i][j], srfAdr[i][j]);
-          ovm_report_info("assign adr", $psprintf("get srf adr %0d, cnt %0d", adrs[tmp], tmp), OVM_HIGH);
+          `ip4_info("assign adr", $psprintf("get srf adr %0d, cnt %0d", adrs[tmp], tmp), OVM_HIGH)
           tmp++;
         end
     end
@@ -523,11 +523,11 @@ class ise_thread_inf extends ovm_component;
     foreach(iSPU.grpWr[i])
       iSPU.grpWr[i] = srfMap[iSPU.grpWr[i]];
             
-    ovm_report_info("decode_igrp", {"\n", sprint()}, OVM_HIGH);
+    `ip4_info("decode_igrp", {"\n", sprint()}, OVM_HIGH)
   endfunction : decode_igrp
 
   function void flush();
-    ovm_report_info("flush", $psprintf("cur pc 0x%0h", pc), OVM_HIGH);
+    `ip4_info("flush", $psprintf("cur pc 0x%0h", pc), OVM_HIGH)
     iBuf = {};
     iGrpBytes = 0;
     decoded = 0;
@@ -540,7 +540,7 @@ class ise_thread_inf extends ovm_component;
   endfunction : flush
 
   function bit can_req_ifetch();
-    ovm_report_info("can_req_ifetch", $psprintf("threadState:%s, iBuf lv:%0d, pd:%0d", threadState.name, iBuf.size(), pendIFetch), OVM_HIGH);
+    `ip4_info("can_req_ifetch", $psprintf("threadState:%s, iBuf lv:%0d, pd:%0d", threadState.name, iBuf.size(), pendIFetch), OVM_HIGH)
     if(threadState inside {ts_disabled, ts_w_rst})
       return 0;
     if(iBuf.size() + (pendIFetch + 1) * NUM_IFET_BYTES <  NUM_IBUF_BYTES)
@@ -563,39 +563,39 @@ class ise_thread_inf extends ovm_component;
       pendIFetch--;
     
 ///    if(cancel) begin
-///      ovm_report_info("update_inst", $psprintf("cancel, pc:0x%0h, offSet:%0h, pd:%0d", pc, offSet, pendIFetch), OVM_HIGH);
+///      `ip4_info("update_inst", $psprintf("cancel, pc:0x%0h, offSet:%0h, pd:%0d", pc, offSet, pendIFetch), OVM_HIGH)
 ///      return;
 ///    end
     
     if(fetchGrp.exp) begin
       pendIFetchCause = EC_TLBIFET;
       pendIFetchExp = 1;
-      ovm_report_info("update_inst", "EC_TLBIFET", OVM_HIGH);
+      `ip4_info("update_inst", "EC_TLBIFET", OVM_HIGH)
       return;
     end
     else if(fetchGrp.accErr) begin
       pendIFetchCause = EC_IFACC;
       pendIFetchExp = 1;
-      ovm_report_info("update_inst", "EC_IFACC", OVM_HIGH);
+      `ip4_info("update_inst", "EC_IFACC", OVM_HIGH)
       return;
     end
     else if(fetchGrp.k && privMode != priv_kernel) begin
       pendIFetchCause = EC_EXEPRIV;
       pendIFetchExp = 1;
-      ovm_report_info("update_inst", "EC_EXEPRIV", OVM_HIGH);
+      `ip4_info("update_inst", "EC_EXEPRIV", OVM_HIGH)
       return;
     end
     else if(!fetchGrp.ex) begin
       pendIFetchCause = EC_NOTEXE;
       pendIFetchExp = 1;
-      ovm_report_info("update_inst", "EC_NOTEXE", OVM_HIGH);
+      `ip4_info("update_inst", "EC_NOTEXE", OVM_HIGH)
       return;
     end
         
     for(int i = offSet; i < NUM_IFET_BYTES; i++)
       iBuf.push_back(fetchGrp.data[i]);
 
-    ovm_report_info("update_inst", $psprintf("pc:0x%0h, offSet:%0h, pd:%0d, iBuf lv %0d->%0d", pc, offSet, pendIFetch, LvlLast, iBuf.size()), OVM_HIGH);
+    `ip4_info("update_inst", $psprintf("pc:0x%0h, offSet:%0h, pd:%0d, iBuf lv %0d->%0d", pc, offSet, pendIFetch, LvlLast, iBuf.size()), OVM_HIGH)
   endfunction : update_inst
 
   function void fill_ife(input tr_ise2ife ife);
@@ -684,7 +684,7 @@ class ip4_tlm_ise extends ovm_component;
       1:  res = npc;
       2:  res = bpc;
       endcase
-      ovm_report_info("restore_pc", $psprintf("stage0 pc to 0x%0h", res), OVM_MEDIUM);
+      `ip4_info("restore_pc", $psprintf("tid %0d, stage0 pc to 0x%0h", tid, res), OVM_MEDIUM)
       if(exp)
         t.privMode = priv_kernel;
       t.pc = res;
@@ -703,7 +703,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     else begin
-      ovm_report_info("restore_pc", $psprintf("log stage %0d, sel %0d", stage, sel), OVM_MEDIUM);      
+      `ip4_info("restore_pc", $psprintf("tid %0d, log stage %0d, sel %0d", tid, stage, sel), OVM_MEDIUM)      
       v.rst[stage].roll = 1;
       v.rst[stage].exp = exp;
       v.rst[stage].sel = sel;
@@ -711,7 +711,7 @@ class ip4_tlm_ise extends ovm_component;
       if(v.rst[stage].tid != tid || !v.rst[stage].en) begin
         ovm_report_warning("restore_pc", "rst info inconsistent!");
         for(int j = STAGE_ISE_VWB_END; j > 0; j--)
-          ovm_report_info("rollback", $psprintf("stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d", j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_HIGH);  
+          `ip4_info("rollback", $psprintf("stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d", j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_HIGH)  
       end
     end
   endfunction
@@ -1006,11 +1006,11 @@ class ip4_tlm_ise extends ovm_component;
         if(finalCnt[i] > tmp && i != br_styp && t.wCntDep[i])
           tmp = finalCnt[i];
           
-      ovm_report_info("can_issue",
+      `ip4_info("can_issue",
         $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, wrCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
                    t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.wCntWr, t.pc, t.enSPU, t.enDSE,
                    enFuTmp, t.dseVec, t.wCntSel),
-        OVM_HIGH);
+        OVM_HIGH)
     end
     
     if(!t.decoded)
@@ -1303,11 +1303,11 @@ class ip4_tlm_ise extends ovm_component;
 
     ///rdy to issue the ig 
     fill_issue(tid);
-    ovm_report_info("issue", {"\n", t.sprint()}, OVM_HIGH);
+    `ip4_info("issue", {"\n", t.sprint()}, OVM_HIGH)
   endfunction : issue
       
   function void comb_proc();
-    ovm_report_info("ise", "comb_proc procing...", OVM_FULL); 
+    `ip4_info("ise", "comb_proc procing...", OVM_FULL) 
     
     if(v.fmSPU != null) end_tr(v.fmSPU);
     if(v.fmSPA != null) end_tr(v.fmSPA);
@@ -1505,14 +1505,14 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch
-    ovm_report_info("ise inf", $psprintf("\n%s", sprint(printer)), OVM_HIGH);
+    `ip4_info("ise inf", $psprintf("\n%s", sprint(printer)), OVM_HIGH)
     for(int i = 1; i <= NUM_THREAD; i++) begin
       uchar tid = i + v.TIdIssueLast;
       tid = tid & `GML(WID_TID);
       
-      ovm_report_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH);
+      `ip4_info("issue", $psprintf("checking thread %0d", tid), OVM_HIGH)
       if(can_issue(tid)) begin
-        ovm_report_info("issue", $psprintf("issuing thread %0d, pc 0x%0h", tid, thread[tid].pc), OVM_MEDIUM);
+        `ip4_info("issue", $psprintf("issuing thread %0d, pc 0x%0h", tid, thread[tid].pc), OVM_LOW)
         issue(tid);
         vn.TIdIssueLast = tid;
         break;
@@ -1524,7 +1524,7 @@ class ip4_tlm_ise extends ovm_component;
       if(!cancel[v.fmIFE.tid][0])
         thread[v.fmIFE.tid].update_inst(v.fmIFE.fetchGrp);
       else
-        ovm_report_info("update_inst", $psprintf("canceling, tid: %0d", v.fmIFE.tid), OVM_HIGH);
+        `ip4_info("update_inst", $psprintf("canceling, tid: %0d", v.fmIFE.tid), OVM_HIGH)
     end
     
     ///try to decode one inst grp
@@ -1562,7 +1562,8 @@ class ip4_tlm_ise extends ovm_component;
       t.pcUEret = v.rst[i].pcUEret;
       t.ejtagMode = v.rst[i].ejtag;
       
-      ovm_report_info("rollback", $psprintf("stage %0d, exp %0d, pc 0x%0h, srExpBase 0x%0h, %s", i, v.rst[i].exp, res, srExpBase, t.privMode.name), OVM_HIGH);  
+      `ip4_info("rollback", $psprintf("tid %0d, stage %0d, exp %0d, pc 0x%0h, srExpBase 0x%0h, %s",
+                  v.rst[i].tid, i, v.rst[i].exp, res, srExpBase, t.privMode.name), OVM_LOW)  
       
       if(v.rst[i].exp) begin
         if(v.rst[i].ejtag) begin
@@ -1591,7 +1592,7 @@ class ip4_tlm_ise extends ovm_component;
     tr_ise2ife toIFE;
     tr_ise2dse toDSE;
     
-    ovm_report_info("ise", "req_proc procing...", OVM_FULL); 
+    `ip4_info("ise", "req_proc procing...", OVM_FULL) 
     
     vn.rfm[1] = ciRFM[0];
     vn.spa[1] = ciSPA[0];
@@ -1671,13 +1672,13 @@ class ip4_tlm_ise extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ife(input tr_ife2ise req, output tr_ife2ise rsp);
-    ovm_report_info("ise_tr", $psprintf("Get ife Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("ise_tr", $psprintf("Get ife Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
     end_tr(req);
     if(cancel[req.tid][0])
-      ovm_report_info("ise_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH);
+      `ip4_info("ise_tr", $psprintf("canceling tid:%0d", req.tid), OVM_HIGH)
     else
       rsp = req;
     vn.fmIFE = req;
@@ -1685,7 +1686,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_ife
 
   function bit nb_transport_spu(input tr_spu2ise req, output tr_spu2ise rsp);
-    ovm_report_info("ise_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("ise_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1695,7 +1696,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_spa(input tr_spa2ise req, output tr_spa2ise rsp);
-    ovm_report_info("ise_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("ise_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1705,7 +1706,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_spa
   
   function bit nb_transport_rfm(input tr_rfm2ise req, output tr_rfm2ise rsp);
-    ovm_report_info("ise_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("ise_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1715,7 +1716,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_dse(input tr_dse2ise req, output tr_dse2ise rsp);
-    ovm_report_info("ise_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("ise_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1725,7 +1726,7 @@ class ip4_tlm_ise extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_eif(input tr_eif2ise req, output tr_eif2ise rsp);
-    ovm_report_info("ise_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("ise_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -1737,11 +1738,11 @@ class ip4_tlm_ise extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time==stamp) begin
-       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
        return;
      end
     stamp = $time;
-    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();

@@ -1,6 +1,12 @@
 
 `ifdef IP4_TLM_PKG
 
+`define ip4_info(s0, s1, verb = OVM_LOW)\
+  begin\
+    if(get_report_verbosity_level() >= verb)\
+      ovm_report_info(s0, s1, verb);\
+  end
+
 `define GML(i) ~(-1 << (i))
 `define GMH(i) (-1 << (i))
 `define SG(c, s0, s1) ((s1) + (c) - (s0))

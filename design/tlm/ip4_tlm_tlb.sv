@@ -149,7 +149,7 @@ class ip4_tlm_tlb extends ovm_component;
     bit rspDSE = 0, rspIFE = 0, exp = 0, varKC = 0;
     cause_dse_t cause;
     
-    ovm_report_info("tlb", "comb_proc procing...", OVM_FULL);
+    `ip4_info("tlb", "comb_proc procing...", OVM_FULL)
      
     if(v.fmDSE != null) end_tr(v.fmDSE);
     if(v.fmSPU != null) end_tr(v.fmSPU);
@@ -204,21 +204,21 @@ class ip4_tlm_tlb extends ovm_component;
             varD   = v.d[i][eosel];
 
             if(varV == 0) begin
-              ovm_report_info("TLB_Invalid", "tlb Invalid exception!!!", OVM_HIGH); 
+              `ip4_info("TLB_Invalid", "tlb Invalid exception!!!", OVM_HIGH) 
               exp = 1;
               cause = EC_TLBINV;
             end
             else if(rspDSE && varD == 0 && ((v.fmDSE.op == op_sw) || (v.fmDSE.op == op_sh) || (v.fmDSE.op == op_sb))) begin
-              ovm_report_info("TLB_Modified", "tlb Modified exception!!!", OVM_HIGH); 
+              `ip4_info("TLB_Modified", "tlb Modified exception!!!", OVM_HIGH) 
               exp = 1;
               cause = EC_TLBMOD;
             end
             else if(!varEx && rspIFE) begin
-              ovm_report_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH); 
+              `ip4_info("TLB_EX", "tlb NON_EXECUTION exception!!!", OVM_HIGH) 
               exp = 1;
             end
             else if(varK && !varKC) begin
-              ovm_report_info("TLB_EX", "tlb PRIVILEGE exception!!!", OVM_HIGH); 
+              `ip4_info("TLB_EX", "tlb PRIVILEGE exception!!!", OVM_HIGH) 
               exp = 1;
               cause = EC_TLBPRIV;
             end
@@ -388,7 +388,7 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction
   
   function void req_proc();
-    ovm_report_info("tlb", "req_proc procing...", OVM_FULL); 
+    `ip4_info("tlb", "req_proc procing...", OVM_FULL) 
     
     /// req to other module
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
@@ -399,7 +399,7 @@ class ip4_tlm_tlb extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_dse(input tr_dse2tlb req, output tr_dse2tlb rsp);
-    ovm_report_info("tlb_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("tlb_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -409,7 +409,7 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction : nb_transport_dse
   
   function bit nb_transport_spu(input tr_spu2tlb req, output tr_spu2tlb rsp);
-    ovm_report_info("tlb_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("tlb_tr", $psprintf("Get spu Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -419,7 +419,7 @@ class ip4_tlm_tlb extends ovm_component;
   endfunction : nb_transport_spu
 
   function bit nb_transport_ife(input tr_ife2tlb req, output tr_ife2tlb rsp);
-    ovm_report_info("tlb_tr", $psprintf("Get ife Transaction:\n%s", req.sprint()), OVM_HIGH);
+    `ip4_info("tlb_tr", $psprintf("Get ife Transaction:\n%s", req.sprint()), OVM_HIGH)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -436,11 +436,11 @@ class ip4_tlm_tlb extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       ovm_report_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL);
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
        return;
      end
     stamp = $time;
-    ovm_report_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL);
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();

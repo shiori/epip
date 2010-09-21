@@ -90,10 +90,13 @@ class ip4_alg_test extends ovm_test;
        
     env = new("env", this);
   endfunction
-
+  
+  virtual function void end_of_elaboration();
+    set_report_verbosity_level_hier(OVM_LOW); ///OVM_MEDIUM OVM_HIGH OVM_LOW
+///    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);    
+  endfunction
+  
   virtual task run();
-    set_report_verbosity_level_hier(OVM_HIGH); ///OVM_MEDIUM OVM_HIGH
-///    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);
   endtask
     
   function new(string name = "test_sys", ovm_component parent);

@@ -70,9 +70,13 @@ class ip4_sys_test extends ovm_test;
 ///  virtual function void connect();
 ///    super.connect();
 ///  endfunction
-  
+
+  virtual function void end_of_elaboration();
+    set_report_verbosity_level_hier(OVM_HIGH); ///OVM_MEDIUM OVM_HIGH
+///    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);    
+  endfunction
+    
   virtual task run();
-    set_report_verbosity_level_hier(OVM_HIGH);
   endtask
 
 ///  function void start_of_simulation();
