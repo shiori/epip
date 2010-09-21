@@ -238,7 +238,6 @@ typedef union packed{
 } i_body;
 
 typedef struct packed{
-///  bit g;
   ipra_t p;
   iop_e op;
   i_body b;
@@ -255,7 +254,7 @@ parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;
 typedef struct packed{
   bit[2:0] adrPkgB;
   bit[1:0] coPkgW;
-  bit dv, nmsk, a;
+  bit dv, nmsk, chkGrpUp;
   bit t;
   bit[1:0] chkGrp;
   bit[4:0] unitEn;
@@ -269,7 +268,7 @@ typedef union packed{
 typedef struct packed{
   bit t;
   bit[1:0] chkGrp;
-  bit unitEn, adrPkgB, coPkgW, nmsk, a;
+  bit unitEn, adrPkgB, coPkgW, nmsk, chkGrpUp;
 }i_gs0_t;
 
 typedef struct packed{

@@ -84,7 +84,7 @@ class asmig;
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
   uchar icnt;  
-  uchar chkGrp, grpMsk;
+  uchar chkGrp, chkGrpUp, grpMsk;
   uchar grpsize;
   uint pc;
   bit[2:0] allAdr[25];
@@ -135,7 +135,8 @@ class asmig;
     s = 0;
     si = 0;
     isVec = '{default : 0};
-    chkGrp = -1;
+    chkGrp = 1;
+    chkGrpUp = 0;
     grpMsk = 0;
     adrcnt = 0;
     contNum = 0;
@@ -1277,15 +1278,17 @@ class asmig;
     v_icnt = 0;
     
     `asm_msg($psprintf("adrcnt :%0d", adrcnt), OVM_FULL);
-    if(adrcnt >= 1) begin
+    if(adrcnt > 0) begin
         modBytes = (adrcnt  * 3) % 8;
         `asm_msg($psprintf("modBytes :%0d", modBytes), OVM_FULL);
         if(modBytes != 0) begin
-          if(modBytes == 1)
-            adrBytes = adrcnt * 3 / 8;
-          else
+///          if(modBytes == 1)
+///            adrBytes = adrcnt * 3 / 8;
+///          else
             adrBytes = (adrcnt * 3 / 8) + 1;
         end
+        else
+          adrBytes = (adrcnt * 3 / 8);
     end
     else
       adrBytes = 0;
@@ -1293,6 +1296,9 @@ class asmig;
     `asm_msg($psprintf("adrBytes :%0d", adrBytes), OVM_FULL);
     
     if(en == 'b01) begin
+      if(adrBytes == 0)
+        adrBytes = 1;
+        
       grpsize = (8 + (icnt + 1) * 40 +  contNum * 32) / 8 + adrBytes; 
       `asm_msg($psprintf("gs0 icnt grpsize %0d", icnt), OVM_FULL);
       `asm_msg($psprintf("gs0 grpsize %0d", grpsize), OVM_FULL);
@@ -1343,10 +1349,11 @@ class asmig;
     if(en == 'b01) begin
       gs0.t = 0;
       gs0.chkGrp = chkGrp;
+      gs0.chkGrpUp = chkGrpUp;
       gs0.unitEn = isVec[0];
-      gs0.adrPkgB = adrBytes;
+      gs0.adrPkgB = adrBytes - 1;
       gs0.nmsk = grpMsk;
-      gs0.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
+///      gs0.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
       
       `asm_msg($psprintf("the allAdr[adrcnt-1][0] :%0d, allAdr[%d-1]:%0d,", allAdr[adrcnt-1][0],adrcnt, allAdr[adrcnt-1]), OVM_FULL);
             
@@ -1376,9 +1383,10 @@ class asmig;
       
       gs1.i.t = 1;
       gs1.i.chkGrp = chkGrp;
+      gs1.i.chkGrpUp = chkGrpUp;
       gs1.i.adrPkgB = adrBytes;
       gs0.nmsk = grpMsk;
-      gs1.i.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
+///      gs1.i.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
       `asm_msg($psprintf("the first address is %0d", allAdr[0]), OVM_FULL);
       
       $fwrite(fo, "%8b\n", gs1.b[0]);
@@ -1559,6 +1567,8 @@ class ip4_assembler;
               "g1"  : cur.chkGrp = 2;
               "g10" : cur.chkGrp = 3;
               "gn"  : cur.chkGrp = 0;
+              "gu0" : cur.chkGrpUp = 0;
+              "gu1" : cur.chkGrpUp = 1;
               "nmsk" : cur.grpMsk = 1;
               "r3w1d" : cur.r3w1d = 1; 
               "mu" : cur.mu = 1;

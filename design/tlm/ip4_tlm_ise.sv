@@ -125,6 +125,7 @@ class ise_thread_inf extends ovm_component;
   uchar wCnt[NUM_W_CNT][5], wCntBr, wCntWr, wCntNext[7], vecMode;
   bit[4:0] wCntDep;
   bit[NUM_W_CNT - 1 : 0] wCntSel;
+  bit wCntUp;
   bit[CYC_VEC - 1 : 0] noExt;
   uchar srLSID, srLRID;
   bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE, srLRRID, msgRdy;
@@ -153,6 +154,7 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(decodeErr, OVM_ALL_ON)
     `ovm_field_int(cancel, OVM_ALL_ON)
     `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
+    `ovm_field_int(wCntUp, OVM_ALL_ON + OVM_BIN)
     `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
     `ovm_field_int(wCntBr, OVM_ALL_ON)
     `ovm_field_int(wCntWr, OVM_ALL_ON)
@@ -335,7 +337,8 @@ class ise_thread_inf extends ovm_component;
 
     if(!grpStart.t) begin
       wCntSel = grpStart.chkGrp;
-      adrPkgBytes = grpStart.adrPkgB;
+      wCntUp = grpStart.chkGrpUp;
+      adrPkgBytes = grpStart.adrPkgB + 1;
       numConst = grpStart.coPkgW;
       dseVec = grpStart.unitEn;
       noMsk = grpStart.nmsk;
@@ -353,6 +356,7 @@ class ise_thread_inf extends ovm_component;
         decodeErr = 1;
       end
       wCntSel = grpStart.i.chkGrp;
+      wCntUp = grpStart.i.chkGrpUp;
       adrPkgBytes = grpStart.i.adrPkgB;
       numConst = grpStart.i.coPkgW;
       iGrpBytes = 2 + adrPkgBytes + numConst * WORD_BYTES + tmp * NUM_INST_BYTES;
@@ -370,8 +374,8 @@ class ise_thread_inf extends ovm_component;
         enFuTmp[i] = enFu[i];
         
       `ip4_info("decode_igrp_start",
-        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, adrPkgB:%0d, coPkgW:%0d", 
-                   iGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, adrPkgBytes, numConst),
+        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, wCntUp:%0d, adrPkgB:%0d, coPkgW:%0d", 
+                   iGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, wCntUp, adrPkgBytes, numConst),
         OVM_FULL)
     end
   endfunction : decode_igrp_start
@@ -379,7 +383,7 @@ class ise_thread_inf extends ovm_component;
   function void decode_igrp();
     uchar tmp = 0;
     iga_t[23:0] adrs;
-    uchar offSet, gsa;
+    uchar offSet;
     i_gs0_t grpStart = iBuf[0];
 ///    bit noVecExp = 0;
     vrfRdEn = '{default : 0};
@@ -413,7 +417,7 @@ class ise_thread_inf extends ovm_component;
         iFu[i].enFu = enFu[i];
       
       iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
-      gsa = grpStart.a;
+///      gsa = grpStart.a;
       offSet += NUM_INST_BYTES;
     end
     else begin
@@ -448,7 +452,7 @@ class ise_thread_inf extends ovm_component;
           offSet += NUM_INST_BYTES;          
         end
 
-      gsa = grpStart.i.a;
+///      gsa = grpStart.i.a;
     end
 
     foreach(enFu[i])
@@ -461,7 +465,7 @@ class ise_thread_inf extends ovm_component;
         tmp0[i] = iBuf[offSet];
         offSet++;
       end
-      tmp0[adrPkgBytes][0] = gsa;
+///      tmp0[adrPkgBytes][0] = gsa;
       adrs = tmp0;
     end
       
@@ -1269,18 +1273,11 @@ class ip4_tlm_ise extends ovm_component;
         t.wCntWr = t.vecMode + 1;
         
     ///update wcnt
-    begin
-      ///select a wCnt it not depend
-      uchar sel;
-      foreach(t.wCntSel[i])
-        if(t.wCntSel[i] == 0)
-          sel = i;
-      foreach(t.wCntDep[i])
-        if(t.wCntNext[i] > t.wCnt[sel][i])
-          t.wCnt[sel][i] = t.wCntNext[i];
-      if(t.wCntNext[br_styp] > t.wCntBr)
-        t.wCntBr = t.wCntNext[br_styp];
-    end
+    foreach(t.wCntDep[i])
+      if(t.wCntNext[i] > t.wCnt[t.wCntUp][i])
+        t.wCnt[t.wCntUp][i] = t.wCntNext[i];
+    if(t.wCntNext[br_styp] > t.wCntBr)
+      t.wCntBr = t.wCntNext[br_styp];
     
     if(t.cntSrfBusy > cntSrfBusy)
       cntSrfBusy = t.cntSrfBusy;
