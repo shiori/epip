@@ -8,104 +8,104 @@ class ise2rfm_fu extends ovm_object;
   
   constraint valid_var {
     en dist {0:=1, 1:=9};
-	  foreach(rdBkSel[i])
-	    rdBkSel[i] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz, selii};
+    foreach(rdBkSel[i])
+      rdBkSel[i] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz, selii};
   }
   `ovm_object_utils_begin(ise2rfm_fu)
     `ovm_field_sarray_enum(rbk_sel_e, rdBkSel, OVM_ALL_ON)
-	  `ovm_field_int(imm, OVM_ALL_ON)    
-	  `ovm_field_int(en, OVM_ALL_ON)    
+    `ovm_field_int(imm, OVM_ALL_ON)    
+    `ovm_field_int(en, OVM_ALL_ON)    
   `ovm_object_utils_end
 
 	function new (string name = "ise2rfm_fu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new  
 endclass : ise2rfm_fu
 
 class tr_ise2rfm extends ovm_sequence_item;
 	rand uchar vrfRdGrp[NUM_VRF_BKS], srfRdGrp[NUM_SRF_BKS],
-	           vrfRdAdr[NUM_VRF_BKS], srfRdAdr[NUM_SRF_BKS];
-	
+             vrfRdAdr[NUM_VRF_BKS], srfRdAdr[NUM_SRF_BKS];
+  
 	rand ise2rfm_fu fu[NUM_FU];
 	rand rbk_sel_e dseRdBk[4], spuRdBk[2];
 ///	rand bit vecEnd;///, sclEnd, start;
 	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
 	rand uchar cycFu, cycDSE, cycSPU, vecModeFu, tid;
-	
+  
 	constraint valid_var {
-	  cycFu < CYC_VEC;
-	  cycDSE < CYC_VEC;
-	  cycSPU < CYC_VEC;
-		foreach(vrfRdGrp[i]) {
-			vrfRdGrp[i] inside {[0:NUM_PHY_VRF_GRP-1]};
-			vrfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+    cycFu < CYC_VEC;
+    cycDSE < CYC_VEC;
+    cycSPU < CYC_VEC;
+  	foreach(vrfRdGrp[i]) {
+    	vrfRdGrp[i] inside {[0:NUM_PHY_VRF_GRP-1]};
+    	vrfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
     }
-		foreach(srfRdGrp[i]) {
-			srfRdGrp[i] inside {[0:NUM_PHY_SRF_GRP-1]};
-			srfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_SRF_BKS-1]};
+  	foreach(srfRdGrp[i]) {
+    	srfRdGrp[i] inside {[0:NUM_PHY_SRF_GRP-1]};
+    	srfRdAdr[i] inside {[0:NUM_PRF_P_GRP/NUM_SRF_BKS-1]};
     }
     dseRdBk[0] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
     dseRdBk[1] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
     dseRdBk[2] inside {selii, selz};
     dseRdBk[3] inside {[selv0:selv_e], [sels0:sels_e], [selc0:selc_e], selz};
-	  foreach(spuRdBk[i])
-	    spuRdBk[i] inside {[sels0:sels_e], [selc0:selc_e], selz};
-	}
-	
+    foreach(spuRdBk[i])
+      spuRdBk[i] inside {[sels0:sels_e], [selc0:selc_e], selz};
+  }
+  
 	constraint dist_var {
-		dseEn dist {0:=6, 1:=4};
-		spuEn dist {0:=6, 1:=4};
-	}
+  	dseEn dist {0:=6, 1:=4};
+  	spuEn dist {0:=6, 1:=4};
+  }
     
 	function void post_randomize();
-		foreach(fu[i])
-		  assert(fu[i].randomize());
+  	foreach(fu[i])
+      assert(fu[i].randomize());
   endfunction
-	
-	`ovm_object_utils_begin(tr_ise2rfm)
-		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
-		`ovm_field_int(tid, OVM_ALL_ON)
-		`ovm_field_int(spuEn, OVM_ALL_ON)
-		`ovm_field_int(dseEn, OVM_ALL_ON)
-		`ovm_field_int(cycFu, OVM_ALL_ON)
-		`ovm_field_int(cycDSE, OVM_ALL_ON)
-		`ovm_field_int(cycSPU, OVM_ALL_ON)
-		`ovm_field_int(vecModeFu, OVM_ALL_ON)
-		`ovm_field_sarray_int(vrfRdGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_sarray_int(vrfRdAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_sarray_int(srfRdGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_sarray_int(srfRdAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_sarray_enum(rbk_sel_e, dseRdBk, OVM_ALL_ON)
-		`ovm_field_sarray_enum(rbk_sel_e, spuRdBk, OVM_ALL_ON)
-		`ovm_field_sarray_int(bpCo, OVM_ALL_ON)
-		`ovm_field_int(dseImm, OVM_ALL_ON)
-		`ovm_field_int(spuImm, OVM_ALL_ON)
+  
+  `ovm_object_utils_begin(tr_ise2rfm)
+    `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(spuEn, OVM_ALL_ON)
+    `ovm_field_int(dseEn, OVM_ALL_ON)
+    `ovm_field_int(cycFu, OVM_ALL_ON)
+    `ovm_field_int(cycDSE, OVM_ALL_ON)
+    `ovm_field_int(cycSPU, OVM_ALL_ON)
+    `ovm_field_int(vecModeFu, OVM_ALL_ON)
+    `ovm_field_sarray_int(vrfRdGrp, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_sarray_int(vrfRdAdr, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_sarray_int(srfRdGrp, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_sarray_int(srfRdAdr, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_sarray_enum(rbk_sel_e, dseRdBk, OVM_ALL_ON)
+    `ovm_field_sarray_enum(rbk_sel_e, spuRdBk, OVM_ALL_ON)
+    `ovm_field_sarray_int(bpCo, OVM_ALL_ON)
+    `ovm_field_int(dseImm, OVM_ALL_ON)
+    `ovm_field_int(spuImm, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	virtual function void do_print(ovm_printer printer);
-		super.do_print(printer);
-		foreach(fu[i])
-		  if(fu[i].en)
-		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+  	super.do_print(printer);
+  	foreach(fu[i])
+      if(fu[i].en)
+        printer.print_object($psprintf("fu%0d", i), fu[i]);
 	endfunction : do_print
-	  
+    
 	function new (string name = "tr_ise2rfm");
-		super.new(name);
-		foreach(fu[i])
-		  fu[i] = new();
+  	super.new(name);
+  	foreach(fu[i])
+      fu[i] = new();
 	endfunction : new
 endclass : tr_ise2rfm
 
 class tr_rfm2ise extends ovm_sequence_item;
-				
-	`ovm_object_utils_begin(tr_rfm2ise)
+        
+  `ovm_object_utils_begin(tr_rfm2ise)
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2ise");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_rfm2ise
 
 ///---------------------------trsaction spu_rfm rfm_spu------------------------
@@ -116,54 +116,54 @@ class tr_spu2rfm extends ovm_sequence_item;
 	rand uchar tid, vecMode, srfWrBk, srfWrGrp, srfWrAdr, subVec;
 	rand bit expFu, missBr, expMSC;
 	rand bit msco[NUM_SP], mscu[NUM_SP];
-	
-	///wrEn signal is given one cycle before writeback
-	
+  
+  ///wrEn signal is given one cycle before writeback
+  
 	constraint valid_wen {
-		wrEn dist {0:=1, 1:=9};
-	}
-	
+  	wrEn dist {0:=1, 1:=9};
+  }
+  
 	constraint valid_spu {
-		srfWrBk inside {[0:NUM_VRF_BKS-1]};
-		srfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-		srfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-	}
-		
-	`ovm_object_utils_begin(tr_spu2rfm)
-		`ovm_field_int(wrEn, OVM_ALL_ON)
-		`ovm_field_int(res, OVM_ALL_ON)
-		`ovm_field_int(expFu, OVM_ALL_ON)
-		`ovm_field_int(missBr, OVM_ALL_ON)
-		`ovm_field_int(expMSC, OVM_ALL_ON)
-		`ovm_field_int(tid, OVM_ALL_ON)
-		`ovm_field_int(vecMode, OVM_ALL_ON)
-		`ovm_field_int(wrSrMSC, OVM_ALL_ON)
-		`ovm_field_int(subVec, OVM_ALL_ON)
-		`ovm_field_sarray_int(msco, OVM_ALL_ON)
-		`ovm_field_sarray_int(mscu, OVM_ALL_ON)
-		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
+  	srfWrBk inside {[0:NUM_VRF_BKS-1]};
+  	srfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	srfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  }
+    
+  `ovm_object_utils_begin(tr_spu2rfm)
+    `ovm_field_int(wrEn, OVM_ALL_ON)
+    `ovm_field_int(res, OVM_ALL_ON)
+    `ovm_field_int(expFu, OVM_ALL_ON)
+    `ovm_field_int(missBr, OVM_ALL_ON)
+    `ovm_field_int(expMSC, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(wrSrMSC, OVM_ALL_ON)
+    `ovm_field_int(subVec, OVM_ALL_ON)
+    `ovm_field_sarray_int(msco, OVM_ALL_ON)
+    `ovm_field_sarray_int(mscu, OVM_ALL_ON)
+    `ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2rfm");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_spu2rfm
 
 class tr_rfm2spu extends ovm_sequence_item;
 	rand word op0, op1; ///BRU ScalarP use port4
 
-	`ovm_object_utils_begin(tr_rfm2spu)
-		`ovm_field_int(op0, OVM_ALL_ON)
-		`ovm_field_int(op1, OVM_ALL_ON)	
+  `ovm_object_utils_begin(tr_rfm2spu)
+    `ovm_field_int(op0, OVM_ALL_ON)
+    `ovm_field_int(op1, OVM_ALL_ON)  
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2spu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_rfm2spu
 
 ///---------------------------trsaction spa_rfm rfm_spa------------------------
@@ -175,7 +175,7 @@ class rfm2spa_rp extends ovm_object;
   `ovm_object_utils_end
   
 	function new (string name = "rfm2spa_rp");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : rfm2spa_rp
 
@@ -189,35 +189,35 @@ class rfm2spa_fu extends ovm_object;
   `ovm_object_utils_end
   
 	function new (string name = "rfm2spa_fu");
-		super.new(name);
-		foreach(rp[i])
-		  rp[i] = new();
+  	super.new(name);
+  	foreach(rp[i])
+      rp[i] = new();
 	endfunction : new
 endclass : rfm2spa_fu
 
 class tr_rfm2spa extends ovm_sequence_item;
 	rfm2spa_fu fu[NUM_FU];
-	
-	`ovm_object_utils_begin(tr_rfm2spa)
-		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
+  
+  `ovm_object_utils_begin(tr_rfm2spa)
+    `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_object_utils_end
 
 	virtual function void do_print(ovm_printer printer);
-		super.do_print(printer);
-		foreach(fu[i])
-		  if(fu[i].en)
-		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+  	super.do_print(printer);
+  	foreach(fu[i])
+      if(fu[i].en)
+        printer.print_object($psprintf("fu%0d", i), fu[i]);
 	endfunction : do_print
-	  
+    
 	function new (string name = "tr_rfm2spa");
-		super.new(name);
-	  foreach(fu[i])
-	    fu[i] = new();
+  	super.new(name);
+    foreach(fu[i])
+      fu[i] = new();
 	endfunction : new
-	
+  
 	function void post_randomize();
-	  foreach(fu[i])
-	    assert(fu[i].randomize());
+    foreach(fu[i])
+      assert(fu[i].randomize());
 	endfunction
 endclass : tr_rfm2spa
 
@@ -230,15 +230,15 @@ class spa2rfm_fu extends ovm_object;
   rand bit en;   ///used only for printing
   
 	constraint valid_vars{
-		vrfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-		vrfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-		vrfWrBk inside {[0:NUM_VRF_BKS-1]};
-		subVec dist {0:=5, 1:=5};
-		tid < NUM_THREAD;
-		foreach(wrEn[i])
-			wrEn[i] dist {0:=1, 1:=9};				
-	}
-	  
+  	vrfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	vrfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  	vrfWrBk inside {[0:NUM_VRF_BKS-1]};
+  	subVec dist {0:=5, 1:=5};
+  	tid < NUM_THREAD;
+  	foreach(wrEn[i])
+    	wrEn[i] dist {0:=1, 1:=9};        
+  }
+    
   `ovm_object_utils_begin(spa2rfm_fu)
     `ovm_field_sarray_int(res0, OVM_ALL_ON)
     `ovm_field_sarray_int(res1, OVM_ALL_ON)
@@ -256,7 +256,7 @@ class spa2rfm_fu extends ovm_object;
   `ovm_object_utils_end
   
 	function new (string name = "spa2rfm_fu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : spa2rfm_fu
 
@@ -264,38 +264,38 @@ class tr_spa2rfm extends ovm_sequence_item;
 	spa2rfm_fu fu[NUM_FU];
 	rand uchar tid;
 	rand bit cancel;
-	
+  
 	function void post_randomize();
-	  static uchar lastSubVec[NUM_FU] = '{default:0};
-	  foreach(fu[i]) begin
-	    assert(fu[i].randomize());
-  		if(lastSubVec[i] == 0 || lastSubVec[i] == (CYC_VEC - 1)) begin
-  			lastSubVec[i] = fu[i].subVec;
-  		end
-  		else begin
-  		  lastSubVec[i]++;
-  			fu[i].subVec = lastSubVec[i];
-  		end	    
-	  end
+    static uchar lastSubVec[NUM_FU] = '{default:0};
+    foreach(fu[i]) begin
+      assert(fu[i].randomize());
+    	if(lastSubVec[i] == 0 || lastSubVec[i] == (CYC_VEC - 1)) begin
+      	lastSubVec[i] = fu[i].subVec;
+    	end
+    	else begin
+        lastSubVec[i]++;
+      	fu[i].subVec = lastSubVec[i];
+    	end	    
+    end
 	endfunction : post_randomize
-	
-	`ovm_object_utils_begin(tr_spa2rfm)
-		`ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
-		`ovm_field_int(tid, OVM_ALL_ON)
-		`ovm_field_int(cancel, OVM_ALL_ON)
+  
+  `ovm_object_utils_begin(tr_spa2rfm)
+    `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(cancel, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	virtual function void do_print(ovm_printer printer);
-		super.do_print(printer);
-		foreach(fu[i])
-		  if(fu[i].en)
-		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+  	super.do_print(printer);
+  	foreach(fu[i])
+      if(fu[i].en)
+        printer.print_object($psprintf("fu%0d", i), fu[i]);
 	endfunction : do_print
-	
+  
 	function new (string name = "tr_spa2rfm");
-		super.new(name);
-	  foreach(fu[i])
-	    fu[i] = new();
+  	super.new(name);
+    foreach(fu[i])
+      fu[i] = new();
 	endfunction : new
 
 endclass : tr_spa2rfm
@@ -308,80 +308,80 @@ class tr_dse2rfm extends ovm_sequence_item;
 	rand uchar tid, tidExp;
 	rand bit expVec[NUM_SP];
 	rand uchar wrGrp, wrAdr, wrBk, 
-	           uaWrGrp, uaWrAdr, uaWrBk, 
-	           subVec, vecMode, vecModeExp;
-	
+             uaWrGrp, uaWrAdr, uaWrBk, 
+             subVec, vecMode, vecModeExp;
+  
 	constraint valid_dse{
-		foreach(wrEn[i])
-			wrEn[i] dist {0:=1, 1:=9};
-		wrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-		wrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-		wrBk inside {[0:NUM_VRF_BKS-1]};
-		subVec dist {0:=5, 1:=5};
-		srfWr dist {0:=9, 1:=1};
-	}
+  	foreach(wrEn[i])
+    	wrEn[i] dist {0:=1, 1:=9};
+  	wrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	wrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  	wrBk inside {[0:NUM_VRF_BKS-1]};
+  	subVec dist {0:=5, 1:=5};
+  	srfWr dist {0:=9, 1:=1};
+  }
 
 	function void post_randomize();
-		static uchar lastSubVec = 0;
-		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
-			lastSubVec = subVec;
-		end
-		else begin
-		  lastSubVec++;
-			subVec = lastSubVec;
-		end
+  	static uchar lastSubVec = 0;
+  	if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
+    	lastSubVec = subVec;
+  	end
+  	else begin
+      lastSubVec++;
+    	subVec = lastSubVec;
+  	end
 	endfunction : post_randomize
-		
-	`ovm_object_utils_begin(tr_dse2rfm)
-		`ovm_field_sarray_int(res, OVM_ALL_ON)
-		`ovm_field_sarray_int(wrEn, OVM_ALL_ON)
-		`ovm_field_sarray_int(uaRes, OVM_ALL_ON)
-		`ovm_field_sarray_int(expVec, OVM_ALL_ON)
-		`ovm_field_int(wrGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(wrAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(wrBk, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(uaWrGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(uaWrAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(uaWrBk, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(tid, OVM_ALL_ON)
-		`ovm_field_int(tidExp, OVM_ALL_ON)
-		`ovm_field_int(subVec, OVM_ALL_ON)
-		`ovm_field_int(vecMode, OVM_ALL_ON)
-		`ovm_field_int(vecModeExp, OVM_ALL_ON)
-		`ovm_field_int(srfWr, OVM_ALL_ON)
-		`ovm_field_int(vrfWr, OVM_ALL_ON)
-		`ovm_field_int(uaWrEn, OVM_ALL_ON)
-		`ovm_field_int(exp, OVM_ALL_ON)
+    
+  `ovm_object_utils_begin(tr_dse2rfm)
+    `ovm_field_sarray_int(res, OVM_ALL_ON)
+    `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
+    `ovm_field_sarray_int(uaRes, OVM_ALL_ON)
+    `ovm_field_sarray_int(expVec, OVM_ALL_ON)
+    `ovm_field_int(wrGrp, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(wrAdr, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(wrBk, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(uaWrGrp, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(uaWrAdr, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(uaWrBk, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidExp, OVM_ALL_ON)
+    `ovm_field_int(subVec, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(vecModeExp, OVM_ALL_ON)
+    `ovm_field_int(srfWr, OVM_ALL_ON)
+    `ovm_field_int(vrfWr, OVM_ALL_ON)
+    `ovm_field_int(uaWrEn, OVM_ALL_ON)
+    `ovm_field_int(exp, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2rfm");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_dse2rfm
 
 class tr_rfm2dse extends ovm_sequence_item;
 	rand word base[NUM_SP], st[NUM_SP], os;
-	
-	`ovm_object_utils_begin(tr_rfm2dse)
-		`ovm_field_sarray_int(base, OVM_ALL_ON)
-		`ovm_field_sarray_int(st, OVM_ALL_ON)
-		`ovm_field_int(os, OVM_ALL_ON)
+  
+  `ovm_object_utils_begin(tr_rfm2dse)
+    `ovm_field_sarray_int(base, OVM_ALL_ON)
+    `ovm_field_sarray_int(st, OVM_ALL_ON)
+    `ovm_field_int(os, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_rfm2dse");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 
 ///	function void post_randomize();
-///	  static uchar lastSubVec = 0;
-///		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
-///  			lastSubVec = subVec;
-///  		end
-///  		else begin
-///  		  lastSubVec++;
-///  			subVec = lastSubVec;
-///  		end	    
+///    static uchar lastSubVec = 0;
+///  	if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
+///      	lastSubVec = subVec;
+///    	end
+///    	else begin
+///        lastSubVec++;
+///      	subVec = lastSubVec;
+///    	end	    
 ///	endfunction : post_randomize	
 endclass : tr_rfm2dse
 
@@ -403,9 +403,9 @@ class ise2spa_fu extends ovm_object;
 
   constraint valid_vars{
     en dist {0:=1, 1:=9};
-		vrfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-		vrfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-		vrfWrBk inside {[0:NUM_VRF_BKS-1]};
+  	vrfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	vrfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  	vrfWrBk inside {[0:NUM_VRF_BKS-1]};
   }
     
   `ovm_object_utils_begin(ise2spa_fu)
@@ -413,14 +413,14 @@ class ise2spa_fu extends ovm_object;
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
-	  `ovm_field_int(vrfWrBk, OVM_ALL_ON)
-	  `ovm_field_int(vrfWrAdr, OVM_ALL_ON)
-	  `ovm_field_int(vrfWrGrp, OVM_ALL_ON)
-	  `ovm_field_sarray_enum(rbk_sel_e, bpSel, OVM_ALL_ON)
+    `ovm_field_int(vrfWrBk, OVM_ALL_ON)
+    `ovm_field_int(vrfWrAdr, OVM_ALL_ON)
+    `ovm_field_int(vrfWrGrp, OVM_ALL_ON)
+    `ovm_field_sarray_enum(rbk_sel_e, bpSel, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "ise2spa_fu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : ise2spa_fu
 
@@ -435,27 +435,27 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   rand uchar expMsk;
   rand bit noExp;
   
-	`ovm_object_utils_begin(tr_ise2spa)
-	  `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
-	  `ovm_field_enum(pr_merge_e, prMerge, OVM_ALL_ON)
-	  `ovm_field_int(subVec, OVM_ALL_ON)
-	  `ovm_field_int(vecMode, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-///	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
-	  `ovm_field_int(bpRfDSEwp, OVM_ALL_ON)
-	  `ovm_field_int(noExp, OVM_ALL_ON)
-	  `ovm_field_int(expMsk, OVM_ALL_ON)
-	  `ovm_field_enum(rbk_sel_e, bpRfDSE, OVM_ALL_ON)
-	  `ovm_field_enum(round_mode_t, rndMode, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_ise2spa)
+    `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
+    `ovm_field_enum(pr_merge_e, prMerge, OVM_ALL_ON)
+    `ovm_field_int(subVec, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+///    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
+    `ovm_field_int(bpRfDSEwp, OVM_ALL_ON)
+    `ovm_field_int(noExp, OVM_ALL_ON)
+    `ovm_field_int(expMsk, OVM_ALL_ON)
+    `ovm_field_enum(rbk_sel_e, bpRfDSE, OVM_ALL_ON)
+    `ovm_field_enum(round_mode_t, rndMode, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	virtual function void do_print(ovm_printer printer);
-		super.do_print(printer);
-		foreach(fu[i])
-		  if(fu[i].en)
-		    printer.print_object($psprintf("fu%0d", i), fu[i]);
+  	super.do_print(printer);
+  	foreach(fu[i])
+      if(fu[i].en)
+        printer.print_object($psprintf("fu%0d", i), fu[i]);
 	endfunction : do_print
-	  
+    
   constraint dist_vars{
     subVec dist {0:=5, 1:=5};
     vecMode < CYC_VEC; ///inside {[1:CYC_VEC]};
@@ -465,30 +465,30 @@ class tr_ise2spa extends ovm_sequence_item;   ///syn to EXE0 stage
   }
   
 	function new (string name = "tr_ise2spa");
-		super.new(name);
-	  foreach(fu[i])
-	    fu[i] = new();
+  	super.new(name);
+    foreach(fu[i])
+      fu[i] = new();
 	endfunction : new
 
 	function void post_randomize();
-		static uchar lastSubVec = 0, last_tid;
-		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
-			lastSubVec = subVec;
-			last_tid = tid;
-		end
-		else begin
-		  lastSubVec++;
-			subVec = lastSubVec;
-			tid = last_tid;
-	  end
-	  
-	  foreach(fu[i]) begin
-	    unit_typ_e t = fu_cfg[i];
-	    fu[i].fuId = i;
-	    assert(fu[i].randomize());
-	  end
+  	static uchar lastSubVec = 0, last_tid;
+  	if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
+    	lastSubVec = subVec;
+    	last_tid = tid;
+  	end
+  	else begin
+      lastSubVec++;
+    	subVec = lastSubVec;
+    	tid = last_tid;
+    end
+    
+    foreach(fu[i]) begin
+      unit_typ_e t = fu_cfg[i];
+      fu[i].fuId = i;
+      assert(fu[i].randomize());
+    end
 	endfunction : post_randomize
-	
+  
 endclass : tr_ise2spa
 
 class tr_spa2ise extends ovm_sequence_item;
@@ -497,18 +497,18 @@ class tr_spa2ise extends ovm_sequence_item;
   rand bit exp;
   rand uchar tid;
   
-	`ovm_object_utils_begin(tr_spa2ise)
-	  `ovm_field_sarray_int(noFu, OVM_ALL_ON)
-	  `ovm_field_int(exp, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spa2ise)
+    `ovm_field_sarray_int(noFu, OVM_ALL_ON)
+    `ovm_field_int(exp, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spa2ise");
-		super.new(name);
-		noFu = '{default : 0};
-		exp = 0;
+  	super.new(name);
+  	noFu = '{default : 0};
+  	exp = 0;
 	endfunction : new
-	
+  
 endclass : tr_spa2ise
 
 ///---------------------------trsaction spa_spu spu_spa------------------------
@@ -526,29 +526,29 @@ class spu2spa_fu extends ovm_object;
   `ovm_object_utils_end
   
 	function new (string name = "spu2spa_fu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : spu2spa_fu
 
 class tr_spu2spa extends ovm_sequence_item;
   spu2spa_fu fu[NUM_FU];
   
-	`ovm_object_utils_begin(tr_spu2spa)
-	  `ovm_field_sarray_object(fu, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spu2spa)
+    `ovm_field_sarray_object(fu, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2spa");
-		super.new(name);
-	  foreach(fu[i])
-	    fu[i] = new();		
+  	super.new(name);
+    foreach(fu[i])
+      fu[i] = new();    
 	endfunction : new
 
 	function void post_randomize();
-	  foreach(fu[i])
-	    assert(fu[i].randomize());  	  
+    foreach(fu[i])
+      assert(fu[i].randomize());      
 	endfunction : post_randomize
-		
+    
 endclass : tr_spu2spa
 
 class tr_spa2spu extends ovm_sequence_item;
@@ -564,28 +564,28 @@ class tr_spa2spu extends ovm_sequence_item;
 ///    }
 ///  }
   
-	`ovm_object_utils_begin(tr_spa2spu)
-	  `ovm_field_sarray_int(presCmp0, OVM_ALL_ON)
-	  `ovm_field_sarray_int(presCmp1, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(cancel, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spa2spu)
+    `ovm_field_sarray_int(presCmp0, OVM_ALL_ON)
+    `ovm_field_sarray_int(presCmp1, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(cancel, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spa2spu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 
 ///	function void post_randomize();
-///	  static uchar lastSubVec[NUM_FU] = '{default:0};
-///	  foreach(subVec[i]) begin
-///  		if(lastSubVec[i] == 0 || lastSubVec[i] == (CYC_VEC - 1)) begin
-///  			lastSubVec[i] = subVec[i];
-///  		end
-///  		else begin
-///  		  lastSubVec[i]++;
-///  			subVec[i] = lastSubVec[i];
-///  		end	    
-///	  end
+///    static uchar lastSubVec[NUM_FU] = '{default:0};
+///    foreach(subVec[i]) begin
+///    	if(lastSubVec[i] == 0 || lastSubVec[i] == (CYC_VEC - 1)) begin
+///      	lastSubVec[i] = subVec[i];
+///    	end
+///    	else begin
+///        lastSubVec[i]++;
+///      	subVec[i] = lastSubVec[i];
+///    	end	    
+///    end
 ///	endfunction : post_randomize
 endclass : tr_spa2spu
 
@@ -600,27 +600,27 @@ class tr_spu2ise extends ovm_sequence_item;
   rand uchar srAdr, vecMode, vecModeSclExp;
   rand uint bpc;
   
-	`ovm_object_utils_begin(tr_spu2ise)
-	  `ovm_field_int(brRsp, OVM_ALL_ON)
-	  `ovm_field_int(brTaken, OVM_ALL_ON)
-	  `ovm_field_int(missBr, OVM_ALL_ON)
-	  `ovm_field_int(bpc, OVM_ALL_ON)
-	  `ovm_field_int(mscExp, OVM_ALL_ON)
-	  `ovm_field_int(sclExp, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(tidSclExp, OVM_ALL_ON)
-	  `ovm_field_int(srReq, OVM_ALL_ON)
-	  `ovm_field_int(s2gp, OVM_ALL_ON)
-	  `ovm_field_int(srAdr, OVM_ALL_ON)
-	  `ovm_field_int(vecMode, OVM_ALL_ON)
-	  `ovm_field_int(vecModeSclExp, OVM_ALL_ON)
-	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spu2ise)
+    `ovm_field_int(brRsp, OVM_ALL_ON)
+    `ovm_field_int(brTaken, OVM_ALL_ON)
+    `ovm_field_int(missBr, OVM_ALL_ON)
+    `ovm_field_int(bpc, OVM_ALL_ON)
+    `ovm_field_int(mscExp, OVM_ALL_ON)
+    `ovm_field_int(sclExp, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidSclExp, OVM_ALL_ON)
+    `ovm_field_int(srReq, OVM_ALL_ON)
+    `ovm_field_int(s2gp, OVM_ALL_ON)
+    `ovm_field_int(srAdr, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(vecModeSclExp, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2ise");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_spu2ise
 
 class tr_ise2spu extends ovm_sequence_item;
@@ -675,34 +675,34 @@ class tr_ise2spu extends ovm_sequence_item;
     prWrAdr1 <= NUM_PR;
     prRdAdrSPU <= NUM_PR;
     prRdAdrDSE <= NUM_PR;
-		srfWrBk inside {[0:NUM_VRF_BKS-1]};
-		srfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-		srfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  	srfWrBk inside {[0:NUM_VRF_BKS-1]};
+  	srfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	srfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
     solve prRdAdrSPU before brDep;
     solve op before sop, mop, bop;
   }
   
 ///  function void post_randomize();
 ///    static uchar last_cycs = 0, last_subs=0, lastSubVec = 0;
-///		if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
-///			lastSubVec = subVec;
-///		end
-///		else begin
-///		  lastSubVec++;
-///			subVec = lastSubVec;
-///	  end    
+///  	if(lastSubVec == 0 || lastSubVec == (CYC_VEC - 1)) begin
+///    	lastSubVec = subVec;
+///  	end
+///  	else begin
+///      lastSubVec++;
+///    	subVec = lastSubVec;
+///    end    
 ///  endfunction
   
-	`ovm_object_utils_begin(tr_ise2spu)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(wrEn, OVM_ALL_ON)
-	  `ovm_field_int(brPred, OVM_ALL_ON)
-	  `ovm_field_int(brDep, OVM_ALL_ON)
-	  `ovm_field_int(brDepDSE, OVM_ALL_ON)
-	  `ovm_field_int(brDepSPA, OVM_ALL_ON)
-	  `ovm_field_int(brSrf, OVM_ALL_ON)
-	  `ovm_field_int(predPc, OVM_ALL_ON)
-///	  `ovm_field_int(start, OVM_ALL_ON)start,   ///signal spu normal op to start
+  `ovm_object_utils_begin(tr_ise2spu)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(wrEn, OVM_ALL_ON)
+    `ovm_field_int(brPred, OVM_ALL_ON)
+    `ovm_field_int(brDep, OVM_ALL_ON)
+    `ovm_field_int(brDepDSE, OVM_ALL_ON)
+    `ovm_field_int(brDepSPA, OVM_ALL_ON)
+    `ovm_field_int(brSrf, OVM_ALL_ON)
+    `ovm_field_int(predPc, OVM_ALL_ON)
+///    `ovm_field_int(start, OVM_ALL_ON)start,   ///signal spu normal op to start
 ///    `ovm_field_int(subVec, OVM_ALL_ON)
 ///    `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(subVecFu, OVM_ALL_ON)
@@ -711,41 +711,41 @@ class tr_ise2spu extends ovm_sequence_item;
     `ovm_field_int(vecModeDSE, OVM_ALL_ON)
     `ovm_field_int(subVecSPU, OVM_ALL_ON)
     `ovm_field_int(vecModeSPU, OVM_ALL_ON)
-	  `ovm_field_int(prWrAdr0, OVM_ALL_ON)
-	  `ovm_field_int(prWrAdr1, OVM_ALL_ON)
-	  `ovm_field_int(prWrAdr2, OVM_ALL_ON)
+    `ovm_field_int(prWrAdr0, OVM_ALL_ON)
+    `ovm_field_int(prWrAdr1, OVM_ALL_ON)
+    `ovm_field_int(prWrAdr2, OVM_ALL_ON)
     `ovm_field_sarray_int(prRdAdr, OVM_ALL_ON)
-	  `ovm_field_int(prRdAdrSPU, OVM_ALL_ON)
-	  `ovm_field_int(prRdAdrDSE, OVM_ALL_ON)
-	  `ovm_field_sarray_int(prInv, OVM_ALL_ON)
-	  `ovm_field_int(prInvDSE, OVM_ALL_ON)
-	  `ovm_field_int(prInvSPU, OVM_ALL_ON)
-	  `ovm_field_sarray_int(prNMsk, OVM_ALL_ON)
-	  `ovm_field_int(prNMskDSE, OVM_ALL_ON)
-	  `ovm_field_int(prNMskSPU, OVM_ALL_ON)
-	  `ovm_field_enum(msc_opcode_e, sop, OVM_ALL_ON)
-	  `ovm_field_enum(msk_opcode_e, mop, OVM_ALL_ON)
-	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
-	  `ovm_field_enum(br_opcode_e, bop, OVM_ALL_ON)
-		`ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
-		`ovm_field_int(enDSE, OVM_ALL_ON)
-		`ovm_field_int(sclDSE, OVM_ALL_ON)
-		`ovm_field_int(enSPU, OVM_ALL_ON)
-		`ovm_field_sarray_int(enFu, OVM_ALL_ON)
-		`ovm_field_int(srAdr, OVM_ALL_ON)
-		`ovm_field_int(srRsp, OVM_ALL_ON)
-		`ovm_field_int(srRes, OVM_ALL_ON)
+    `ovm_field_int(prRdAdrSPU, OVM_ALL_ON)
+    `ovm_field_int(prRdAdrDSE, OVM_ALL_ON)
+    `ovm_field_sarray_int(prInv, OVM_ALL_ON)
+    `ovm_field_int(prInvDSE, OVM_ALL_ON)
+    `ovm_field_int(prInvSPU, OVM_ALL_ON)
+    `ovm_field_sarray_int(prNMsk, OVM_ALL_ON)
+    `ovm_field_int(prNMskDSE, OVM_ALL_ON)
+    `ovm_field_int(prNMskSPU, OVM_ALL_ON)
+    `ovm_field_enum(msc_opcode_e, sop, OVM_ALL_ON)
+    `ovm_field_enum(msk_opcode_e, mop, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+    `ovm_field_enum(br_opcode_e, bop, OVM_ALL_ON)
+    `ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(enDSE, OVM_ALL_ON)
+    `ovm_field_int(sclDSE, OVM_ALL_ON)
+    `ovm_field_int(enSPU, OVM_ALL_ON)
+    `ovm_field_sarray_int(enFu, OVM_ALL_ON)
+    `ovm_field_int(srAdr, OVM_ALL_ON)
+    `ovm_field_int(srRsp, OVM_ALL_ON)
+    `ovm_field_int(srRes, OVM_ALL_ON)
     `ovm_field_int(rt, OVM_ALL_ON)
     `ovm_field_int(ss, OVM_ALL_ON)
     `ovm_field_int(vs, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2spu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_ise2spu
 
 ///---------------------------trsaction dse_spu spu_dse------------------------
@@ -757,28 +757,28 @@ class tr_spu2dse extends ovm_sequence_item;
   rand opcode_e op;
   rand uchar tid, srAdr, vecMode, tidExpFu, tidExpMSC, vecModeExpFu;
   
-	`ovm_object_utils_begin(tr_spu2dse)
-	  `ovm_field_sarray_int(emsk, OVM_ALL_ON)
-	  `ovm_field_int(sclEn, OVM_ALL_ON)
-	  `ovm_field_int(op0, OVM_ALL_ON)
-	  `ovm_field_int(srReq, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(tidExpFu, OVM_ALL_ON)
-	  `ovm_field_int(tidExpMSC, OVM_ALL_ON)
-	  `ovm_field_int(srAdr, OVM_ALL_ON)
-	  `ovm_field_int(expFu, OVM_ALL_ON)
-	  `ovm_field_int(missBr, OVM_ALL_ON)
-	  `ovm_field_int(expMSC, OVM_ALL_ON)
-	  `ovm_field_int(s2gp, OVM_ALL_ON)
-	  `ovm_field_int(vecMode, OVM_ALL_ON)
-	  `ovm_field_int(vecModeExpFu, OVM_ALL_ON)
-	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spu2dse)
+    `ovm_field_sarray_int(emsk, OVM_ALL_ON)
+    `ovm_field_int(sclEn, OVM_ALL_ON)
+    `ovm_field_int(op0, OVM_ALL_ON)
+    `ovm_field_int(srReq, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidExpFu, OVM_ALL_ON)
+    `ovm_field_int(tidExpMSC, OVM_ALL_ON)
+    `ovm_field_int(srAdr, OVM_ALL_ON)
+    `ovm_field_int(expFu, OVM_ALL_ON)
+    `ovm_field_int(missBr, OVM_ALL_ON)
+    `ovm_field_int(expMSC, OVM_ALL_ON)
+    `ovm_field_int(s2gp, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(vecModeExpFu, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2dse");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_spu2dse
 
 class tr_dse2spu extends ovm_sequence_item;
@@ -790,22 +790,22 @@ class tr_dse2spu extends ovm_sequence_item;
     tid < NUM_THREAD;
   }
   
-	`ovm_object_utils_begin(tr_dse2spu)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(tidCancel, OVM_ALL_ON)
-	  `ovm_field_int(cancel, OVM_ALL_ON)
-	  `ovm_field_int(wrEn, OVM_ALL_ON)
-	  `ovm_field_sarray_int(pres, OVM_ALL_ON)
-///	  `ovm_field_sarray_int(tmrfRes, OVM_ALL_ON)
-	  `ovm_field_int(srRes, OVM_ALL_ON)
-	  `ovm_field_int(rsp, OVM_ALL_ON)
-///	  `ovm_field_int(tmrf, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_dse2spu)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidCancel, OVM_ALL_ON)
+    `ovm_field_int(cancel, OVM_ALL_ON)
+    `ovm_field_int(wrEn, OVM_ALL_ON)
+    `ovm_field_sarray_int(pres, OVM_ALL_ON)
+///    `ovm_field_sarray_int(tmrfRes, OVM_ALL_ON)
+    `ovm_field_int(srRes, OVM_ALL_ON)
+    `ovm_field_int(rsp, OVM_ALL_ON)
+///    `ovm_field_int(tmrf, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2spu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_dse2spu
 
 ///---------------------------trsaction ife_ise ise_ife------------------------
@@ -815,17 +815,17 @@ class tr_ife2ise extends ovm_sequence_item;
   rand uchar tid;
   rand inst_fg_c fetchGrp;
   
-	`ovm_object_utils_begin(tr_ife2ise)
-	  `ovm_field_int(instEn, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_object(fetchGrp, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_ife2ise)
+    `ovm_field_int(instEn, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_object(fetchGrp, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ife2ise");
-		super.new(name);
-		fetchGrp = new();
+  	super.new(name);
+  	fetchGrp = new();
 	endfunction : new
-	
+  
 endclass : tr_ife2ise
 
 class tr_ise2ife extends ovm_sequence_item;
@@ -834,17 +834,17 @@ class tr_ise2ife extends ovm_sequence_item;
   rand uint pc;
   rand bit cancel[NUM_THREAD];
   
-	`ovm_object_utils_begin(tr_ise2ife)
-	  `ovm_field_int(fetchReq, OVM_ALL_ON)
-	  `ovm_field_sarray_int(cancel, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON + OVM_DEC)
-	  `ovm_field_int(pc, OVM_ALL_ON + OVM_HEX)
+  `ovm_object_utils_begin(tr_ise2ife)
+    `ovm_field_int(fetchReq, OVM_ALL_ON)
+    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON + OVM_DEC)
+    `ovm_field_int(pc, OVM_ALL_ON + OVM_HEX)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2ife");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_ise2ife
 
 ///---------------------------trsaction dse_spa spa_dse------------------------
@@ -853,26 +853,26 @@ class tr_spa2dse extends ovm_sequence_item;
   rand bit cancel;
   rand uchar tid;
     
-	`ovm_object_utils_begin(tr_spa2dse)
-	  `ovm_field_int(cancel, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spa2dse)
+    `ovm_field_int(cancel, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spa2dse");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_spa2dse
 
 class tr_dse2spa extends ovm_sequence_item;
   
-	`ovm_object_utils_begin(tr_dse2spa)
+  `ovm_object_utils_begin(tr_dse2spa)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2spa");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_dse2spa
 
 ///---------------------------trsaction dse_ise ise_dse------------------------
@@ -886,30 +886,30 @@ class tr_ise2dse extends ovm_sequence_item;
   rand update_adr_t ua;
   rand access_typ_t at;
   
-	`ovm_object_utils_begin(tr_ise2dse)
-	  `ovm_field_int(wr, OVM_ALL_ON)
-	  `ovm_field_int(wrBk, OVM_ALL_ON)
-	  `ovm_field_int(wrAdr, OVM_ALL_ON)
-	  `ovm_field_int(wrGrp, OVM_ALL_ON)
-	  `ovm_field_int(uaWrBk, OVM_ALL_ON)
-	  `ovm_field_int(uaWrAdr, OVM_ALL_ON)
-	  `ovm_field_int(uaWrGrp, OVM_ALL_ON)
-	  `ovm_field_int(mrfAdr, OVM_ALL_ON)
-	  `ovm_field_int(priv, OVM_ALL_ON)
-	  `ovm_field_int(en, OVM_ALL_ON)
-	  `ovm_field_int(sendRotRight, OVM_ALL_ON)
-	  `ovm_field_int(noExt, OVM_ALL_ON)
-///	  `ovm_field_int(burst, OVM_ALL_ON)
-	  `ovm_field_int(nonBlock, OVM_ALL_ON)
-	  `ovm_field_int(uaWrEn, OVM_ALL_ON)
-///	  `ovm_field_int(updatePr, OVM_ALL_ON)
-	  `ovm_field_int(vec, OVM_ALL_ON)
-	  `ovm_field_int(vecMode, OVM_ALL_ON)
-	  `ovm_field_int(subVec, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
-	  `ovm_field_enum(update_adr_t, ua, OVM_ALL_ON)
-	  `ovm_field_enum(access_typ_t, at, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_ise2dse)
+    `ovm_field_int(wr, OVM_ALL_ON)
+    `ovm_field_int(wrBk, OVM_ALL_ON)
+    `ovm_field_int(wrAdr, OVM_ALL_ON)
+    `ovm_field_int(wrGrp, OVM_ALL_ON)
+    `ovm_field_int(uaWrBk, OVM_ALL_ON)
+    `ovm_field_int(uaWrAdr, OVM_ALL_ON)
+    `ovm_field_int(uaWrGrp, OVM_ALL_ON)
+    `ovm_field_int(mrfAdr, OVM_ALL_ON)
+    `ovm_field_int(priv, OVM_ALL_ON)
+    `ovm_field_int(en, OVM_ALL_ON)
+    `ovm_field_int(sendRotRight, OVM_ALL_ON)
+    `ovm_field_int(noExt, OVM_ALL_ON)
+///    `ovm_field_int(burst, OVM_ALL_ON)
+    `ovm_field_int(nonBlock, OVM_ALL_ON)
+    `ovm_field_int(uaWrEn, OVM_ALL_ON)
+///    `ovm_field_int(updatePr, OVM_ALL_ON)
+    `ovm_field_int(vec, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(subVec, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+    `ovm_field_enum(update_adr_t, ua, OVM_ALL_ON)
+    `ovm_field_enum(access_typ_t, at, OVM_ALL_ON)
   `ovm_object_utils_end
   
   constraint valid_vars{
@@ -919,7 +919,7 @@ class tr_ise2dse extends ovm_sequence_item;
   }
   
 	function new (string name = "tr_ise2dse");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 
 endclass : tr_ise2dse
@@ -946,26 +946,26 @@ class tr_dse2ise extends ovm_sequence_item;
 ///    rdy -> rsp;
   }
   
-	`ovm_object_utils_begin(tr_dse2ise)
-	  `ovm_field_int(ext, OVM_ALL_ON)
-	  `ovm_field_int(rsp, OVM_ALL_ON)
-	  `ovm_field_int(exp, OVM_ALL_ON)
-	  `ovm_field_int(reRun, OVM_ALL_ON)
-///	  `ovm_field_int(rdy, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(scl, OVM_ALL_ON)
-	  `ovm_field_int(vecMode, OVM_ALL_ON)
-	  `ovm_field_int(pendExLoad, OVM_ALL_ON)
-	  `ovm_field_int(pendExStore, OVM_ALL_ON)
-	  `ovm_field_int(pendSMsg, OVM_ALL_ON)
-///	  `ovm_field_int(pendMemAcc, OVM_ALL_ON)
-	  `ovm_field_enum(cause_dse_t, cause, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_dse2ise)
+    `ovm_field_int(ext, OVM_ALL_ON)
+    `ovm_field_int(rsp, OVM_ALL_ON)
+    `ovm_field_int(exp, OVM_ALL_ON)
+    `ovm_field_int(reRun, OVM_ALL_ON)
+///    `ovm_field_int(rdy, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(scl, OVM_ALL_ON)
+    `ovm_field_int(vecMode, OVM_ALL_ON)
+    `ovm_field_int(pendExLoad, OVM_ALL_ON)
+    `ovm_field_int(pendExStore, OVM_ALL_ON)
+    `ovm_field_int(pendSMsg, OVM_ALL_ON)
+///    `ovm_field_int(pendMemAcc, OVM_ALL_ON)
+    `ovm_field_enum(cause_dse_t, cause, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_dse2ise");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_dse2ise
 
 ///---------------------------trsaction spu_tlb tlb_spu------------------------
@@ -980,19 +980,19 @@ class tr_spu2tlb extends ovm_sequence_item;
     op inside {tlb_ops, op_gp2s, op_s2gp};
   }
   
-	`ovm_object_utils_begin(tr_spu2tlb)
-	  `ovm_field_int(op0, OVM_ALL_ON)
-	  `ovm_field_int(req, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
-	  `ovm_field_int(s2gp, OVM_ALL_ON)
-	  `ovm_field_int(srAdr, OVM_ALL_ON)
-	  `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_spu2tlb)
+    `ovm_field_int(op0, OVM_ALL_ON)
+    `ovm_field_int(req, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(s2gp, OVM_ALL_ON)
+    `ovm_field_int(srAdr, OVM_ALL_ON)
+    `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_ise2tlb");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
-	
+  
 endclass : tr_spu2tlb
 
 class tr_tlb2spu extends ovm_sequence_item;
@@ -1000,14 +1000,14 @@ class tr_tlb2spu extends ovm_sequence_item;
   rand word res;
   rand uchar tid;
   
-	`ovm_object_utils_begin(tr_tlb2spu)
-	  `ovm_field_int(rsp, OVM_ALL_ON)
-	  `ovm_field_int(res, OVM_ALL_ON)
-	  `ovm_field_int(tid, OVM_ALL_ON)
+  `ovm_object_utils_begin(tr_tlb2spu)
+    `ovm_field_int(rsp, OVM_ALL_ON)
+    `ovm_field_int(res, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_tlb2spu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new  
 endclass : tr_tlb2spu
 
@@ -1028,7 +1028,7 @@ class tr_dse2tlb extends ovm_sequence_item;
   `ovm_object_utils_end  
 
 	function new (string name = "tr_dse2tlb");
-		super.new(name);
+  	super.new(name);
 	endfunction : new  
 endclass : tr_dse2tlb
 
@@ -1051,7 +1051,7 @@ class tr_tlb2dse extends ovm_sequence_item;
   `ovm_object_utils_end  
 
 	function new (string name = "tr_tlb2dse");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_tlb2dse  
 
@@ -1069,7 +1069,7 @@ class tr_ife2tlb extends ovm_sequence_item;
   `ovm_object_utils_end  
 
 	function new (string name = "tr_ife2tlb");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_ife2tlb  
 
@@ -1089,7 +1089,7 @@ class tr_tlb2ife extends ovm_sequence_item;
   `ovm_object_utils_end  
 
 	function new (string name = "tr_tlb2ife");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_tlb2ife
 
@@ -1128,7 +1128,7 @@ class tr_dse2eif extends ovm_sequence_item;
   `ovm_object_utils_end
 
 	function new (string name = "tr_dse2eif");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_dse2eif
 
@@ -1166,7 +1166,7 @@ class tr_eif2dse extends ovm_sequence_item;
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2dse");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_eif2dse
 
@@ -1184,7 +1184,7 @@ class tr_ise2eif extends ovm_sequence_item;
   `ovm_object_utils_end
 
 	function new (string name = "tr_ise2eif");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_ise2eif
 
@@ -1202,22 +1202,22 @@ class tr_eif2ise extends ovm_sequence_item;
   }
     
   `ovm_object_utils_begin(tr_eif2ise)
-	  `ovm_field_int(noLd, OVM_ALL_ON)
-	  `ovm_field_int(noSt, OVM_ALL_ON)
-	  `ovm_field_int(noTMsg, OVM_ALL_ON)
-	  `ovm_field_int(noFMsg, OVM_ALL_ON)
-	  `ovm_field_int(vecCnt, OVM_ALL_ON)
-	  `ovm_field_int(sclCnt, OVM_ALL_ON)
-	  `ovm_field_int(reqCleanUp, OVM_ALL_ON)
-	  `ovm_field_int(reqNo, OVM_ALL_ON)
-	  `ovm_field_int(noSMsg, OVM_ALL_ON)
-	  `ovm_field_int(supRdy, OVM_ALL_ON)
-	  `ovm_field_sarray_int(msgRdy, OVM_ALL_ON)
-	  `ovm_field_sarray_int(mrfLocked, OVM_ALL_ON)
+    `ovm_field_int(noLd, OVM_ALL_ON)
+    `ovm_field_int(noSt, OVM_ALL_ON)
+    `ovm_field_int(noTMsg, OVM_ALL_ON)
+    `ovm_field_int(noFMsg, OVM_ALL_ON)
+    `ovm_field_int(vecCnt, OVM_ALL_ON)
+    `ovm_field_int(sclCnt, OVM_ALL_ON)
+    `ovm_field_int(reqCleanUp, OVM_ALL_ON)
+    `ovm_field_int(reqNo, OVM_ALL_ON)
+    `ovm_field_int(noSMsg, OVM_ALL_ON)
+    `ovm_field_int(supRdy, OVM_ALL_ON)
+    `ovm_field_sarray_int(msgRdy, OVM_ALL_ON)
+    `ovm_field_sarray_int(mrfLocked, OVM_ALL_ON)
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2ise");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_eif2ise
 
@@ -1240,7 +1240,7 @@ class tr_spu2eif extends ovm_sequence_item;
   `ovm_object_utils_end
 
 	function new (string name = "tr_spu2eif");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_spu2eif
 
@@ -1254,6 +1254,6 @@ class tr_eif2spu extends ovm_sequence_item;
   `ovm_object_utils_end
 
 	function new (string name = "tr_eif2spu");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 endclass : tr_eif2spu

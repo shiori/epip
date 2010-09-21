@@ -68,7 +68,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   
   ip4_tlm_ise_rst rst[STAGE_ISE_VWB_END:1];
   
-  uchar TIdIssueLast, TIdFetchLast;
+  uchar TIdIssueSel, TIdFetchSel, TIdDecodeSel;
 ///  bit cancel[NUM_THREAD];
   
   `ovm_component_utils_begin(ip4_tlm_ise_vars)
@@ -83,15 +83,17 @@ class ip4_tlm_ise_vars extends ovm_component;
     `ovm_field_sarray_object(spa, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(spu, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
     `ovm_field_sarray_object(dse, OVM_ALL_ON + OVM_REFERENCE + OVM_NOPRINT)
-    `ovm_field_int(TIdIssueLast, OVM_ALL_ON)
-    `ovm_field_int(TIdFetchLast, OVM_ALL_ON)
+    `ovm_field_int(TIdIssueSel, OVM_ALL_ON)
+    `ovm_field_int(TIdFetchSel, OVM_ALL_ON)
+    `ovm_field_int(TIdDecodeSel, OVM_ALL_ON)
     `ovm_field_sarray_object(rst, OVM_ALL_ON + OVM_REFERENCE)
 ///    `ovm_field_sarray_int(cancel, OVM_ALL_ON)
   `ovm_component_utils_end
 
   virtual function void build();
-    TIdFetchLast = 0;
-    TIdIssueLast = 0;
+    TIdFetchSel = 0;
+    TIdIssueSel = 0;
+    TIdDecodeSel = 0;
     print_enabled = 0;
     super.build();
     foreach(rst[i])
@@ -147,6 +149,8 @@ class ise_thread_inf extends ovm_component;
   bit[NUM_BR_HISTORY - 1 : 0] brHistory;
   uint fcrRet[$];
   
+  bit useOffset;
+  
   `ovm_component_utils_begin(ise_thread_inf)
     `ovm_field_enum(thread_state_t, threadState, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
@@ -179,7 +183,6 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntVrfWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
-    `ovm_field_int(pendIFetch, OVM_ALL_ON)
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(pcEret, OVM_ALL_ON)
     `ovm_field_int(pcExp, OVM_ALL_ON)
@@ -189,10 +192,12 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(isLastVecDse, OVM_ALL_ON)
     `ovm_field_int(lpRndMemMode, OVM_ALL_ON)
     `ovm_field_int(pendIFetch, OVM_ALL_ON)
+    `ovm_field_int(pendIFetchExp, OVM_ALL_ON)
     `ovm_field_int(pendExStore, OVM_ALL_ON)
     `ovm_field_int(pendExLoad, OVM_ALL_ON)
     `ovm_field_int(pendSMsg, OVM_ALL_ON)
     `ovm_field_int(pendBr, OVM_ALL_ON)
+    `ovm_field_int(useOffset, OVM_ALL_ON)
     `ovm_field_sarray_int(vrfMap, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_sarray_int(srfMap, OVM_ALL_ON + OVM_NOPRINT)
     `ovm_field_int(srExpMsk, OVM_ALL_ON + OVM_NOPRINT)
@@ -225,26 +230,26 @@ class ise_thread_inf extends ovm_component;
   endfunction : build
 
 	virtual function void do_print(ovm_printer printer);
-		super.do_print(printer);
-	  if(get_report_verbosity_level() >= OVM_FULL) begin
-	    `PAF2(wCnt, OVM_UNSIGNED)
-  		if(enSPU)
-  		  printer.print_object("spu", iSPU);
-  		if(enDSE)
-  		  printer.print_object("dse", iDSE);
-  		foreach(enFu[i])
-  		  if(enFu[i])
-  		    printer.print_object($psprintf("fu%0d", i), iFu[i]);
-    end
-	  
-	  if(get_report_verbosity_level() >= OVM_DEBUG) begin  
+  	super.do_print(printer);
+///    if(get_report_verbosity_level() >= OVM_FULL) begin
+   `PAF2(wCnt, OVM_UNSIGNED)
+  	if(enSPU)
+      printer.print_object("spu", iSPU);
+  	if(enDSE)
+      printer.print_object("dse", iDSE);
+  	foreach(enFu[i])
+      if(enFu[i])
+       printer.print_object($psprintf("fu%0d", i), iFu[i]);
+///    end
+    
+    if(get_report_verbosity_level() >= OVM_DEBUG) begin  
       `PAF2(vrfAdr, OVM_UNSIGNED)
       `PAF2(srfAdr, OVM_UNSIGNED)
       `PAF2(vrfGrp, OVM_UNSIGNED)
       `PAF2(srfGrp, OVM_UNSIGNED)
     end
 	endfunction : do_print
-	
+  
   function void map_iadr(input bit v, uchar orgAdr, output uchar grp, adr);
     uchar adrBits =  v ? (WID_PRF_P_GRP - WID_VRF_BKS) : (WID_PRF_P_GRP - WID_SRF_BKS);
     adr = orgAdr & `GML(adrBits);
@@ -349,10 +354,13 @@ class ise_thread_inf extends ovm_component;
       uchar tmp = 0;
       foreach(grpStart.b[i])
         grpStart.b[i] = iBuf[i];
+                 
       foreach(grpStart.i.unitEn[i])
         tmp += grpStart.i.unitEn[i];
       if(tmp == 0) begin
-        ovm_report_warning("decode_igrp_start", "igs decode error, unitEn not valid");
+        ovm_report_warning("decode_igrp_start",
+                           $psprintf("igs decode error, unitEn not valid, pc %0h, gs %b, size %0d",
+                           pc, grpStart, iBuf.size()));
         decodeErr = 1;
       end
       wCntSel = grpStart.i.chkGrp;
@@ -541,28 +549,18 @@ class ise_thread_inf extends ovm_component;
     cancel = 1;
     pendIFetchExp = 0;
     iFetchExp = 0;
+    useOffset = 1;
   endfunction : flush
-
-  function bit can_req_ifetch();
-    `ip4_info("can_req_ifetch", $psprintf("threadState:%s, iBuf lv:%0d, pd:%0d", threadState.name, iBuf.size(), pendIFetch), OVM_FULL)
-    if(threadState inside {ts_disabled, ts_w_rst})
-      return 0;
-    if(iBuf.size() + (pendIFetch + 1) * NUM_IFET_BYTES <  NUM_IBUF_BYTES)
-      return 1;
-    if(iGrpBytes == 0)
-      return 1;
-    if(iBuf.size() < iGrpBytes)
-      return 1;
-    return 0;
-  endfunction : can_req_ifetch
       
   function void update_inst(input inst_fg_c fetchGrp);
     uchar offSet = 0, LvlLast = iBuf.size();
-    if(LvlLast  >= NUM_MAX_IGRP_BYTES)
-      ovm_report_warning("ise", "iBuf overflow!");
-    if(LvlLast == 0) ///only calculate offSet when iBuf size is reset to 0
+    if(useOffset) ///only calculate offSet when iBuf size is reset to 0
       offSet = pc & `GML(WID_IFET);
-
+    useOffset = 0;
+    
+    if((LvlLast + NUM_IFET_BYTES - offSet) > NUM_IBUF_BYTES)
+      ovm_report_warning("ise", "iBuf overflow!");
+      
     if(pendIFetch > 0)
       pendIFetch--;
     
@@ -598,8 +596,8 @@ class ise_thread_inf extends ovm_component;
         
     for(int i = offSet; i < NUM_IFET_BYTES; i++)
       iBuf.push_back(fetchGrp.data[i]);
-
-    `ip4_info("update_inst", $psprintf("pc:0x%0h, offSet:%0h, pd:%0d, iBuf lv %0d->%0d", pc, offSet, pendIFetch, LvlLast, iBuf.size()), OVM_FULL)
+          
+    `ip4_info("update_inst", $psprintf("pc:0x%0h, offSet:%0h, pd:%0d, iBuf lv %0d->%0d", pc, offSet, pendIFetch, LvlLast, iBuf.size()), OVM_HIGH)
   endfunction : update_inst
 
   function void fill_ife(input tr_ise2ife ife);
@@ -713,9 +711,10 @@ class ip4_tlm_ise extends ovm_component;
       v.rst[stage].sel = sel;
       t.threadState = ts_w_rst;
       if(v.rst[stage].tid != tid || !v.rst[stage].en) begin
-        ovm_report_warning("restore_pc", "rst info inconsistent!");
+        ovm_report_warning("restore_pc", $psprintf("tid %0d, stage %0d, rst info inconsistent!", tid, stage));
         for(int j = STAGE_ISE_VWB_END; j > 0; j--)
-          `ip4_info("rollback", $psprintf("stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d", j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_FULL)  
+          `ip4_info("rollback", $psprintf("tid %0d, stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d",
+                    v.rst[stage].tid, j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_LOW)  
       end
     end
   endfunction
@@ -988,7 +987,22 @@ class ip4_tlm_ise extends ovm_component;
     t.privMode = priv_event;
     t.flush();
   endfunction
-  
+
+  function bit can_req_ifetch(input uchar tid);
+    ise_thread_inf t = thread[tid];
+    `ip4_info("can_req_ifetch", $psprintf("tid %0d, %s, iBuf lv %0d, pd %0d, sel %0d",
+              tid, t.threadState.name, t.iBuf.size(), t.pendIFetch, v.TIdFetchSel), OVM_MEDIUM)
+    if(t.threadState inside {ts_disabled, ts_w_rst})
+      return 0;
+    if((t.iBuf.size() + (t.pendIFetch + 1) * NUM_IFET_BYTES) >  NUM_IBUF_BYTES)
+      return 0;
+///    if(t.iGrpBytes == 0)
+///      return 1;
+///    if(t.iBuf.size() < t.iGrpBytes)
+///      return 1;
+    return 1;
+  endfunction : can_req_ifetch
+    
   function bit can_issue(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
     ise_thread_inf t = thread[tid];
@@ -1000,7 +1014,7 @@ class ip4_tlm_ise extends ovm_component;
           if(t.wCnt[i][j] > finalCnt[j])
             finalCnt[j] = t.wCnt[i][j];
                 
-    if(get_report_verbosity_level() >= OVM_FULL) begin
+    if(get_report_verbosity_level() >= OVM_MEDIUM) begin
       bit [NUM_FU-1:0] enFuTmp;
       uchar tmp = 0;
       foreach(enFuTmp[i])
@@ -1011,10 +1025,9 @@ class ip4_tlm_ise extends ovm_component;
           tmp = finalCnt[i];
           
       `ip4_info("can_issue",
-        $psprintf("threadState:%s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, wrCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.wCntWr, t.pc, t.enSPU, t.enDSE,
-                   enFuTmp, t.dseVec, t.wCntSel),
-        OVM_FULL)
+        $psprintf("tid %0d, %s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, wrCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
+                   tid, t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.wCntWr, t.pc, t.enSPU, t.enDSE,
+                   enFuTmp, t.dseVec, t.wCntSel), OVM_MEDIUM)
     end
     
     if(!t.decoded)
@@ -1238,6 +1251,7 @@ class ip4_tlm_ise extends ovm_component;
       return;
     end
     
+    vn.rst[1].tid = tid;
     vn.rst[1].pc = t.pc;
     vn.rst[1].igb = t.iGrpBytes;
     vn.rst[1].en = 1;
@@ -1503,15 +1517,18 @@ class ip4_tlm_ise extends ovm_component;
     
     ///check & issue, cancel condition 3, ise decode Err, priv enter, uncond branch
     `ip4_info("ise inf", $psprintf("\n%s", sprint(printer)), OVM_FULL)
-    for(int i = 1; i <= NUM_THREAD; i++) begin
-      uchar tid = i + v.TIdIssueLast;
+    for(int i = 0; i < NUM_THREAD; i++) begin
+      uchar tid = i + v.TIdIssueSel;
+      ise_thread_inf t;
       tid = tid & `GML(WID_TID);
+      t = thread[tid];
       
-      `ip4_info("issue", $psprintf("checking thread %0d", tid), OVM_FULL)
+      `ip4_info("issue", $psprintf("checking thread %0d, %s, decoded %0d", tid, t.threadState, t.decoded), OVM_FULL)
       if(can_issue(tid)) begin
-        `ip4_info("issue", $psprintf("issuing thread %0d, pc 0x%0h", tid, thread[tid].pc), OVM_MEDIUM)
+        `ip4_info("issue", $psprintf("issuing thread %0d, pc 0x%0h, sel %0d", tid, t.pc, v.TIdIssueSel), OVM_LOW)
         issue(tid);
-        vn.TIdIssueLast = tid;
+        if(v.TIdIssueSel == tid || thread[v.TIdIssueSel].threadState != ts_rdy)
+          vn.TIdIssueSel = (v.TIdIssueSel + 1) & `GML(WID_TID);
         break;
       end
     end
@@ -1525,19 +1542,29 @@ class ip4_tlm_ise extends ovm_component;
     end
     
     ///try to decode one inst grp
-    foreach(thread[i])
-      if(thread[i].threadState != ts_disabled && thread[i].iBuf.size() > 1 && !thread[i].decoded) begin
-        thread[i].decode_igrp_start();
-        if(thread[i].iBuf.size() >= thread[i].iGrpBytes) begin
-          thread[i].decode_igrp();
-          break;
-        end
-        else if(thread[i].pendIFetchExp) begin
-          thread[i].iFetchExp = 1;
-          thread[i].decoded = 1;
-        end
+    for(int i = 0; i < NUM_THREAD; i++) begin
+      uchar tid = i + v.TIdDecodeSel;
+      ise_thread_inf t;
+      tid = tid & `GML(WID_TID);
+      t = thread[tid];
+      
+      if(t.iBuf.size() > 1)
+        t.decode_igrp_start();
+              
+      if(t.threadState != ts_disabled && !t.decoded && t.iBuf.size() >= t.iGrpBytes) begin
+        t.decode_igrp();
+        if(v.TIdDecodeSel == tid || thread[v.TIdDecodeSel].threadState != ts_rdy)
+          vn.TIdDecodeSel = (v.TIdDecodeSel + 1) & `GML(WID_TID);
+        break;
       end
-
+    end
+    
+    foreach(thread[i])
+      if(thread[i].pendIFetchExp) begin
+        thread[i].iFetchExp = 1;
+        thread[i].decoded = 1;
+      end
+    
     ///rollback
     for(int i = STAGE_ISE_VWB_END; i > 0; i--) begin
       uchar tid = v.rst[i].tid;
@@ -1624,14 +1651,15 @@ class ip4_tlm_ise extends ovm_component;
     toDSE = v.dse[STAGE_ISE];
     
     ///ife req search
-    for(int i = 1; i <= NUM_THREAD; i++) begin
-      uchar tid = i + v.TIdFetchLast;
+    for(int i = 0; i < NUM_THREAD; i++) begin
+      uchar tid = i + v.TIdFetchSel;
       tid = tid & `GML(WID_TID);
-      if(thread[tid].can_req_ifetch()) begin
+      if(can_req_ifetch(tid)) begin
         toIFE = tr_ise2ife::type_id::create("toIFE", this);
         thread[tid].fill_ife(toIFE);
         toIFE.tid = tid;
-        vn.TIdFetchLast = tid;
+        if(v.TIdFetchSel == tid || thread[v.TIdFetchSel].threadState != ts_rdy)
+          vn.TIdFetchSel = (v.TIdFetchSel + 1) & `GML(WID_TID);
         break;
       end
     end

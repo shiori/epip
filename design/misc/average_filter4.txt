@@ -30,98 +30,115 @@ li s10 0x9 ;
 options.gn
 li s11 33280 ;
 
-options.gn
+options.gn.gu0
 li s0 262 ;
 
-options.g1
+options.g1.gu0
 $tag2 add.u s12 s0 0 ;
 
-options.g0
+options.g0.gu1
 $tag1 add.u s12 s12 -196 ;
 
+options.g10.gu0
 ld.half.nua.burst v4 s12 -2
 add.u s13 s0 254
 nop
 nop
 nop ;
 
-options.g0
+options.g10.gu0
 ld.half.nua.burst v5 s12 0
 nop
 mad.u v14 s4 v4 zero
 nop
 nop ;
 
-options.g1
+options.g10.gu0
 ld.half.nua.burst v6 s12 2
 nop
 mad.u v15 s5 v5 zero
 nop
 nop ;
 
-options.g0
+options.g0.gu1
 nop
 add.u s12 s12 520
 mad.u v16 s6 v6 zero
 nop
 nop ;
 
+options.g1.gu0
 ld.half.nua.burst v7 s12 -2
 nop
 add.u v14 v14 v15 v16
 nop
 nop ;
 
+options.g10.gu0
 ld.half.nua.burst v8 s12 0
 nop
 mad.u v17 s7 v7 zero
 nop
 nop ;
 
+options.g10.gu0
 ld.half.nua.burst v9 s12 2
 nop
 mad.u v18 s8 v8 zero
 nop
 nop ;
 
+options.g10.gu0
 add.u s12 s12 -260
 nop
 mad.u v19 s9 v9 zero
 nop
 nop ;
 
+options.g1.gu0
 ld.half.nua.burst v1 s12 -2
 nop
 add.u v17 v17 v18 v19
 nop
 nop ;
 
+options.g10.gu0
 ld.half.nua.burst v2 s12 0
 nop
 mad.u v11 s1 v1 zero
 nop
 nop ;
 
+options.g10.gu0
 ld.half.nua.burst v3 s12 2
 nop
 mad.u v12 s2 v2 zero
 nop
 nop ;
 
+options.g0.gu0
 mad.u v13 s3 v3 zero ;
+
+options.g0.gu0
 add.u v11 v11 v12 v13 ;
+
+options.g0.gu0
 add.u v10 v11 v14 v17 ;
+
+options.g0.gu0
 udiv v10 v10 s10 ;
 
+options.g0.gu0
 st.half.nua.burst s12 v10 0
 (p1) b.naz.bc.pb.pop2n $tag1 0
 cmp.unc.<= p1 p0 s12 s13
 nop
 nop ;
 
-
+options.g1.gu0
 add.u s0 s0 260 ;
 
+options.g0.gu0
 nop
 (p1) b.naz.bc.pb.pop2n $tag2 0
 cmp.unc.<= p1 p0 s0 s11

@@ -392,33 +392,33 @@ class inst_c extends ovm_object;
   `ovm_object_utils_end
 
 	virtual function void do_print(ovm_printer printer);
-		super.do_print(printer);
-		if(enDSE) begin
-		  `PF(mST, OVM_BIN)
-		  `PF(mSs, OVM_BIN)
-		  `PF(mVs, OVM_BIN)
-///		  `PF(mUpdateAdr, OVM_BIN)
-		  `PF(mFun, OVM_BIN)
-///		  `PF(mS, OVM_BIN)
-		  `PF(mRt, OVM_BIN)
-///		  `PF(mT, OVM_BIN)
-		  `PF(mrfAdr, OVM_BIN)
-		  `PF(mFifos, OVM_BIN)
-		  `PE(mua)
-		  `PE(mat)
-	  end
-	  if(enSPU) begin
-	    `PF(srAdr, OVM_DEC)
-	    `PF(priv, OVM_BIN)
-	    `PF(brDep, OVM_BIN)
-	    `PE(mscOp)
-	    `PE(mskOp)
-	    `PE(brOp)
-	  end
+  	super.do_print(printer);
+  	if(enDSE) begin
+      `PF(mST, OVM_BIN)
+      `PF(mSs, OVM_BIN)
+      `PF(mVs, OVM_BIN)
+///      `PF(mUpdateAdr, OVM_BIN)
+      `PF(mFun, OVM_BIN)
+///      `PF(mS, OVM_BIN)
+      `PF(mRt, OVM_BIN)
+///      `PF(mT, OVM_BIN)
+      `PF(mrfAdr, OVM_BIN)
+      `PF(mFifos, OVM_BIN)
+      `PE(mua)
+      `PE(mat)
+    end
+    if(enSPU) begin
+      `PF(srAdr, OVM_DEC)
+      `PF(priv, OVM_BIN)
+      `PF(brDep, OVM_BIN)
+      `PE(mscOp)
+      `PE(mskOp)
+      `PE(brOp)
+    end
 	endfunction : do_print
-		  
+      
 	function new (string name = "inst_c");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 
   function void set_rf_en(input uchar adr, inout rbk_sel_e sel, bit hasVec, 
@@ -805,39 +805,39 @@ class inst_c extends ovm_object;
       endcase
     end
     
-	  if(isVec)
-	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & `GML(WID_VRF_BKS);
-		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> WID_VRF_BKS) & `GML(WID_PRF_P_GRP - WID_VRF_BKS);
-		  end
-		else
-	    foreach(adrWr[i]) begin
-	      bkWr[i] = adrWr[i] & `GML(WID_SRF_BKS);
-		    grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
-		    adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
-		  end
+    if(isVec)
+      foreach(adrWr[i]) begin
+        bkWr[i] = adrWr[i] & `GML(WID_VRF_BKS);
+        grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+        adrWr[i] = (adrWr[i] >> WID_VRF_BKS) & `GML(WID_PRF_P_GRP - WID_VRF_BKS);
+      end
+  	else
+      foreach(adrWr[i]) begin
+        bkWr[i] = adrWr[i] & `GML(WID_SRF_BKS);
+        grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+        adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
+      end
 	endfunction : decode
-	
+  
 	function bit is_unc_br();
-	  if(!decoded) decode();
+    if(!decoded) decode();
     return (op inside {op_br, op_fcr}) && (brOp == bop_naz && !prRdEn);
 	endfunction : is_unc_br
 
 	function bit is_br();
-	  if(!decoded) decode();
+    if(!decoded) decode();
     return op inside {op_br, op_fcr};
 	endfunction : is_br
-		
+    
 	function bit is_priv();
-	  if(!decoded) decode();
+    if(!decoded) decode();
     return priv;
 	endfunction : is_priv
-		
+    
 	function void set_wcnt(inout uchar wCnt[7], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
-	  uchar tCnt[6] = '{default : 0};
-	  if(!decoded) decode();
-	  ///long cyc instructions
+    uchar tCnt[6] = '{default : 0};
+    if(!decoded) decode();
+    ///long cyc instructions
     if(op inside {sfu_only_ops}) begin
       if(isVec)
         tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
@@ -849,22 +849,22 @@ class inst_c extends ovm_object;
       tCnt[sr_styp] = STAGE_RRF_RSRB;
     end
     ///zero wait instructions for ise only, those inst only change threadstate
-	  else if(op inside {ise_zw_ops}) begin
-	  end
-	  ///branchs are predicted, no need to wait
-	  else if(op inside {op_fcr, op_br}) begin
-	    ///need to resolve br, only change sr, gen exp
-///	    if(!is_unc_br()) begin
+    else if(op inside {ise_zw_ops}) begin
+    end
+    ///branchs are predicted, no need to wait
+    else if(op inside {op_fcr, op_br}) begin
+      ///need to resolve br, only change sr, gen exp
+///      if(!is_unc_br()) begin
       tCnt[sr_styp] = STAGE_RRF_CBR - 1;
       tCnt[br_styp] = STAGE_RRF_CBR + vm - 1;
-///	    end
-	  end
-	  else if(op inside {ld_ops}) begin
+///      end
+    end
+    else if(op inside {ld_ops}) begin
       if(isVec)
         tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
       else
         tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
-	    ///load write pr
+      ///load write pr
       if(mat != at_randnu)
        tCnt[pr_styp] = STAGE_RRF_DEM;
       ///load generate exp
@@ -874,40 +874,40 @@ class inst_c extends ovm_object;
         tCnt[gprs_styp] = 0;
         tCnt[gprv_styp] = 0;
       end
-	  end
-	  ///store are non blocking
-	  else if(op inside {st_ops}) begin
-	    ///store write dc
-	    if(!nb)
+    end
+    ///store are non blocking
+    else if(op inside {st_ops}) begin
+      ///store write dc
+      if(!nb)
         tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
       ///store write pr
      if(mat != at_randnu)
        tCnt[pr_styp] = STAGE_RRF_DEM;
       ///store generate exp
       tCnt[br_styp] = STAGE_RRF_SEL + vm;
-	  end
-	  else if(op inside {op_cmp, op_ucmp}) begin
-	    ///cmp write pr
-	    tCnt[pr_styp] = STAGE_RRF_CMP;
-	  end
-	  else begin
+    end
+    else if(op inside {op_cmp, op_ucmp}) begin
+      ///cmp write pr
+      tCnt[pr_styp] = STAGE_RRF_CMP;
+    end
+    else begin
       if(isVec)
         tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
       else
         tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
-	    tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB : STAGE_RRF_SWB);
-	  end
-	  
-	  foreach(tCnt[i])
-	    if(tCnt[i] > wCnt[i])
-	      wCnt[i] = tCnt[i];
-	  
-	  ///min_styp don't need br_styp
-	  foreach(tCnt[i])
-	    if(((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0) && i != br_styp)
-	      wCnt[min_styp] = wCnt[i];
+      tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB : STAGE_RRF_SWB);
+    end
+    
+    foreach(tCnt[i])
+      if(tCnt[i] > wCnt[i])
+        wCnt[i] = tCnt[i];
+    
+    ///min_styp don't need br_styp
+    foreach(tCnt[i])
+      if(((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0) && i != br_styp)
+        wCnt[min_styp] = wCnt[i];
 	endfunction : set_wcnt
-		
+    
 	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
     fuid = id;
     isVec = vec;
@@ -940,7 +940,7 @@ class inst_c extends ovm_object;
 ///    else if(op inside {spu_ops, spu_com_ops})
 ///      enSPU = 1;    
 	endfunction : set_data
-	
+  
   function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
                             s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfBusy, srfBusy, dseBusy, spuBusy, fuBusy,
                             ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
@@ -1205,17 +1205,17 @@ class inst_fg_c extends ovm_object;
   
   `ovm_object_utils_begin(inst_fg_c)
     `ovm_field_sarray_int(data, OVM_ALL_ON + OVM_BIN)
-	  `ovm_field_int(k, OVM_ALL_ON)
-	  `ovm_field_int(ex, OVM_ALL_ON)
-	  `ovm_field_int(exp, OVM_ALL_ON)
-	  `ovm_field_int(accErr, OVM_ALL_ON)
+    `ovm_field_int(k, OVM_ALL_ON)
+    `ovm_field_int(ex, OVM_ALL_ON)
+    `ovm_field_int(exp, OVM_ALL_ON)
+    `ovm_field_int(accErr, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new(string name = "inst_fg_c");
-		super.new(name);
+  	super.new(name);
 	endfunction : new
 
 	function void fill(const ref uchar i[NUM_IFET_BYTES]);
-	  data = i;
+    data = i;
 	endfunction : fill
 endclass
