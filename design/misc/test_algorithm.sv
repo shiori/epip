@@ -38,7 +38,7 @@ class ip4_alg_test extends ovm_test;
 ///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
-    set_config_string("*", "imFilePath", "../misc/average_filter4.txt");
+    set_config_string("*", "imFilePath", "../misc/average_filter3.txt");
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    

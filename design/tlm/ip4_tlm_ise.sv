@@ -1548,10 +1548,11 @@ class ip4_tlm_ise extends ovm_component;
       tid = tid & `GML(WID_TID);
       t = thread[tid];
       
-      if(t.iBuf.size() > 1)
+      if(t.iBuf.size() > 1 && !t.decoded)
         t.decode_igrp_start();
               
-      if(t.threadState != ts_disabled && !t.decoded && t.iBuf.size() >= t.iGrpBytes) begin
+      if(!(t.threadState inside {ts_disabled, ts_w_rst}) && t.iBuf.size() > 2
+           && !t.decoded && t.iBuf.size() >= t.iGrpBytes) begin
         t.decode_igrp();
         if(v.TIdDecodeSel == tid || thread[v.TIdDecodeSel].threadState != ts_rdy)
           vn.TIdDecodeSel = (v.TIdDecodeSel + 1) & `GML(WID_TID);
@@ -1587,7 +1588,7 @@ class ip4_tlm_ise extends ovm_component;
       t.ejtagMode = v.rst[i].ejtag;
       
       `ip4_info("rollback", $psprintf("tid %0d, stage %0d, exp %0d, pc 0x%0h, srExpBase 0x%0h, %s",
-                  v.rst[i].tid, i, v.rst[i].exp, res, srExpBase, t.privMode.name), OVM_MEDIUM)  
+                  v.rst[i].tid, i, v.rst[i].exp, res, srExpBase, t.privMode.name), OVM_LOW)  
       
       if(v.rst[i].exp) begin
         if(v.rst[i].ejtag) begin
