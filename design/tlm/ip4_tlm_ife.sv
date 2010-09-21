@@ -51,7 +51,7 @@ class ip4_tlm_ife extends ovm_component;
   ovm_nonblocking_transport_port #(tr_ife2tlb, tr_ife2tlb) tlb_tr_port;
         
   function void comb_proc();
-    `ip4_info("ife", "comb_proc procing...", OVM_FULL) 
+    `ip4_info("ife", "comb_proc procing...", OVM_DEBUG) 
     for(int i = STAGE_IFE; i > 1; i--)
       vn.ise[i] = v.ise[i-1];
     vn.ise[1] = null;
@@ -81,7 +81,7 @@ class ip4_tlm_ife extends ovm_component;
   
   function void req_proc();
     tr_ife2ise toISE;
-    `ip4_info("ife", "req_proc procing...", OVM_FULL) 
+    `ip4_info("ife", "req_proc procing...", OVM_DEBUG) 
     
     toISE = v.ise[STAGE_IFE];
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
@@ -90,7 +90,7 @@ class ip4_tlm_ife extends ovm_component;
 ///------------------------------nb_transport functions---------------------------------------
  
   function bit nb_transport_ise(input tr_ise2ife req, output tr_ise2ife rsp);
-    `ip4_info("ife_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("ife_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -100,7 +100,7 @@ class ip4_tlm_ife extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_tlb(input tr_tlb2ife req, output tr_tlb2ife rsp);
-    `ip4_info("ife_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("ife_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -112,11 +112,11 @@ class ip4_tlm_ife extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_DEBUG)
        return;
      end
     stamp = $time;
-    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_DEBUG)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();
@@ -160,7 +160,7 @@ class ip4_tlm_ife extends ovm_component;
       asm = new();
       asm.i = imFilePath;
       asm.o = "code.asm";
-      asm.verb = ovm_verbosity'(get_report_verbosity_level());///OVM_HIGH;
+      asm.verb = ovm_verbosity'(get_report_verbosity_level());///OVM_FULL;
       assert(asm.translate());
       im = new[imSize];
       $readmemb("code.asm", im);

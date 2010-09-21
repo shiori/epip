@@ -77,7 +77,7 @@ class ip4_tlm_spu extends ovm_component;
   ovm_nonblocking_transport_port #(tr_spu2eif, tr_spu2eif) eif_tr_port;
   
   function void comb_proc();
-    `ip4_info("spu", "comb_proc procing...", OVM_FULL) 
+    `ip4_info("spu", "comb_proc procing...", OVM_DEBUG) 
     foreach(cancel[i])
       cancel[i] = cancel[i] << 1;
     
@@ -153,7 +153,7 @@ class ip4_tlm_spu extends ovm_component;
     tr_spu2tlb toTLB;
     tr_spu2eif toEIF;
     
-    `ip4_info("spu", "req_proc procing...", OVM_FULL) 
+    `ip4_info("spu", "req_proc procing...", OVM_DEBUG) 
     
     ///--------------prepare---------------------------------
     toRFM = v.rfm[STAGE_RRF_SWBP];
@@ -163,17 +163,17 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmISE[STAGE_RRF_CEM + CYC_VEC] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM + CYC_VEC];
       if(mskWEn[CYC_VEC]) begin
-        `ip4_info("update mask", $psprintf("tid: %0d, subVec: %0d, ", ise.tid, ise.subVecSPU), OVM_HIGH)
+        `ip4_info("update mask", $psprintf("tid: %0d, subVec: %0d, ", ise.tid, ise.subVecSPU), OVM_FULL)
         ilm[ise.tid][ise.subVecSPU] = ilmNext[CYC_VEC];
         cm[ise.tid][ise.subVecSPU] = cmNext[CYC_VEC];
         for(int i = 0; i < NUM_SP; i++)
-          `ip4_info("update mask", $psprintf("ilm: %0d, cm: %0d", ilmNext[CYC_VEC][i], cmNext[CYC_VEC][i]), OVM_HIGH)
+          `ip4_info("update mask", $psprintf("ilm: %0d, cm: %0d", ilmNext[CYC_VEC][i], cmNext[CYC_VEC][i]), OVM_FULL)
       end
       if(stkWEn[CYC_VEC]) begin
-        `ip4_info("update msc", $psprintf("tid: %0d, subVec: %0d, ", ise.tid, ise.subVecSPU), OVM_HIGH)
+        `ip4_info("update msc", $psprintf("tid: %0d, subVec: %0d, ", ise.tid, ise.subVecSPU), OVM_FULL)
         msc[ise.tid][ise.subVecSPU] = mscNext[CYC_VEC];
         for(int i = 0; i < NUM_SP; i++)
-          `ip4_info("update msc", $psprintf("msc: %0d", mscNext[CYC_VEC][i]), OVM_HIGH)
+          `ip4_info("update msc", $psprintf("msc: %0d", mscNext[CYC_VEC][i]), OVM_FULL)
       end
     end
           
@@ -181,7 +181,7 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmSPA[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
       tr_spa2spu spa = v.fmSPA[STAGE_RRF_CEM];
-      `ip4_info("spu", "write back spa pres", OVM_FULL)
+      `ip4_info("spu", "write back spa pres", OVM_DEBUG)
       pr[ise.tid][ise.prWrAdr0][ise.subVecFu] = spa.presCmp0;
       pr[ise.tid][ise.prWrAdr1][ise.subVecFu] = spa.presCmp1;
     end
@@ -190,7 +190,7 @@ class ip4_tlm_spu extends ovm_component;
     if(v.fmDSE[STAGE_RRF_CEM] != null && v.fmISE[STAGE_RRF_CEM] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_CEM];
       tr_dse2spu dse = v.fmDSE[STAGE_RRF_CEM];
-      `ip4_info("spu", "write back dse pres", OVM_FULL)
+      `ip4_info("spu", "write back dse pres", OVM_DEBUG)
       if(dse.wrEn)
         pr[ise.tid][ise.prWrAdr2][ise.subVecDSE] = dse.pres;
     end
@@ -286,7 +286,7 @@ class ip4_tlm_spu extends ovm_component;
         o1 = rfm.op1;
       end
         
-      `ip4_info("spu", "process spu inst", OVM_HIGH)
+      `ip4_info("spu", "process spu inst", OVM_FULL)
       foreach(prTmp[i,j]) begin
         prTmp[i][j] = ise.prRdAdrSPU == 0 ? 1 : pr[ise.tid][ise.prRdAdrSPU][i][j];
         if(ise.prInvSPU)
@@ -484,7 +484,7 @@ class ip4_tlm_spu extends ovm_component;
       end
       `ip4_info("spu", $psprintf("process branch for thread %0d, subVec %0d, dep %0d, az %0d %0d, %s, %s, %s",
                                         tid, ise.subVecSPU, ise.brDep, emskAllZero, brAllZero[STAGE_RRF_CEM], 
-                                        ise.bop.name, ise.mop.name, ise.sop.name), OVM_HIGH)      
+                                        ise.bop.name, ise.mop.name, ise.sop.name), OVM_FULL)      
       
       case(ise.mop)
       mop_guard :
@@ -638,7 +638,7 @@ class ip4_tlm_spu extends ovm_component;
 
 ///------------------------------nb_transport functions---------------------------------------
   function bit nb_transport_ise(input tr_ise2spu req, output tr_ise2spu rsp);
-    `ip4_info("spu_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("spu_tr", $psprintf("Get ise Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -648,7 +648,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_ise
 
   function bit nb_transport_rfm(input tr_rfm2spu req, output tr_rfm2spu rsp);
-    `ip4_info("spu_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("spu_tr", $psprintf("Get rfm Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -658,7 +658,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_rfm
 
   function bit nb_transport_spa(input tr_spa2spu req, output tr_spa2spu rsp);
-    `ip4_info("spu_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("spu_tr", $psprintf("Get spa Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -668,7 +668,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_spa
 
   function bit nb_transport_dse(input tr_dse2spu req, output tr_dse2spu rsp);
-    `ip4_info("spu_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("spu_tr", $psprintf("Get dse Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -678,7 +678,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_dse
 
   function bit nb_transport_tlb(input tr_tlb2spu req, output tr_tlb2spu rsp);
-    `ip4_info("spu_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("spu_tr", $psprintf("Get tlb Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -688,7 +688,7 @@ class ip4_tlm_spu extends ovm_component;
   endfunction : nb_transport_tlb
 
   function bit nb_transport_eif(input tr_eif2spu req, output tr_eif2spu rsp);
-    `ip4_info("spu_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_HIGH)
+    `ip4_info("spu_tr", $psprintf("Get eif Transaction:\n%s", req.sprint()), OVM_FULL)
     sync();
     assert(req != null);
     void'(begin_tr(req));
@@ -700,11 +700,11 @@ class ip4_tlm_spu extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_DEBUG)
        return;
      end
     stamp = $time;
-    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_DEBUG)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();

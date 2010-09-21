@@ -28,8 +28,8 @@ class ip4_tlm_driver #(type T=ovm_sequence_item) extends ovm_driver #(T);
     forever begin
       @(posedge sysif.clk);
       seq_item_port.get_next_item(req);
-      `ip4_info("DR", "Driving...", OVM_HIGH)
-      `ip4_info("DR", $psprintf("Detail:\n%s", req.sprint()), OVM_FULL)  
+      `ip4_info("DR", "Driving...", OVM_FULL)
+      `ip4_info("DR", $psprintf("Detail:\n%s", req.sprint()), OVM_DEBUG)  
       void'(tr_port.nb_transport(req, rsp));
       seq_item_port.item_done();
     end
@@ -69,8 +69,8 @@ class ip4_tlm_monitor #(type T=ovm_sequence_item) extends ovm_driver #(T);
 ///    rsp = tr_spa2rfm::type_id::create("spa_rsp", this);
 ///    void'(rsp.randomize());
     rsp = req;
-    `ip4_info("MON", "Got Transaction...", OVM_HIGH)
-    `ip4_info("MON", $psprintf("Detail:\n%s", req.sprint()), OVM_FULL)
+    `ip4_info("MON", "Got Transaction...", OVM_FULL)
+    `ip4_info("MON", $psprintf("Detail:\n%s", req.sprint()), OVM_DEBUG)
     item_collected_port.write(req);
     return 1;
   endfunction : nb_transport

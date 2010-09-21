@@ -51,12 +51,12 @@ class ip4_tlm_core extends ovm_component;
 ///  
   function void comb_proc();
     
-    `ip4_info("core", "comb_proc procing...", OVM_FULL) 
+    `ip4_info("core", "comb_proc procing...", OVM_DEBUG) 
   endfunction
   
   function void req_proc();
     
-    `ip4_info("core", "req_proc procing...", OVM_FULL) 
+    `ip4_info("core", "req_proc procing...", OVM_DEBUG) 
     
   endfunction
 
@@ -65,11 +65,11 @@ class ip4_tlm_core extends ovm_component;
 ///-------------------------------------common functions-----------------------------------------    
   function void sync();
     if($time == stamp) begin
-       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_FULL)
+       `ip4_info("sync", $psprintf("sync already called. stamp is %0t", stamp), OVM_DEBUG)
        return;
      end
     stamp = $time;
-    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_FULL)
+    `ip4_info("sync", $psprintf("synchronizing... stamp set to %0t", stamp), OVM_DEBUG)
     ///--------------------synchronizing-------------------
     v.copy(vn);
     comb_proc();
