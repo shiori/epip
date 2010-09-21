@@ -31,7 +31,7 @@ class tr_ise2rfm extends ovm_sequence_item;
 ///	rand bit vecEnd;///, sclEnd, start;
 	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
-	rand uchar cycFu, cycDSE, cycSPU, vecModeFu, tid;
+	rand uchar cycFu, cycDSE, cycSPU, vecModeFu;
   
 	constraint valid_var {
     cycFu < CYC_VEC;
@@ -65,7 +65,7 @@ class tr_ise2rfm extends ovm_sequence_item;
   
   `ovm_object_utils_begin(tr_ise2rfm)
     `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_int(tid, OVM_ALL_ON)
+///    `ovm_field_int(tidFu, OVM_ALL_ON)
     `ovm_field_int(spuEn, OVM_ALL_ON)
     `ovm_field_int(dseEn, OVM_ALL_ON)
     `ovm_field_int(cycFu, OVM_ALL_ON)
@@ -629,10 +629,10 @@ class tr_ise2spu extends ovm_sequence_item;
   rand br_opcode_e bop;
   rand opcode_e op;
   
-  rand uchar tid, srAdr, /// subVec, vecMode, 
-             subVecFu, vecModeFu,
-             subVecDSE, vecModeDSE,
-             subVecSPU, vecModeSPU;
+  rand uchar srAdr, /// subVec, vecMode, 
+             subVecFu, vecModeFu, tidFu,
+             subVecDSE, vecModeDSE, tidDSE,
+             subVecSPU, vecModeSPU, tidSPU;
   rand bit brDep, ///brEnd,  ///signal the last subVec of a br
            brDepDSE,
            brDepSPA,
@@ -659,7 +659,7 @@ class tr_ise2spu extends ovm_sequence_item;
   rand uint predPc;
   
   constraint valid_data{
-    tid < NUM_THREAD;
+///    tid < NUM_THREAD;
     brDep dist {0:=6, 1:=4};
     brDep -> brDepDSE || brDepSPA;
 ///    subVec dist {0:=5, 1:=5};
@@ -694,7 +694,9 @@ class tr_ise2spu extends ovm_sequence_item;
 ///  endfunction
   
   `ovm_object_utils_begin(tr_ise2spu)
-    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidSPU, OVM_ALL_ON)
+    `ovm_field_int(tidDSE, OVM_ALL_ON)
+    `ovm_field_int(tidFu, OVM_ALL_ON)
     `ovm_field_int(wrEn, OVM_ALL_ON)
     `ovm_field_int(brPred, OVM_ALL_ON)
     `ovm_field_int(brDep, OVM_ALL_ON)

@@ -78,9 +78,9 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*thread3*", "srfMap[1]", 7);
     set_config_int("*thread3*", "srExpMsk", 1);
     
-    set_config_int("*thread1*", "threadState", ts_rdy);
-    set_config_int("*thread2*", "threadState", ts_rdy);
-    set_config_int("*thread3*", "threadState", ts_rdy);
+///    set_config_int("*thread1*", "threadState", ts_rdy);
+///    set_config_int("*thread2*", "threadState", ts_rdy);
+///    set_config_int("*thread3*", "threadState", ts_rdy);
     
     set_config_int("*thread1*", "privMode", priv_kernel);
     set_config_int("*thread2*", "privMode", priv_kernel);

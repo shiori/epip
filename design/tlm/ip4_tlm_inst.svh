@@ -1202,6 +1202,7 @@ endclass
 class inst_fg_c extends ovm_object;
   uchar data[NUM_IFET_BYTES];
   bit k, ex, exp, accErr;
+  uint pc;
   
   `ovm_object_utils_begin(inst_fg_c)
     `ovm_field_sarray_int(data, OVM_ALL_ON + OVM_BIN)
@@ -1209,6 +1210,7 @@ class inst_fg_c extends ovm_object;
     `ovm_field_int(ex, OVM_ALL_ON)
     `ovm_field_int(exp, OVM_ALL_ON)
     `ovm_field_int(accErr, OVM_ALL_ON)
+    `ovm_field_int(pc, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new(string name = "inst_fg_c");

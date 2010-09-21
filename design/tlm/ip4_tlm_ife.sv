@@ -53,18 +53,22 @@ class ip4_tlm_ife extends ovm_component;
   function void comb_proc();
     `ip4_info("ife", "comb_proc procing...", OVM_DEBUG) 
     for(int i = STAGE_IFE; i > 1; i--)
-      vn.ise[i] = v.ise[i-1];
+      vn.ise[i] = v.ise[i - 1];
     vn.ise[1] = null;
     if(v.fmISE != null) end_tr(v.fmISE);
     vn.fmISE = null;
     
-    if(v.fmISE != null && v.fmISE.fetchReq) begin
+    if(v.fmISE != null) begin
       tr_ise2ife ise = v.fmISE;
-      uchar data[NUM_IFET_BYTES];
       foreach(vn.ise[i])
         if(vn.ise[i] != null && ise.cancel[vn.ise[i].tid])
           vn.ise[i] = null;
-          
+    end
+    
+    if(v.fmISE != null && v.fmISE.fetchReq) begin
+      tr_ise2ife ise = v.fmISE;
+      uchar data[NUM_IFET_BYTES];
+         
       if(ise.pc inside {[imBase:imBase+imSize]}) begin
         uint adr = ise.pc - imBase;
         foreach(data[i])
@@ -75,6 +79,7 @@ class ip4_tlm_ife extends ovm_component;
       vn.ise[1].instEn = 1;
       vn.ise[1].tid = ise.tid;
       vn.ise[1].fetchGrp.ex = 1;
+      vn.ise[1].fetchGrp.pc = ise.pc;
       vn.ise[1].fetchGrp.fill(data);
     end
   endfunction

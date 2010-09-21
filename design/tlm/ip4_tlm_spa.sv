@@ -117,13 +117,13 @@ class ip4_tlm_spa extends ovm_component;
     
     ///check for sfu write back conflict
     for(int fid = 0; fid < NUM_FU; fid++) begin
-      uchar cnt = 0;
-      for(int sg = STAGE_EEX_VWBP; sg > 0; sg--) begin
+      uchar cnt = 0, st = 0;
+      for(int sg = 1; sg <= CYC_SFU_BUSY; sg++) begin
         if(v.sfu[sg] == null || !v.sfu[sg].en[fid])
           continue;
         cnt++;
         
-        if(cnt >= CYC_SFU_BUSY) begin
+        if(cnt > CYC_VEC) begin
           ovm_report_warning("spa", $psprintf("too many sfu request for fu%0d at stage %0d", fid, sg));
           cnt = 0;
         end
@@ -235,8 +235,8 @@ class ip4_tlm_spa extends ovm_component;
     toSPU = v.spu[STAGE_EXE_CMP];
         
     ///long operations write back
-    if(v.sfu[STAGE_EEX] != null) begin
-      ip4_tlm_sfu_stages sfu = v.sfu[STAGE_EEX];
+    if(v.sfu[STAGE_EEX_VWBP] != null) begin
+      ip4_tlm_sfu_stages sfu = v.sfu[STAGE_EEX_VWBP];
       foreach(sfu.en[fid]) begin
         if(!sfu.en[fid]) continue;
         `ip4_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_FULL)
@@ -251,9 +251,9 @@ class ip4_tlm_spa extends ovm_component;
         toRFM.fu[fid].tid = sfu.tid;
         toRFM.fu[fid].subVec = sfu.subVec;
         toRFM.fu[fid].en = 1;
-///        if(v.fmISE[STAGE_EXE_VWBP] != null && v.fmISE[STAGE_EXE_VWBP].fu[fid].en 
-///          && !(v.fmISE[STAGE_EXE_VWBP].fu[fid].op inside {spu_only_ops}))
-///          ovm_report_warning("spa", "sfu writeback conflict");
+        if(v.fmISE[STAGE_EXE_VWBP] != null && v.fmISE[STAGE_EXE_VWBP].fu[fid].en 
+          && !(v.fmISE[STAGE_EXE_VWBP].fu[fid].op inside {sfu_only_ops}))
+          ovm_report_warning("spa", "sfu writeback conflict");
       end
     end    
 
