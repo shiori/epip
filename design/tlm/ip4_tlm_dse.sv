@@ -262,10 +262,10 @@ class ip4_tlm_dse extends ovm_component;
       if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
         if(ise.subVec >= (CYC_VEC >> 1)) begin
           if(vn.fmRFM[STAGE_RRF_LXG0] != null && vn.fmRFM[STAGE_RRF_LXG] != null)
-            vn.fmRFM[STAGE_RRF_SXG0].st = vn.fmRFM[STAGE_RRF_LXG].st;
+            vn.fmRFM[STAGE_RRF_LXG0].st = vn.fmRFM[STAGE_RRF_LXG].st;
           if(ise.op inside {op_pera, op_tmrf}) begin
-            if(vn.fmSPU[STAGE_RRF_SXG0] != null && vn.fmSPU[STAGE_RRF_SXG] != null)
-              vn.fmSPU[STAGE_RRF_SXG0].emsk = vn.fmSPU[STAGE_RRF_SXG].emsk;
+            if(vn.fmSPU[STAGE_RRF_LXG0] != null && vn.fmSPU[STAGE_RRF_LXG] != null)
+              vn.fmSPU[STAGE_RRF_LXG0].emsk = vn.fmSPU[STAGE_RRF_LXG].emsk;
           end
         end
       end

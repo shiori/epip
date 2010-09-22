@@ -3,24 +3,43 @@
 // image gray level 32
 // each PE count one gray-scale
 // all pixel traversed by each PE
+options.gn
 vid v0 ;
+
 // rb 
+options.gn
 li s1 0 ;
+
 // count
+options.gn
 li v2 0 ;
-vid v1 ;
+
 // the current line final address
-$tag2 
+options.gn
+$tag2 vid v1 ;
+
+options.gn
 li s2 0 ;
-$tag1 add.u v4 v1 s1 ;
+
+$tag1
+add.u v4 v1 s1 ;
+
 ld.byte.nua.rand v3 v4 0 ;
+
 cmp.unc.= p1 p2 v3 v0 ; 
+
 (p1) add.u v2 v2 1 ;
+
+options.gn
 add.u v1 v1 1 ;
 and.i v1 v1 127 ;
+
+options.gn
 add.u s2 s2 1 ;
+
 cmpi.unc.<= p3 p0 s2 127 ;
 (p3) b.naz.bc.pop2n $tag1 0 ;
+options.gn
 add.u s1 s1 128 ; 
 cmpi.unc.<= p4 p0 s1 16256 ;
 (p4) b.naz.bc.pop2n $tag2 0 ;

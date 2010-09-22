@@ -38,7 +38,7 @@ class ip4_alg_test extends ovm_test;
 ///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
-    set_config_string("*", "imFilePath", "../misc/average_filter3.txt");
+    set_config_string("*", "imFilePath", "../misc/histogram4.txt"); ///average_filter3
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    
@@ -74,9 +74,9 @@ class ip4_alg_test extends ovm_test;
     set_config_int("*thread3*", "srfMap[1]", 7);
     set_config_int("*thread3*", "srExpMsk", 1);
     
-    set_config_int("*thread1*", "threadState", ts_rdy);
-    set_config_int("*thread2*", "threadState", ts_rdy);
-    set_config_int("*thread3*", "threadState", ts_rdy);
+///    set_config_int("*thread1*", "threadState", ts_rdy);
+///    set_config_int("*thread2*", "threadState", ts_rdy);
+///    set_config_int("*thread3*", "threadState", ts_rdy);
     
     set_config_int("*thread1*", "privMode", priv_kernel);
     set_config_int("*thread2*", "privMode", priv_kernel);
