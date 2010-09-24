@@ -527,7 +527,7 @@ class ise_thread_inf extends ovm_component;
     
     foreach(iFu[i])
       foreach(iFu[0].grpWr[j])
-        iFu[i].grpWr[j] = iFu[i].isVec ? vrfMap[iFu[i].grpWr[j]] : srfMap[iFu[i].grpWr[j]];
+        iFu[i].grpWr[j] = vrfMap[iFu[i].grpWr[j]]; ///iFu[i].isVec ?  : srfMap[iFu[i].grpWr[j]];
     
     foreach(iDSE.grpWr[i])
       iDSE.grpWr[i] = iDSE.isVec ? vrfMap[iDSE.grpWr[i]] : srfMap[iDSE.grpWr[i]];
@@ -997,10 +997,6 @@ class ip4_tlm_ise extends ovm_component;
       return 0;
     if((t.iBuf.size() + (t.pendIFetch + 1) * NUM_IFET_BYTES) >  NUM_IBUF_BYTES)
       return 0;
-///    if(t.iGrpBytes == 0)
-///      return 1;
-///    if(t.iBuf.size() < t.iGrpBytes)
-///      return 1;
     return 1;
   endfunction : can_req_ifetch
     
@@ -1536,8 +1532,15 @@ class ip4_tlm_ise extends ovm_component;
       if(can_issue(tid)) begin
         `ip4_info("issue", $psprintf("issuing thread %0d, pc 0x%0h, sel %0d", tid, t.pc, v.TIdIssueSel), OVM_LOW)
         issue(tid);
-        if(v.TIdIssueSel == tid || thread[v.TIdIssueSel].threadState != ts_rdy)
-          vn.TIdIssueSel = (v.TIdIssueSel + 1) & `GML(WID_TID);
+        if(v.TIdIssueSel == tid || thread[v.TIdIssueSel].threadState != ts_rdy) begin
+          for(int j = 1; i < NUM_THREAD; j++) begin
+            uchar nxt = (v.TIdIssueSel + j) & `GML(WID_TID);
+            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst}) begin
+              vn.TIdIssueSel = nxt;
+              break;
+            end
+          end
+        end
         break;
       end
     end
@@ -1563,8 +1566,15 @@ class ip4_tlm_ise extends ovm_component;
       if(!(t.threadState inside {ts_disabled, ts_w_rst}) && t.iBuf.size() > 2
            && !t.decoded && t.iBuf.size() >= t.iGrpBytes) begin
         t.decode_igrp();
-        if(v.TIdDecodeSel == tid || thread[v.TIdDecodeSel].threadState != ts_rdy)
-          vn.TIdDecodeSel = (v.TIdDecodeSel + 1) & `GML(WID_TID);
+        if(v.TIdDecodeSel == tid || thread[v.TIdDecodeSel].threadState != ts_rdy) begin
+          for(int j = 1; i < NUM_THREAD; j++) begin
+            uchar nxt = (v.TIdDecodeSel + j) & `GML(WID_TID);
+            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst}) begin
+              vn.TIdDecodeSel = nxt;
+              break;
+            end
+          end
+        end
         break;
       end
     end
@@ -1683,8 +1693,15 @@ class ip4_tlm_ise extends ovm_component;
         thread[tid].fill_ife(toIFE);
 ///        `ip4_info("ifetch", $psprintf("tid %0d, sel %0d, pc 0x%0h", tid, v.TIdFetchSel, toIFE.pc), OVM_LOW);
         toIFE.tid = tid;
-        if(v.TIdFetchSel == tid || thread[v.TIdFetchSel].threadState != ts_rdy)
-          vn.TIdFetchSel = (v.TIdFetchSel + 1) & `GML(WID_TID);
+        if(v.TIdFetchSel == tid || thread[v.TIdFetchSel].threadState != ts_rdy) begin
+          for(int j = 1; i < NUM_THREAD; j++) begin
+            uchar nxt = (v.TIdFetchSel + j) & `GML(WID_TID);
+            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst}) begin
+              vn.TIdFetchSel = nxt;
+              break;
+            end
+          end
+        end
         break;
       end
     end

@@ -1049,6 +1049,7 @@ class tr_tlb2dse extends ovm_sequence_item;
     `ovm_field_int(writeThru, OVM_ALL_ON);
     `ovm_field_int(coherency, OVM_ALL_ON);
     `ovm_field_int(cached, OVM_ALL_ON);
+    `ovm_field_int(eobit, OVM_ALL_ON);
     `ovm_field_enum(cause_dse_t, cause, OVM_ALL_ON)
   `ovm_object_utils_end  
 

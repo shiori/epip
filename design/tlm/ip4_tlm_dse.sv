@@ -722,17 +722,18 @@ class ip4_tlm_dse extends ovm_component;
       uint tlbVAdr;
       bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec,
           needExOc = 0, accCache = 0, ldReq = ise.op inside {ld_ops}, stReq = ise.op inside {st_ops};
-      uchar maxSlot = ise.vecMode, cyc = ise.subVec & `GML(WID_DCHE_CL);
+      uchar minSlot = ise.vecMode, cyc = ise.subVec & `GML(WID_DCHE_CL);
       padr_t lladr;
       bit llrdy;
       uchar llid;
       
-      if((ise.vecMode - ise.subVec) < LAT_XCHG) begin
-        while(maxSlot > LAT_XCHG)
-          maxSlot -= LAT_XCHG;
+      if((ise.vecMode - (ise.subVec & `GMH(WID_DCHE_CL))) < LAT_XCHG) begin
+        minSlot = (ise.vecMode + 1) & `GML(WID_DCHE_CL);
+///        while(minSlot >= LAT_XCHG)
+///          minSlot -= LAT_XCHG;
       end
       else
-        maxSlot = LAT_XCHG - 1;
+        minSlot = 0;
         
       exReq[STAGE_RRF_DEM] = 0;
       if(tlb == null) tlb = tlbCached;
@@ -881,7 +882,7 @@ class ip4_tlm_dse extends ovm_component;
             ///cache hit, allocate exchange bank
             if(oc) begin
               bit found = 0;
-              for(int s = 0; s <= maxSlot; s++) begin
+              for(int s = minSlot; s < LAT_XCHG; s++) begin
                 if((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]) begin
                   sxgBuf[s].sMemOpy[bk] = 1;
                   slot = s;
@@ -902,7 +903,8 @@ class ip4_tlm_dse extends ovm_component;
                 selExAdr = padr >> (WID_SMEM_BK + WID_WORD);
               end
               else begin
-                bit exhit = (selExAdr >> maxSlot) == (padr >> (maxSlot + WID_SMEM_BK + WID_WORD));
+                ///bit exhit = (selExAdr >> maxSlot) == (padr >> (maxSlot + WID_SMEM_BK + WID_WORD));
+                bit exhit = (selExAdr >> (WID_DCHE_CL - minSlot)) == (padr >> (WID_DCHE_CL + WID_SMEM_BK + WID_WORD - minSlot));
                 if(!exhit)
                   ex = 0;
               end
@@ -931,7 +933,7 @@ class ip4_tlm_dse extends ovm_component;
             
             begin
               bit found = 0;
-              for(int s = 0; s < LAT_XCHG; s++) begin
+              for(int s = minSlot; s < LAT_XCHG; s++) begin
                 if((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]) begin
                   sxgBuf[s].sMemOpy[bk] = oc;
                   slot = s;
@@ -1021,16 +1023,17 @@ class ip4_tlm_dse extends ovm_component;
         end
         
         ///        spi[STAGE_RRF_SXG0] = new();
-        sxgBuf[cyc].xhg[sp] = padr & `GML(WID_DCHE_CL + WID_SMEM_BK + WID_WORD);
-        sxgBuf[cyc].exp[sp] = exp;
-        sxgBuf[cyc].oc[sp] = oc;
-        sxgBuf[cyc].ex[sp] = ex;
-        sxgBuf[cyc].re[sp] = spu.emsk[sp] && !oc && !ex;
-        sxgBuf[cyc].slot[sp] = slot;
+        sxgBuf[minSlot + cyc].xhg[sp] = padr & `GML(WID_DCHE_CL + WID_SMEM_BK + WID_WORD);
+        sxgBuf[minSlot + cyc].exp[sp] = exp;
+        sxgBuf[minSlot + cyc].oc[sp] = oc;
+        sxgBuf[minSlot + cyc].ex[sp] = ex;
+        sxgBuf[minSlot + cyc].re[sp] = spu.emsk[sp] && !oc && !ex;
+        sxgBuf[minSlot + cyc].slot[sp] = slot;
         selValidReq |= oc || ex;
         exReq[STAGE_RRF_DEM] |= ex;
-        `ip4_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, slot %0d, re %0d, xhg %0d", 
-                        sp, grp, adr, bk, ex, oc, exp, selCause.name, slot, sxgBuf[slot].re[sp], sxgBuf[slot].xhg[sp]), OVM_FULL)  
+        `ip4_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, minSlot %0d, ex %0d, oc %0d, exp %0d %s, slot %0d, re %0d, xhg %0d", 
+                        sp, grp, adr, bk, minSlot, ex, oc, exp, selCause.name, slot, sxgBuf[minSlot + slot].re[sp],
+                        sxgBuf[minSlot + slot].xhg[sp]), OVM_FULL)  
       end
         
       expCause[STAGE_RRF_DEM] = selCause;
@@ -1123,8 +1126,8 @@ class ip4_tlm_dse extends ovm_component;
         if(exReq[STAGE_RRF_DEM])
           `ip4_info("sel", "external access needed", OVM_HIGH)
           
-        for(int i = 0; i <= cyc; i++)
-          sxg[STAGE_RRF_DEM + i] = sxgBuf[LAT_XCHG - 1 - i];
+        for(int i = minSlot; i < LAT_XCHG; i++)
+          sxg[STAGE_RRF_DEM + LAT_XCHG -1 - i] = sxgBuf[i];
         selExp = 0;
         selExRdy = 0;
         selNoCache = 0;

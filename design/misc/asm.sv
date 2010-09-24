@@ -1385,6 +1385,7 @@ class asmig;
       gs1.i.chkGrp = chkGrp;
       gs1.i.chkGrpUp = chkGrpUp;
       gs1.i.adrPkgB = adrBytes;
+      gs1.i.dv = isVec[0];
       gs0.nmsk = grpMsk;
 ///      gs1.i.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
       `asm_msg($psprintf("the first address is %0d", allAdr[0]), OVM_FULL);
