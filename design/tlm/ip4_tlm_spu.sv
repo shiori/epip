@@ -240,9 +240,11 @@ class ip4_tlm_spu extends ovm_component;
           tmp = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tidDSE][ise.prRdAdrDSE][subVec];
           foreach(tmp[i]) begin
             if(ise.prInvDSE)
-              res |= !tmp[i];
+              tmp[i] = !tmp[i];
             if(!ise.prNMskDSE)
-              toDSE.emsk[i] = tmp[i] && ilm[ise.tidDSE][subVec][i] && cm[ise.tidDSE][subVec][i];
+              tmp[i] = tmp[i] && ilm[ise.tidDSE][subVec][i] && cm[ise.tidDSE][subVec][i];
+            toDSE.emsk[i] = tmp[i];
+            res |= tmp[i];
           end
         end
       end

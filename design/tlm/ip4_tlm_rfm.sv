@@ -180,7 +180,7 @@ class ip4_tlm_rfm extends ovm_component;
         if(cancel[dse.tid][STAGE_RRF_SWB])
           `ip4_info("rfm_wr", "dse scl write back canceled...", OVM_HIGH) 
         else
-          srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
+          srf[dse.srfWrGrp][dse.srfWrAdr][dse.srfWrBk] = v.fmDSE.srfRes;
       end
       else begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
