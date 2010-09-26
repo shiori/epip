@@ -572,6 +572,7 @@ class ip4_tlm_dse extends ovm_component;
         toISE.pendExStore = 0;
         toISE.cause = expCause[STAGE_RRF_DEM];
         toISE.reRun = dcReRun;
+        toISE.ext = exReq[STAGE_RRF_DEM];
         dcReRun = 0;
         foreach(ldQue[i])
           if(ldQue[i].en && ldQue[i].tid == ise.tid)
@@ -611,7 +612,7 @@ class ip4_tlm_dse extends ovm_component;
           op = v.eif[STAGE_RRF_LXG].op;
         rfmReq = eif.loadRsp;
         exRd = eif.rd;
-        last = v.eif[STAGE_RRF_LXG].last;
+        last = eif.last;
       end
       
       if(rfmReq) begin
@@ -639,13 +640,7 @@ class ip4_tlm_dse extends ovm_component;
       end
       else if(ise != null) begin
         ///dse reqs
-        if(ise.op inside {st_ops, op_fmrf} && exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG] && !expReq[STAGE_RRF_LXG]) begin
-          if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
-          v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
-          foreach(v.eif[STAGE_RRF_LXG].byteEn[i, j])
-            v.eif[STAGE_RRF_LXG].byteEn[i][j] = sxg[STAGE_RRF_LXG].exEn[i][j];
-        end
-        else if(ise.op inside {op_tmrf} && !expReq[STAGE_RRF_LXG]) begin
+        if(ise.op inside {op_tmrf} && !expReq[STAGE_RRF_LXG]) begin
           ///tmrf will use part of lxg vrfWEn
           if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
           v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
@@ -673,6 +668,12 @@ class ip4_tlm_dse extends ovm_component;
               foreach(v.rfm[STAGE_RRF_LXG].wrEn[i])
                 v.rfm[STAGE_RRF_LXG].wrEn[i] = maskRf[i] && lxg[STAGE_RRF_LXG].vrfWEn[i];  
           end
+        end
+        else if(exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG] && !expReq[STAGE_RRF_LXG]) begin
+          if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
+          v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
+          foreach(v.eif[STAGE_RRF_LXG].byteEn[i, j])
+            v.eif[STAGE_RRF_LXG].byteEn[i][j] = sxg[STAGE_RRF_LXG].exEn[i][j];
         end
       end
     end
@@ -934,11 +935,12 @@ class ip4_tlm_dse extends ovm_component;
             if(ex) begin
               if(!selExRdy) begin
                 selExRdy = 1;
+                selNoCache |= nc;
                 selExAdr = padr >> (WID_SMEM_BK + WID_WORD);
               end
               else begin
                 ///bit exhit = (selExAdr >> maxSlot) == (padr >> (maxSlot + WID_SMEM_BK + WID_WORD));
-                bit exhit = (selExAdr >> n2w(LAT_XCHG - minSlot)) == (padr >> (WID_SMEM_BK + WID_WORD - n2w(LAT_XCHG - minSlot)));
+                bit exhit = (selExAdr >> n2w(LAT_XCHG - minSlot)) == (padr >> (WID_SMEM_BK + WID_WORD + n2w(LAT_XCHG - minSlot)));
                 if(!exhit)
                   ex = 0;
               end
@@ -1034,20 +1036,27 @@ class ip4_tlm_dse extends ovm_component;
           
           ocWEn = stReq && oc;
           case(ise.op)
-          op_sw   : 
+          op_sw,
+          op_lw,
+          op_sc,
+          op_ll: 
             for(int j = 0; j < WORD_BYTES; j++) begin
               sxgBuf[slot].stData[bk].b[j] = st.b[j];
               sxgBuf[slot].sMemWEn[bk][j] = ocWEn;
               sxgBuf[slot].exEn[bk][j] = ex;
             end
-          op_sh   :
+          op_sh,
+          op_lh,
+          op_lhu:
             for(int j = 0; j < HALF_BYTES; j++) begin
               uchar adr2 = os & `GMH(WID_HALF);
               sxgBuf[slot].stData[bk].b[adr2 + j] = st.b[j];
               sxgBuf[slot].sMemWEn[bk][adr2 + j] = ocWEn;
               sxgBuf[slot].exEn[bk][adr2 + j] = ex;
             end
-          op_sb   :
+          op_sb,
+          op_lb,
+          op_lbu:
           begin
             sxgBuf[slot].stData[bk].b[os] = st.b[0];
             sxgBuf[slot].sMemWEn[bk][os] = ocWEn;
@@ -1105,7 +1114,7 @@ class ip4_tlm_dse extends ovm_component;
         vn.eif[STAGE_RRF_DEM].req = 1;
         vn.eif[STAGE_RRF_DEM].exAdr = selExAdr;
         vn.eif[STAGE_RRF_DEM].endian = selEndian;
-        vn.eif[STAGE_RRF_DEM].cacheFill = selWriteAlloc || !selNoCache;
+        vn.eif[STAGE_RRF_DEM].cacheFill = selWriteAlloc && !selNoCache;
         vn.eif[STAGE_RRF_DEM].sgl = !ise.vec || ise.vecMode == 0;
         vn.eif[STAGE_RRF_DEM].cyc = ise.subVec & `GML(WID_DCHE_CL);
         vn.eif[STAGE_RRF_DEM].last = last;

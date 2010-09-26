@@ -95,7 +95,7 @@ parameter uchar LAT_MAC           = 5,
                 LAT_L1M           = 1,
                 LAT_XCHG          = 2,
                 LAT_SWBP          = 1,    ///dse writeback bypass time
-                LAT_EXM           = 100;  ///external memory latency
+                LAT_EXM           = 4;  ///external memory latency
                 
 parameter uint  NUM_SP            = 8,
                 NUM_VEC           = 32,

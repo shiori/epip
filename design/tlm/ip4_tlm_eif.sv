@@ -62,7 +62,12 @@ class ip4_tlm_eif extends ovm_component;
   
   function void comb_proc();
     
-    `ip4_info("EIF", "comb_proc procing...", OVM_DEBUG) 
+    `ip4_info("EIF", "comb_proc procing...", OVM_DEBUG)
+    if(v.fmISE != null) end_tr(v.fmISE);
+      vn.fmISE = null;
+    if(v.fmDSE[0] != null) end_tr(v.fmDSE[0]);
+      vn.fmDSE[0] = null;
+          
     for(int i = LAT_EXM - 1; i > 0; i--)
       vn.fmDSE[i] = v.fmDSE[i - 1];
     for(int i = STAGE_ISE_DC; i > 0; i--)
@@ -86,15 +91,19 @@ class ip4_tlm_eif extends ovm_component;
       if(dse != null && dse.req) begin
         uint adr;
         if(dse.exAdr >= (dmBase >> (WID_WORD + WID_SMEM_BK))
-            && dse.exAdr < ((dmBase + dmSize) >> (WID_WORD + WID_SMEM_BK)))
+            && dse.exAdr < ((dmBase + dmSize) >> (WID_WORD + WID_SMEM_BK))) begin
           adr = dse.exAdr - (dmBase >> (WID_WORD + WID_SMEM_BK));
+          `ip4_info("get req", $psprintf("adr 0x%0h, %s", dse.exAdr, dse.op.name), OVM_FULL)
+          
+        end
         else
           ovm_report_warning("dse", "Physical adr out of bound");
         
-        if(!dse.sgl) begin
+        if(!dse.sgl)
           adr = adr & `GMH(1);
-        end if(!dse.last)
+        else if(!dse.last)
           ovm_report_warning("eif", "dse req sgl without last!");
+          
         if(dse.last)
           reqAdr.push_back(adr);
         reqBuf.push_back(dse);
@@ -111,12 +120,12 @@ class ip4_tlm_eif extends ovm_component;
         toDSE = tr_eif2dse::type_id::create("toDSE", this);
         toDSE.endian = dse.endian;
         toDSE.exAdr = dse.exAdr;
-        cnt++;
         if(dse.op inside {st_ops} || dse.cacheFlush) begin
           if(dse.cacheFlush)
             adr = adr ^ 'b01;
           foreach(dse.data[bk]) begin
             wordu res = dse.data[bk];
+            `ip4_info("wr", $psprintf("adr 0x%0h, bk %0d, data: 0x%0h", adr, bk, res), OVM_FULL)
             for(int os = 0; os < WORD_BYTES; os++) begin
               uint adrb = adr << (WID_WORD + WID_SMEM_BK) + bk << WID_WORD + os;
               if(dse.byteEn[bk][os])
@@ -125,14 +134,17 @@ class ip4_tlm_eif extends ovm_component;
           end
         end
         if(dse.cacheFill || dse.op inside {ld_ops}) begin
+          ///read rsp
           toDSE.cyc = dse.cyc;
           toDSE.last = dse.last;
           foreach(dse.data[bk]) begin
             wordu res;
             for(int os = 0; os < WORD_BYTES; os++) begin
-              uint adrb = adr << (WID_WORD + WID_SMEM_BK) + bk << WID_WORD + os;
+              uint adrb;
+              adrb = os + (adr << (WID_WORD + WID_SMEM_BK)) + (bk << WID_WORD);
               res.b[os] = dm[adrb];
             end
+            `ip4_info("rd", $psprintf("adr 0x%0h, bk %0d, data: 0x%0h", adr, bk, res), OVM_FULL)
             toDSE.data[bk] = res;
           end
           toDSE.alloc = dse.cacheFill;
@@ -141,19 +153,22 @@ class ip4_tlm_eif extends ovm_component;
           if(cnt != 0 && typ != 2)
             ovm_report_warning("eif", "inconsistent access typ");
           typ = 2;
+          cnt++;
           dseLdCacheFillRsp.push_back(toDSE);
           if(dse.last) begin
             typ = 0;
             iseReq.push_back(cnt);
           end
         end
-        else if(dse.last) begin
+        else if(dse.op inside {st_ops} && dse.last) begin
+          ///write rsp
           toDSE.storeRsp = 1;
           toDSE.last = 1;
           toDSE.alloc = 0;
           if(cnt != 0 && typ != 1)
             ovm_report_warning("eif", "inconsistent access typ");
-          typ = 1; 
+          typ = 1;
+          cnt++;
           dseStRsp.push_back(toDSE);
         end
       end
@@ -163,6 +178,7 @@ class ip4_tlm_eif extends ovm_component;
       uchar cnt = iseReq.pop_front();
       waitISE++;
       toISE = tr_eif2ise::type_id::create("toISE", this);
+      toISE.reqNo = 1;
       toISE.noLd = cnt;
       toISE.noSt = cnt; 
       toISE.noTMsg = cnt;
@@ -173,7 +189,12 @@ class ip4_tlm_eif extends ovm_component;
     end
     
     if(v.fmISE != null && v.fmISE.rsp) begin
-      uchar cnt = iseReqBuf.pop_front();
+      uchar cnt;
+      if(iseReqBuf.size() == 0)
+        ovm_report_warning("rsp", "rsp without record");
+      else
+        cnt = iseReqBuf.pop_front();
+      `ip4_info("rsp", $psprintf("get rsp, cnt %0d", cnt), OVM_FULL)
       dseLdCacheFillCntRsp += cnt;
       if(waitISE > 0) waitISE--;
     end
@@ -187,7 +208,7 @@ class ip4_tlm_eif extends ovm_component;
     
     if(v.dse[STAGE_ISE_RRC0] != null) begin
       toDSE = tr_eif2dse::type_id::create("toDSE", this);
-      toDSE.copy(v.dse[STAGE_ISE_DC - 1]);
+      toDSE.copy(v.dse[STAGE_ISE_RRC0]);
     end
     else if(dseStRsp.size() > 0)
       toDSE = dseStRsp.pop_front();
@@ -285,7 +306,7 @@ class ip4_tlm_eif extends ovm_component;
   virtual function void start_of_simulation();
     if(dmFilePath != "") begin
       dm = new[dmSize];
-      $readmemb(dmFilePath, dm);
+      $readmemh(dmFilePath, dm);
     end
   endfunction
 endclass : ip4_tlm_eif

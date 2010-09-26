@@ -1129,7 +1129,7 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_int(priv, OVM_ALL_ON)
     `ovm_field_int(uncachable, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
-    `ovm_field_sarray_int(byteEn, OVM_ALL_ON)
+    `ovm_field_sarray_int(byteEn, OVM_ALL_ON + OVM_BIN)
     `ovm_field_enum(cache_state_t, queryRes, OVM_ALL_ON)
     `ovm_field_enum(cache_state_t, state, OVM_ALL_ON)
     `ovm_field_int(queryNoHit, OVM_ALL_ON)

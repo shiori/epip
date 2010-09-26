@@ -1332,12 +1332,14 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmRFM != null) end_tr(v.fmRFM);
     if(v.fmIFE != null) end_tr(v.fmIFE);
     if(v.fmDSE != null) end_tr(v.fmDSE);
+    if(v.fmEIF != null) end_tr(v.fmEIF);
     
     vn.fmSPU = null;
     vn.fmSPA = null;
     vn.fmRFM = null;
     vn.fmIFE = null;
     vn.fmDSE = null;
+    vn.fmEIF = null;
     toEIF = null;
     
     for(int i = STAGE_ISE; i > 1; i--) begin
@@ -1487,10 +1489,11 @@ class ip4_tlm_ise extends ovm_component;
     if(pendEIF.size() > 0 || (v.fmEIF != null && v.fmEIF.reqNo)) begin
       if(ciDSE[0] == null || !ciDSE[0].en) begin
         tr_eif2ise eif;
-        if(pendEIF.size() > 0)
+        if(pendEIF.size() > 0) begin
           eif = pendEIF.pop_front();
-          if(v.fmEIF != null)
+          if(v.fmEIF != null && v.fmEIF.reqNo)
             pendEIF.push_back(v.fmEIF);
+        end
         else
           eif = v.fmEIF;
         noLd += eif.noLd;
@@ -1504,7 +1507,7 @@ class ip4_tlm_ise extends ovm_component;
         if(toEIF == null) toEIF = tr_ise2eif::type_id::create("toEIF", this);
           toEIF.rsp = 1;
       end
-      else if(v.fmEIF != null)
+      else if(v.fmEIF != null && v.fmEIF.reqNo)
         pendEIF.push_back(v.fmEIF);
     end
     
