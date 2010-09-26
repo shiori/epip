@@ -479,7 +479,7 @@ class ise_thread_inf extends ovm_component;
       
     for(int i = 0; i < numConst; i++) begin
       for(int j = 0; j < WORD_BYTES; j++)
-        co[i].b[j] = iBuf[i + j];
+        co[i].b[j] = iBuf[offSet + j];
       offSet += WORD_BYTES;
     end
       

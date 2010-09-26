@@ -443,11 +443,10 @@ class inst_c extends ovm_object;
     end
     else if(adr == 15)
       sel = selz;
-    else if(adr inside {[12:14]}) begin
+    else if(adr inside {[12:14]})
       sel = rbk_sel_e'(selfu0 + adr - 12);
-    end
-///    else
-///      sel = selb0;
+    else
+      sel = rbk_sel_e'(selc0 + adr - 8);
   endfunction : set_rf_en
   
 	function void decode();

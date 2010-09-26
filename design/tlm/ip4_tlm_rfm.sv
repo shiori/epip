@@ -225,9 +225,9 @@ class ip4_tlm_rfm extends ovm_component;
                 
       if(ise.cycFu == 0)
         bpCoFu = ise.bpCo;
-      if(ise.dseEn && ise.cycDSE)
+      if(ise.dseEn && ise.cycDSE == 0)
         bpCoDSE = ise.bpCo;
-      if(ise.spuEn && ise.cycSPU)
+      if(ise.spuEn && ise.cycSPU == 0)
         bpCoSPU = ise.bpCo;
       
       foreach(ise.fu[fid]) begin

@@ -1,4 +1,6 @@
 //test asm file
+options.c0.0xf0000000
+ld.byte.nua.burst v0 c0 0x3 ;
 
 ld.byte.nua.burst s0 zero 0x3 ;
 
@@ -125,10 +127,10 @@ mad.s v6 v3 v1 v5
 nop
 lu v2 0x16526C9
 nop ;
-// include constant package
+// include cant package
 options.g1
-options.const1.0x5
-options.const2.0x9
+options.c1.0x5
+options.c2.0x9
 lu v3 0x16526C9
 nop 
 mad.s v6 v27 v10 v9

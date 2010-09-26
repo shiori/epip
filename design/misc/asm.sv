@@ -68,7 +68,7 @@ endfunction
 
 class asmig;
   int ps; /// source operation point
-  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bp0Op, bp1Op, bp2Op, pdrOp, constOp;  /// operation tidOp
+  bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bpOp, pdrOp, constOp;
   bit[3:0] tagOp;  /// operation
   bit[4:0] nop;
   uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
@@ -175,15 +175,7 @@ class asmig;
             if(immOp[i][2]) begin
               inst[i].i.op = si[i] ? iop_addsi : iop_addi;
               {inst[i].i.b.ir1w1.imm1, inst[i].i.b.ir1w1.imm0} = imm[i][2];
-///              if(constOp[i][1])
-///                case(cont[i][1])
-///                  0: inst[i].i.b.ir1w1.rs = 8;
-///                  1: inst[i].i.b.ir1w1.rs = 9;
-///                  2: inst[i].i.b.ir1w1.rs = 10;
-///                  default: `asm_err("constant port assignment failed!");
-///                endcase
-///              else
-                one = 1;
+              one = 1;
             end
             else if(enOp[i][3]) begin
               inst[i].i.op = iop_r3w1;
@@ -1162,22 +1154,14 @@ class asmig;
           bksel[j] = 15;
           break;
         end
-        if(bp0Op[i][ps + j]) begin
-          bksel[j] = 12;
+        if(bpOp[i][ps + j]) begin
+          bksel[j] = 12 + adr[i][ps + j];
           break;
         end
-        if(bp1Op[i][ps + j]) begin
-          bksel[j] = 13;
+        if(constOp[i][ps + j]) begin
+          bksel[j] = 8 + adr[i][ps + j];
           break;
         end
-        if(bp2Op[i][ps + j]) begin
-          bksel[j] = 14;
-          break;
-        end
-///        if(tidOp[i][ps + j]) begin
-///          bksel[j] = 11;
-///          break;
-///        end
         if(!enOp[i][ps + j]) begin
           `asm_msg("enop is not enable!", OVM_FULL);   
           break;
@@ -1212,7 +1196,7 @@ class asmig;
             end
           end
         end
-        else if(enOp[i][ps + j] && !immOp[i][ps + j]) begin
+        else if(!immOp[i][ps + j]) begin
           if(adr[i][ps + j] > 15) begin
             `asm_err($psprintf("scl reg out of bound! %0d", adr[i][ps + j]));
             return 0;
@@ -1358,7 +1342,7 @@ class asmig;
       `asm_msg($psprintf("the allAdr[adrcnt-1][0] :%0d, allAdr[%d-1]:%0d,", allAdr[adrcnt-1][0],adrcnt, allAdr[adrcnt-1]), OVM_FULL);
             
       if(contNum < 5)
-        gs1.i.coPkgW = contNum;
+        gs0.coPkgW = contNum;
       else
         `asm_err("Constant Package num out of bound!");
         
@@ -1590,22 +1574,22 @@ class ip4_assembler;
               "pop2nc": cur.sop = 1;
               "storemsc": cur.sop = 2;
               "zeromsc": cur.sop = 3;
-              "const0": begin
+              "c0": begin
                 cur.co[0] = get_imm(opts.pop_front());
                 cur.coEn[0] = 1;
                 cur.contNum = cur.contNum + 1;
               end
-              "const1": begin
+              "c1": begin
                 cur.co[1] = get_imm(opts.pop_front());
                 cur.coEn[1] = 1;
                 cur.contNum = cur.contNum + 1;
               end
-              "const2": begin
+              "c2": begin
                 cur.co[2] = get_imm(opts.pop_front());
                 cur.coEn[2] = 1;
                 cur.contNum = cur.contNum + 1;
               end
-              "const3": begin
+              "c3": begin
                 cur.co[3] = get_imm(opts.pop_front());
                 cur.coEn[3] = 1;
                 cur.contNum = cur.contNum + 1;
@@ -1678,31 +1662,27 @@ class ip4_assembler;
             cur.enOp[icnt][opcnt] = 1;
 ///            /// sepecial register defined prefix u-
 ///            cur.srOp[icnt][opcnt] = tk0.tolower() == "u";
-///            cur.constOp[icnt][opcnt] = tk0.tolower() == "c";
+            cur.constOp[icnt][opcnt] = tk0.tolower() == "c";
             cur.pdrOp[icnt][opcnt] = tk0.tolower() == "p";
             if(cur.op[icnt] inside {"b", "fcr"}) begin
               cur.tagOp[opcnt] = tk0.tolower() == "$";
               if(cur.tagOp[opcnt])
                 cur.tag = tk1n;
             end
-            cur.bp0Op[icnt][opcnt] = tk.tolower() == "bp0";
-            cur.bp1Op[icnt][opcnt] = tk.tolower() == "bp1";
-            cur.bp2Op[icnt][opcnt] = tk.tolower() == "bp2";
-///            cur.tidOp[icnt][opcnt] = tk0.tolower() == "tid";
+            cur.bpOp[icnt][opcnt] = tk0.tolower() == "b";
             cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
             cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
             cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
-                                     && !cur.bp0Op[icnt][opcnt] && !cur.bp1Op[icnt][opcnt] && !cur.bp2Op[icnt][opcnt]/// && !cur.tidOp[icnt][opcnt]
-                                     && !cur.pdrOp[icnt][opcnt];
+                                     && !cur.bpOp[icnt][opcnt] && !cur.pdrOp[icnt][opcnt] && !cur.constOp[icnt][opcnt];
             
             if(cur.immOp[icnt][opcnt])
               cur.imm[icnt][opcnt] = get_imm(tk);
-            else if(!cur.zeroOp[icnt][opcnt])/// && !cur.pdrOp[icnt][opcnt])
+            else if(!cur.zeroOp[icnt][opcnt])
               cur.adr[icnt][opcnt] = tk1n.atoi();
-            `asm_msg($psprintf("tag branch %s", cur.tag), OVM_HIGH);
-            `asm_msg($psprintf("tagOp:%0d, vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, opcnt:%0d, icnt:%0d, enOp: %0d", cur.tagOp[opcnt], cur.vecOp[icnt][opcnt],
+///            `asm_msg($psprintf("tag branch %s", cur.tag), OVM_HIGH);
+            `asm_msg($psprintf("tagOp:%0d, vecOp:%0d, zeroOp:%0d, immOp:%0d, adr:%0d, imm:%0d, const %0d, opcnt:%0d, icnt:%0d, enOp: %0d", cur.tagOp[opcnt], cur.vecOp[icnt][opcnt],
                       cur.zeroOp[icnt][opcnt], cur.immOp[icnt][opcnt], cur.adr[icnt][opcnt],
-                      cur.imm[icnt][opcnt], opcnt, icnt, cur.enOp[icnt][opcnt]), OVM_HIGH);
+                      cur.imm[icnt][opcnt], cur.constOp[icnt][opcnt], opcnt, icnt, cur.enOp[icnt][opcnt]), OVM_HIGH);
             opcnt++;
           end
         end   
