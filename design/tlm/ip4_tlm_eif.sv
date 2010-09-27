@@ -136,6 +136,7 @@ class ip4_tlm_eif extends ovm_component;
         if(dse.cacheFill || dse.op inside {ld_ops}) begin
           ///read rsp
           toDSE.cyc = dse.cyc;
+          toDSE.id = dse.id;
           toDSE.last = dse.last;
           foreach(dse.data[bk]) begin
             wordu res;
@@ -203,12 +204,14 @@ class ip4_tlm_eif extends ovm_component;
       dseLdCacheFillCntRsp--;
       if(dseLdCacheFillRsp.size() == 0)
         ovm_report_warning("eif", "dseLdCacheFillRsp empty while cnt > 0!");
-      vn.dse[0] = dseLdCacheFillRsp.pop_front();
+      vn.dse[2] = dseLdCacheFillRsp.pop_front();
     end
     
     if(v.dse[STAGE_ISE_RRC0] != null) begin
       toDSE = tr_eif2dse::type_id::create("toDSE", this);
       toDSE.copy(v.dse[STAGE_ISE_RRC0]);
+      v.dse[STAGE_ISE_RRC0].loadRsp = 0;
+      v.dse[STAGE_ISE_RRC0].storeRsp = 0;
     end
     else if(dseStRsp.size() > 0)
       toDSE = dseStRsp.pop_front();
