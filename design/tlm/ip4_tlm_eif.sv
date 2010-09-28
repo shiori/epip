@@ -127,7 +127,7 @@ class ip4_tlm_eif extends ovm_component;
             wordu res = dse.data[bk];
             `ip4_info("wr", $psprintf("adr 0x%0h, bk %0d, data: 0x%0h", adr, bk, res), OVM_FULL)
             for(int os = 0; os < WORD_BYTES; os++) begin
-              uint adrb = adr << (WID_WORD + WID_SMEM_BK) + bk << WID_WORD + os;
+              uint adrb = (adr << (WID_WORD + WID_SMEM_BK)) + (bk << WID_WORD) + os;
               if(dse.byteEn[bk][os])
                 dm[adrb] = res.b[os];
             end
@@ -216,9 +216,9 @@ class ip4_tlm_eif extends ovm_component;
     else if(dseStRsp.size() > 0)
       toDSE = dseStRsp.pop_front();
       
-    if(v.dse[STAGE_ISE_DC - 1] != null) begin
+    if(v.dse[STAGE_ISE_DC - 2] != null) begin
       if(toDSE == null) toDSE = tr_eif2dse::type_id::create("toDSE", this);
-      toDSE.data = v.dse[STAGE_ISE_DC - 1].data;
+      toDSE.data = v.dse[STAGE_ISE_DC - 2].data;
     end
     
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
