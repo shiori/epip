@@ -1,6 +1,6 @@
 //test asm file
 options.c0.0xf0000000
-ld.byte.nua.burst v0 c0 0x3 ;
+ld.byte.nua.burst s0 c0 0x3 ;
 
 ld.byte.nua.burst s0 zero 0x3 ;
 

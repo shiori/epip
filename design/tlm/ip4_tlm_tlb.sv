@@ -40,6 +40,8 @@ parameter uchar even_odd_bit_table[] = {
   15
 };
 
+parameter uchar atos = 10;
+
 class ip4_tlm_tlb_vars extends ovm_component;
   tr_dse2tlb fmDSE;
   tr_spu2tlb fmSPU;
@@ -59,6 +61,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
   word srRandom;
   word srEntryLo0;
   word srEntryLo1;
+  word srEntryAttr;
   word srEntryHi;
   word srContent[NUM_SP];
   uchar srASID[NUM_SP];
@@ -83,6 +86,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
     `ovm_field_int(srRandom, OVM_ALL_ON)
     `ovm_field_int(srEntryLo0, OVM_ALL_ON)
     `ovm_field_int(srEntryLo1, OVM_ALL_ON)
+    `ovm_field_int(srEntryAttr, OVM_ALL_ON)
     `ovm_field_int(srEntryHi, OVM_ALL_ON)
     `ovm_field_sarray_int(srContent, OVM_ALL_ON)
     `ovm_field_sarray_int(srASID, OVM_ALL_ON)
@@ -109,6 +113,7 @@ class ip4_tlm_tlb_vars extends ovm_component;
     srEntryLo0 = 0;
     srEntryLo1 = 0;
     srEntryHi = 0;
+    srEntryAttr = 0;
     srContent = '{default : 0};
     ifeBufPtr = 0;
     super.build();
@@ -286,23 +291,24 @@ class ip4_tlm_tlb extends ovm_component;
           vn.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] = v.vpn2[i] & ~varMask;
           vn.srEntryHi[ASID_WIDTH-1:0] = v.asid[i];
           
-          vn.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2o[i];
-          vn.srEntryLo1[9] = v.ex[i][1];
-          vn.srEntryLo1[8:5] = v.c[i][1];
-          vn.srEntryLo1[4] = v.k[i][1];
-          vn.srEntryLo1[3] = v.e[i][1];
-          vn.srEntryLo1[2] = v.d[i][1];
-          vn.srEntryLo1[1] = v.v[i][1];
-          vn.srEntryLo1[0] = v.g[i];
-                    
-          vn.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] = v.pfn2e[i];
-          vn.srEntryLo0[9] = v.ex[i][0];
-          vn.srEntryLo0[8:5] = v.c[i][0];
-          vn.srEntryLo0[4] = v.k[i][0];
-          vn.srEntryLo0[3] = v.e[i][0];
-          vn.srEntryLo0[2] = v.d[i][0];
-          vn.srEntryLo0[1] = v.v[i][0];
-          vn.srEntryLo0[0] = v.g[i];
+          vn.srEntryLo1 = v.pfn2o[i];
+          vn.srEntryLo0 = v.pfn2e[i];
+          
+          vn.srEntryAttr[atos + 9] = v.ex[i][1];
+          vn.srEntryAttr[atos + 8:atos + 5] = v.c[i][1];
+          vn.srEntryAttr[atos + 4] = v.k[i][1];
+          vn.srEntryAttr[atos + 3] = v.e[i][1];
+          vn.srEntryAttr[atos + 2] = v.d[i][1];
+          vn.srEntryAttr[atos + 1] = v.v[i][1];
+          vn.srEntryAttr[atos + 0] = v.g[i];
+          
+          vn.srEntryAttr[9] = v.ex[i][0];
+          vn.srEntryAttr[8:5] = v.c[i][0];
+          vn.srEntryAttr[4] = v.k[i][0];
+          vn.srEntryAttr[3] = v.e[i][0];
+          vn.srEntryAttr[2] = v.d[i][0];
+          vn.srEntryAttr[1] = v.v[i][0];
+          vn.srEntryAttr[0] = v.g[i];
         end
      end   
      /// TLBWI
@@ -313,21 +319,24 @@ class ip4_tlm_tlb extends ovm_component;
         vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
         vn.vpn2[i] = v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH-1:0];
-        vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
+        vn.g[i] = v.srEntryAttr[atos] && v.srEntryAttr[0];
         
-        vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
-        vn.ex[i][1] = v.srEntryLo1[8];
-        vn.c[i][1] = v.srEntryLo1[7:5];
-        vn.k[i][1] = v.srEntryLo1[4];
-        vn.e[i][1] = v.srEntryLo1[3]; vn.d[i][1] = v.srEntryLo1[2];
-        vn.v[i][1] = v.srEntryLo1[1];
+        vn.pfn2o[i] = v.srEntryLo1[PFN_WIDTH - 1 : 0] & ~varMask;
+        vn.pfn2e[i] = v.srEntryLo0[PFN_WIDTH - 1 : 0] & ~varMask;
         
-        vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : WORD_BITS - PFN_WIDTH] & ~varMask;
-        vn.ex[i][0] = v.srEntryLo0[8];
-        vn.c[i][0] = v.srEntryLo0[7:5];
-        vn.k[i][0] = v.srEntryLo0[4];
-        vn.e[i][0] = v.srEntryLo0[3]; vn.d[i][0] = v.srEntryLo0[2];
-        vn.v[i][0] = v.srEntryLo0[1];
+        vn.ex[i][1] = v.srEntryAttr[atos + 8];
+        vn.c[i][1] = v.srEntryAttr[atos + 7:atos + 5];
+        vn.k[i][1] = v.srEntryAttr[atos + 4];
+        vn.e[i][1] = v.srEntryAttr[atos + 3];
+        vn.d[i][1] = v.srEntryAttr[atos + 2];
+        vn.v[i][1] = v.srEntryAttr[atos + 1];
+        
+        vn.ex[i][0] = v.srEntryAttr[atos + 8];
+        vn.c[i][0] = v.srEntryAttr[atos + 7:atos + 5];
+        vn.k[i][0] = v.srEntryAttr[atos + 4];
+        vn.e[i][0] = v.srEntryAttr[atos + 3];
+        vn.d[i][0] = v.srEntryAttr[atos + 2];
+        vn.v[i][0] = v.srEntryAttr[atos + 1];
       end
       /// TLBWR
       op_tlbwr:
@@ -337,21 +346,24 @@ class ip4_tlm_tlb extends ovm_component;
         vn.pageTyp[i] = v.srEntryHi[TYPE_WIDTH + ASID_WIDTH - 1: ASID_WIDTH];
         vn.vpn2[i] = v.srEntryHi[WORD_BITS - 1 : WORD_BITS - VPN2_WIDTH] & ~varMask;
         vn.asid[i] = v.srEntryHi[ASID_WIDTH - 1 : 0];
-        vn.g[i] = v.srEntryLo1[0] && v.srEntryLo0[0];
-        vn.pfn2o[i] = v.srEntryLo1[WORD_BITS - 1 : 9] & ~varMask;
-        vn.ex[i][1] = v.srEntryLo1[8];
-        vn.c[i][1] = v.srEntryLo1[7:5];
-        vn.k[i][1] = v.srEntryLo1[4];
-        vn.e[i][1] = v.srEntryLo1[3];
-        vn.d[i][1] = v.srEntryLo1[2];
-        vn.v[i][1] = v.srEntryLo1[1];
-        vn.pfn2e[i] = v.srEntryLo0[WORD_BITS - 1 : 9] & ~varMask;
-        vn.ex[i][0] = v.srEntryLo0[8];
-        vn.c[i][0] = v.srEntryLo0[7:5];
-        vn.k[i][0] = v.srEntryLo0[4];
-        vn.e[i][0] = v.srEntryLo0[3];
-        vn.d[i][0] = v.srEntryLo0[2];
-        vn.v[i][0] = v.srEntryLo0[1];
+        vn.pfn2o[i] = v.srEntryLo1[PFN_WIDTH - 1 : 0] & ~varMask;
+        vn.pfn2e[i] = v.srEntryLo0[PFN_WIDTH - 1 : 0] & ~varMask;
+        
+        vn.g[i] = v.srEntryAttr[atos] && v.srEntryAttr[0];
+        
+        vn.ex[i][1] = v.srEntryAttr[atos + 8];
+        vn.c[i][1] = v.srEntryAttr[atos + 7:atos + 5];
+        vn.k[i][1] = v.srEntryAttr[atos + 4];
+        vn.e[i][1] = v.srEntryAttr[atos + 3];
+        vn.d[i][1] = v.srEntryAttr[atos + 2];
+        vn.v[i][1] = v.srEntryAttr[atos + 1];
+        
+        vn.ex[i][0] = v.srEntryAttr[atos + 8];
+        vn.c[i][0] = v.srEntryAttr[atos + 7:atos + 5];
+        vn.k[i][0] = v.srEntryAttr[atos + 4];
+        vn.e[i][0] = v.srEntryAttr[atos + 3];
+        vn.d[i][0] = v.srEntryAttr[atos + 2];
+        vn.v[i][0] = v.srEntryAttr[atos + 1];
       end
       /// GP2S
       op_gp2s:
@@ -362,6 +374,7 @@ class ip4_tlm_tlb extends ovm_component;
         SR_ENTRY_L0:  vn.srEntryLo0 = v.fmSPU.op0;
         SR_ENTRY_L1:  vn.srEntryLo1 = v.fmSPU.op0;
         SR_ENTRY_HI:  vn.srEntryHi  = v.fmSPU.op0;
+        SR_ENTRY_AT:  vn.srEntryAttr = v.fmSPU.op0;
         SR_ASID:      vn.srASID[v.fmSPU.tid] = v.fmSPU.op0 & `GML(ASID_WIDTH);
         default: ovm_report_warning("SPU_SRAD", "spu WRITE SR_ADDR IS ERROR!!!");
         endcase 
@@ -378,6 +391,7 @@ class ip4_tlm_tlb extends ovm_component;
         SR_ENTRY_L0:  toSPU.res = v.srEntryLo0;
         SR_ENTRY_L1:  toSPU.res = v.srEntryLo1;
         SR_ENTRY_HI:  toSPU.res = v.srEntryHi;
+        SR_ENTRY_AT:  toSPU.res = v.srEntryAttr;
         SR_ASID:      toSPU.res = v.srASID[v.fmSPU.tid];
         default: ovm_report_warning("SPU_SRAD", "spu READ SR_ADDR IS ERROR!!!");
         endcase 

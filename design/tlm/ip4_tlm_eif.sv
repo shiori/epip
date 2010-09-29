@@ -118,7 +118,7 @@ class ip4_tlm_eif extends ovm_component;
         tr_dse2eif dse = reqBuf.pop_front();
         adr = adr + dse.cyc;
         toDSE = tr_eif2dse::type_id::create("toDSE", this);
-        toDSE.endian = dse.endian;
+        toDSE.endian = 1;///dse.endian;
         toDSE.exAdr = dse.exAdr;
         if(dse.op inside {st_ops} || dse.cacheFlush) begin
           if(dse.cacheFlush)

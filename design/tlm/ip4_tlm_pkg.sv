@@ -495,13 +495,14 @@ parameter opcode_e ise_zw_ops[] = '{
 
 typedef enum uchar {
   SR_PROC_CTL,  SR_SUPMSG,    SR_EBASE,     SR_MBASE,       SR_INDEX,
-  SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_HI,    SR_TIMER,
-  SR_CMP,       SR_OCMC,      SR_PCNT[0:1], SR_PCNTC[0:1],  SR_IIDX,
-  SR_IIDY,      SR_IIDZ,      SR_EXPFV,     SR_DSEEV,       SR_MSCO,
-  SR_MSCU,      SR_THD_CTL,   SR_THD_ST,    SR_EXEC,        SR_CONTENT,
-  SR_EPC,       SR_ERET,      SR_WIDX,      SR_WIDY,        SR_WIDZ,
-  SR_ILM,       SR_CM,        SR_UEE,       SR_UER,         SR_ASID,
-  SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,       SR_FFC[0:1],    SR_SUPM[0:1]
+  SR_RANDOM,    SR_ENTRY_L0,  SR_ENTRY_L1,  SR_ENTRY_AT,    SR_ENTRY_HI,
+  SR_TIMER,     SR_CMP,       SR_OCMC,      SR_PCNT[0:1],   SR_PCNTC[0:1],
+  SR_IIDX,      SR_IIDY,      SR_IIDZ,      SR_EXPFV,       SR_DSEEV,
+  SR_MSCO,      SR_MSCU,      SR_THD_CTL,   SR_THD_ST,      SR_EXEC,
+  SR_CONTENT,   SR_EPC,       SR_ERET,      SR_WIDX,        SR_WIDY,
+  SR_WIDZ,      SR_ILM,       SR_CM,        SR_UEE,         SR_UER,
+  SR_ASID,      SR_MD[0:7],   SR_MCS[0:2],  SR_FFS,         SR_FFC[0:1],
+  SR_SUPM[0:1]
 }special_reg_t;
 
 parameter special_reg_t tlb_sr[] = '{
@@ -542,7 +543,7 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 ASID_WIDTH   = 8,
                 IFE_REQ_BUF  = 2,
                 VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
-                PFN_WIDTH    = 22,
+                PFN_WIDTH    = 26,
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///36
 
 typedef bit[PADR_WIDTH - 1:0]     padr_t;
