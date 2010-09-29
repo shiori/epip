@@ -697,6 +697,7 @@ class asmig;
         "st"    :
           begin
             ps = 0;
+            isVec[i] = vecOp[i][1];
             if(immOp[i][2]) begin
               if(mhalf) inst[i].i.op = iop_sh;
               else if(mbyte) inst[i].i.op = iop_sb;
@@ -1152,15 +1153,15 @@ class asmig;
         `asm_msg("assign rs0 and rs1 bank!", OVM_FULL);   
         if(zeroOp[i][ps + j]) begin
           bksel[j] = 15;
-          break;
+          continue;
         end
         if(bpOp[i][ps + j]) begin
           bksel[j] = 12 + adr[i][ps + j];
-          break;
+          continue;
         end
         if(constOp[i][ps + j]) begin
           bksel[j] = 8 + adr[i][ps + j];
-          break;
+          continue;
         end
         if(!enOp[i][ps + j]) begin
           `asm_msg("enop is not enable!", OVM_FULL);   

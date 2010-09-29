@@ -125,11 +125,12 @@ class ip4_tlm_eif extends ovm_component;
             adr = adr ^ 'b01;
           foreach(dse.data[bk]) begin
             wordu res = dse.data[bk];
-            `ip4_info("wr", $psprintf("adr 0x%0h, bk %0d, data: 0x%0h", adr, bk, res), OVM_FULL)
             for(int os = 0; os < WORD_BYTES; os++) begin
               uint adrb = (adr << (WID_WORD + WID_SMEM_BK)) + (bk << WID_WORD) + os;
-              if(dse.byteEn[bk][os])
+              if(dse.byteEn[bk][os]) begin
                 dm[adrb] = res.b[os];
+                `ip4_info("wr", $psprintf("adr 0x%0h, bk %0d, os %0d, data: 0x%0h", adr, bk, os, res.b[os]), OVM_FULL)
+              end
             end
           end
         end
