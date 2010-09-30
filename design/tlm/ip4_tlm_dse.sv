@@ -1120,8 +1120,9 @@ class ip4_tlm_dse extends ovm_component;
               sxgBuf[minSlot + slot].bk[sp][os2] = bk;
             end
           op_sh:
+          begin
+            uchar adr2 = os & `GMH(WID_HALF);
              for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
-              uchar adr2 = os & `GMH(WID_HALF);
               sxgBuf[minSlot + slot].stData[bk].b[adr2 + os2] = st.b[os2];
               sxgBuf[minSlot + slot].sMemWEn[bk][adr2 + os2] = ocWEn;
               sxgBuf[minSlot + cl].exEn[bk][adr2 + os2] = ex;
@@ -1129,15 +1130,18 @@ class ip4_tlm_dse extends ovm_component;
               sxgBuf[minSlot + cl].sl[bk][adr2 + os2] = cyc;
               sxgBuf[minSlot + cl].bk[bk][adr2 + os2] = sp;
             end
+          end
           op_lh,
           op_lhu:
+          begin
+            uchar adr2 = os & `GMH(WID_HALF);
             for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
-              uchar adr2 = os & `GMH(WID_HALF);
               sxgBuf[minSlot + cl].exEn[bk][adr2 + os2] = ex;
               sxgBuf[minSlot + slot].os[sp][os2] = adr2 + os2;
               sxgBuf[minSlot + slot].sl[sp][os2] = slot;
               sxgBuf[minSlot + slot].bk[sp][os2] = bk;
             end
+          end
           op_sb:
           begin
             sxgBuf[minSlot + slot].stData[bk].b[os] = st.b[0];
@@ -1253,6 +1257,7 @@ class ip4_tlm_dse extends ovm_component;
         vn.rfm[STAGE_RRF_DEM].uaWrAdr = ise.uaWrAdr;
         vn.rfm[STAGE_RRF_DEM].uaWrGrp = ise.uaWrGrp;
         vn.rfm[STAGE_RRF_DEM].subVec = ise.subVec;
+        vn.rfm[STAGE_RRF_DEM].vecMode = ise.vecMode;
         vn.rfm[STAGE_RRF_DEM].uaRes = rfm.base; ///ise.ua == ua_post ?? todo
       end
       
@@ -1388,38 +1393,43 @@ class ip4_tlm_dse extends ovm_component;
         endian[STAGE_RRF_DEM] = eif.endian;
         if(eif.loadRsp) begin
           for(int sp = 0; sp < NUM_SP; sp++) begin
-///            sxgBuf[minSlot + cyc].xhg[sp] = ldQue[eif.id].xhg[cyc][sp];
-///            sxgBuf[minSlot + cyc].slot[sp] = ldQue[eif.id].xhg[cyc][sp] >> (WID_WORD + WID_SMEM_BK);
+            uchar cl = (ldQue[eif.id].ladr[cyc][sp] >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_DCHE_CL),
+                  bk = (ldQue[eif.id].ladr[cyc][sp] >> WID_WORD) & `GML(WID_SMEM_BK),
+                  os = ldQue[eif.id].ladr[cyc][sp] & `GML(WID_WORD);
             sxgBuf[minSlot + cyc].exp[sp] = 0;
             sxgBuf[minSlot + cyc].oc[sp] = ldQue[eif.id].wrEn[cyc][sp];
             sxgBuf[minSlot + cyc].ex[sp] = 0;
             sxgBuf[minSlot + cyc].re[sp] = 0;
+            sxgBuf[minSlot + cyc].bk[sp] = '{default : bk};
+            sxgBuf[minSlot + cyc].sl[sp] = '{default : cl};
             case(ldQue[eif.id].op)
             op_lw,
             op_ll:
-              for(int os = 0; os < WORD_BYTES; os++) begin
-                sxgBuf[minSlot + cyc].os[sp][os] = os;
-                sxgBuf[minSlot + cyc].bk[sp][os] = (ldQue[eif.id].ladr[cyc][sp] >> WORD_BYTES) & `GML(WID_SMEM_BK);
-                sxgBuf[minSlot + cyc].sl[sp][os] = ldQue[eif.id].ladr[cyc][sp] >> (WORD_BYTES + WID_SMEM_BK) & `GML(WID_DCHE_CL);
+              for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
+                sxgBuf[minSlot + cyc].os[sp][os2] = os2;
+///                sxgBuf[minSlot + cyc].bk[sp][os] = (ldQue[eif.id].ladr[cyc][sp] >> WORD_BYTES) & `GML(WID_SMEM_BK);
+///                sxgBuf[minSlot + cyc].sl[sp][os] = ldQue[eif.id].ladr[cyc][sp] >> (WORD_BYTES + WID_SMEM_BK) & `GML(WID_DCHE_CL);
               end
             op_lhu,
             op_lh:
-              for(int os = 0; os < HALF_BYTES; os++) begin
-                sxgBuf[minSlot + cyc].os[sp][os] = ldQue[eif.id].ladr[cyc][sp] & `GML(WORD_BYTES) + os;
-                sxgBuf[minSlot + cyc].bk[sp][os] = (ldQue[eif.id].ladr[cyc][sp] >> WORD_BYTES) & `GML(WID_SMEM_BK);
-                sxgBuf[minSlot + cyc].sl[sp][os] = ldQue[eif.id].ladr[cyc][sp] >> (WORD_BYTES + WID_SMEM_BK) & `GML(WID_DCHE_CL);
+            begin
+              uchar adr2 = os & `GMH(WID_HALF);
+              for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
+                sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
+///                sxgBuf[minSlot + cyc].bk[sp][os] = (ldQue[eif.id].ladr[cyc][sp] >> WORD_BYTES) & `GML(WID_SMEM_BK);
+///                sxgBuf[minSlot + cyc].sl[sp][os] = ldQue[eif.id].ladr[cyc][sp] >> (WORD_BYTES + WID_SMEM_BK) & `GML(WID_DCHE_CL);
               end
+            end
             op_lbu,
             op_lb:
-              begin
-                sxgBuf[minSlot + cyc].os[sp][0] = ldQue[eif.id].ladr[cyc][sp] & `GML(WORD_BYTES);
-                sxgBuf[minSlot + cyc].bk[sp][0] = (ldQue[eif.id].ladr[cyc][sp] >> WORD_BYTES) & `GML(WID_SMEM_BK);
-                sxgBuf[minSlot + cyc].sl[sp][0] = ldQue[eif.id].ladr[cyc][sp] >> (WORD_BYTES + WID_SMEM_BK) & `GML(WID_DCHE_CL);
-              end          
+            begin
+              sxgBuf[minSlot + cyc].os[sp][0] = os;
+///              sxgBuf[minSlot + cyc].bk[sp][0] = (ldQue[eif.id].ladr[cyc][sp] >> WORD_BYTES) & `GML(WID_SMEM_BK);
+///              sxgBuf[minSlot + cyc].sl[sp][0] = ldQue[eif.id].ladr[cyc][sp] >> (WORD_BYTES + WID_SMEM_BK) & `GML(WID_DCHE_CL);
+            end          
             endcase
           end
           sxgBuf[minSlot + cyc].op = ldQue[eif.id].op;
-          
         end
 
         ///check cache
