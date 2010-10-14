@@ -539,7 +539,7 @@ class ise_thread_inf extends ovm_component;
   endfunction : decode_igrp
 
   function void flush();
-    `ip4_info("flush", $psprintf("cur pc 0x%0h", pc), OVM_HIGH)
+    `ip4_info("flush()", $psprintf("cur pc 0x%0h", pc), OVM_HIGH)
     iBuf = {};
     iGrpBytes = 0;
     decoded = 0;
@@ -1453,14 +1453,21 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmDSE != null && v.fmDSE.rsp) begin
       tr_dse2ise dse = v.fmDSE;
       uchar st = STAGE_ISE_DBR;
-      ise_thread_inf t = thread[dse.tid];
+      ise_thread_inf t = thread[dse.tid],
+                     t2 = thread[dse.tidNoExt];
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
       t.pendSMsg = dse.pendSMsg;
-      if(t.pendExStore == 0 && t.threadState inside {ts_w_synst, ts_w_syna})
-        t.threadState = ts_rdy;
-      if(t.pendExLoad == 0 && t.threadState inside {ts_w_synld, ts_w_syna})
-        t.threadState = ts_rdy;
+      if(dse.noExtSt) begin
+        t2.pendExStore = 0;
+        if(t2.threadState inside {ts_w_synst, ts_w_syna})
+          t2.threadState = ts_rdy;
+      end
+      if(dse.noExtLd) begin
+        t2.pendExLoad = 0;
+        if(t2.threadState inside {ts_w_synld, ts_w_syna})
+          t2.threadState = ts_rdy;
+      end
       st += t.vecMode;
       if(dse.exp && !cancel[dse.tid][STAGE_ISE_DBR]) begin
         t.srCauseDSE = dse.cause;
@@ -1468,7 +1475,7 @@ class ip4_tlm_ise extends ovm_component;
         restore_pc(dse.tid, 0, st, 1);
         cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
       end
-      else if(dse.ext && !cancel[dse.tid][STAGE_ISE_DBR]) begin
+      else if(dse.extLd && !cancel[dse.tid][STAGE_ISE_DBR]) begin
         t.flush();
         restore_pc(dse.tid, 1, st);
         cancel[dse.tid] |= `GML(STAGE_ISE_DBR);

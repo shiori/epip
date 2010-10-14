@@ -81,6 +81,7 @@ class sxg_t;
         bk[NUM_SP][WORD_BYTES],
         os[NUM_SP][WORD_BYTES];
   opcode_e op;
+  uchar tid;
   
   function new();
     os = '{default : WORD_BYTES};
@@ -635,8 +636,8 @@ class ip4_tlm_dse extends ovm_component;
         toISE.pendExStore = 0;
         toISE.cause = expCause[STAGE_RRF_DEM];
         toISE.reRun = dcReRun;
-        toISE.ext = exReq[STAGE_RRF_DEM];
-        sendExp = toISE.ext;
+        toISE.extLd = exReq[STAGE_RRF_DEM] && ise.op inside {ld_ops};
+        sendExp = toISE.extLd;
         sendExpTid = ise.tid;
         dcReRun = 0;
         foreach(ldQue[i])
@@ -654,6 +655,29 @@ class ip4_tlm_dse extends ovm_component;
           toRFM.exp = 1;
           toRFM.tidExp = ise.tid;
           toRFM.vecModeExp = ise.vecMode;
+        end
+      end
+    end
+    
+    ///ext load rsp, STAGE_RRF_LXG stage shold be ok
+    begin
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
+      if(eif != null && eif.loadRsp && eif.last && sxg[STAGE_RRF_LXG] != null) begin
+        uchar noExtLd = 0, noExtSt = 0;
+        
+        foreach(ldQue[i])
+          if(ldQue[i].en && ldQue[i].tid == sxg[STAGE_RRF_LXG].tid)
+            noExtLd++;
+        foreach(stQue[i])
+          if(stQue[i].en && stQue[i].tid == sxg[STAGE_RRF_LXG].tid)
+            noExtSt++;
+                        
+        if(noExtLd == 0 || noExtSt == 0) begin
+          if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
+          toISE.rsp = 1;
+          toISE.noExtLd = noExtLd == 0;
+          toISE.noExtSt = noExtSt == 0;
+          toISE.tidNoExt = sxg[STAGE_RRF_LXG].tid;
         end
       end
     end
@@ -1274,6 +1298,7 @@ class ip4_tlm_dse extends ovm_component;
       end
       
       sxgBuf[minSlot + cyc].op = ise.op;
+      sxgBuf[minSlot + cyc].tid = ise.tid;
       
       ///finish one half wrap or whole request
       if(last) begin
@@ -1430,6 +1455,7 @@ class ip4_tlm_dse extends ovm_component;
             endcase
           end
           sxgBuf[minSlot + cyc].op = ldQue[eif.id].op;
+          sxgBuf[minSlot + cyc].tid = ldQue[eif.id].tid;
         end
 
         ///check cache

@@ -934,27 +934,31 @@ endclass : tr_ise2dse
 class tr_dse2ise extends ovm_sequence_item;
   /// sync to dem0 stage
   rand bit rsp,     ///respond
-           ext,     ///this req generate a external transaction
+           extLd,     ///this req generate a external load transaction
            exp,     ///the whole req has exception
 ///           rdy,     ///one external access finished
-           scl;
-  rand uchar tid, vecMode, pendExLoad, pendExStore, pendSMsg;
+           scl,
+           noExtLd, noExtSt;
+  rand uchar tid, tidNoExt, vecMode, pendExLoad, pendExStore, pendSMsg;
   rand cause_dse_t cause;
   rand bit[CYC_VEC - 1 : 0] reRun;
 ///  rand bit pendLoad, pendStore;
   
   constraint dist_var {
-    ext dist {0:=19, 1:=1};
+    extLd dist {0:=19, 1:=1};
   }
   
   constraint valid_var {
     exp -> rsp;
-    ext -> rsp;
+    extLd -> rsp;
 ///    rdy -> rsp;
   }
   
   `ovm_object_utils_begin(tr_dse2ise)
-    `ovm_field_int(ext, OVM_ALL_ON)
+    `ovm_field_int(extLd, OVM_ALL_ON)
+    `ovm_field_int(noExtLd, OVM_ALL_ON)
+    `ovm_field_int(noExtSt, OVM_ALL_ON)
+    `ovm_field_int(tidNoExt, OVM_ALL_ON)
     `ovm_field_int(rsp, OVM_ALL_ON)
     `ovm_field_int(exp, OVM_ALL_ON)
     `ovm_field_int(reRun, OVM_ALL_ON)
