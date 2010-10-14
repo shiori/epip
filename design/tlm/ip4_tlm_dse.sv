@@ -1139,9 +1139,9 @@ class ip4_tlm_dse extends ovm_component;
           op_ll: 
             for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
               sxgBuf[minSlot + cl].exEn[bk][os2] = ex;
-              sxgBuf[minSlot + slot].os[sp][os2] = os2;
-              sxgBuf[minSlot + slot].sl[sp][os2] = slot;
-              sxgBuf[minSlot + slot].bk[sp][os2] = bk;
+              sxgBuf[minSlot + cyc].os[sp][os2] = os2;
+              sxgBuf[minSlot + cyc].sl[sp][os2] = slot;
+              sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
             end
           op_sh:
           begin
@@ -1161,9 +1161,9 @@ class ip4_tlm_dse extends ovm_component;
             uchar adr2 = os & `GMH(WID_HALF);
             for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
               sxgBuf[minSlot + cl].exEn[bk][adr2 + os2] = ex;
-              sxgBuf[minSlot + slot].os[sp][os2] = adr2 + os2;
-              sxgBuf[minSlot + slot].sl[sp][os2] = slot;
-              sxgBuf[minSlot + slot].bk[sp][os2] = bk;
+              sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
+              sxgBuf[minSlot + cyc].sl[sp][os2] = slot;
+              sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
             end
           end
           op_sb:
@@ -1179,9 +1179,9 @@ class ip4_tlm_dse extends ovm_component;
           op_lbu:
           begin
             sxgBuf[minSlot + cl].exEn[bk][os] = ex;
-            sxgBuf[minSlot + slot].os[bk][0] = os;
-            sxgBuf[minSlot + slot].sl[bk][0] = slot;
-            sxgBuf[minSlot + slot].bk[bk][0] = bk;
+            sxgBuf[minSlot + cyc].os[sp][0] = os;
+            sxgBuf[minSlot + cyc].sl[sp][0] = slot;
+            sxgBuf[minSlot + cyc].bk[sp][0] = bk;
           end
           endcase
         end
