@@ -1055,9 +1055,6 @@ class ip4_tlm_ise extends ovm_component;
     if(cntVrfBusy > 0 && t.cntVrfBusy > 0)
       return 0;
 
-    if(cntDSEBusy > 0 && t.cntDSEBusy > 0)
-      return 0;
-
     foreach(t.enFu[i])
       if(t.enFu[i] && t.iFu[i].op inside {sfu_only_ops} && cntSFUBusy > 0)
         return 0;
@@ -1106,9 +1103,6 @@ class ip4_tlm_ise extends ovm_component;
       end
       else if(t.msgRdy && fifoCleanUp)
         enter_event(tid, UE_FFCLN);
-      
-      if(!t.decoded)
-        return 0;
     end
     
     if(t.decoded && t.enSPU) begin
@@ -1133,7 +1127,7 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
-    if(t.decoded && t.enDSE && t.iDSE.op == op_tmrf && t.mrfLocked) begin
+    if(t.enDSE && t.iDSE.op == op_tmrf && t.mrfLocked) begin
       ///the mrf is locked for send msg, a move to mrf is waiting
       t.threadState = ts_w_mrf;
     end

@@ -1145,7 +1145,7 @@ class ip4_tlm_dse extends ovm_component;
             end
           op_sh:
           begin
-            uchar adr2 = os & `GMH(WID_HALF);
+             uchar adr2 = os & `GMH(WID_HALF);
              for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
               sxgBuf[minSlot + slot].stData[bk].b[adr2 + os2] = st.b[os2];
               sxgBuf[minSlot + slot].sMemWEn[bk][adr2 + os2] = ocWEn;
