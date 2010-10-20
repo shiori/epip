@@ -223,16 +223,16 @@ endclass : tr_rfm2spa
 
 class spa2rfm_fu extends ovm_object;
   rand word res0[NUM_SP],	res1[NUM_SP];///, res_vsbp;
-  rand bit wr[2], wrEn[NUM_SP], s2gp, gp2s;
-  rand uchar vrfWrGrp, vrfWrAdr, vrfWrBk, subVec, tid;
+  rand bit wr[2], wrEn[NUM_SP], s2gp, gp2s, vec;
+  rand uchar wrGrp, wrAdr, wrBk, subVec, tid;
   rand uint expFlag[NUM_SP];
   rand uchar srAdr;
   rand bit en;   ///used only for printing
   
 	constraint valid_vars{
-  	vrfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-  	vrfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-  	vrfWrBk inside {[0:NUM_VRF_BKS-1]};
+  	wrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	wrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  	wrBk inside {[0:NUM_VRF_BKS-1]};
   	subVec dist {0:=5, 1:=5};
   	tid < NUM_THREAD;
   	foreach(wrEn[i])
@@ -247,10 +247,11 @@ class spa2rfm_fu extends ovm_object;
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(s2gp, OVM_ALL_ON)
     `ovm_field_int(gp2s, OVM_ALL_ON)
+    `ovm_field_int(vec, OVM_ALL_ON)
     `ovm_field_int(srAdr, OVM_ALL_ON)
-    `ovm_field_int(vrfWrGrp, OVM_ALL_ON)
-    `ovm_field_int(vrfWrAdr, OVM_ALL_ON)
-    `ovm_field_int(vrfWrBk, OVM_ALL_ON)
+    `ovm_field_int(wrGrp, OVM_ALL_ON)
+    `ovm_field_int(wrAdr, OVM_ALL_ON)
+    `ovm_field_int(wrBk, OVM_ALL_ON)
     `ovm_field_sarray_int(expFlag, OVM_ALL_ON)
     `ovm_field_int(en, OVM_ALL_ON + OVM_NOPRINT)
   `ovm_object_utils_end
@@ -393,10 +394,10 @@ endclass : tr_rfm2dse
 ///---------------------------trsaction spa_ise ise_spa------------------------
 
 class ise2spa_fu extends ovm_object;
-  rand bit en, wrEn[2];
+  rand bit en, vec, wrEn[2];
   rand opcode_e op;
   rand cmp_opcode_e cop;
-  rand uchar vrfWrBk, vrfWrAdr, vrfWrGrp;
+  rand uchar wrBk, wrAdr, wrGrp;
   rand rbk_sel_e bpSel[NUM_FU_RP];
   uchar fuId;
   
@@ -408,19 +409,20 @@ class ise2spa_fu extends ovm_object;
 
   constraint valid_vars{
     en dist {0:=1, 1:=9};
-  	vrfWrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
-  	vrfWrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
-  	vrfWrBk inside {[0:NUM_VRF_BKS-1]};
+  	wrGrp inside {[0:NUM_PHY_VRF_GRP-1]};
+  	wrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
+  	wrBk inside {[0:NUM_VRF_BKS-1]};
   }
     
   `ovm_object_utils_begin(ise2spa_fu)
     `ovm_field_int(en, OVM_ALL_ON)
+    `ovm_field_int(vec, OVM_ALL_ON)
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_enum(cmp_opcode_e, cop, OVM_ALL_ON)
-    `ovm_field_int(vrfWrBk, OVM_ALL_ON)
-    `ovm_field_int(vrfWrAdr, OVM_ALL_ON)
-    `ovm_field_int(vrfWrGrp, OVM_ALL_ON)
+    `ovm_field_int(wrBk, OVM_ALL_ON)
+    `ovm_field_int(wrAdr, OVM_ALL_ON)
+    `ovm_field_int(wrGrp, OVM_ALL_ON)
     `ovm_field_sarray_enum(rbk_sel_e, bpSel, OVM_ALL_ON)
   `ovm_object_utils_end
   

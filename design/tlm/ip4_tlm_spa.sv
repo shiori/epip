@@ -11,16 +11,17 @@
 ///Created by Andy Chen on Apr 7 2010
 
 class ip4_tlm_sfu_stages extends ovm_object;
-  bit en[NUM_FU], wr[NUM_FU][2];
+  bit vec[NUM_FU], en[NUM_FU], wr[NUM_FU][2];
   word res0[NUM_FU][NUM_SP], res1[NUM_FU][NUM_SP];
   bit emsk[NUM_FU][NUM_SP];
-  uchar subVec, tid, vrfWrBk[NUM_FU], vrfWrAdr[NUM_FU], vrfWrGrp[NUM_FU];
+  uchar subVec, tid, wrBk[NUM_FU], wrAdr[NUM_FU], wrGrp[NUM_FU];
   
   `ovm_object_utils(ip4_tlm_sfu_stages)
   
   function new (string name = "sfu_vars");
     super.new(name);
     subVec = 0;
+    vec = '{default : 1};
     en = '{default:0};
   endfunction : new  
  
@@ -153,10 +154,11 @@ class ip4_tlm_spa extends ovm_component;
           if (vn.sfu[1] == null) vn.sfu[1] = new();
           vn.sfu[1].emsk[fid] = spu.fu[fid].emsk;
           vn.sfu[1].en[fid] = fu.en;
-          vn.sfu[1].vrfWrBk[fid] = fu.vrfWrBk;
-          vn.sfu[1].vrfWrAdr[fid] = fu.vrfWrAdr;
-          vn.sfu[1].vrfWrGrp[fid] = fu.vrfWrGrp;
+          vn.sfu[1].wrBk[fid] = fu.wrBk;
+          vn.sfu[1].wrAdr[fid] = fu.wrAdr;
+          vn.sfu[1].wrGrp[fid] = fu.wrGrp;
           vn.sfu[1].wr[fid] = fu.wrEn;
+          vn.sfu[1].vec[fid] = fu.vec;
           vn.sfu[1].tid = ise.tid;
           vn.sfu[1].subVec = ise.subVec;
           foreach(op[i])
@@ -169,9 +171,10 @@ class ip4_tlm_spa extends ovm_component;
         else begin
           ///normal operations
           if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("toRFM", this);
-          vn.rfm[1].fu[fid].vrfWrGrp = fu.vrfWrGrp;
-          vn.rfm[1].fu[fid].vrfWrAdr = fu.vrfWrAdr;
-          vn.rfm[1].fu[fid].vrfWrBk  = fu.vrfWrBk;       
+          vn.rfm[1].fu[fid].wrGrp = fu.wrGrp;
+          vn.rfm[1].fu[fid].wrAdr = fu.wrAdr;
+          vn.rfm[1].fu[fid].wrBk  = fu.wrBk;
+          vn.rfm[1].fu[fid].vec  = fu.vec;
           vn.rfm[1].fu[fid].wrEn = spu.fu[fid].emsk;
           vn.rfm[1].fu[fid].wr = ise.fu[fid].wrEn;
           vn.rfm[1].fu[fid].tid = ise.tid;
@@ -241,12 +244,13 @@ class ip4_tlm_spa extends ovm_component;
         if(!sfu.en[fid]) continue;
         `ip4_info("sfu", $psprintf("write back tid:%0d", sfu.tid), OVM_FULL)
         if(toRFM == null) toRFM = tr_spa2rfm::type_id::create("toRFM", this);
-        toRFM.fu[fid].vrfWrGrp = sfu.vrfWrGrp[fid];
-        toRFM.fu[fid].vrfWrAdr = sfu.vrfWrAdr[fid];
-        toRFM.fu[fid].vrfWrBk  = sfu.vrfWrBk[fid]; 
+        toRFM.fu[fid].wrGrp = sfu.wrGrp[fid];
+        toRFM.fu[fid].wrAdr = sfu.wrAdr[fid];
+        toRFM.fu[fid].wrBk  = sfu.wrBk[fid]; 
         toRFM.fu[fid].res0 = sfu.res0[fid];
         toRFM.fu[fid].res1 = sfu.res1[fid];
         toRFM.fu[fid].wrEn = sfu.emsk[fid];
+        toRFM.fu[fid].vec = sfu.vec[fid];
         toRFM.fu[fid].wr = sfu.wr[fid];
         toRFM.fu[fid].tid = sfu.tid;
         toRFM.fu[fid].subVec = sfu.subVec;

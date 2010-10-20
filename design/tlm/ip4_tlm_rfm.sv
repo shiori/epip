@@ -140,12 +140,20 @@ class ip4_tlm_rfm extends ovm_component;
       foreach(spa.fu[fid]) begin
         uchar tid = spa.fu[fid].tid,
               subVec = spa.fu[fid].subVec;
-        `ip4_info("rfm_wr", $psprintf("Write Back FU%0d : %s, grp: %0d, adr %0d, bk %0d ...", fid, fu_cfg[fid].name,
-          spa.fu[fid].vrfWrGrp, spa.fu[fid].vrfWrAdr, spa.fu[fid].vrfWrBk), OVM_HIGH)
+        `ip4_info("rfm_wr", $psprintf("Write Back FU%0d : %s, vec %0d, grp: %0d, adr %0d, bk %0d ...",
+          fid, fu_cfg[fid].name, spa.fu[fid].vec, spa.fu[fid].wrGrp, spa.fu[fid].wrAdr, spa.fu[fid].wrBk), OVM_HIGH)
         if(cancel[spa.tid][STAGE_RRF_VWB]) continue;
-        bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].vrfWrBk & `GMH(1)) : spa.fu[fid].vrfWrBk;
+        bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].wrBk & `GMH(1)) : spa.fu[fid].wrBk;
         bk1 = bk0 + 1;
-        foreach(spa.fu[0].wrEn[sp])
+        if(!spa.fu[fid].vec) begin
+          if(spa.fu[fid].wrEn[0] && spa.fu[fid].subVec == 0) begin
+            if(spa.fu[fid].wr[1])
+              srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1] = spa.fu[fid].res1[0];
+            if(spa.fu[fid].wr[0])
+              srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0] = spa.fu[fid].res0[0];
+          end
+        end
+        else foreach(spa.fu[0].wrEn[sp])
           if(spa.fu[fid].wrEn[sp]) begin
             word res0 = spa.fu[fid].res0[sp];
             srExpFlag[tid][subVec][sp] |= spa.fu[fid].expFlag[sp] << (fid * 8);
@@ -169,9 +177,9 @@ class ip4_tlm_rfm extends ovm_component;
               endcase
                                 
             if(spa.fu[fid].wr[1])
-              vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][bk1][spa.fu[fid].subVec][sp] = spa.fu[fid].res1[sp];
+              vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1][spa.fu[fid].subVec][sp] = spa.fu[fid].res1[sp];
             if(spa.fu[fid].wr[0])
-              vrf[spa.fu[fid].vrfWrGrp][spa.fu[fid].vrfWrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
+              vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
           end
       end
     end

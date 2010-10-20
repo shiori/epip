@@ -1146,7 +1146,7 @@ class inst_c extends ovm_object;
 
   function void fill_spa(input tr_ise2spa spa);
     if(!decoded) decode();
-    if(!isVec) return;
+///    if(!isVec) return;
     if(op inside {op_cmp, op_ucmp}) begin
       spa.prMerge = mergeOp;
     end
@@ -1162,9 +1162,10 @@ class inst_c extends ovm_object;
       spa.fu[fuid].wrEn = wrEn;
       foreach(spa.fu[0].bpSel[i])
         spa.fu[fuid].bpSel[i] = rdBkSel[i];
-      spa.fu[fuid].vrfWrBk = bkWr[0];
-      spa.fu[fuid].vrfWrAdr = adrWr[0];
-      spa.fu[fuid].vrfWrGrp = grpWr[0];
+      spa.fu[fuid].wrBk = bkWr[0];
+      spa.fu[fuid].wrAdr = adrWr[0];
+      spa.fu[fuid].wrGrp = grpWr[0];
+      spa.fu[fuid].vec = isVec;
     end
   endfunction : fill_spa
 
