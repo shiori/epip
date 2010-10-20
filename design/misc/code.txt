@@ -1,5 +1,8 @@
 //test asm file
 vid v0 ;
+add.si v3 v0 0x2 ;
+add.si v4 v0 v3 ;
+
 st.byte.nua.burst zero v0 0x7 ;
 ld.byte.nua.burst v0 zero 0x7 ;
 
