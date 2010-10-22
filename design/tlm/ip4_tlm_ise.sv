@@ -19,11 +19,12 @@ class ip4_tlm_ise_rst extends ovm_object;
   uint pc, bpc, igb, pcUEret;
   priv_mode_t priv;
   uchar tid, sel;
-  bit en, roll, exp, ejtag, brSrf;
+  bit en, roll, exp, ejtag, brSrf, il;
 
   `ovm_object_utils_begin(ip4_tlm_ise_rst)
     `ovm_field_int(pc, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(il, OVM_ALL_ON)
     `ovm_field_int(bpc, OVM_ALL_ON)
     `ovm_field_int(brSrf, OVM_ALL_ON + OVM_NOCOPY)
     `ovm_field_int(pcUEret, OVM_ALL_ON)
@@ -66,7 +67,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ise2spu spu[STAGE_ISE:1];
   tr_ise2dse dse[STAGE_ISE:1];
   
-  ip4_tlm_ise_rst rst[STAGE_ISE_VWB_END:1];
+  ip4_tlm_ise_rst rst[STAGE_ISE_EXWB:1];
   
   uchar TIdIssueSel, TIdFetchSel, TIdDecodeSel;
 ///  bit cancel[NUM_THREAD];
@@ -108,7 +109,6 @@ endclass : ip4_tlm_ise_vars
 class ise_thread_inf extends ovm_component;
   thread_state_t threadState;
   uchar iBuf[$];
-  bit dseVec;
   uchar iGrpBytes, adrPkgBytes, numConst,
         cntSrfBusy, cntVrfBusy, cntDSEBusy, cntFuBusy, cntSPUBusy;
   wordu co[NUM_BP_CO];
@@ -123,11 +123,15 @@ class ise_thread_inf extends ovm_component;
       decoded,
       decodeErr,
       cancel,
-      noMsk;
-  uchar wCnt[NUM_W_CNT][5], wCntBr, wCntWr, wCntNext[7], vecMode;
-  bit[4:0] wCntDep;
-  bit[NUM_W_CNT - 1 : 0] wCntSel;
-  bit wCntUp;
+      noMsk,
+      waitLng,
+      waitPip;
+  uchar iwCnt, iCnt, ilCnt, wCntBr, wCntBrNext, wCntWr, vecMode;
+  bit wCntBrDep;
+///  uchar wCnt[NUM_W_CNT][5], wCntNext[7];
+///  bit[1:0] wCntDep;
+///  bit[NUM_W_CNT - 1 : 0] wCntSel;
+///  bit wCntUp;
   bit[CYC_VEC - 1 : 0] noExt;
   uchar srLSID, srLRID;
   bit[NUM_FIFO - 1 : 0] srFFST, srFFRT, srREE, srLRRID, msgRdy;
@@ -157,12 +161,19 @@ class ise_thread_inf extends ovm_component;
     `ovm_field_int(decoded, OVM_ALL_ON)
     `ovm_field_int(decodeErr, OVM_ALL_ON)
     `ovm_field_int(cancel, OVM_ALL_ON)
-    `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
-    `ovm_field_int(wCntUp, OVM_ALL_ON + OVM_BIN)
-    `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
-    `ovm_field_int(wCntBr, OVM_ALL_ON)
+    `ovm_field_int(waitLng, OVM_ALL_ON)
+    `ovm_field_int(waitPip, OVM_ALL_ON)
+///    `ovm_field_int(wCntSel, OVM_ALL_ON + OVM_BIN)
+///    `ovm_field_int(wCntUp, OVM_ALL_ON + OVM_BIN)
+///    `ovm_field_int(wCntDep, OVM_ALL_ON + OVM_BIN)
+    `ovm_field_int(iwCnt, OVM_ALL_ON)
+    `ovm_field_int(iCnt, OVM_ALL_ON)
+    `ovm_field_int(ilCnt, OVM_ALL_ON)
     `ovm_field_int(wCntWr, OVM_ALL_ON)
-    `ovm_field_sarray_int(wCntNext, OVM_ALL_ON + OVM_UNSIGNED)
+    `ovm_field_int(wCntBr, OVM_ALL_ON)
+    `ovm_field_int(wCntBrDep, OVM_ALL_ON)
+    `ovm_field_int(wCntBrNext, OVM_ALL_ON)
+///    `ovm_field_sarray_int(wCntNext, OVM_ALL_ON + OVM_UNSIGNED)
     `ovm_field_int(enSPU, OVM_ALL_ON)
     `ovm_field_int(enDSE, OVM_ALL_ON)
     `ovm_field_sarray_int(enFu, OVM_ALL_ON)
@@ -232,7 +243,7 @@ class ise_thread_inf extends ovm_component;
 	virtual function void do_print(ovm_printer printer);
   	super.do_print(printer);
 ///    if(get_report_verbosity_level() >= OVM_FULL) begin
-   `PAF2(wCnt, OVM_UNSIGNED)
+///   `PAF2(wCnt, OVM_UNSIGNED)
   	if(enSPU)
       printer.print_object("spu", iSPU);
   	if(enDSE)
@@ -259,10 +270,10 @@ class ise_thread_inf extends ovm_component;
 
   function void cyc_new();
     cancel = 0;
-    foreach(wCnt[i, j])
-      if(wCnt[i][j] > 0) wCnt[i][j]--;
+///    foreach(wCnt[i, j])
+///      if(wCnt[i][j] > 0) wCnt[i][j]--;
     if(wCntBr > 0) wCntBr--;
-    if(wCntWr > 0) wCntWr--;
+///    if(wCntWr > 0) wCntWr--;
   endfunction : cyc_new
 
   function void br_pred(output uint bpc, bit brSrf);
@@ -335,17 +346,18 @@ class ise_thread_inf extends ovm_component;
     
   function void decode_igrp_start();
     i_gs0_t grpStart = iBuf[0];
+    uchar icc;
     enSPU = 0;
     enDSE = 0;
     enVec = 0;
     enFu = '{default : 0};
 
     if(!grpStart.t) begin
-      wCntSel = grpStart.chkGrp;
-      wCntUp = grpStart.chkGrpUp;
+///      wCntSel = grpStart.chkGrp;
+///      wCntUp = grpStart.chkGrpUp;
+      icc = grpStart.icc;
       adrPkgBytes = grpStart.adrPkgB + 1;
       numConst = grpStart.coPkgW;
-      dseVec = grpStart.unitEn;
       noMsk = grpStart.nmsk;
       iGrpBytes = 1 + adrPkgBytes + numConst * WORD_BYTES + NUM_INST_BYTES;
     end
@@ -363,27 +375,53 @@ class ise_thread_inf extends ovm_component;
                            pc, grpStart, iBuf.size()));
         decodeErr = 1;
       end
-      wCntSel = grpStart.i.chkGrp;
-      wCntUp = grpStart.i.chkGrpUp;
+///      wCntSel = grpStart.i.chkGrp;
+///      wCntUp = grpStart.i.chkGrpUp;
+      icc = grpStart.i.icc;
       adrPkgBytes = grpStart.i.adrPkgB;
       numConst = grpStart.i.coPkgW;
       iGrpBytes = 2 + adrPkgBytes + numConst * WORD_BYTES + tmp * NUM_INST_BYTES;
       enDSE = grpStart.i.unitEn[0];
       enSPU = grpStart.i.unitEn[1];
-      dseVec = grpStart.i.dv;
       noMsk = grpStart.i.nmsk;
       foreach(enFu[i])
         enFu[i] = grpStart.i.unitEn[2+i];
     end
-        
+    
+    if(icc == 0) begin
+      waitPip = 0;
+      waitLng = 0;
+    end
+    else if(icc == 15) begin
+      waitLng = 1;
+      waitPip = 1;
+      iwCnt = 0;
+    end
+    else if(icc == 14) begin
+      waitLng = 0;
+      waitPip = 1;
+      iwCnt = 0;
+    end
+    else if(icc < 13) begin
+      waitLng = 0;
+      waitPip = 1;
+      iwCnt = icc;
+    end
+    else begin
+      ovm_report_warning("decode_igrp_start", "icc illegal value");
+      waitLng = 1;
+      waitPip = 1;
+      iwCnt = 0;
+    end
+    
     if(get_report_verbosity_level() >= OVM_FULL) begin
       bit [NUM_FU - 1 : 0] enFuTmp;
       foreach(enFuTmp[i])
         enFuTmp[i] = enFu[i];
         
       `ip4_info("decode_igrp_start",
-        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b, wCntUp:%0d, adrPkgB:%0d, coPkgW:%0d", 
-                   iGrpBytes, enSPU, enDSE, enFuTmp, dseVec, wCntSel, wCntUp, adrPkgBytes, numConst),
+        $psprintf("inst grp len %0d bytes includes: spu:%0b, dse:%0b, fu:%b. waitPip:%0b, waitLng:%0d, ilCnt:%0d, adrPkgB:%0d, coPkgW:%0d", 
+                   iGrpBytes, enSPU, enDSE, enFuTmp, waitPip, waitLng, ilCnt, adrPkgBytes, numConst),
         OVM_FULL)
     end
   endfunction : decode_igrp_start
@@ -404,18 +442,20 @@ class ise_thread_inf extends ovm_component;
     cntVrfWr = '{default : 0};
     cntSrfWr = '{default : 0};
     cntPRWr = 0;
-    wCntNext = '{default : 0};
+    wCntBrNext = 0;
+    wCntBrDep = 0;
+///    wCntNext = '{default : 0};
         
     if(!grpStart.t) begin
       tmp = 1;
       offSet = 1;
 
-      iSPU.set_data(iBuf, offSet, 0, dseVec);
+      iSPU.set_data(iBuf, offSet, 0);
       if(iSPU.op inside {spu_com_ops})
         iSPU.noExp = srExpMsk;
-      iDSE.set_data(iBuf, offSet, 0, dseVec);
+      iDSE.set_data(iBuf, offSet, 0);
       foreach(iFu[i]) begin
-        iFu[i].set_data(iBuf, offSet, i, 1);
+        iFu[i].set_data(iBuf, offSet, i);
         iFu[i].noExp = srExpMsk;
       end
       
@@ -424,7 +464,7 @@ class ise_thread_inf extends ovm_component;
       foreach(enFu[i])
         iFu[i].enFu = enFu[i];
       
-      iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+      iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr);
 ///      gsa = grpStart.a;
       offSet += NUM_INST_BYTES;
     end
@@ -436,16 +476,16 @@ class ise_thread_inf extends ovm_component;
       tmp = 1;
       
       if(enDSE) begin
-        iDSE.set_data(iBuf, offSet, 0, dseVec);
+        iDSE.set_data(iBuf, offSet, 0);
         iDSE.enDSE = 1;
-        iDSE.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+        iDSE.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr);
         offSet += NUM_INST_BYTES;
       end
                   
       if(enSPU) begin
-        iSPU.set_data(iBuf, offSet, 0, 0);
+        iSPU.set_data(iBuf, offSet, 0);
         iSPU.enSPU = 1;
-        iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+        iSPU.analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr);
         if(iSPU.op inside {spu_com_ops})
           iSPU.noExp = srExpMsk;
         offSet += NUM_INST_BYTES;
@@ -453,9 +493,9 @@ class ise_thread_inf extends ovm_component;
       
       foreach(iFu[i])
         if(enFu[i]) begin
-          iFu[i].set_data(iBuf, offSet, i, 1);
+          iFu[i].set_data(iBuf, offSet, i);
           iFu[i].enFu = 1;
-          iFu[i].analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr, wCntDep);
+          iFu[i].analyze(vecMode, vrfRdEn, srfRdEn, cntVrfBusy, cntSrfBusy, cntDSEBusy, cntSPUBusy, cntFuBusy, cntVrfWr, cntSrfWr, cntPRWr);
           iFu[i].noExp = srExpMsk;
           offSet += NUM_INST_BYTES;          
         end
@@ -513,13 +553,13 @@ class ise_thread_inf extends ovm_component;
     
     foreach(iFu[fid]) begin
       if(enFu[fid])
-        iFu[fid].set_wcnt(wCntNext, vecMode);
+        iFu[fid].set_wcnt(wCntBrNext, wCntBrDep, vecMode);
       decodeErr |= iFu[fid].decodeErr;
     end
     if(enSPU)
-      iSPU.set_wcnt(wCntNext, vecMode);
+      iSPU.set_wcnt(wCntBrNext, wCntBrDep, vecMode);
     if(enDSE)
-      iDSE.set_wcnt(wCntNext, vecMode, lpRndMemMode); ///, isLastLoad, isLastStore, isLastVecDse);
+      iDSE.set_wcnt(wCntBrNext, wCntBrDep, vecMode, lpRndMemMode);
     decodeErr |= iSPU.decodeErr;
     decodeErr |= iDSE.decodeErr;
     
@@ -650,7 +690,7 @@ class ip4_tlm_ise extends ovm_component;
             srTimerPend,  srSupMsgPend;
   local bit[1:0] srPerfCntPend;
   local tr_ise2eif toEIF;
-  local bit[STAGE_ISE_VWBP:0] cancel[NUM_THREAD];
+  local bit[STAGE_ISE_VWB_END:0] cancel[NUM_THREAD];
   local bit noSMsg, fifoCleanUp;
   local uint srTimer, srPCnt[2], srCmp;
   local uchar srPCntES[2], tidInt;
@@ -1003,33 +1043,36 @@ class ip4_tlm_ise extends ovm_component;
   function bit can_issue(input uchar tid);
     /// the vec value indicate 4 cyc issue style is needed
     ise_thread_inf t = thread[tid];
-    uchar finalCnt[5];
-    
-    foreach(t.wCntSel[i])
-      if(t.wCntSel[i])
-        foreach(t.wCntDep[j])
-          if(t.wCnt[i][j] > finalCnt[j])
-            finalCnt[j] = t.wCnt[i][j];
                 
-    if(get_report_verbosity_level() >= OVM_MEDIUM) begin
-      bit [NUM_FU-1:0] enFuTmp;
-      uchar tmp = 0;
-      foreach(enFuTmp[i])
-        enFuTmp[i] = t.enFu[i];
-      
-      foreach(t.wCntDep[i])
-        if(finalCnt[i] > tmp && i != br_styp && t.wCntDep[i])
-          tmp = finalCnt[i];
+    bit [NUM_FU-1:0] enFuTmp;
+    uchar tmp = 0;
+    foreach(enFuTmp[i])
+      enFuTmp[i] = t.enFu[i];
           
-      `ip4_info("can_issue",
-        $psprintf("tid %0d, %s, decoded:%0d, Err:%0d, wCnt:%0d, brCnt:%0d, wrCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b. dv:%0b, wCntSel:%0b", 
-                   tid, t.threadState.name, t.decoded, t.decodeErr, tmp, t.wCntBr, t.wCntWr, t.pc, t.enSPU, t.enDSE,
-                   enFuTmp, t.dseVec, t.wCntSel), OVM_MEDIUM)
-    end
+    `ip4_info("can_issue",
+      $psprintf("tid %0d, %s, decoded:%0d, Err:%0d, wCntBr:%0d,%0d, iCnt:%0d, ilCnt:%0d, pc:%0h spu:%0b, dse:%0b, fu:%b", 
+                 tid, t.threadState.name, t.decoded, t.decodeErr, t.wCntBr, t.wCntBrDep, t.iCnt, t.ilCnt, t.pc, t.enSPU, t.enDSE,
+                 enFuTmp), OVM_MEDIUM)
     
     if(!t.decoded)
       return 0;
+    
+    if(t.waitPip && t.iwCnt > 0)
+      return 0;
+    
+    if(t.iwCnt > t.iCnt && t.iwCnt != 0)
+      return 0;
       
+    if(t.waitLng && t.ilCnt > 0)
+      return 0;
+
+    ///wait out the vecmode
+    if(t.wCntWr > 0)
+      return 0;
+    
+    if(t.wCntBrDep && t.wCntBr > 0)
+      return 0;
+                  
     ///issue disable check
     if(t.iDSE.dse_block(noLd, noSt, noTMsg, noFMsg))
       return 0;
@@ -1058,14 +1101,14 @@ class ip4_tlm_ise extends ovm_component;
     foreach(t.enFu[i])
       if(t.enFu[i] && t.iFu[i].op inside {sfu_only_ops} && cntSFUBusy > 0)
         return 0;
-        
-    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] < t.wCntBr)
-      return 0;
+    
+///    if(t.wCntNext[min_styp] != 0 && t.wCntNext[min_styp] < t.wCntBr)
+///      return 0;
 
     ///because 3 lane can issue back to back in cycle, 
     ///if previous has exp, following vrf write may not be cancelled
-    if(t.wCntBr > 0 && t.wCntWr > 0)
-      return 0;
+///    if(t.wCntBr > 0 && t.wCntWr > 0)
+///      return 0;
             
     /// write buf overflow check
     if(cntPRWr + t.cntPRWr > CYC_VEC)
@@ -1085,9 +1128,9 @@ class ip4_tlm_ise extends ovm_component;
     if(!(t.threadState inside {ts_rdy, ts_b_pred}))
       return 0;
         
-    foreach(t.wCntDep[i])
-      if(t.wCntDep[i] && finalCnt[i] > 0)
-        return 0;
+///    foreach(t.wCntDep[i])
+///      if(t.wCntDep[i] && finalCnt[i] > 0)
+///        return 0;
     
     ///start event only in user mode
     if(t.privMode == priv_user) begin
@@ -1254,6 +1297,7 @@ class ip4_tlm_ise extends ovm_component;
     vn.rst[1].en = 1;
     vn.rst[1].ejtag = t.ejtagMode;
     vn.rst[1].pcUEret = t.pcUEret;
+    vn.rst[1].il = 0;
     
     if(t.enSPU) begin
       /// spu or scalar dse issue
@@ -1284,11 +1328,13 @@ class ip4_tlm_ise extends ovm_component;
         t.wCntWr = t.vecMode + 1;
         
     ///update wcnt
-    foreach(t.wCntDep[i])
-      if(t.wCntNext[i] > t.wCnt[t.wCntUp][i])
-        t.wCnt[t.wCntUp][i] = t.wCntNext[i];
-    if(t.wCntNext[br_styp] > t.wCntBr)
-      t.wCntBr = t.wCntNext[br_styp];
+///    foreach(t.wCntDep[i])
+///      if(t.wCntNext[i] > t.wCnt[t.wCntUp][i])
+///        t.wCnt[t.wCntUp][i] = t.wCntNext[i];
+///    if(t.wCntNext[br_styp] > t.wCntBr)
+///      t.wCntBr = t.wCntNext[br_styp];
+    if(t.wCntBrNext > t.wCntBr)
+      t.wCntBr = t.wCntBrNext;
     
     if(t.cntSrfBusy > cntSrfBusy)
       cntSrfBusy = t.cntSrfBusy;
@@ -1312,7 +1358,15 @@ class ip4_tlm_ise extends ovm_component;
     foreach(t.enFu[i])
       if(t.enFu[i] && t.iFu[i].op inside {sfu_only_ops})
         cntSFUBusy = CYC_SFU_BUSY;///experiential number
-      
+    
+    t.iCnt++;
+    foreach(t.iFu[i])
+      if(t.enFu[i] && t.iFu[i].op inside {sfu_only_ops}) begin
+        t.ilCnt++;
+        vn.rst[1].il = 1;
+        break;
+      end
+        
     ///rdy to issue the ig 
     fill_issue(tid);
     `ip4_info("issue", {"\n", t.sprint()}, OVM_FULL)
@@ -1347,7 +1401,7 @@ class ip4_tlm_ise extends ovm_component;
     vn.spu[1] = null;
     vn.dse[1] = null;
     
-    for(int i = STAGE_ISE_VWB_END; i > 1; i--)
+    for(int i = STAGE_ISE_EXWB; i > 1; i--)
       vn.rst[i] = v.rst[i - 1];
     
     vn.rst[1] = new();
@@ -1589,6 +1643,31 @@ class ip4_tlm_ise extends ovm_component;
         thread[i].decoded = 1;
       end
     
+    begin
+      ip4_tlm_ise_rst rst = v.rst[STAGE_ISE_VWBP];
+      
+      if(rst != null) begin
+        uchar tid = rst.tid;
+        ise_thread_inf t = thread[tid];
+        if(rst.en) begin
+          if(t.iCnt > 0)
+            t.iCnt--;
+          if(t.ilCnt > 0 && rst.roll && rst.il)
+            t.ilCnt--;
+        end
+      end
+    end
+    
+    begin
+      ip4_tlm_ise_rst rst = v.rst[STAGE_ISE_EXWB];
+      if(rst != null) begin
+        uchar tid = rst.tid;
+        ise_thread_inf t = thread[tid];
+        if(t.ilCnt > 0 && !rst.roll && rst.il)
+          t.ilCnt--;
+      end
+    end
+    
     ///rollback
     for(int i = STAGE_ISE_VWB_END; i > 0; i--) begin
       uchar tid = v.rst[i].tid;
@@ -1597,7 +1676,7 @@ class ip4_tlm_ise extends ovm_component;
            pc = v.rst[i].pc,
            npc = (v.rst[i].pc + v.rst[i].igb),
            bpc = v.rst[i].bpc;
-      if(!v.rst[i].en || !v.rst[i].roll)
+      if(!v.rst[i].en || !v.rst[i].roll || cancel[tid][STAGE_ISE_VWB_END])
         continue;
       case(v.rst[i].sel)
       0:  res = pc;

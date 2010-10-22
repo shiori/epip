@@ -238,7 +238,8 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_EPS     = LAT_ISE + STAGE_RRF_EPS,        ///
                 STAGE_ISE_RSR     = LAT_ISE + STAGE_RRF_RSR,        ///9
                 STAGE_ISE_WSR     = LAT_ISE + STAGE_RRF_WSR,        ///10
-                STAGE_ISE_DPRW    = LAT_ISE + STAGE_RRF_DPRW;       ///10
+                STAGE_ISE_DPRW    = LAT_ISE + STAGE_RRF_DPRW,       ///10
+                STAGE_ISE_EXWB    = LAT_ISE + STAGE_EEX_VWB;
 
 parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
                 CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC;
@@ -348,10 +349,9 @@ typedef enum uchar {
   rnd_even,     rnd_zero,     rnd_posi,     rnd_negi,     rnd_up,     rnd_away
 }round_mode_t;
 
-typedef enum uchar {
-  gprv_styp,    gprs_styp,    mem_styp,     sr_styp,      pr_styp,
-  br_styp,      min_styp
-}storage_type_t;
+///typedef enum uchar {
+///  mem_styp,     pr_styp,      br_styp,      min_styp
+///}storage_type_t;
 
 ///the MOESI protocol plus a dirty state meaning no cc and modified
 typedef enum uchar {

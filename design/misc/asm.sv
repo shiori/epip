@@ -84,7 +84,7 @@ class asmig;
   bit[2:0] mop, ctyp;  /// option 
   bit[3:0] mcfun, mtyp;
   uchar icnt;  
-  uchar chkGrp, chkGrpUp, grpMsk;
+  uchar grpMsk, icc; ///chkGrp, chkGrpUp, 
   uchar grpsize;
   uint pc;
   bit[2:0] allAdr[25];
@@ -135,8 +135,9 @@ class asmig;
     s = 0;
     si = 0;
     isVec = '{default : 0};
-    chkGrp = 1;
-    chkGrpUp = 0;
+    icc = 15;
+///    chkGrp = 1;
+///    chkGrpUp = 0;
     grpMsk = 0;
     adrcnt = 0;
     contNum = 0;
@@ -158,7 +159,11 @@ class asmig;
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
       inst[i].i.b.ir3w1.rd = adr[i][0];
-      
+      if(!isVec[i])
+        inst[i].i.b.ir3w1.rd += 32;
+      else if(zeroOp[i][0])
+        inst[i].i.b.ir3w1.rd = 63;
+        
       case(op[i])
         "li"    :
           begin
@@ -1333,9 +1338,10 @@ class asmig;
         
     if(en == 'b01) begin
       gs0.t = 0;
-      gs0.chkGrp = chkGrp;
-      gs0.chkGrpUp = chkGrpUp;
-      gs0.unitEn = isVec[0];
+      gs0.icc = icc;
+///      gs0.chkGrp = chkGrp;
+///      gs0.chkGrpUp = chkGrpUp;
+///      gs0.unitEn = isVec[0];
       gs0.adrPkgB = adrBytes - 1;
       gs0.nmsk = grpMsk;
 ///      gs0.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
@@ -1361,16 +1367,17 @@ class asmig;
       else
         `asm_err("Constant Package num out of bound!");
         
-      if(vecOp[3][0])
-        gs1.i.dv = 1;
-      else 
-        gs1.i.dv = 0;
+///      if(vecOp[3][0])
+///        gs1.i.dv = 1;
+///      else 
+///        gs1.i.dv = 0;
       
       gs1.i.t = 1;
-      gs1.i.chkGrp = chkGrp;
-      gs1.i.chkGrpUp = chkGrpUp;
+      gs1.i.icc = icc;
+///      gs1.i.chkGrp = chkGrp;
+///      gs1.i.chkGrpUp = chkGrpUp;
       gs1.i.adrPkgB = adrBytes;
-      gs1.i.dv = isVec[0];
+///      gs1.i.dv = isVec[0];
       gs0.nmsk = grpMsk;
 ///      gs1.i.a = modBytes == 1 ? allAdr[adrcnt-1][2] : 0;
       `asm_msg($psprintf("the first address is %0d", allAdr[0]), OVM_FULL);
@@ -1549,12 +1556,13 @@ class ip4_assembler;
               "u"   : cur.s[icnt] = 0;
               "si"  : cur.si[icnt] = 1;
               "i"   : cur.si[icnt] = 0;
-              "g0"  : cur.chkGrp = 1;
-              "g1"  : cur.chkGrp = 2;
-              "g10" : cur.chkGrp = 3;
-              "gn"  : cur.chkGrp = 0;
-              "gu0" : cur.chkGrpUp = 0;
-              "gu1" : cur.chkGrpUp = 1;
+///              "g0"  : cur.chkGrp = 1;
+///              "g1"  : cur.chkGrp = 2;
+///              "g10" : cur.chkGrp = 3;
+///              "gn"  : cur.chkGrp = 0;
+///              "gu0" : cur.chkGrpUp = 0;
+///              "gu1" : cur.chkGrpUp = 1;
+              "icc":  if(opts.size() > 0) cur.icc = get_imm(opts.pop_front());
               "nmsk" : cur.grpMsk = 1;
               "r3w1d" : cur.r3w1d = 1; 
               "mu" : cur.mu = 1;

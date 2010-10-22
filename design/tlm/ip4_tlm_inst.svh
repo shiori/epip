@@ -3,7 +3,7 @@ parameter uchar NUM_MAX_IGRP_BYTES  = 44;
 parameter uchar NUM_IBUF_BYTES      = NUM_MAX_IGRP_BYTES + NUM_IFET_BYTES;
 
 typedef bit[4:0] irsa_t;
-typedef bit[4:0] irda_t;
+typedef bit[5:0] irda_t;
 typedef bit[3:0] isrsa_t;
 typedef bit[3:0] isrda_t;
 typedef bit[2:0] ipra_t; 
@@ -24,14 +24,14 @@ typedef enum bit[5:0] {
 
 typedef struct packed{
   irda_t rd;
-  bit[18:0] imm0;
+  bit[17:0] imm0;
   bit[6:0] imm1;
 }i_i26;
 
 typedef struct packed{
   irsa_t rd;
   irsa_t rs;
-  bit[13:0] imm0;
+  bit[12:0] imm0;
   bit[6:0] imm1;
 }i_r1w1;
 
@@ -43,7 +43,7 @@ typedef enum bit[4:0] {
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1, rs2;
-  bit[3:0] dummy0;
+  bit[2:0] dummy0;
   iop_r3w1_e fun;
   bit s, d;
 }i_r3w1;
@@ -92,7 +92,7 @@ iop_r2w1_e iop11_ops[] = {
 typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1;
-  bit[8:0] imm;
+  bit[7:0] imm;
   iop_r2w1_e fun;
 }i_r2w1;
 
@@ -114,17 +114,18 @@ typedef struct packed{
 typedef struct packed{
   irda_t rd;
   irsa_t rb;
-  bit[13:0] os1;
+  bit[12:0] os1;
   bit[2:0] os0;
   bit[1:0] ua;
   bit[1:0] t;
 }i_load;
 
 typedef struct packed{
-  bit[4:0] os2;
+  bit[5:0] os2;
   irsa_t rb;
   irsa_t rs;
-  bit[8:0] os1;
+  bit dummy;
+  bit[6:0] os1;
   bit[2:0] os0;
   bit[1:0] ua;
   bit[1:0] t;
@@ -134,27 +135,28 @@ typedef struct packed{
   irda_t rd;
   irsa_t rb;
   irsa_t rs;
-  bit[8:0] os1;
+  bit[7:0] os1;
   bit[2:0] os0;
   bit[1:0] ua;
   bit[1:0] t;
 }i_fetadd;
 
 typedef struct packed{
-  bit[4:0] os1;
+  bit[5:0] os1;
   isrsa_t rb;
-  bit dummy;
-  bit[12:0] os0;
+  bit[2:0] dummy;
+  bit[9:0] os0;
   bit[3:0] fun;
   bit c;
   bit[1:0] t;
 }i_mctl;
 
 typedef struct packed{
-  bit[4:0] os2;
+  bit[5:0] os2;
   irsa_t rb;
   irsa_t rs;
-  bit[8:0] os1;
+  bit dummy;
+  bit[6:0] os1;
   bit[2:0] os0;
   bit[1:0] ua;
   bit[1:0] t;
@@ -180,18 +182,18 @@ typedef struct packed{
 }i_cmsg;
 
 typedef struct packed{
-  bit[4:0] dummy0;
+  bit[5:0] dummy0;
   irsa_t rs0, rs1;
-  bit[2:0] dummy;
+  bit[1:0] dummy;
   ipra_t pr0, pr1;
   bit[2:0] ctyp;
   bit[3:0] mtyp;
 }i_cmp;
 
 typedef struct packed{
-  bit[4:0] imm0;
+  bit[5:0] imm0;
   irsa_t rs;
-  bit[7:0] imm1;
+  bit[6:0] imm1;
   ipra_t pr0, pr1;
   bit[2:0] ctyp;
   bit[3:0] mtyp;
@@ -252,12 +254,12 @@ typedef bit[2:0] iga_t;
 parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;
 
 typedef struct packed{
-  bit[2:0] adrPkgB;
-  bit[1:0] coPkgW;
-  bit dv, nmsk, chkGrpUp;
-  bit t;
-  bit[1:0] chkGrp;
   bit[4:0] unitEn;
+  bit[2:0] adrPkgB;
+  bit t;
+  bit[3:0] icc;
+  bit nmsk;
+  bit[1:0] coPkgW;  
 }i_gs1_t;
 
 typedef union packed{
@@ -267,8 +269,8 @@ typedef union packed{
 
 typedef struct packed{
   bit t;
-  bit[1:0] chkGrp;
-  bit unitEn, adrPkgB, coPkgW, nmsk, chkGrpUp;
+  bit[3:0] icc;
+  bit nmsk, adrPkgB, coPkgW;
 }i_gs0_t;
 
 typedef struct packed{
@@ -450,11 +452,25 @@ class inst_c extends ovm_object;
   endfunction : set_rf_en
   
 	function void decode();
+	  bit noWr = 0;
     decoded = 1;
     rdBkSel = '{default : selnull};
     prRdAdr = inst.i.p;
     prRdEn = prRdAdr != 0;
     noExp = 1;
+    
+    if(inst.i.b.i26.rd == 63) begin
+      noWr = 1;
+      inst.i.b.i26.rd = 0;
+    end
+    else if(inst.i.b.i26.rd < 32)
+      isVec = 1;
+    else if(inst.i.b.i26.rd < 48) begin
+      inst.i.b.i26.rd -= 32;
+      isVec = 0;
+    end
+    else
+      ovm_report_warning("decode", "illegal rd code");
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
@@ -833,83 +849,89 @@ class inst_c extends ovm_object;
     return priv;
 	endfunction : is_priv
     
-	function void set_wcnt(inout uchar wCnt[7], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
-    uchar tCnt[6] = '{default : 0};
-    if(!decoded) decode();
-    ///long cyc instructions
-    if(op inside {sfu_only_ops}) begin
-      if(isVec)
-        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
-      else
-        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
-    end
-    else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
-      ///sr write back
-      tCnt[sr_styp] = STAGE_RRF_RSRB;
-    end
-    ///zero wait instructions for ise only, those inst only change threadstate
-    else if(op inside {ise_zw_ops}) begin
-    end
-    ///branchs are predicted, no need to wait
-    else if(op inside {op_fcr, op_br}) begin
-      ///need to resolve br, only change sr, gen exp
-///      if(!is_unc_br()) begin
-      tCnt[sr_styp] = STAGE_RRF_CBR - 1;
-      tCnt[br_styp] = STAGE_RRF_CBR + vm - 1;
+///	function void set_wcnt(inout uchar wCnt[7], input uchar vm, bit nb = 0);///, ld = 0, st = 0, vec = 1);
+///    uchar tCnt[6] = '{default : 0};
+///    if(!decoded) decode();
+///    ///long cyc instructions
+///    if(op inside {sfu_only_ops}) begin
+///      if(isVec)
+///        tCnt[gprv_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
+///      else
+///        tCnt[gprs_styp] = STAGE_RRF_RRC + STAGE_EEX_VWB - 1;
+///    end
+///    else if(op inside {op_gp2s, op_alloc, tlb_ops}) begin
+///      ///sr write back
+///      tCnt[sr_styp] = STAGE_RRF_RSRB;
+///    end
+///    ///zero wait instructions for ise only, those inst only change threadstate
+///    else if(op inside {ise_zw_ops}) begin
+///    end
+///    ///branchs are predicted, no need to wait
+///    else if(op inside {op_fcr, op_br}) begin
+///      ///need to resolve br, only change sr, gen exp
+//////      if(!is_unc_br()) begin
+///      tCnt[sr_styp] = STAGE_RRF_CBR - 1;
+///      tCnt[br_styp] = STAGE_RRF_CBR + vm - 1;
+//////      end
+///    end
+///    else if(op inside {ld_ops}) begin
+///      if(isVec)
+///        tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
+///      else
+///        tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
+///      ///load write pr
+///      if(mat != at_randnu)
+///       tCnt[pr_styp] = STAGE_RRF_DEM;
+///      ///load generate exp
+///      tCnt[br_styp] = STAGE_RRF_SEL + vm;
+///      if(nb) begin
+///        ///in nb mode, only care about e
+///        tCnt[gprs_styp] = 0;
+///        tCnt[gprv_styp] = 0;
 ///      end
-    end
-    else if(op inside {ld_ops}) begin
-      if(isVec)
-        tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
-      else
-        tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
-      ///load write pr
-      if(mat != at_randnu)
-       tCnt[pr_styp] = STAGE_RRF_DEM;
-      ///load generate exp
-      tCnt[br_styp] = STAGE_RRF_SEL + vm;
-      if(nb) begin
-        ///in nb mode, only care about e
-        tCnt[gprs_styp] = 0;
-        tCnt[gprv_styp] = 0;
-      end
-    end
-    ///store are non blocking
-    else if(op inside {st_ops}) begin
-      ///store write dc
-      if(!nb)
-        tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
-      ///store write pr
-     if(mat != at_randnu)
-       tCnt[pr_styp] = STAGE_RRF_DEM;
-      ///store generate exp
-      tCnt[br_styp] = STAGE_RRF_SEL + vm;
-    end
-    else if(op inside {op_cmp, op_ucmp}) begin
-      ///cmp write pr
-      tCnt[pr_styp] = STAGE_RRF_CMP;
-    end
-    else begin
-      if(isVec)
-        tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
-      else
-        tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
-      tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB : STAGE_RRF_SWB);
-    end
-    
-    foreach(tCnt[i])
-      if(tCnt[i] > wCnt[i])
-        wCnt[i] = tCnt[i];
-    
-    ///min_styp don't need br_styp
-    foreach(tCnt[i])
-      if(((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0) && i != br_styp)
-        wCnt[min_styp] = wCnt[i];
-	endfunction : set_wcnt
-    
-	function void set_data(const ref uchar data[$], input uchar start, id = 0, bit vec = 0);
+///    end
+///    ///store are non blocking
+///    else if(op inside {st_ops}) begin
+///      ///store write dc
+///      if(!nb)
+///        tCnt[mem_styp] = STAGE_RRF_LXG0 + vm;
+///      ///store write pr
+///     if(mat != at_randnu)
+///       tCnt[pr_styp] = STAGE_RRF_DEM;
+///      ///store generate exp
+///      tCnt[br_styp] = STAGE_RRF_SEL + vm;
+///    end
+///    else if(op inside {op_cmp, op_ucmp}) begin
+///      ///cmp write pr
+///      tCnt[pr_styp] = STAGE_RRF_CMP;
+///    end
+///    else begin
+///      if(isVec)
+///        tCnt[gprv_styp] = STAGE_RRF_VWB - 1;
+///      else
+///        tCnt[gprs_styp] = STAGE_RRF_SWB - 1;
+///      tCnt[br_styp] = noExp ? 0 : (isVec ? STAGE_RRF_VWB : STAGE_RRF_SWB);
+///    end
+///    
+///    foreach(tCnt[i])
+///      if(tCnt[i] > wCnt[i])
+///        wCnt[i] = tCnt[i];
+///    
+///    ///min_styp don't need br_styp
+///    foreach(tCnt[i])
+///      if(((wCnt[i] != 0 && tCnt[i] < wCnt[min_styp]) || wCnt[min_styp] == 0) && i != br_styp)
+///        wCnt[min_styp] = wCnt[i];
+///	endfunction : set_wcnt
+  
+  function void set_wcnt(inout uchar brcnt, bit dep, input uchar vm, bit nb = 0);
+    if(op inside {ld_ops})
+      dep = 1;
+    else if(op inside {st_ops})
+      brcnt = vm + 1 + STAGE_EXE_VWBP - STAGE_RRF_DC;
+  endfunction
+  
+	function void set_data(const ref uchar data[$], input uchar start, id = 0);
     fuid = id;
-    isVec = vec;
     decoded = 0;
     priv = 0;
     enDSE = 0;
@@ -927,6 +949,7 @@ class inst_c extends ovm_object;
     CntVrfRd = 0;
     vecRd = 0;
     fcRet = 0;
+    isVec = 1;
     
     foreach(inst.b[i])
       inst.b[i] = data[start+i];
@@ -942,8 +965,7 @@ class inst_c extends ovm_object;
   
   function void analyze(input uchar vmode, ref bit v_en[CYC_VEC][NUM_VRF_BKS], 
                             s_en[CYC_VEC][NUM_SRF_BKS], inout uchar vrfBusy, srfBusy, dseBusy, spuBusy, fuBusy,
-                            ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr,
-                            ref bit[4:0] wCntDep);
+                            ref uchar vrf[NUM_VRF_BKS], srf[NUM_SRF_BKS], inout uchar pr);
     if(!decoded) decode();
     foreach(vrfEn[i,j])
       v_en[i][j] = v_en[i][j] | vrfEn[i][j];
@@ -986,25 +1008,25 @@ class inst_c extends ovm_object;
     foreach(prWrEn[i])
       pr += prWrEn[i];
     
-    if(enFu) begin
-      wCntDep[gprv_styp] = 1;
-      wCntDep[gprs_styp] = 1;
-    end
-    
-    if(enSPU) begin
-      wCntDep[gprs_styp] = 1;
-      if(op inside {op_s2gp})
-        wCntDep[sr_styp] = 1;
-    end
-    
-    if(enDSE) begin
-      wCntDep[gprv_styp] = 1;
-      wCntDep[gprs_styp] = 1;
-      if(op inside {ld_ops})/// && mat != at_rand)
-        wCntDep[mem_styp] = 1;
-    end
-    
-    if(prRdEn) wCntDep[pr_styp] = 1;
+///    if(enFu) begin
+///      wCntDep[gprv_styp] = 1;
+///      wCntDep[gprs_styp] = 1;
+///    end
+///    
+///    if(enSPU) begin
+///      wCntDep[gprs_styp] = 1;
+///      if(op inside {op_s2gp})
+///        wCntDep[sr_styp] = 1;
+///    end
+///    
+///    if(enDSE) begin
+///      wCntDep[gprv_styp] = 1;
+///      wCntDep[gprs_styp] = 1;
+///      if(op inside {ld_ops})/// && mat != at_rand)
+///        wCntDep[mem_styp] = 1;
+///    end
+///    
+///    if(prRdEn) wCntDep[pr_styp] = 1;
   endfunction : analyze
   
   ///reallocate en set by set_data
@@ -1017,7 +1039,7 @@ class inst_c extends ovm_object;
       enDSE = 1;
     else if(op inside {spu_ops})
       enSPU = 1;
-    else if(isVec) begin
+    else begin ///if(isVec) 
       enFu = 1;
       if(op inside {sfu_only_ops}) begin
         foreach(fu_cfg[i])
@@ -1034,8 +1056,8 @@ class inst_c extends ovm_object;
           end
       end
     end
-    else if(op inside {spu_com_ops})
-      enSPU = 1;
+///    else if(op inside {spu_com_ops})
+///      enSPU = 1;
       
     spu = enSPU;
     dse = enDSE;
