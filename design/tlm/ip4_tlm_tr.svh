@@ -304,13 +304,12 @@ endclass : tr_spa2rfm
 ///---------------------------trsaction dse_rfm rfm_dse------------------------
 
 class tr_dse2rfm extends ovm_sequence_item;
-	rand word res[NUM_SP], uaRes[NUM_SP], srfRes;
+	rand word res[NUM_SP], uaRes[NUM_SP];
 	rand bit wrEn[NUM_SP], srfWr, vrfWr, uaWrEn, exp;
 	rand uchar tid, tidExp;
-	rand bit expVec[NUM_SP];
+	rand bit expVec[NUM_SP], vec;
 	rand uchar wrGrp, wrAdr, wrBk, 
              uaWrGrp, uaWrAdr, uaWrBk, 
-             srfWrGrp, srfWrAdr, srfWrBk, 
              subVec, vecMode, vecModeExp;
   
 	constraint valid_dse{
@@ -339,13 +338,10 @@ class tr_dse2rfm extends ovm_sequence_item;
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
     `ovm_field_sarray_int(uaRes, OVM_ALL_ON)
     `ovm_field_sarray_int(expVec, OVM_ALL_ON)
-    `ovm_field_int(srfRes, OVM_ALL_ON)
+    `ovm_field_int(vec, OVM_ALL_ON)
     `ovm_field_int(wrGrp, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(wrAdr, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(wrBk, OVM_ALL_ON + OVM_DEC)
-    `ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
-    `ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
-    `ovm_field_int(srfWrBk, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(uaWrGrp, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(uaWrAdr, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(uaWrBk, OVM_ALL_ON + OVM_DEC)
@@ -540,9 +536,11 @@ endclass : spu2spa_fu
 
 class tr_spu2spa extends ovm_sequence_item;
   spu2spa_fu fu[NUM_FU];
+  bit sclEn;
   
   `ovm_object_utils_begin(tr_spu2spa)
     `ovm_field_sarray_object(fu, OVM_ALL_ON)
+    `ovm_field_int(sclEn, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2spa");

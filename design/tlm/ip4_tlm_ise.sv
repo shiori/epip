@@ -273,7 +273,7 @@ class ise_thread_inf extends ovm_component;
 ///    foreach(wCnt[i, j])
 ///      if(wCnt[i][j] > 0) wCnt[i][j]--;
     if(wCntBr > 0) wCntBr--;
-///    if(wCntWr > 0) wCntWr--;
+    if(wCntWr > 0) wCntWr--;
   endfunction : cyc_new
 
   function void br_pred(output uint bpc, bit brSrf);
@@ -789,11 +789,11 @@ class ip4_tlm_ise extends ovm_component;
     end
     exp_scl_err:
     begin
-      if(cancel[tid][STAGE_ISE_SWBP])
+      if(cancel[tid][STAGE_ISE_VWBP])
         return;
       t.srCauseSPU = EC_SCLFU;
       st = STAGE_ISE_EPS;
-      cancel[tid] |= `GML(STAGE_ISE_SWB + vecMode);
+      cancel[tid] |= `GML(STAGE_ISE_VWB + vecMode);
     end
     endcase
     t.flush();
@@ -862,7 +862,7 @@ class ip4_tlm_ise extends ovm_component;
           sync = 0;
       if(!sync) begin
         t.flush();
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        restore_pc(tid, 0, STAGE_ISE_SRA); 
         t.threadState = ts_w_tsyn;
       end
     end
@@ -870,7 +870,7 @@ class ip4_tlm_ise extends ovm_component;
     begin
       if(t.pendExLoad > 0 || t.pendExStore > 0) begin
         t.flush();
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        restore_pc(tid, 0, STAGE_ISE_SRA); 
         t.threadState = ts_w_syna;
       end
     end
@@ -878,7 +878,7 @@ class ip4_tlm_ise extends ovm_component;
     begin
       if(t.pendExLoad > 0) begin
         t.flush();
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        restore_pc(tid, 0, STAGE_ISE_SRA); 
         t.threadState = ts_w_synld;
       end
     end
@@ -886,7 +886,7 @@ class ip4_tlm_ise extends ovm_component;
     begin
       if(t.pendExStore > 0) begin
         t.flush();
-        restore_pc(tid, 0, STAGE_ISE_WSR); 
+        restore_pc(tid, 0, STAGE_ISE_SRA); 
         t.threadState = ts_w_synst;
       end
     end
@@ -1277,6 +1277,7 @@ class ip4_tlm_ise extends ovm_component;
 
   function void issue(input uchar tid);
     ise_thread_inf t = thread[tid];
+    uchar wCntWrNext = 0;
     
     vn.rst[1].priv = t.privMode;
     
@@ -1320,13 +1321,16 @@ class ip4_tlm_ise extends ovm_component;
         t.isLastStore = 1;
       t.isLastVecDse = t.iDSE.isVec;
       if(t.iDSE.isVec)
-        t.wCntWr = t.vecMode + 1;
+        wCntWrNext = t.vecMode + 1;
     end
     
     foreach(t.enFu[i])
       if(t.enFu[i])
-        t.wCntWr = t.vecMode + 1;
-        
+        wCntWrNext = t.vecMode + 1;
+    
+    if(wCntWrNext > t.wCntWr)
+      t.wCntWr = wCntWrNext;
+            
     ///update wcnt
 ///    foreach(t.wCntDep[i])
 ///      if(t.wCntNext[i] > t.wCnt[t.wCntUp][i])

@@ -222,7 +222,6 @@ class ip4_tlm_spa extends ovm_component;
         exeExp = 0;
       end
     end
-    
   endfunction
   
   function void req_proc();

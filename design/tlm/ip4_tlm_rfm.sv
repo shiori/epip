@@ -115,7 +115,7 @@ class ip4_tlm_rfm extends ovm_component;
     if(v.fmSPU != null) begin
       tr_spu2rfm spu = v.fmSPU;
       if(spu.expFu)
-        cancel[spu.tid] |= `GML(STAGE_RRF_SWB);
+        cancel[spu.tid] |= `GML(STAGE_RRF_VWB - spu.vecMode);
       if(spu.missBr || spu.expMSC)
         cancel[spu.tid] |=  `GML(STAGE_RRF_CEM);
     end
@@ -188,29 +188,30 @@ class ip4_tlm_rfm extends ovm_component;
       tr_dse2rfm dse = v.fmDSE;
       `ip4_info("rfm_wr", "Write Back dse...", OVM_HIGH)
       srDSEExp[dse.tid][dse.subVec] = dse.expVec;
-      if(dse.srfWr) begin
-        if(cancel[dse.tid][STAGE_RRF_SWB])
-          `ip4_info("rfm_wr", "dse scl write back canceled...", OVM_HIGH) 
-        else
-          srf[dse.srfWrGrp][dse.srfWrAdr][dse.srfWrBk] = v.fmDSE.srfRes;
-      end
-      else begin
+      if(dse.vec) begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
           `ip4_info("rfm_wr", "dse vec write back canceled...", OVM_HIGH) 
         else
-          foreach(dse.wrEn[sp])
+          foreach(dse.wrEn[sp]) begin
             if(dse.wrEn[sp] && dse.vrfWr) begin
               vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
               if(dse.uaWrEn)
                 vrf[dse.uaWrGrp][dse.uaWrAdr][dse.uaWrBk][dse.subVec][sp] = dse.uaRes[sp];
             end
+          end
+      end
+      else begin
+        if(cancel[dse.tid][STAGE_RRF_VWB])
+          `ip4_info("rfm_wr", "dse scl write back canceled...", OVM_HIGH) 
+        else if(dse.wrEn[0] && dse.srfWr)
+          srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       end
     end
     
-    if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_SWB]) begin
+    if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_VWB]) begin
       tr_spu2rfm spu = v.fmSPU;
       `ip4_info("rfm_wr", "Write Back spu...", OVM_HIGH)
-      if(cancel[v.fmSPU.tid][STAGE_RRF_SWB])
+      if(cancel[v.fmSPU.tid][STAGE_RRF_VWB])
         `ip4_info("rfm_wr", "spu write back canceled...", OVM_HIGH) 
       else begin
         if(spu.wrSrMSC) begin

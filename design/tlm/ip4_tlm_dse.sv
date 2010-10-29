@@ -41,7 +41,7 @@ endclass : ip4_tlm_dse_vars
 
 typedef struct{
   ushort ladr[LAT_XCHG][NUM_SP];
-  bit wrEn[LAT_XCHG][NUM_SP], en, srf;
+  bit wrEn[LAT_XCHG][NUM_SP], en, vec;
   uchar wrGrp, wrAdr, wrBk, tid, subVec, vecMode;
   opcode_e op;
 }ldQue_t;
@@ -510,61 +510,6 @@ class ip4_tlm_dse extends ovm_component;
       end
     end
     
-    ///srf dse access
-    if(v.fmISE[STAGE_RRF_SWBP] != null && !cancel[v.fmISE[STAGE_RRF_SWBP].tid][STAGE_RRF_SWBP]) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_SWBP];
-      if(!ise.vec && ise.en) begin
-        if(toRFM == null) toRFM = tr_dse2rfm::type_id::create("toRFM", this);
-        toRFM.srfWrGrp = ise.wrGrp;
-        toRFM.srfWrAdr = ise.wrAdr;
-        toRFM.srfWrBk = ise.wrBk;
-        if(lxg[STAGE_RRF_SWBP] != null) begin
-///          wordu res = lxg[STAGE_RRF_SWBP].data[0];
-///          uchar os;
-///          if(sxg[STAGE_RRF_SWBP] != null)
-///            os = sxg[STAGE_RRF_SWBP].xhg[0] & `GML(WID_WORD);
-///          case(ise.op)
-///          op_lh:    res = {{HALF_BITS{res.h[os >> WID_HALF].h[HALF_BITS - 1]}}, res.h[os >> WID_HALF]};
-///          op_lhu:   res = res.h[os >> WID_HALF];
-///          op_lb:    res = res.b[os];
-///          op_lbu:   res = {{(WORD_BITS - 8){res.b[os][7]}}, res.b[os]};
-///          endcase
-///          toRFM.srfRes = res;
-          toRFM.srfWr = lxg[STAGE_RRF_SWBP].vrfWEn[0];
-          toRFM.srfRes = lxg[STAGE_RRF_SWBP].data[0];
-        end
-      end
-    end
-    
-    ///srf ext load
-    if(v.fmEIF[STAGE_RRF_SWBP] != null && v.fmEIF[STAGE_RRF_SWBP].loadRsp
-        && sxg[STAGE_RRF_SWBP] != null && v.rfm[STAGE_RRF_SWBP] != null) begin
-      tr_dse2rfm rfm = v.rfm[STAGE_RRF_SWBP];
-      if(rfm.srfWr) begin
-        if(toRFM == null) toRFM = tr_dse2rfm::type_id::create("toRFM", this);
-        toRFM.srfWrGrp = rfm.srfWrGrp;
-        toRFM.srfWrAdr = rfm.srfWrAdr;
-        toRFM.srfWrBk = rfm.srfWrBk;
-        if(lxg[STAGE_RRF_SWBP] != null) begin
-///          wordu res = lxg[STAGE_RRF_SWBP].data[0];
-///          uchar os;
-///          if(sxg[STAGE_RRF_SWBP] != null)
-///            os = sxg[STAGE_RRF_SWBP].xhg[0] & `GML(WID_WORD);
-///          case(sxg[STAGE_RRF_SWBP].op)
-///          op_lh:    res = {{HALF_BITS{res.h[os >> WID_HALF].h[HALF_BITS - 1]}}, res.h[os >> WID_HALF]};
-///          op_lhu:   res = res.h[os >> WID_HALF];
-///          op_lb:    res = res.b[os];
-///          op_lbu:   res = {{(WORD_BITS - 8){res.b[os][7]}}, res.b[os]};
-///          endcase
-///          toRFM.srfRes = res;
-          toRFM.srfWr = lxg[STAGE_RRF_SWBP].vrfWEn[0];
-          toRFM.srfRes = lxg[STAGE_RRF_SWBP].data[0];
-///        toRFM.srfWr = 1;
-        end
-      end
-      rfm.srfWr = 0;
-    end
-        
     ///now exception & cancel is resolved, update dse reqs
     if(v.fmISE[STAGE_RRF_DPRB] != null && v.fmISE[STAGE_RRF_DPRB].op inside {ld_ops, st_ops, op_tmrf, op_fmrf}) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DPRB];
@@ -587,7 +532,7 @@ class ip4_tlm_dse extends ovm_component;
             ldQue[queId].tid = ise.tid;
             ldQue[queId].op = ise.op;
             ldQue[queId].subVec = ise.subVec & `GMH(WID_DCHE_CL);
-            ldQue[queId].srf = !ise.vec;
+            ldQue[queId].vec = ise.vec;
             ldQue[queId].vecMode = ise.vecMode;
           end
           ldQue[queId].wrEn[cyc] = sxg[STAGE_RRF_DPRB].ex;
@@ -769,7 +714,7 @@ class ip4_tlm_dse extends ovm_component;
     
     ///spu ops
     begin
-      uchar st = `SG(STAGE_RRF_RSR, STAGE_RRF_RSR, STAGE_RRF_AG);
+      uchar st = `SG(STAGE_RRF_SRA, STAGE_RRF_SRA, STAGE_RRF_AG);
       tr_spu2dse spu = v.fmSPU[st];
       if(spu != null && spu.s2gp) begin
         if(toSPU == null)
@@ -780,7 +725,7 @@ class ip4_tlm_dse extends ovm_component;
         SR_OCMC:  toSPU.srRes = srCacheGrp;
         endcase
       end
-      if(spu != null && spu.op == op_gp2s && !cancel[spu.tid][STAGE_RRF_WSR]) begin
+      if(spu != null && spu.op == op_gp2s && !cancel[spu.tid][STAGE_RRF_SRA]) begin
         case(spu.srAdr)
         SR_MBASE: srMapBase = spu.op0;
         SR_OCMC:
@@ -1272,7 +1217,7 @@ class ip4_tlm_dse extends ovm_component;
       if(ise.op inside {ld_ops, op_fmrf}) begin
         if(vn.rfm[STAGE_RRF_DEM] == null) vn.rfm[STAGE_RRF_DEM] = tr_dse2rfm::type_id::create("toRFM", this);
         vn.rfm[STAGE_RRF_DEM].vrfWr = ise.vec && ise.wr;
-///        vn.rfm[STAGE_RRF_DEM].srfWr = !ise.vec && ise.wr;
+        vn.rfm[STAGE_RRF_DEM].srfWr = !ise.vec && ise.wr;
         vn.rfm[STAGE_RRF_DEM].wrGrp = ise.wrGrp;
         vn.rfm[STAGE_RRF_DEM].wrAdr = ise.wrAdr;
         vn.rfm[STAGE_RRF_DEM].wrBk = ise.wrBk;
@@ -1649,8 +1594,8 @@ class ip4_tlm_dse extends ovm_component;
         vn.rfm[STAGE_RRF_SXG0].uaWrAdr = 0;
         vn.rfm[STAGE_RRF_SXG0].uaWrGrp = 0;
         vn.rfm[STAGE_RRF_SXG0].subVec = ldQue[eif.id].subVec + cyc;
-        vn.rfm[STAGE_RRF_SXG0].srfWr = ldQue[eif.id].srf;
-        vn.rfm[STAGE_RRF_SXG0].vrfWr = !ldQue[eif.id].srf;
+        vn.rfm[STAGE_RRF_SXG0].vec = ldQue[eif.id].vec;
+///        vn.rfm[STAGE_RRF_SXG0].vrfWr = !ldQue[eif.id].srf;
         vn.rfm[STAGE_RRF_SXG0].vecMode = ldQue[eif.id].vecMode;
         
         if(cacheFlush[STAGE_RRF_DEM] || allocFail) begin
