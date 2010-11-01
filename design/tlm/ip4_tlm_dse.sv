@@ -741,23 +741,6 @@ class ip4_tlm_dse extends ovm_component;
         tlbRdy = 0;
     end
 
-    ///now check if scalar dse pass pr
-    if(v.fmISE[STAGE_RRF_EXE0] != null && v.fmSPU[STAGE_RRF_AG] != null) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_EXE0];
-      tr_spu2dse spu = v.fmSPU[STAGE_RRF_AG];
-      if(!spu.sclEn && !ise.vec && ise.en) begin
-        `ip4_info("sclen", "scalar mask failed", OVM_HIGH)
-        exReq[STAGE_RRF_EXE0] = 0;
-        if(sxg[STAGE_RRF_EXE0] != null)
-          sxg[STAGE_RRF_EXE0].sMemWEn = '{default : 0};
-        if(sxg[STAGE_RRF_EXE0] != null) begin
-          sxg[STAGE_RRF_EXE0].oc = '{default : 0};
-          sxg[STAGE_RRF_EXE0].ex = '{default : 0};
-          sxg[STAGE_RRF_EXE0].re = '{default : 0};
-        end 
-      end
-    end
-    
     ///do pip shift before sel stage
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_DEM; i--) begin
       sxg[i] = sxg[i - 1];

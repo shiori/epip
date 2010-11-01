@@ -201,17 +201,19 @@ class ip4_tlm_spu extends ovm_component;
       foreach(toSPA.fu[fid]) begin
         if(!ise.enFu[fid]) continue;
         if(toSPA == null) toSPA = tr_spu2spa::type_id::create("toSPA", this);
-        if(toSPA.fu[fid].vec) begin
-          toSPA.fu[fid].emsk = ise.prRdAdr[fid] == 0 ? '{default:1} : pr[ise.tidFu][ise.prRdAdr[fid]][ise.subVecFu];
-          if(ise.prInv[fid])
-            foreach(toSPA.fu[fid].emsk[i])
-              toSPA.fu[fid].emsk[i] = !toSPA.fu[fid].emsk[i];
-          if(!ise.prNMsk[fid])
-            foreach(toSPA.fu[fid].emsk[i])
-              toSPA.fu[fid].emsk[i] = toSPA.fu[fid].emsk[i] && ilm[ise.tidFu][ise.subVecFu][i] && cm[ise.tidFu][ise.subVecFu][i];
+        toSPA.fu[fid].emsk = ise.prRdAdr[fid] == 0 ? '{default:1} : pr[ise.tidFu][ise.prRdAdr[fid]][ise.subVecFu];
+        if(ise.prInv[fid])
+          foreach(toSPA.fu[fid].emsk[i])
+            toSPA.fu[fid].emsk[i] = !toSPA.fu[fid].emsk[i];
+        if(!ise.prNMsk[fid])
+          foreach(toSPA.fu[fid].emsk[i])
+            toSPA.fu[fid].emsk[i] = toSPA.fu[fid].emsk[i] && ilm[ise.tidFu][ise.subVecFu][i] && cm[ise.tidFu][ise.subVecFu][i];
+        if(ise.vecFu[fid]) begin
+          uchar t = toSPA.fu[fid].emsk[0];
+          toSPA.fu[fid].emsk = '{default:0};
+          if(ise.subVecFu == 0)
+            toSPA.fu[fid].emsk[0] = t;
         end
-        else if(ise.subVecFu == 0)
-          toSPA.fu[fid].emsk[0] = 1;
       end
     end
     
@@ -219,11 +221,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC0];
       toDSE = tr_spu2dse::type_id::create("toDSE", this);
       
-      if(ise.sclDSE && ise.subVecDSE == 0)
-        toDSE.emsk[0] = 1;
-      else
-        toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tidDSE][ise.prRdAdrDSE][ise.subVecDSE];
-        
+      toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tidDSE][ise.prRdAdrDSE][ise.subVecDSE];
       foreach(toDSE.emsk[i]) begin
         if(ise.prInvDSE)
           toDSE.emsk[i] = !toDSE.emsk[i];
@@ -231,21 +229,12 @@ class ip4_tlm_spu extends ovm_component;
           toDSE.emsk[i] = toDSE.emsk[i] && ilm[ise.tidDSE][ise.subVecDSE][i] && cm[ise.tidDSE][ise.subVecDSE][i];
       end
       toDSE.emsk = ise.prRdAdrDSE == 0 ? '{default:1} : pr[ise.tidDSE][ise.prRdAdrDSE][ise.subVecDSE];
-    end
-    
-    ///scalar dse enable
-    if(v.fmISE[STAGE_RRF_RRC] != null && v.fmISE[STAGE_RRF_RRC].enDSE
-        && v.fmISE[STAGE_RRF_RRC].sclDSE && v.fmISE[STAGE_RRF_RRC].subVecDSE == 0) begin
-///      tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC];
-      if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
-      toDSE.sclEn = prSPU[STAGE_RRF_RRC];
-    end
-    
-    ///scalar spa enable
-    if(v.fmISE[STAGE_RRF_RRC] != null && v.fmISE[STAGE_RRF_RRC].enSPU
-        && v.fmISE[STAGE_RRF_EXS0].subVecSPU == 0) begin
-      if(toSPA == null) toSPA = tr_spu2spa::type_id::create("toSPA", this);
-      toSPA.sclEn = prSPU[STAGE_RRF_RRC];
+      if(!ise.vecDSE) begin
+        uchar t = toDSE.emsk[0];
+        toDSE.emsk = '{default:0};
+        if(ise.subVecDSE == 0)
+          toDSE.emsk[0] = t;
+      end
     end
   
     ///br fcr without bypass

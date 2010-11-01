@@ -1131,7 +1131,7 @@ class inst_c extends ovm_object;
       spu.prInvDSE = 0;
       spu.prWrAdr2 = prWrAdr[0];
       spu.enDSE = 1;
-      spu.sclDSE = !isVec;
+      spu.vecDSE = isVec;
     end
     else begin
       spu.enFu[fuid] = 1;

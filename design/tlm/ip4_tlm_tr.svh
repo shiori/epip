@@ -28,7 +28,6 @@ class tr_ise2rfm extends ovm_sequence_item;
   
 	rand ise2rfm_fu fu[NUM_FU];
 	rand rbk_sel_e dseRdBk[4], spuRdBk[2];
-///	rand bit vecEnd;///, sclEnd, start;
 	rand word bpCo[NUM_BP_CO], dseImm, spuImm;
 	rand bit dseEn, spuEn;
 	rand uchar cycFu, cycDSE, cycSPU, vecModeFu;
@@ -536,11 +535,9 @@ endclass : spu2spa_fu
 
 class tr_spu2spa extends ovm_sequence_item;
   spu2spa_fu fu[NUM_FU];
-  bit sclEn;
   
   `ovm_object_utils_begin(tr_spu2spa)
     `ovm_field_sarray_object(fu, OVM_ALL_ON)
-    `ovm_field_int(sclEn, OVM_ALL_ON)
   `ovm_object_utils_end
   
 	function new (string name = "tr_spu2spa");
@@ -643,8 +640,9 @@ class tr_ise2spu extends ovm_sequence_item;
            brDepSPA,
            brSrf,
            enFu[NUM_FU],
+           vecFu[NUM_FU],
            enDSE,
-           sclDSE,
+           vecDSE,
            enSPU,
            brPred,
            wrEn;
@@ -738,9 +736,10 @@ class tr_ise2spu extends ovm_sequence_item;
     `ovm_field_int(srfWrGrp, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(srfWrAdr, OVM_ALL_ON + OVM_DEC)
     `ovm_field_int(enDSE, OVM_ALL_ON)
-    `ovm_field_int(sclDSE, OVM_ALL_ON)
+    `ovm_field_int(vecDSE, OVM_ALL_ON)
     `ovm_field_int(enSPU, OVM_ALL_ON)
     `ovm_field_sarray_int(enFu, OVM_ALL_ON)
+    `ovm_field_sarray_int(vecFu, OVM_ALL_ON)
     `ovm_field_int(srAdr, OVM_ALL_ON)
     `ovm_field_int(srRsp, OVM_ALL_ON)
     `ovm_field_int(srRes, OVM_ALL_ON)
@@ -758,7 +757,7 @@ endclass : tr_ise2spu
 ///---------------------------trsaction dse_spu spu_dse------------------------
 
 class tr_spu2dse extends ovm_sequence_item;
-  rand bit emsk[NUM_SP], sclEn;
+  rand bit emsk[NUM_SP];
   rand word op0;
   rand bit srReq, expFu, missBr, expMSC, s2gp;
   rand opcode_e op;
@@ -766,7 +765,6 @@ class tr_spu2dse extends ovm_sequence_item;
   
   `ovm_object_utils_begin(tr_spu2dse)
     `ovm_field_sarray_int(emsk, OVM_ALL_ON)
-    `ovm_field_int(sclEn, OVM_ALL_ON)
     `ovm_field_int(op0, OVM_ALL_ON)
     `ovm_field_int(srReq, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON)
