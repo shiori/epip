@@ -41,30 +41,30 @@ li v6 0x16526C9 ;
 li v7 0x16526C9 ;
 
 (p1) b.az.loop.storemsc $tag1 0x0 ;
-options.gn
+
 (p1) b.az.loop.storemsc $tag2 0x0 ;
 
 udiv v10 v10 s10 ;
-options.gn
-li v0 0x16526C9 ;
-options.gn
+
 li v0 0x16526C9 ;
 
-options.gn
 li v0 0x16526C9 ;
-options.gn
+
+
 li v0 0x16526C9 ;
-options.gn
+
 li v0 0x16526C9 ;
-options.gn
+
 li v0 0x16526C9 ;
-options.gn
+
 li v0 0x16526C9 ;
-options.gn
+
 li v0 0x16526C9 ;
-options.gn
+
 li v0 0x16526C9 ;
-options.gn
+
+li v0 0x16526C9 ;
+
 li v0 0x16526C9 ;
 
 
@@ -75,19 +75,19 @@ nop
 add.si v3 v0 0xffffffff
 add.si v4 v4 0xffffffff
 add.si v5 v12 0xffffffff ;
-options.gn
+
 (p1) li v0 0x16526C9 ;
-options.gn
+
 (p1) li v1 0x16526C9 ;
-options.gn
+
 (p1) li v2 0x16526C9 ;
 shuffle4 v1 v3 v2 0x249 ; 
 udiv v10 v10 s10 ;
 vid v1 ;
 st.byte.nua.burst v0 v1 0x3 ;
-options.gn
+
 ld.byte.nua.burst v0 zero 0x3 ;
-options.gn
+
 li v3 0x16526C9 ;
 $tag1 lu s1 0x18 ;
 li v6 0x16526C9 ;
@@ -128,14 +128,14 @@ asr 0x13 s3 0x3 ;
 // SHUFFLE4 
 shuffle4 v1 v3 v2 0x249 ; 
 // Start group1 test
-options.g1
+
 add.si v2 v3 0x6a6b7
 mad.s v6 v3 v1 v5
 nop
 lu v2 0x16526C9
 nop ;
 // include cant package
-options.g1
+
 options.c1.0x5
 options.c2.0x9
 lu v3 0x16526C9
@@ -144,10 +144,10 @@ mad.s v6 v27 v10 v9
 mad.s v4 v3 v1 v6
 add.si v2 v17 0x6a6b7 ;
 // mrfrd inst
-options.g0
+
 mrfrd v3 0x2 ;
 // mrfwr inst
-options.g0
+
 mrfwr.mrsfr v5 v12 0x3 0x2 ;
 // smsg inst
 smsg 0x2 0x3 0x1 ;

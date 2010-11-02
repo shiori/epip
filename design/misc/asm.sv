@@ -1290,8 +1290,7 @@ class asmig;
         adrBytes = 1;
         
       grpsize = (8 + (icnt + 1) * 40 +  contNum * 32) / 8 + adrBytes; 
-      `asm_msg($psprintf("gs0 icnt grpsize %0d", icnt), OVM_FULL);
-      `asm_msg($psprintf("gs0 grpsize %0d", grpsize), OVM_FULL);
+      `asm_msg($psprintf("gs0 icnt %0d, adrBytes %0d, grpsize", icnt, adrBytes, grpsize), OVM_FULL);
     end
     else begin
       for (int i = 0; i < 5; i++) begin
@@ -1299,8 +1298,7 @@ class asmig;
           v_icnt += 1 ; 
       end      
       grpsize = (16 + v_icnt * 40 +  contNum * 32) / 8 + adrBytes;
-      `asm_msg($psprintf("gs1 v_icnt grpsize %0d", v_icnt), OVM_FULL);
-      `asm_msg($psprintf("gs1 grpsize %0d", grpsize), OVM_FULL);
+      `asm_msg($psprintf("gs1 v_icnt %0d, grpsize %0d", v_icnt, grpsize), OVM_FULL);
     end
     
     `asm_msg("--------------------------------", OVM_HIGH);

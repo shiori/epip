@@ -262,7 +262,7 @@ class ip4_tlm_spu extends ovm_component;
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_EXS0];
       bit[WORD_BITS:0] op0, op1, r0;
       word o0, o1;
-      bit prTmp[CYC_VEC][NUM_SP];
+      bit prTmp;
       bit exp;
       
       if(rfm != null) begin
@@ -271,16 +271,12 @@ class ip4_tlm_spu extends ovm_component;
       end
         
       `ip4_info("spu", "process spu inst", OVM_FULL)
-      foreach(prTmp[i,j]) begin
-        if(i > ise.vecModeSPU)
-          continue;
-        prTmp[i][j] = ise.prRdAdrSPU == 0 ? 1 : pr[ise.tidSPU][ise.prRdAdrSPU][i][j];
-        if(ise.prInvSPU)
-          prTmp[i][j] = !prTmp[i][j];
-        if(!ise.prNMskSPU)
-         prTmp[i][j] = prTmp[i][j] && ilm[ise.tidSPU][i][j] && cm[ise.tidSPU][i][j];
-        prSPU[STAGE_RRF_EXS1] |= prTmp[i][j];
-      end
+      prTmp = ise.prRdAdrSPU == 0 ? 1 : pr[ise.tidSPU][ise.prRdAdrSPU][0][0];
+      if(ise.prInvSPU)
+        prTmp = !prTmp;
+      if(!ise.prNMskSPU)
+       prTmp = prTmp && ilm[ise.tidSPU][0][0] && cm[ise.tidSPU][0][0];
+      prSPU[STAGE_RRF_EXS1] = prTmp;
 
       op0 = {o0[WORD_BITS - 1], o0};
       op1 = {o1[WORD_BITS - 1], o1};

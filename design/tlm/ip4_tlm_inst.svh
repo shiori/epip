@@ -988,6 +988,8 @@ class inst_c extends ovm_object;
     if(enFu) begin
       if(isVec)
         fuBusy = vmode + 1;
+      else if(fuBusy== 0)
+        fuBusy = 1;
     end
   
     if(enDSE) begin
