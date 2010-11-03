@@ -1,4 +1,9 @@
 //test asm file
+vid v0 ;
+add.si v0 v0 0x2 ;
+st.byte.nua.burst zero v0 0x7 ;
+ld.byte.nua.burst v0 zero 0x7 ;
+
 nop
 li s0 1
 li s1 2
@@ -14,9 +19,6 @@ add.si s4 s4 1 ;
 vid v0 ;
 add.si v3 v0 0x2 ;
 add.si v4 v0 v3 ;
-
-st.byte.nua.burst zero v0 0x7 ;
-ld.byte.nua.burst v0 zero 0x7 ;
 
 options.c0.0xf0000000
 st.half.nua.burst c0 v0 0x6 ;

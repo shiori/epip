@@ -1137,6 +1137,7 @@ class inst_c extends ovm_object;
     end
     else begin
       spu.enFu[fuid] = 1;
+      spu.vecFu[fuid] = isVec;
       spu.prInv[fuid] = 0;
       spu.prNMsk[fuid] = 0;
       spu.prRdAdr[fuid] = prRdAdr;
