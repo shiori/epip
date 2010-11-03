@@ -430,7 +430,7 @@ class inst_c extends ovm_object;
     if(adr < 8) begin
       cyc = adr >> WID_SRF_BKS;
       bk = adr & `GML(WID_SRF_BKS);
-      srf = (srf > cyc) ? vrf : cyc;
+      srf = (srf > cyc) ? srf : cyc;
       srfEn[cyc][bk] = 1;
       sel = rbk_sel_e'(sels0 + cyc * NUM_SRF_BKS + bk);
     end

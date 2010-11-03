@@ -208,7 +208,7 @@ class ip4_tlm_spu extends ovm_component;
         if(!ise.prNMsk[fid])
           foreach(toSPA.fu[fid].emsk[i])
             toSPA.fu[fid].emsk[i] = toSPA.fu[fid].emsk[i] && ilm[ise.tidFu][ise.subVecFu][i] && cm[ise.tidFu][ise.subVecFu][i];
-        if(ise.vecFu[fid]) begin
+        if(!ise.vecFu[fid]) begin
           uchar t = toSPA.fu[fid].emsk[0];
           toSPA.fu[fid].emsk = '{default:0};
           if(ise.subVecFu == 0)

@@ -1,4 +1,16 @@
 //test asm file
+nop
+li s0 1
+li s1 2
+li s2 3
+li s4 4 ;
+
+nop
+add.si s0 s0 1
+add.si s1 s1 1
+add.si s2 s2 1
+add.si s4 s4 1 ;
+
 vid v0 ;
 add.si v3 v0 0x2 ;
 add.si v4 v0 v3 ;

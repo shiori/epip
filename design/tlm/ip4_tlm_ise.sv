@@ -253,7 +253,7 @@ class ise_thread_inf extends ovm_component;
        printer.print_object($psprintf("fu%0d", i), iFu[i]);
 ///    end
     
-    if(get_report_verbosity_level() >= OVM_DEBUG) begin  
+    if(get_report_verbosity_level() >= OVM_FULL) begin  
       `PAF2(vrfAdr, OVM_UNSIGNED)
       `PAF2(srfAdr, OVM_UNSIGNED)
       `PAF2(vrfGrp, OVM_UNSIGNED)
@@ -1247,6 +1247,9 @@ class ip4_tlm_ise extends ovm_component;
       ciRFM[i].vrfRdAdr = t.vrfAdr[i];
       ciRFM[i].srfRdGrp = t.srfGrp[i];
       ciRFM[i].srfRdAdr = t.srfAdr[i];
+      foreach(t.iFu[fid])
+        if(t.enFu[fid])
+          t.iFu[fid].fill_rfm(ciRFM[i], i);
     end
     
     for(int i = 0; i < t.cntFuBusy; i++) begin
@@ -1257,7 +1260,6 @@ class ip4_tlm_ise extends ovm_component;
         t.iDSE.fill_spa(ciSPA[i]);
       foreach(t.iFu[fid])
         if(t.enFu[fid]) begin
-          t.iFu[fid].fill_rfm(ciRFM[i], i);
           t.iFu[fid].fill_spa(ciSPA[i]);
           t.iFu[fid].fill_spu(ciSPU[i]);
         end
