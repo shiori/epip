@@ -67,7 +67,7 @@ class ip4_tlm_ise_vars extends ovm_component;
   tr_ise2spu spu[STAGE_ISE:1];
   tr_ise2dse dse[STAGE_ISE:1];
   
-  ip4_tlm_ise_rst rst[STAGE_ISE_EXWB:1];
+  ip4_tlm_ise_rst rst[STAGE_EEX_VWB:1];
   
   uchar TIdIssueSel, TIdFetchSel, TIdDecodeSel;
 ///  bit cancel[NUM_THREAD];
@@ -1057,7 +1057,7 @@ class ip4_tlm_ise extends ovm_component;
     if(!t.decoded)
       return 0;
     
-    if(t.waitPip && t.iwCnt > 0)
+    if(t.waitPip && t.iCnt > 0)
       return 0;
     
     if(t.iwCnt > t.iCnt && t.iwCnt != 0)
@@ -1405,7 +1405,7 @@ class ip4_tlm_ise extends ovm_component;
     vn.spu[1] = null;
     vn.dse[1] = null;
     
-    for(int i = STAGE_ISE_EXWB; i > 1; i--)
+    for(int i = STAGE_EEX_VWB; i > 1; i--)
       vn.rst[i] = v.rst[i - 1];
     
     vn.rst[1] = new();
@@ -1450,7 +1450,32 @@ class ip4_tlm_ise extends ovm_component;
     if(!srDisableTimer) srTimer++;
     if(srTimer == srCmp && !srTimerMask)
       srTimerPend = 1;
-        
+    
+    begin
+      ip4_tlm_ise_rst rst = v.rst[STAGE_RRF_VWBP];
+      
+      if(rst != null) begin
+        uchar tid = rst.tid;
+        ise_thread_inf t = thread[tid];
+        if(rst.en) begin
+          if(t.iCnt > 0)
+            t.iCnt--;
+          if(t.ilCnt > 0 && rst.roll && rst.il)
+            t.ilCnt--;
+        end
+      end
+    end
+    
+    begin
+      ip4_tlm_ise_rst rst = v.rst[STAGE_EEX_VWB];
+      if(rst != null) begin
+        uchar tid = rst.tid;
+        ise_thread_inf t = thread[tid];
+        if(t.ilCnt > 0 && !rst.roll && rst.il)
+          t.ilCnt--;
+      end
+    end
+            
     if((srPerfCntPend || srTimerPend || srSupMsgPend) 
         && (thread[tidInt].threadState != ts_rdy || thread[tidInt].privMode != priv_kernel)) begin
       ///need to find a thread a handle this timer interrupt
@@ -1646,31 +1671,6 @@ class ip4_tlm_ise extends ovm_component;
         thread[i].iFetchExp = 1;
         thread[i].decoded = 1;
       end
-    
-    begin
-      ip4_tlm_ise_rst rst = v.rst[STAGE_ISE_VWBP];
-      
-      if(rst != null) begin
-        uchar tid = rst.tid;
-        ise_thread_inf t = thread[tid];
-        if(rst.en) begin
-          if(t.iCnt > 0)
-            t.iCnt--;
-          if(t.ilCnt > 0 && rst.roll && rst.il)
-            t.ilCnt--;
-        end
-      end
-    end
-    
-    begin
-      ip4_tlm_ise_rst rst = v.rst[STAGE_ISE_EXWB];
-      if(rst != null) begin
-        uchar tid = rst.tid;
-        ise_thread_inf t = thread[tid];
-        if(t.ilCnt > 0 && !rst.roll && rst.il)
-          t.ilCnt--;
-      end
-    end
     
     ///rollback
     for(int i = STAGE_ISE_VWB_END; i > 0; i--) begin

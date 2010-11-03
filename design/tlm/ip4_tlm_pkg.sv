@@ -230,8 +230,7 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_ISE_CBR     = LAT_ISE + STAGE_RRF_CBR,        ///9
                 STAGE_ISE_EPS     = LAT_ISE + STAGE_RRF_EPS,        ///
                 STAGE_ISE_SRA     = LAT_ISE + STAGE_RRF_SRA,        ///9
-                STAGE_ISE_DPRW    = LAT_ISE + STAGE_RRF_DPRW,       ///10
-                STAGE_ISE_EXWB    = LAT_ISE + STAGE_EEX_VWB;
+                STAGE_ISE_DPRW    = LAT_ISE + STAGE_RRF_DPRW;       ///10
 
 parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
                 CYC_BR_DSE        = STAGE_RRF_CBR - STAGE_RRF_DC;
