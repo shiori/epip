@@ -121,11 +121,11 @@ typedef struct packed{
 }i_load;
 
 typedef struct packed{
-  bit[5:0] os2;
+  bit s;
+  bit[4:0] os2;
   irsa_t rb;
   irsa_t rs;
-  bit dummy;
-  bit[6:0] os1;
+  bit[7:0] os1;
   bit[2:0] os0;
   bit[1:0] ua;
   bit[1:0] t;
@@ -142,21 +142,22 @@ typedef struct packed{
 }i_fetadd;
 
 typedef struct packed{
-  bit[5:0] os1;
+  bit s;
+  bit[4:0] os1;
   isrsa_t rb;
-  bit[2:0] dummy;
-  bit[9:0] os0;
+  bit[1:0] dummy;
+  bit[10:0] os0;
   bit[3:0] fun;
   bit c;
   bit[1:0] t;
 }i_mctl;
 
 typedef struct packed{
-  bit[5:0] os2;
+  bit s;
+  bit[4:0] os2;
   irsa_t rb;
   irsa_t rs;
-  bit dummy;
-  bit[6:0] os1;
+  bit[7:0] os1;
   bit[2:0] os0;
   bit[1:0] ua;
   bit[1:0] t;
@@ -453,6 +454,7 @@ class inst_c extends ovm_object;
   
 	function void decode();
 	  bit noWr = 0;
+	  uchar rd;
     decoded = 1;
     rdBkSel = '{default : selnull};
     prRdAdr = inst.i.p;
@@ -461,20 +463,21 @@ class inst_c extends ovm_object;
     
     if(inst.i.b.i26.rd == 63) begin
       noWr = 1;
-      inst.i.b.i26.rd = 0;
+      isVec = 0;
+      rd = 0;
     end
-    else if(inst.i.b.i26.rd < 32)
+    else if(inst.i.b.i26.rd < 32) begin
       isVec = 1;
-    else if(inst.i.b.i26.rd < 48) begin
-      inst.i.b.i26.rd -= 32;
+      rd = inst.i.b.i26.rd;
+    end
+    else begin
+      rd = inst.i.b.i26.rd - 32;
       isVec = 0;
     end
-    else
-      ovm_report_warning("decode", "illegal rd code");
     
     if(inst.i.op inside {iop_i26}) begin
       imm = {inst.i.b.i26.imm1, inst.i.b.i26.imm0};
-      adrWr[0] = inst.i.b.i26.rd;
+      adrWr[0] = rd;
       wrEn[0] = 1;
       rdBkSel[1] = selii;
       case(inst.i.op)
@@ -485,7 +488,7 @@ class inst_c extends ovm_object;
     else if(inst.i.op inside {iop_r1w1i}) begin
       uint imms = {{WORD_BITS{inst.i.b.ir1w1.imm1[$bits(inst.i.b.ir1w1.imm1) - 1]}}, inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
       imm = {inst.i.b.ir1w1.imm1, inst.i.b.ir1w1.imm0};
-      adrWr[0] = inst.i.b.i26.rd;
+      adrWr[0] = rd;
       wrEn[0] = 1;
       set_rf_en(inst.i.b.ir1w1.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       rdBkSel[1] = selii;
@@ -507,13 +510,13 @@ class inst_c extends ovm_object;
 
       if(inst.i.b.ir3w1.d) begin
         wrEn = '{default : 1};
-        adrWr[0] = inst.i.b.ir3w1.rd & `GMH(1);
+        adrWr[0] = rd & `GMH(1);
         adrWr[1] = adrWr[0] + 1;
         rdBkSel[3] = rbk_sel_e'(rdBkSel[2] + 1);
       end
       else begin
         wrEn[0] = 1;
-        adrWr[0] = inst.i.b.ir3w1.rd;
+        adrWr[0] = rd;
       end
       
       case(inst.i.b.ir3w1.fun)
@@ -530,13 +533,13 @@ class inst_c extends ovm_object;
         set_rf_en(inst.i.b.ir2w1.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
         wrEn = '{default : 1};
-        adrWr[0] = inst.i.b.ir2w1.rd & `GMH(1);
+        adrWr[0] = rd & `GMH(1);
         adrWr[1] = adrWr[0] + 1;
         rdBkSel[3] = rbk_sel_e'(rdBkSel[2] + 1);
       end
       else begin
         wrEn[0] = 1;
-        adrWr[0] = inst.i.b.ir2w1.rd;
+        adrWr[0] = rd;
       end
 
       case(inst.i.b.ir2w1.fun)
@@ -670,7 +673,7 @@ class inst_c extends ovm_object;
       mat = access_typ_t'(inst.i.b.ld.t);
       mua = update_adr_t'(inst.i.b.ld.ua);
       wrEn[1] = mua != ua_no ? 1 : 0;
-      adrWr[0] = inst.i.b.ld.rd;
+      adrWr[0] = rd;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = (mat == at_rand && prWrAdr[0] != 0);
       if(!prWrEn[0]) prWrAdr[0] = 0;
@@ -732,7 +735,7 @@ class inst_c extends ovm_object;
     end
     else if(inst.i.op == iop_mrfa) begin
       op = inst.i.b.mrfa.ft ? op_fmrf : op_tmrf;
-      adrWr[0] = inst.i.b.mrfa.rd;
+      adrWr[0] = rd;
       wrEn[0] = 1;
       set_rf_en(inst.i.b.mrfa.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       imm = inst.i.b.mrfa.s;
@@ -759,7 +762,7 @@ class inst_c extends ovm_object;
         rdBkSel[1] = selii;
       end
       set_rf_en(inst.i.b.vxchg.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      adrWr[0] = inst.i.b.vxchg.rd;
+      adrWr[0] = rd;
       wrEn[0] = 1;
       prWrAdr[0] = inst.i.p;
       prWrEn[0] = prWrAdr[0] != 0 && inst.i.b.vxchg.up;
@@ -802,7 +805,7 @@ class inst_c extends ovm_object;
       begin
         wrEn[0] = inst.i.b.cop.code[0];
         op = wrEn[0] ? op_s2gp : op_gp2s;
-        adrWr[0] = inst.i.b.ir2w1.rd;
+        adrWr[0] = rd;
         srAdr = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
         if(!wrEn[0])
           set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);

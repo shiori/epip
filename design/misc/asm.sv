@@ -134,6 +134,8 @@ class asmig;
     en = 0;
     s = 0;
     si = 0;
+    ua = 0;
+    ty = 0;
     isVec = '{default : 0};
     icc = 15;
 ///    chkGrp = 1;
@@ -703,6 +705,7 @@ class asmig;
           begin
             ps = 0;
             isVec[i] = vecOp[i][1];
+            inst[i].i.b.st.s = !isVec[i];
             if(immOp[i][2]) begin
               if(mhalf) inst[i].i.op = iop_sh;
               else if(mbyte) inst[i].i.op = iop_sb;
@@ -721,6 +724,8 @@ class asmig;
         "cmpxchg":
           begin
             ps = 0;
+            isVec[i] = vecOp[i][1];
+            inst[i].i.b.st.s = !isVec[i];
             if(immOp[i][2]) begin
               inst[i].i.op = iop_cmpxchg;
               {inst[i].i.b.cmpxchg.os2, inst[i].i.b.cmpxchg.os1, inst[i].i.b.cmpxchg.os0} = imm[i][2];
@@ -1677,8 +1682,8 @@ class ip4_assembler;
                 cur.tag = tk1n;
             end
             cur.bpOp[icnt][opcnt] = tk0.tolower() == "b";
-            cur.vecOp[icnt][opcnt] = tk0.tolower() == "v";
-            cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero";
+            cur.vecOp[icnt][opcnt] = tk0.tolower() == "v" || tk.tolower() == "vzero";
+            cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero" || tk.tolower() == "vzero";
             cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
                                      && !cur.bpOp[icnt][opcnt] && !cur.pdrOp[icnt][opcnt] && !cur.constOp[icnt][opcnt];
             

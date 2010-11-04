@@ -1017,7 +1017,8 @@ class ip4_tlm_dse extends ovm_component;
               if(!found && ise.op == op_ll) begin
                 ///no entry found, if its a ll, allocate one
                 llNext++;
-                if(llNext >= NUM_LLCK) llNext = 0;
+                if(llNext >= NUM_LLCK)
+                  llNext = 0;
                 llid = llNext;
                 found = 1;
                 llCk[llid].adr = tag;
@@ -1056,8 +1057,8 @@ class ip4_tlm_dse extends ovm_component;
           op_sw,
           op_sc:
             for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
-              sxgBuf[minSlot + slot].stData[bk].b[os2] = st.b[os2];
-              sxgBuf[minSlot + slot].sMemWEn[bk][os2] = ocWEn;
+              sxgBuf[slot].stData[bk].b[os2] = st.b[os2];
+              sxgBuf[slot].sMemWEn[bk][os2] = ocWEn;
               sxgBuf[minSlot + cl].exEn[bk][os2] = ex;
               sxgBuf[minSlot + cl].os[bk][os2] = os2;
               sxgBuf[minSlot + cl].sl[bk][os2] = cyc;
@@ -1068,15 +1069,15 @@ class ip4_tlm_dse extends ovm_component;
             for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
               sxgBuf[minSlot + cl].exEn[bk][os2] = ex;
               sxgBuf[minSlot + cyc].os[sp][os2] = os2;
-              sxgBuf[minSlot + cyc].sl[sp][os2] = slot;
+              sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
               sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
             end
           op_sh:
           begin
              uchar adr2 = os & `GMH(WID_HALF);
              for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
-              sxgBuf[minSlot + slot].stData[bk].b[adr2 + os2] = st.b[os2];
-              sxgBuf[minSlot + slot].sMemWEn[bk][adr2 + os2] = ocWEn;
+              sxgBuf[slot].stData[bk].b[adr2 + os2] = st.b[os2];
+              sxgBuf[slot].sMemWEn[bk][adr2 + os2] = ocWEn;
               sxgBuf[minSlot + cl].exEn[bk][adr2 + os2] = ex;
               sxgBuf[minSlot + cl].os[bk][adr2 + os2] = os2;
               sxgBuf[minSlot + cl].sl[bk][adr2 + os2] = cyc;
@@ -1090,14 +1091,14 @@ class ip4_tlm_dse extends ovm_component;
             for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
               sxgBuf[minSlot + cl].exEn[bk][adr2 + os2] = ex;
               sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
-              sxgBuf[minSlot + cyc].sl[sp][os2] = slot;
+              sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
               sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
             end
           end
           op_sb:
           begin
-            sxgBuf[minSlot + slot].stData[bk].b[os] = st.b[0];
-            sxgBuf[minSlot + slot].sMemWEn[bk][os] = ocWEn;
+            sxgBuf[slot].stData[bk].b[os] = st.b[0];
+            sxgBuf[slot].sMemWEn[bk][os] = ocWEn;
             sxgBuf[minSlot + cl].exEn[bk][os] = ex;
             sxgBuf[minSlot + cl].os[bk][os] = 0;
             sxgBuf[minSlot + cl].sl[bk][os] = cyc;
@@ -1108,7 +1109,7 @@ class ip4_tlm_dse extends ovm_component;
           begin
             sxgBuf[minSlot + cl].exEn[bk][os] = ex;
             sxgBuf[minSlot + cyc].os[sp][0] = os;
-            sxgBuf[minSlot + cyc].sl[sp][0] = slot;
+            sxgBuf[minSlot + cyc].sl[sp][0] = slot - minSlot;
             sxgBuf[minSlot + cyc].bk[sp][0] = bk;
           end
           endcase
@@ -1119,31 +1120,7 @@ class ip4_tlm_dse extends ovm_component;
         sxgBuf[minSlot + cyc].ex[sp] = ex;
         sxgBuf[minSlot + cyc].re[sp] = (ise.vec ? spu.emsk[sp] : sp == 0) && !oc && !ex;
         sxgBuf[minSlot + cyc].ladr[sp] = padr & `GML(WID_DCHE_CL + WID_SMEM_BK + WID_WORD);
-        
-///        if(ise.op inside {ld_ops}) begin
-///          
-///          sxgBuf[minSlot + cyc].cl[sp] = '{default : slot - minSlot};
-///        end
-///        else if(ex) begin
-///          ///ext store using lxg
-///          case(ise.op)
-///          op_sw,
-///          op_sc:
-///            for(int os = 0; os < WORD_BYTES; os++) begin
-///
-///            end
-///          op_sh:
-///            for(int os = 0; os < HALF_BYTES; os++) begin
-///              uchar adr2 = os & `GMH(WID_HALF);
-///            end
-///          op_sb:
-///          begin
-///
-///          end
-///          endcase
-///          `ip4_info("sel_ex_st", $psprintf("sp %0d, bksel %0d, clsel %0d", sp, bksel, clsel), OVM_FULL)
-///        end
-        
+       
         selValidReq |= oc || ex;
         exReq[STAGE_RRF_DEM] |= ex;
         `ip4_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, re %0d", 
