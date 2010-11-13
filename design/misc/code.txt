@@ -1,12 +1,20 @@
 //test asm file
-li s0 33 ;
-st.word zero s0 0x4 ;
-ld.word s0 zero 0x4 ;
-
 vid v0 ;
 add.si v0 v0 0x2 ;
-st.word zero v0 0x4 ;
-ld.word v0 zero 0x4 ;
+
+options.c0.0xf0000000
+st.byte c0 v0 0x7 ;
+
+options.c0.0xf0000000
+ld.byte v0 c0 0x7 ;
+
+
+st.byte zero v0 0x6 ;
+ld.byte v0 zero 0x6 ;
+
+li s0 33 ;
+st.byte zero s0 0x7 ;
+ld.byte s0 zero 0x7 ;
 
 nop
 li s0 1
@@ -23,12 +31,6 @@ add.si s4 s4 1 ;
 vid v0 ;
 add.si v3 v0 0x2 ;
 add.si v4 v0 v3 ;
-
-options.c0.0xf0000000
-st.half.nua.burst c0 v0 0x6 ;
-
-options.c0.0xf0000000
-ld.half.nua.burst v0 c0 0x6 ;
 
 (p0) vid v21 ;
 

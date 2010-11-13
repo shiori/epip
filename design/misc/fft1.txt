@@ -1,0 +1,19 @@
+//#define NW 5
+//#define N (1 << NW)
+//#define PI 3.14159265359f
+//	for(int i = 0; i < NW; i++) {
+//		int it = 0x1 << i;
+//		cplx tmp2;
+//		for(int b = 0; b < (N >> 1); b++) {
+//			int q = b >> i,
+//				r = b - (q << i),
+//				idx = (q << (i + 1)) + r,
+//				adr = r << (NW - i - 1);
+//			tmp = iv[idx];
+//			tmp2 = iv[idx + it] * w[adr];
+//			iv[idx] = tmp + tmp2;
+//			iv[idx + it] = tmp - tmp2;
+//		}
+//	}
+
+vid v0
