@@ -76,7 +76,7 @@ class asmig;
   string tag;
   string op[5];
   bit[4:0] en, s, si;  /// option
-  bit mu, su, fcrl, emsk, vxup, alocd, s2g, r3w1d;  /// option
+  bit mu, su, fcrl, emsk, vxup, alocd, s2g, dword;  /// option
   bit fcrPc, pb, az;
   bit ldLk, mhalfu, mbyteu;
   bit mhalf, mbyte, stCn;
@@ -116,7 +116,7 @@ class asmig;
     tagOp = 0;
     constOp = 0 ;
     nop = 0;
-    r3w1d = 0;
+    dword = 0;
     fcrPc = 0;
     pb = 0;
     az = 0;
@@ -188,9 +188,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_add3;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = r3w1d;
+              inst[i].i.b.ir3w1.d = dword;
               three = 1;
-              if(r3w1d) dual = 1;
+              if(dword) dual = 1;
             end
             else begin
               inst[i].i.op = iop_r2w1;
@@ -239,13 +239,14 @@ class asmig;
           end
         "mul"   :
           begin
-            if(enOp[i][3]) begin
+            if(enOp[i][2]) begin
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mul;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = r3w1d;
-              three = 1;
-              if(r3w1d) dual = 1;
+              inst[i].i.b.ir3w1.d = dword;
+              two = 1;
+///              three = 1;
+              if(dword) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -258,9 +259,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mad;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = r3w1d;
+              inst[i].i.b.ir3w1.d = dword;
               three = 1;
-              if(r3w1d) dual = 1;
+              if(dword) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -273,9 +274,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_msu;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = r3w1d;
+              inst[i].i.b.ir3w1.d = dword;
               three = 1;
-              if(r3w1d) dual = 1;
+              if(dword) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -1567,7 +1568,7 @@ class ip4_assembler;
 ///              "gu1" : cur.chkGrpUp = 1;
               "icc":  if(opts.size() > 0) cur.icc = get_imm(opts.pop_front());
               "nmsk" : cur.grpMsk = 1;
-              "r3w1d" : cur.r3w1d = 1; 
+              "dword" : cur.dword = 1; 
               "mu" : cur.mu = 1;
               "su" : cur.su = 1;
               "fcrl": cur.fcrl = 1;

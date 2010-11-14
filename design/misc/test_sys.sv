@@ -44,7 +44,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "imSize", 1024);
     set_config_int("*", "dmBase", 0);
     set_config_int("*", "dmSize", 64 * 1024);
-    set_config_string("*", "imFilePath", "../misc/code.txt"); ///average_filter
+    set_config_string("*", "imFilePath", "../misc/fft1.txt"); ///average_filter
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_string("*", "dmFilePath", "../misc/mem.txt");
     set_config_int("*", "pbId", 2);
