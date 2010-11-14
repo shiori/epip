@@ -28,7 +28,7 @@ li s3 1 ;
 li s7 0x2000 ;
 
 $loop1
-//tsync ;
+tsync ;
 vid v0 ;
 //v0 is the bf base number
 add v0 v0 s0 ;

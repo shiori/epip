@@ -1247,18 +1247,26 @@ class ip4_tlm_ise extends ovm_component;
       end
     end
     
-    cntMax = max2(cntSrfBusy, cntVrfBusy);
-    cntMax = max2(cntMax, cntDSEBusy);
-    cntMax = max2(cntMax, cntSPUBusy);
-    cntMax = max2(cntMax, cntFuBusy);
+    cntMax = max2(t.cntSrfBusy, t.cntVrfBusy);
+    cntMax = max2(cntMax, t.cntDSEBusy);
+    cntMax = max2(cntMax, t.cntSPUBusy);
+    cntMax = max2(cntMax, t.cntFuBusy);
+    
+    for(int i = 0; i < t.cntSrfBusy; i++) begin
+      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", this);
+      ciRFM[i].srfRdGrp = t.srfGrp[i];
+      ciRFM[i].srfRdAdr = t.srfAdr[i];
+    end
+    
+    for(int i = 0; i < t.cntVrfBusy; i++) begin
+      if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", this);
+      ciRFM[i].vrfRdGrp = t.vrfGrp[i];
+      ciRFM[i].vrfRdAdr = t.vrfAdr[i];
+    end
     
     for(int i = 0; i < cntMax; i++) begin
       if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", this);
-      ciRFM[i].bpCo = t.co;
-      ciRFM[i].vrfRdGrp = t.vrfGrp[i];
-      ciRFM[i].vrfRdAdr = t.vrfAdr[i];
-      ciRFM[i].srfRdGrp = t.srfGrp[i];
-      ciRFM[i].srfRdAdr = t.srfAdr[i];
+      ciRFM[i].bpCo = t.co; ///possible overwrite!!
       foreach(t.iFu[fid])
         if(t.enFu[fid])
           t.iFu[fid].fill_rfm(ciRFM[i], i);
