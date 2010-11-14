@@ -541,7 +541,8 @@ class inst_c extends ovm_object;
         wrEn[0] = 1;
         adrWr[0] = rd;
       end
-
+      imm = inst.i.b.ir2w1.imm;
+      
       case(inst.i.b.ir2w1.fun)
       iop21_div   : begin op = op_div; end
       iop21_quo   : begin op = op_quo; end
@@ -629,6 +630,7 @@ class inst_c extends ovm_object;
       endcase
     end
     else if(inst.i.op inside {iop_cmps}) begin
+      isVec = 1;
       imm = {inst.i.b.cmpi.imm1, inst.i.b.cmpi.imm0};
       set_rf_en(inst.i.b.cmpi.rs, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       case(inst.i.op)

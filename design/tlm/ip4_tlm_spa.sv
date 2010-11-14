@@ -218,7 +218,7 @@ class ip4_tlm_spa extends ovm_component;
         if(vn.rfm[1] == null) vn.rfm[1] = tr_spa2rfm::type_id::create("toRFM", this);
         vn.ise[1].exp = exeExp && !ise.noExp;
         vn.ise[1].tid = ise.tid;
-        vn.rfm[1].tid = ise.tid;
+        vn.rfm[1].tidCancel = ise.tid;
         exeExp = 0;
       end
     end

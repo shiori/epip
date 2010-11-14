@@ -567,7 +567,7 @@ class ise_thread_inf extends ovm_component;
     
     foreach(iFu[i])
       foreach(iFu[0].grpWr[j])
-        iFu[i].grpWr[j] = vrfMap[iFu[i].grpWr[j]]; ///iFu[i].isVec ?  : srfMap[iFu[i].grpWr[j]];
+        iFu[i].grpWr[j] = iFu[i].isVec ? vrfMap[iFu[i].grpWr[j]] : srfMap[iFu[i].grpWr[j]];
     
     foreach(iDSE.grpWr[i])
       iDSE.grpWr[i] = iDSE.isVec ? vrfMap[iDSE.grpWr[i]] : srfMap[iDSE.grpWr[i]];
@@ -869,7 +869,7 @@ class ip4_tlm_ise extends ovm_component;
         `ip4_info("tsync", $psprintf("thread %0d grp %0d halted", tid, t.srThreadGrp), OVM_LOW)
       end
       else begin
-        `ip4_info("tsync", $psprintf("exit halte for grp %0d", t.srThreadGrp), OVM_LOW)
+        `ip4_info("tsync", $psprintf("exit halt for grp %0d", t.srThreadGrp), OVM_LOW)
         foreach(thread[i])
           if(thread[i].srThreadGrp == t.srThreadGrp 
             && thread[i].threadState != ts_disabled)
@@ -1723,7 +1723,8 @@ class ip4_tlm_ise extends ovm_component;
         end
       end
       v.rst[i].roll = 0;
-///      t.threadState = ts_rdy;
+      if(t.threadState == ts_w_rst)
+        t.threadState = ts_rdy;
       break;
     end
   endfunction

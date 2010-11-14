@@ -1,6 +1,12 @@
 //test asm file
+$loop2
+add s15 s15 32 ;
+cmp.unc.< p1 p0 s15 128 ; 
+(p1) b.naz.bc.pop2n $loop2 0 ;
+
+
 vid v0 ;
-tsync ;
+//tsync ;
 
 add.si v0 v0 0x2 ;
 
@@ -38,7 +44,7 @@ add.si v4 v0 v3 ;
 
 st.byte.nua.burst v0 v1 0x3
 nop
-cmpi.unc.>= p0 p1 v21 3
+cmp.unc.>= p0 p1 v21 3
 nop
 nop ;
 (p1) st.byte.nua.burst v0 v21 0x3 ;
@@ -91,7 +97,7 @@ li v0 0x16526C9 ;
 
 
 (p0) vid v21 ;
-cmpi.unc.>= p0 p1 v21 3 ;
+cmp.unc.>= p0 p1 v21 3 ;
 nop
 (p1) b.naz.loop.storemsc $tag1 0x0
 add.si v3 v0 0xffffffff
@@ -125,7 +131,7 @@ mad.s v6 v13 v10 v23 ;
 //2r1w1imm shift right 3
 srl v3 v1 0x3 ;
 //2r1w shift right 3
-srlv s4 s3 s1 ;
+srl s4 s3 s1 ;
 //3r1w mad 7*3+8
 lu v5 0x400000 ;
 mad.s v6 v3 v1 v5 ;

@@ -38,8 +38,8 @@ class ip4_tlm_rfm extends ovm_component;
   virtual tlm_sys_if.mods sysif;
   local time stamp;
     
-  local word vrf[NUM_PHY_VRF_GRP][NUM_PRF_P_GRP/NUM_VRF_BKS][NUM_VRF_BKS][CYC_VEC][NUM_SP];
-  local word srf[NUM_PHY_SRF_GRP][NUM_PRF_P_GRP/NUM_VRF_BKS][NUM_SRF_BKS];
+  local word vrf[NUM_PHY_VRF_GRP][NUM_PRF_P_GRP / NUM_VRF_BKS][NUM_VRF_BKS][CYC_VEC][NUM_SP];
+  local word srf[NUM_PHY_SRF_GRP][NUM_PRF_P_GRP / NUM_SRF_BKS][NUM_SRF_BKS];
   local word srIIDx[NUM_THREAD][CYC_VEC][NUM_SP],
              srIIDy[NUM_THREAD][CYC_VEC][NUM_SP],
              srIIDz[NUM_THREAD][CYC_VEC][NUM_SP];
@@ -110,7 +110,7 @@ class ip4_tlm_rfm extends ovm_component;
       cancel[i] = cancel[i] << 1;
       
     if(v.fmSPA != null && v.fmSPA.cancel)
-      cancel[v.fmSPA.tid] |= '1;
+      cancel[v.fmSPA.tidCancel] |= '1;
 
     if(v.fmSPU != null) begin
       tr_spu2rfm spu = v.fmSPU;
@@ -130,19 +130,21 @@ class ip4_tlm_rfm extends ovm_component;
     `ip4_info("rfm", "req_proc procing...", OVM_DEBUG) 
    
     ///----------------------write back results---------------------
-    if(v.fmSPA != null && !cancel[v.fmSPA.tid][STAGE_RRF_VWB]) begin
+    if(v.fmSPA != null) begin /// && !cancel[v.fmSPA.tid][STAGE_RRF_VWB]
       tr_spa2rfm spa = v.fmSPA;
       uchar bk0, bk1;
       
-      if(cancel[spa.tid][STAGE_RRF_VWB])
-        `ip4_info("rfm_wr", "spa write back canceled...", OVM_HIGH) 
-        
       foreach(spa.fu[fid]) begin
         uchar tid = spa.fu[fid].tid,
               subVec = spa.fu[fid].subVec;
+        if(cancel[tid][STAGE_RRF_VWB]) begin
+          `ip4_info("rfm_wr", $psprintf("FU%0d write back canceled...", fid), OVM_HIGH) 
+          continue;
+        end
+        
         `ip4_info("rfm_wr", $psprintf("Write Back FU%0d : %s, vec %0d, grp: %0d, adr %0d, bk %0d ...",
           fid, fu_cfg[fid].name, spa.fu[fid].vec, spa.fu[fid].wrGrp, spa.fu[fid].wrAdr, spa.fu[fid].wrBk), OVM_HIGH)
-        if(cancel[spa.tid][STAGE_RRF_VWB]) continue;
+
         bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].wrBk & `GMH(1)) : spa.fu[fid].wrBk;
         bk1 = bk0 + 1;
         if(!spa.fu[fid].vec) begin
@@ -186,7 +188,8 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmDSE != null) begin
       tr_dse2rfm dse = v.fmDSE;
-      `ip4_info("rfm_wr", "Write Back dse...", OVM_HIGH)
+      `ip4_info("rfm_wr", $psprintf("Write Back DSE: vec %0d, grp: %0d, adr %0d, bk %0d ...",
+          dse.vec, dse.wrGrp, dse.wrAdr, dse.wrBk), OVM_HIGH)
       srDSEExp[dse.tid][dse.subVec] = dse.expVec;
       if(dse.vec) begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
@@ -210,7 +213,8 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_VWB]) begin
       tr_spu2rfm spu = v.fmSPU;
-      `ip4_info("rfm_wr", "Write Back spu...", OVM_HIGH)
+      `ip4_info("rfm_wr", $psprintf("Write Back SPU: grp: %0d, adr %0d, bk %0d ...",
+          spu.srfWrGrp, spu.srfWrAdr, spu.srfWrBk), OVM_HIGH)
       if(cancel[v.fmSPU.tid][STAGE_RRF_VWB])
         `ip4_info("rfm_wr", "spu write back canceled...", OVM_HIGH) 
       else begin

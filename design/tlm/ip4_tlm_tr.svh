@@ -243,6 +243,7 @@ class spa2rfm_fu extends ovm_object;
     `ovm_field_sarray_int(res1, OVM_ALL_ON)
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
     `ovm_field_sarray_int(wr, OVM_ALL_ON)
+    `ovm_field_int(tid, OVM_ALL_ON)
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(s2gp, OVM_ALL_ON)
     `ovm_field_int(gp2s, OVM_ALL_ON)
@@ -262,7 +263,7 @@ endclass : spa2rfm_fu
 
 class tr_spa2rfm extends ovm_sequence_item;
 	spa2rfm_fu fu[NUM_FU];
-	rand uchar tid;
+	rand uchar tidCancel;
 	rand bit cancel;
   
 	function void post_randomize();
@@ -281,7 +282,7 @@ class tr_spa2rfm extends ovm_sequence_item;
   
   `ovm_object_utils_begin(tr_spa2rfm)
     `ovm_field_sarray_object(fu, OVM_ALL_ON + OVM_NOPRINT)
-    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidCancel, OVM_ALL_ON)
     `ovm_field_int(cancel, OVM_ALL_ON)
   `ovm_object_utils_end
   

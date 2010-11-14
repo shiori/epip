@@ -313,50 +313,60 @@ class asmig;
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_srl;
               inst[i].i.b.ir2w1.imm = imm[i][2];
-              two = 1;
+              one = 1;
             end
             else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
-          end
-        "srlv"  :
-          begin
-            if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_srlv;
               two = 1;
             end
-            else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
           end
+///        "srlv"  :
+///          begin
+///            if(enOp[i][2]) begin
+///              inst[i].i.op = iop_r2w1;
+///              inst[i].i.b.ir2w1.fun = iop21_srlv;
+///              two = 1;
+///            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
+///          end
         "sra"   :
           begin
             if(immOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_sra;
               inst[i].i.b.ir2w1.imm = imm[i][2];
-              two = 1;
+              one = 1;
             end
             else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
-          end
-        "srav"  :
-          begin
-            if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_srav;
               two = 1;
             end
-            else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
           end
+///        "srav"  :
+///          begin
+///            if(enOp[i][2]) begin
+///              inst[i].i.op = iop_r2w1;
+///              inst[i].i.b.ir2w1.fun = iop21_srav;
+///              two = 1;
+///            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
+///          end
         "nor"   :
           begin
             if(enOp[i][2]) begin
@@ -495,50 +505,60 @@ class asmig;
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_sll;
               inst[i].i.b.ir2w1.imm = imm[i][2];
-              two = 1;
+              one = 1;
             end
             else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
-          end
-        "sllv"  :
-          begin
-            if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_sllv;
               two = 1;
             end
-            else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
           end
+///        "sllv"  :
+///          begin
+///            if(enOp[i][2]) begin
+///              inst[i].i.op = iop_r2w1;
+///              inst[i].i.b.ir2w1.fun = iop21_sllv;
+///              two = 1;
+///            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
+///          end
         "rot"   :
           begin
             if(immOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_rot;
               inst[i].i.b.ir2w1.imm = imm[i][2];
-              two = 1;
+              one = 1;
             end
             else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
-          end
-        "rotv"  :
-          begin
-            if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_rotv;
               two = 1;
             end
-            else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
           end
+///        "rotv"  :
+///          begin
+///            if(enOp[i][2]) begin
+///              inst[i].i.op = iop_r2w1;
+///              inst[i].i.b.ir2w1.fun = iop21_rotv;
+///              two = 1;
+///            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
+///          end
         "seb"   :
           begin
             if(enOp[i][2]) begin
@@ -871,9 +891,20 @@ class asmig;
           end
         "cmp"  :
           begin
-            isVec[i] = 1;
-            ps = 2;
-            if(enOp[i][3] && pdrOp[i][1]) begin
+            if(immOp[i][3] && pdrOp[i][1]) begin
+              ps = 2;
+              isVec[i] = 1;
+              inst[i].i.op = iop_cmpi;
+              inst[i].i.b.cmpi.ctyp = ctyp;
+              inst[i].i.b.cmpi.mtyp = mtyp;
+              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
+              one = 1;
+            end
+            else if(enOp[i][3] && pdrOp[i][1]) begin
+              isVec[i] = 1;
+              ps = 2;
               inst[i].i.op = iop_cmp;
               inst[i].i.b.cmp.ctyp = ctyp;
               inst[i].i.b.cmp.mtyp = mtyp;
@@ -888,9 +919,20 @@ class asmig;
           end
         "cmpu" :
           begin
-            ps = 2;
-            isVec[i] = 1;
-             if(enOp[i][3] && pdrOp[i][1]) begin
+            if(immOp[i][3] && pdrOp[i][1]) begin
+              ps = 2;
+              isVec[i] = 1;
+              inst[i].i.op = iop_cmpiu;
+              inst[i].i.b.cmpi.ctyp = ctyp;
+              inst[i].i.b.cmpi.mtyp = mtyp;
+              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
+              one = 1;
+            end
+            else if(enOp[i][3] && pdrOp[i][1]) begin
+              ps = 2;
+              isVec[i] = 1;
               inst[i].i.op = iop_cmpu;
               inst[i].i.b.cmp.ctyp = ctyp;
               inst[i].i.b.cmp.mtyp = mtyp;
@@ -903,42 +945,42 @@ class asmig;
               return 0;
             end
           end
-        "cmpi" :
-          begin
-            ps = 2;
-            isVec[i] = 1;
-            if(immOp[i][3] && pdrOp[i][1]) begin
-              inst[i].i.op = iop_cmpi;
-              inst[i].i.b.cmpi.ctyp = ctyp;
-              inst[i].i.b.cmpi.mtyp = mtyp;
-              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
-              inst[i].i.b.cmp.pr0 = adr[i][0];
-              inst[i].i.b.cmp.pr1 = adr[i][1];
-              one = 1;
-            end
-            else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
-          end
-        "cmpiu" :
-          begin
-            ps = 2;
-            isVec[i] = 1;
-            if(immOp[i][3] && pdrOp[i][1]) begin
-              inst[i].i.op = iop_cmpiu;
-              inst[i].i.b.cmpi.ctyp = ctyp;
-              inst[i].i.b.cmpi.mtyp = mtyp;
-              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
-              inst[i].i.b.cmp.pr0 = adr[i][0];
-              inst[i].i.b.cmp.pr1 = adr[i][1];
-              one = 1;
-            end
-            else begin
-              `asm_err("op number does not match with the op_code!");
-              return 0;
-            end
-          end
+///        "cmpi" :
+///          begin
+///            if(immOp[i][3] && pdrOp[i][1]) begin
+///              ps = 2;
+///              isVec[i] = 1;
+///              inst[i].i.op = iop_cmpi;
+///              inst[i].i.b.cmpi.ctyp = ctyp;
+///              inst[i].i.b.cmpi.mtyp = mtyp;
+///              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+///              inst[i].i.b.cmp.pr0 = adr[i][0];
+///              inst[i].i.b.cmp.pr1 = adr[i][1];
+///              one = 1;
+///            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
+///          end
+///        "cmpiu" :
+///          begin
+///            if(immOp[i][3] && pdrOp[i][1]) begin
+///              ps = 2;
+///              isVec[i] = 1;
+///              inst[i].i.op = iop_cmpiu;
+///              inst[i].i.b.cmpi.ctyp = ctyp;
+///              inst[i].i.b.cmpi.mtyp = mtyp;
+///              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
+///              inst[i].i.b.cmp.pr0 = adr[i][0];
+///              inst[i].i.b.cmp.pr1 = adr[i][1];
+///              one = 1;
+///            end
+///            else begin
+///              `asm_err("op number does not match with the op_code!");
+///              return 0;
+///            end
+///          end
         "alloc" :
           begin
             inst[i].i.b.cop.fun = icop_alloc;

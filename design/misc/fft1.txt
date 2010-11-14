@@ -25,8 +25,10 @@ li s1 0 ;
 li s2 10 ;
 // s3 is it
 li s3 1 ;
+li s7 0x2000 ;
 
 $loop1
+tsync ;
 vid v0 ;
 //v0 is the bf base number
 add v0 v0 s0 ;
@@ -40,41 +42,47 @@ $loop2
 add v0 v0 s6 ;
 
 // v1 is q = b >> i
-srlv v1 v0 s1 ;
+srl v1 v0 s1 ;
 
 // v2 is r = b - (q << i)
-sllv v2 v1 s1 ;
+sll v2 v1 s1 ;
 sub v2 v0 v2 ;
 
 // v1 is idx = (q << (i + 1)) + r
-sllv v1 v1 s4 ;
+sll v1 v1 s4 ;
 add v1 v1 v2 ;
 
 // v2 is adr = r << (NW - i - 1)
 sub s5 s2 s4 ;
-srlv v2 v2 s5 ;
+srl v2 v2 s5 ;
+
+//v5 is idx + it
+add v5 v1 s3 ;
+
+//shift
+sll v1 v1 2 ;
+sll v2 v2 2 ;
+sll v5 v5 2 ;
 
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //v3 has tmp(iv[idx]) real part
 (p1) ld.word.rand v3 v1 0x0 ;
 (p1) ld.word.rand v3 v1 0x0 ;
 
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //v4 has tmp(iv[idx]) imag part
 (p1) ld.word.rand v4 v1 0x1000 ;
 (p1) ld.word.rand v4 v1 0x1000 ;
 
-//v5 is idx + it
-add v5 v1 s3 ;
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //v6 is iv[idx+it] real part
 (p1) ld.word.rand v6 v5 0x2000 ;
 (p1) ld.word.rand v6 v5 0x2000 ;
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //v7 is iv[idx+it] imag part
 (p1) ld.word.rand v7 v5 0x3000 ;
 (p1) ld.word.rand v7 v5 0x3000 ;
@@ -96,7 +104,7 @@ add v11 v12 v13 ;
 //v12 has tmp + tmp2 real part
 add v12 v3 v10 ;
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //store it to iv[idx]
 (p1) st.word.rand v12 v1 0x0 ;
 (p1) st.word.rand v12 v1 0x0 ;
@@ -104,7 +112,7 @@ cmp.unc.= p1 p0 zero zero ;
 //v13 has tmp + tmp2 imag part
 add v13 v3 v10 ;
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //store it to iv[idx]
 (p1) st.word.rand v13 v1 0x1000 ;
 (p1) st.word.rand v13 v1 0x1000 ;
@@ -112,7 +120,7 @@ cmp.unc.= p1 p0 zero zero ;
 //v12 has tmp - tmp2 real part
 sub v12 v3 v10 ;
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //store it to iv[idx+it]
 (p1) st.word.rand v12 v5 0x2000 ;
 (p1) st.word.rand v12 v5 0x2000 ;
@@ -120,18 +128,17 @@ cmp.unc.= p1 p0 zero zero ;
 //v13 has tmp - tmp2 imag part
 sub v13 v3 v10 ;
 //init p1 to all 1
-cmp.unc.= p1 p0 zero zero ; 
+cmp.unc.= p1 p0 vzero vzero ; 
 //store it to iv[idx]
 (p1) st.word.rand v13 v5 0x3000 ;
 (p1) st.word.rand v13 v5 0x3000 ;
 
 //inter loop add
 add s6 s6 32 ;
-cmpi.unc.< p1 p0 s6 128 ; 
+cmp.unc.< p1 p0 s6 128 ; 
 (p1) b.naz.bc.pop2n $loop2 0 ;
 
 //it sll
 sll s3 s3 1 ;
-cmpi.unc.< p1 p0 s3 0x2000 ; 
-tsync ;
+cmp.unc.< p1 p0 s3 s7 ; 
 (p1) b.naz.bc.pop2n $loop1 0 ;
