@@ -359,7 +359,7 @@ class ip4_tlm_spu extends ovm_component;
           toISE.srReq = 1;
           toISE.s2gp = 1;
           toISE.op = ise.op;
-          toISE.tid = ise.tidSPU;
+          toISE.tidSPU = ise.tidSPU;
           toISE.srAdr = ise.srAdr;
         end
       end
@@ -396,7 +396,7 @@ class ip4_tlm_spu extends ovm_component;
           toISE.srReq = 1;
           toISE.op0 = rfm.op0;
           toISE.op = ise.op;
-          toISE.tid = ise.tidSPU;
+          toISE.tidSPU = ise.tidSPU;
           toISE.srAdr = ise.srAdr;
         end
         
@@ -577,7 +577,7 @@ class ip4_tlm_spu extends ovm_component;
         
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
         toISE.brRsp = 1;
-        toISE.tid = tid;
+        toISE.tidBr = tid;
         toISE.mscExp = 0;
         toISE.vecMode = ise.vecModeSPU;
         toISE.mscExp = expMSC;

@@ -135,7 +135,7 @@ cmp.unc.= p1 p0 vzero vzero ;
 
 //inter loop add
 add s6 s6 32 ;
-cmp.unc.< p1 p0 s6 64 ; 
+cmp.unc.< p1 p0 s6 128 ; 
 (p1) b.naz.bc.pop2n $loop2 0 ;
 
 //it sll

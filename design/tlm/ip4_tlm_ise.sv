@@ -1528,20 +1528,20 @@ class ip4_tlm_ise extends ovm_component;
       tr_spu2ise spu = v.fmSPU;
       if(spu != null && spu.s2gp) begin
         if(ciSPU[0] != null) ciSPU[0] = tr_ise2spu::type_id::create("toSPU", this);
-        ciSPU[0].srRes = exe_ise(spu.tid, spu.op, spu.op0, spu.srAdr);
+        ciSPU[0].srRes = exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr);
       end
       if(spu.op != op_s2gp)
-        void'(exe_ise(spu.tid, spu.op, spu.op0, spu.srAdr));
+        void'(exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr));
     end
     
     ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       tr_spu2ise spu = v.fmSPU;
-      resolve_br(spu.tid, spu.brTaken, spu.missBr);
+      resolve_br(spu.tidBr, spu.brTaken, spu.missBr);
       if(spu.sclExp)
         enter_exp(spu.tidSclExp, exp_scl_err, spu.vecModeSclExp);
       if(spu.mscExp)
-        enter_exp(spu.tid, exp_msc_err, spu.vecMode);
+        enter_exp(spu.tidBr, exp_msc_err, spu.vecMode);
     end
     
     ///cancel condition 2, spa exp

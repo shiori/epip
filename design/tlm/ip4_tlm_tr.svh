@@ -596,7 +596,7 @@ endclass : tr_spa2spu
 
 class tr_spu2ise extends ovm_sequence_item;
   rand bit brRsp, brTaken, missBr, mscExp, sclExp;
-  rand uchar tid, tidSclExp;
+  rand uchar tidBr, tidSPU, tidSclExp;
   rand word op0;
   rand bit srReq, s2gp;
   rand opcode_e op;
@@ -610,7 +610,8 @@ class tr_spu2ise extends ovm_sequence_item;
     `ovm_field_int(bpc, OVM_ALL_ON)
     `ovm_field_int(mscExp, OVM_ALL_ON)
     `ovm_field_int(sclExp, OVM_ALL_ON)
-    `ovm_field_int(tid, OVM_ALL_ON)
+    `ovm_field_int(tidBr, OVM_ALL_ON)
+    `ovm_field_int(tidSPU, OVM_ALL_ON)
     `ovm_field_int(tidSclExp, OVM_ALL_ON)
     `ovm_field_int(srReq, OVM_ALL_ON)
     `ovm_field_int(s2gp, OVM_ALL_ON)
