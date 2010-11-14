@@ -320,8 +320,8 @@ typedef enum bit {
 } br_opcode_e;
 
 typedef enum uchar {
-  ts_disabled, ts_rdy, ts_b_pred, ts_w_mrf,
-  ts_w_rst, ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
+  ts_disabled, ts_rdy, ts_w_mrf, ts_w_rst, ///ts_b_pred, 
+  ts_w_tsyn, ts_w_syna, ts_w_synst, ts_w_synld
 }thread_state_t;
 
 typedef enum uchar {
@@ -465,6 +465,12 @@ parameter opcode_e spu_ops[] = '{
   op_mvs
 };
 
+parameter opcode_e ise_ops[] = '{
+  op_sys,     op_eret,    op_wait,    op_exit,
+  op_brk,     op_tsync,   op_syna,    op_synld,
+  op_synst,   op_msync,   op_alloc
+};
+
 parameter opcode_e tlb_ops[] = '{
   op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr
 };
@@ -481,7 +487,7 @@ parameter opcode_e spu_com_ops[] = '{
 
 parameter opcode_e ise_zw_ops[] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
-  op_brk,     op_eret
+  op_brk
 };
 
 typedef enum uchar {

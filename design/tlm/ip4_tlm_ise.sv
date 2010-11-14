@@ -323,7 +323,7 @@ class ise_thread_inf extends ovm_component;
       
       brHistory = brHistory << 1;
       brHistory[0] = brPred;
-      threadState = ts_b_pred;
+///      threadState = ts_b_pred;
     end
     else begin
       ///unconditional branch
@@ -803,7 +803,7 @@ class ip4_tlm_ise extends ovm_component;
   function void resolve_br(input uchar tid, bit br, miss);
     ise_thread_inf t = thread[tid];
         
-    if(t.threadState == ts_b_pred && !cancel[tid][STAGE_ISE_CBR]) begin
+    if(!cancel[tid][STAGE_ISE_CBR]) begin
       if(t.pendBr == 0)
         t.threadState = ts_rdy;
       ///miss prediction
@@ -818,8 +818,8 @@ class ip4_tlm_ise extends ovm_component;
       if(t.pendBr > 0) t.pendBr--;
     end
     else begin
-      if(!cancel[tid][STAGE_ISE_CBR])
-        ovm_report_warning("resolve_br", "called with wrong threadState!");
+///      if(!cancel[tid][STAGE_ISE_CBR])
+///        ovm_report_warning("resolve_br", "called with wrong threadState!");
       t.pendBr = 0;
     end
   endfunction : resolve_br
@@ -856,14 +856,24 @@ class ip4_tlm_ise extends ovm_component;
     op_tsync:
     begin
       bit sync = 1;
-      t.threadState = ts_w_tsyn;
       foreach(thread[i])
-        if(thread[i].srThreadGrp == t.srThreadGrp && thread[i].threadState != ts_w_tsyn)
+        if(thread[i].srThreadGrp == t.srThreadGrp 
+          && thread[i].threadState != ts_w_tsyn
+          && thread[i].threadState != ts_disabled
+          && i != tid)
           sync = 0;
       if(!sync) begin
         t.flush();
-        restore_pc(tid, 0, STAGE_ISE_SRA); 
+        restore_pc(tid, 1, STAGE_ISE_SRA); 
         t.threadState = ts_w_tsyn;
+        `ip4_info("tsync", $psprintf("thread %0d grp %0d halted", tid, t.srThreadGrp), OVM_LOW)
+      end
+      else begin
+        `ip4_info("tsync", $psprintf("exit halte for grp %0d", t.srThreadGrp), OVM_LOW)
+        foreach(thread[i])
+          if(thread[i].srThreadGrp == t.srThreadGrp 
+            && thread[i].threadState != ts_disabled)
+            thread[i].threadState = ts_rdy;
       end
     end
     op_syna:
@@ -1125,7 +1135,7 @@ class ip4_tlm_ise extends ovm_component;
     if(!t.lpRndMemMode && t.pendExLoad > 0)
       return 0;
     
-    if(!(t.threadState inside {ts_rdy, ts_b_pred}))
+    if(t.threadState != ts_rdy)
       return 0;
         
 ///    foreach(t.wCntDep[i])
@@ -1713,7 +1723,7 @@ class ip4_tlm_ise extends ovm_component;
         end
       end
       v.rst[i].roll = 0;
-      t.threadState = ts_rdy;
+///      t.threadState = ts_rdy;
       break;
     end
   endfunction

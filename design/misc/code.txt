@@ -1,5 +1,7 @@
 //test asm file
 vid v0 ;
+tsync ;
+
 add.si v0 v0 0x2 ;
 
 options.c0.0xf0000000

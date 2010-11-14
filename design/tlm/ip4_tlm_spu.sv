@@ -332,7 +332,7 @@ class ip4_tlm_spu extends ovm_component;
       toISE.tidSclExp = ise.tidSPU;
     end
 
-    if(v.fmISE[STAGE_RRF_SRB] != null && v.fmISE[STAGE_RRF_SRB] != null) begin
+    if(v.fmISE[STAGE_RRF_SRB] != null && v.fmRFM[STAGE_RRF_SRB] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_SRB];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_SRB];    
       
@@ -365,13 +365,13 @@ class ip4_tlm_spu extends ovm_component;
       end
     end
 
-    if(v.fmISE[STAGE_RRF_SRB] != null && v.fmISE[STAGE_RRF_SRB] != null
+    if(v.fmISE[STAGE_RRF_SRB] != null && v.fmRFM[STAGE_RRF_SRB] != null
         && !cancel[v.fmISE[STAGE_RRF_SRB].tidSPU][STAGE_RRF_SRB]) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_SRB];
       tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_SRB];
       bit prPass = prSPU[STAGE_RRF_SRB] || ise.op == op_tsync;
       
-      if(prPass && ise.op inside {op_s2gp, tlb_ops, op_smsg, op_rmsg}) begin
+      if(prPass && ise.op inside {op_s2gp, tlb_ops, ise_ops, op_smsg, op_rmsg}) begin
         if(ise.srAdr inside {tlb_sr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
           toTLB.op0 = rfm.op0;
