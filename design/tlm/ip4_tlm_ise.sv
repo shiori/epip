@@ -530,7 +530,8 @@ class ise_thread_inf extends ovm_component;
       for(int j = 0; j < NUM_VRF_BKS; j++)
         if(vrfRdEn[i][j]) begin
           map_iadr(1, adrs[tmp], vrfGrp[i][j], vrfAdr[i][j]);
-          `ip4_info("assign adr", $psprintf("get vrf adr %0d, cnt %0d", adrs[tmp], tmp), OVM_FULL)
+          `ip4_info("assign adr", $psprintf("get vrf adr %0d, cnt %0d, cyc:%0d, bk:%0d",
+                    adrs[tmp], tmp, i, j), OVM_FULL)
           tmp++;
         end
         else if(j > 0) begin
@@ -541,7 +542,8 @@ class ise_thread_inf extends ovm_component;
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfRdEn[i][j]) begin
           map_iadr(0, adrs[tmp], srfGrp[i][j], srfAdr[i][j]);
-          `ip4_info("assign adr", $psprintf("get srf adr %0d, cnt %0d", adrs[tmp], tmp), OVM_FULL)
+          `ip4_info("assign adr", $psprintf("get srf adr %0d, cnt %0d, cyc:%0d, bk:%0d",
+                    adrs[tmp], tmp, i, j), OVM_FULL)
           tmp++;
         end
     end
@@ -755,8 +757,8 @@ class ip4_tlm_ise extends ovm_component;
       if(v.rst[stage].tid != tid || !v.rst[stage].en) begin
         ovm_report_warning("restore_pc", $psprintf("tid %0d, stage %0d, rst info inconsistent!", tid, stage));
         for(int j = STAGE_ISE_VWB_END; j > 0; j--)
-          `ip4_info("rollback", $psprintf("tid %0d, stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d",
-                    v.rst[stage].tid, j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_LOW)  
+          `ip4_info("rst buf", $psprintf("tid %0d, stage %0d, en %0d, bpc 0x%0h, pc 0x%0h, sel: %0d",
+                    v.rst[j].tid, j, v.rst[j].en, v.rst[j].bpc, v.rst[j].pc, v.rst[j].sel), OVM_LOW)
       end
     end
   endfunction

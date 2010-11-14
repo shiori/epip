@@ -198,7 +198,7 @@ class ip4_tlm_spu extends ovm_component;
     ///predication register read
     if(v.fmISE[STAGE_RRF_RRC] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_RRC];
-      foreach(toSPA.fu[fid]) begin
+      foreach(ise.enFu[fid]) begin
         if(!ise.enFu[fid]) continue;
         if(toSPA == null) toSPA = tr_spu2spa::type_id::create("toSPA", this);
         toSPA.fu[fid].emsk = ise.prRdAdr[fid] == 0 ? '{default:1} : pr[ise.tidFu][ise.prRdAdr[fid]][ise.subVecFu];

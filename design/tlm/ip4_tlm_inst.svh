@@ -29,7 +29,7 @@ typedef struct packed{
 }i_i26;
 
 typedef struct packed{
-  irsa_t rd;
+  irda_t rd;
   irsa_t rs;
   bit[12:0] imm0;
   bit[6:0] imm1;
@@ -144,7 +144,7 @@ typedef struct packed{
 typedef struct packed{
   bit s;
   bit[4:0] os1;
-  isrsa_t rb;
+  irsa_t rb;
   bit[1:0] dummy;
   bit[10:0] os0;
   bit[3:0] fun;
@@ -168,8 +168,8 @@ typedef struct packed{
   irsa_t rs;
   bit[8:0] dummy1;
   bit[4:0] s;
-  bit[1:0] dummy2;
   bit[1:0] st;
+  bit sup;
   bit[1:0] mrfa;
   bit ft;
 }i_mrfa;
@@ -204,7 +204,6 @@ typedef struct packed{
   irda_t rd;
   irsa_t rs0, rs1;
   bit[11:0] fun;
-  bit dummy;
   bit s, up, t;
 }i_vxchg;
 
@@ -529,7 +528,7 @@ class inst_c extends ovm_object;
     else if(inst.i.op == iop_r2w1) begin
       if(inst.i.op != iop21_vid)
         set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      if(!(inst.i.op inside {iop11_ops, iop21_vid}))
+      if(!(inst.i.op == iop21_vid || inst.i.b.ir2w1.fun inside {iop11_ops}))
         set_rf_en(inst.i.b.ir2w1.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       if(inst.i.b.ir2w1.fun inside {iop21_div, iop21_udiv}) begin
         wrEn = '{default : 1};
