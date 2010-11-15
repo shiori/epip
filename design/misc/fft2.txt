@@ -1,0 +1,196 @@
+//#define NW 5
+//#define N (1 << NW)
+//#define PI 3.14159265359f
+//	for(int i = 0; i < NW; i++) {
+//		int it = 0x1 << i;
+//		cplx tmp2;
+//		for(int b = 0; b < (N >> 1); b++) {
+//			int q = b >> i,
+//				r = b - (q << i),
+//				idx = (q << (i + 1)) + r,
+//				adr = r << (NW - i - 1);
+//			tmp = iv[idx];
+//			tmp2 = iv[idx + it] * w[adr];
+//			iv[idx] = tmp + tmp2;
+//			iv[idx + it] = tmp - tmp2;
+//		}
+//	}
+
+//total of 512 bf, each thread process 32 * 4 bf
+//assume s0 is the thread id, mul it by 128
+sll s0 s0 7 ;
+// s1 is current stage
+li s1 0 ;
+// s2 is NW
+li s2 10 ;
+// s3 is it
+li s3 1 ;
+add s4 s1 1 ;
+
+$loop1
+
+nop
+tsync
+vid v0
+//s6 is inter loop
+li s6 0
+//v0 is the bf base number
+add v0 b0 s0 ;
+
+$loop2
+
+nop
+nop
+//v0 is the bf number
+add v0 v0 s6
+// v1 is q = b >> i
+srl v1 b0 s1
+// v2 is r = b - (q << i)
+sll v2 b1 s1 ;
+
+nop
+nop
+sub v2 v0 v2
+// v1 is idx = (q << (i + 1)) + r
+sll v1 v1 s4
+add v1 b1 v2 ;
+
+nop
+nop
+// v2 is adr = r << (NW - i - 1)
+sub s5 s2 s4
+srl v2 v2 b0
+//v5 is idx + it
+add v5 v1 s3 ;
+
+nop
+nop
+//init p1 to all 1
+cmp.unc.= p1 p0 vzero vzero
+sll v1 v1 2
+sll v2 v2 2 ;
+
+//v8 is w[adr] read part
+ld.word.rand v8 v2 0x4000
+nop
+sll v5 v5 2
+//init p2 to all 1
+cmp.unc.= p2 p0 vzero vzero
+nop ;
+
+//v9 is w[adr] imag part
+ld.word.rand v9 v2 0x4800
+nop
+//init p3 to all 1
+cmp.unc.= p3 p0 vzero vzero
+nop ;
+
+//v6 is iv[idx+it] real part
+(p1) ld.word.rand v6 v5 0x2000
+nop
+//init p4 to all 1
+cmp.unc.= p4 p0 vzero vzero
+nop
+nop ;
+
+(p1) ld.word.rand v6 v5 0x2000 ;
+
+//v7 is iv[idx+it] imag part
+(p2) ld.word.rand v7 v5 0x3000 ;
+(p2) ld.word.rand v7 v5 0x3000 ;
+
+//v3 has tmp(iv[idx]) real part
+(p3) ld.word.rand v3 v1 0x0
+nop
+mul v12 v6 v8
+mul v13 v7 v9
+mul v12 v6 v9 ;
+
+(p3) ld.word.rand v3 v1 0x0
+nop
+// v10 is tmp2 real part
+sub v10 v12 v13
+mul v13 v7 v8
+nop ;
+
+//v4 has tmp(iv[idx]) imag part
+(p4) ld.word.rand v4 v1 0x1000
+nop
+// v11 is tmp2 imag part
+add v11 v12 v13
+//v12 has tmp + tmp2 real part
+add v12 v3 v10
+nop ;
+
+(p4) ld.word.rand v4 v1 0x1000
+nop
+//init p1 to all 1
+cmp.unc.= p1 p0 vzero vzero
+nop
+nop ; 
+
+//store it to iv[idx]
+(p1) st.word.rand v12 v1 0x0
+nop
+//v13 has tmp + tmp2 imag part
+add v13 v3 v10
+//init p2 to all 1
+cmp.unc.= p2 p0 vzero vzero
+nop ; 
+
+(p1) st.word.rand v12 v1 0x0
+nop
+//v12 has tmp - tmp2 real part
+sub v12 v3 v10
+nop
+nop ;
+
+//store it to iv[idx]
+(p2) st.word.rand v13 v1 0x1000
+nop
+//init p3 to all 1
+cmp.unc.= p3 p0 vzero vzero
+nop
+nop ; 
+
+(p2) st.word.rand v13 v1 0x1000 ;
+
+//store it to iv[idx+it]
+(p3) st.word.rand v12 v5 0x2000
+nop
+//v13 has tmp - tmp2 imag part
+sub v13 v3 v10
+//init p4 to all 1
+cmp.unc.= p4 p0 vzero vzero
+//inter loop add
+add s6 s6 32 ;
+
+(p3) st.word.rand v12 v5 0x2000 ;
+
+//store it to iv[idx]
+(p4) st.word.rand v13 v5 0x3000
+nop
+cmp.unc.< p1 p0 s6 128
+nop
+nop ;
+
+(p4) st.word.rand v13 v5 0x3000
+(p1) b.naz.bc.pop2n $loop2 0
+nop
+nop
+nop ; 
+
+nop
+nop
+//it sll
+sll s3 s3 1
+//stage++
+add s1 s1 1
+nop ;
+
+nop
+(p1) b.pb.naz.bc.pop2n $loop1 0
+//s4 is stage + 1
+add s4 s4 1
+cmp.unc.< p1 p0 s1 10
+nop ; 

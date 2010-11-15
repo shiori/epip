@@ -67,7 +67,7 @@ function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
 endfunction
 
 class asmig;
-  int ps; /// source operation point
+///  int ps; /// source operation point
   bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bpOp, pdrOp, constOp;
   bit[3:0] tagOp;  /// operation
   bit[4:0] nop;
@@ -75,8 +75,8 @@ class asmig;
   int imm[5][4] , cont[5][4];  /// imm[i][0] = rd;
   string tag;
   string op[5];
-  bit[4:0] en, s, si;  /// option
-  bit mu, su, fcrl, emsk, vxup, alocd, s2g, dword;  /// option
+  bit[4:0] en, s, si, dword;  /// option
+  bit mu, su, fcrl, emsk, vxup, alocd, s2g;  /// option
   bit fcrPc, pb, az;
   bit ldLk, mhalfu, mbyteu;
   bit mhalf, mbyte, stCn;
@@ -107,7 +107,6 @@ class asmig;
   uint lid;
   
   function new();
-    ps = 1;
     nop = 0;
     vecOp = 0;
     immOp = 0;
@@ -115,7 +114,6 @@ class asmig;
     enOp = 0;
     tagOp = 0;
     constOp = 0 ;
-    nop = 0;
     dword = 0;
     fcrPc = 0;
     pb = 0;
@@ -155,9 +153,10 @@ class asmig;
       uchar adru[3], bk[3];
       uchar bksel[3] = '{default : 15};
       bit dual = 0, three = 0, one = 0, two = 0;
+      uchar ps = 1;
       
       if(!en[i]) break;
-      `asm_msg($psprintf("assemble inst %0d", i), OVM_HIGH);
+      `asm_msg($psprintf("assemble inst %0d op %s", i, op[i]), OVM_HIGH);
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
       inst[i].i.b.ir3w1.rd = adr[i][0];
@@ -188,9 +187,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_add3;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = dword;
+              inst[i].i.b.ir3w1.d = dword[i];
               three = 1;
-              if(dword) dual = 1;
+              if(dword[i]) dual = 1;
             end
             else begin
               inst[i].i.op = iop_r2w1;
@@ -243,10 +242,10 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mul;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = dword;
+              inst[i].i.b.ir3w1.d = dword[i];
               two = 1;
 ///              three = 1;
-              if(dword) dual = 1;
+              if(dword[i]) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -259,9 +258,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mad;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = dword;
+              inst[i].i.b.ir3w1.d = dword[i];
               three = 1;
-              if(dword) dual = 1;
+              if(dword[i]) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -274,9 +273,9 @@ class asmig;
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_msu;
               inst[i].i.b.ir3w1.s = s[i];
-              inst[i].i.b.ir3w1.d = dword;
+              inst[i].i.b.ir3w1.d = dword[i];
               three = 1;
-              if(dword) dual = 1;
+              if(dword[i]) dual = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");
@@ -1178,18 +1177,18 @@ class asmig;
       end
       else if(three) begin
         bit failed = 1;
-        `asm_msg($psprintf("printf out adr[3] of r3w1 %0d", adr[i][3]), OVM_FULL);
+        `asm_msg($psprintf("adr[3] of r3w1 %0d", adr[i][3]), OVM_FULL);
         adru[2] = adr[i][3] >> WID_VRF_BKS;
-        `asm_msg($psprintf("printf out adru[2] of r3w1 %0d", adru[2]), OVM_FULL);
+        `asm_msg($psprintf("adru[2] of r3w1 %0d", adru[2]), OVM_FULL);
         bk[2] = adr[i][3] & `GML(WID_VRF_BKS);
         for(int k = 0; k < CYC_VEC; k++)
           if(!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2]) begin
             vrfEn[k][bk[2]] = 1;
             vrfAdr[k][bk[2]] = adru[2];
-            `asm_msg($psprintf("Three printf out vrfEn[%0d][bk[2]] %0d", k,vrfEn[k][bk[2]]), OVM_FULL);
-            `asm_msg($psprintf("Three of 2 printf out vrfAdr %0d, ", adru[2]), OVM_FULL);
+            `asm_msg($psprintf("Three vrfEn[%0d][bk[2]] %0d", k,vrfEn[k][bk[2]]), OVM_FULL);
+            `asm_msg($psprintf("Three of 2 vrfAdr %0d, ", adru[2]), OVM_FULL);
             failed = 0;
-            `asm_msg($psprintf("printf out bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
+            `asm_msg($psprintf("bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
             bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
             break;
           end
@@ -1197,7 +1196,7 @@ class asmig;
           `asm_err("Err: vec reg alloc failed!");
           return 0;
         end
-        `asm_msg($psprintf("printf out bksel 3 of r3w1 %0d", bksel[2]), OVM_FULL);
+        `asm_msg($psprintf("bksel 3 of r3w1 %0d", bksel[2]), OVM_FULL);
         inst[i].i.b.ir3w1.rs2 = bksel[2];
       end
       
@@ -1220,26 +1219,26 @@ class asmig;
           `asm_msg("enop is not enable!", OVM_FULL);   
           break;
         end
-        `asm_msg($psprintf("printf out vecOp %0d, ps: %0d, i: %0d, j: %0d", vecOp[i][ps + j], ps, i, j), OVM_FULL);
+        `asm_msg($psprintf("vecOp %0d, ps: %0d, i: %0d, j: %0d", vecOp[i][ps + j], ps, i, j), OVM_FULL);
         if(vecOp[i][ps + j]) begin
           if(adr[ps + j] > 31) begin
             `asm_err("vec reg out of bound!");
             return 0;
           end
           `asm_msg("vector reg assignment!", OVM_FULL);
-          `asm_msg($psprintf("printf out original adr %0d, j:%0d", adr[i][ps + j],j), OVM_FULL);
+          `asm_msg($psprintf("original adr %0d, j:%0d", adr[i][ps + j],j), OVM_FULL);
           adru[j] = adr[i][ps + j] >> WID_VRF_BKS;
-          `asm_msg($psprintf("printf out vec adru %0d, j:%0d", adru[j],j), OVM_FULL);
+          `asm_msg($psprintf("vec adru %0d, j:%0d", adru[j],j), OVM_FULL);
           bk[j] = adr[i][ps + j] & `GML(WID_VRF_BKS);
-          `asm_msg($psprintf("printf out bk[j]: %0d, j:%0d", bk[j],j), OVM_FULL);
+          `asm_msg($psprintf("bk[j]: %0d, j:%0d", bk[j],j), OVM_FULL);
           if(j < 2) begin
             bit failed = 1;
             for(int k = 0; k < CYC_VEC; k++)
               if(!vrfEn[k][bk[j]] || vrfAdr[k][bk[j]] == adru[j]) begin
                 vrfEn[k][bk[j]] = 1;
                 vrfAdr[k][bk[j]] = adru[j];
-                `asm_msg($psprintf("printf out bk[%0d], vrfEn[%0d][bk[%0d]]: %0d, ", j, k,j,vrfEn[k][bk[j]]), OVM_FULL);
-                `asm_msg($psprintf("printf out vrfAdr %0d, j:%0d", adru[j],j), OVM_FULL);
+                `asm_msg($psprintf("bk[%0d], vrfEn[%0d][bk[%0d]]: %0d, ", j, k,j,vrfEn[k][bk[j]]), OVM_FULL);
+                `asm_msg($psprintf("vrfAdr %0d, j:%0d", adru[j],j), OVM_FULL);
                 failed = 0;
                 bksel[j] = 16 + k * NUM_VRF_BKS + bk[j];
                 break;
@@ -1278,13 +1277,13 @@ class asmig;
       
       if(one) begin
         inst[i].i.b.ir3w1.rs0 = bksel[0];
-        `asm_msg($psprintf("printf out bksel 0 of r1w1 %0d", bksel[0]), OVM_FULL);
+        `asm_msg($psprintf("bksel 0 of r1w1 %0d", bksel[0]), OVM_FULL);
       end
       else if(two || three) begin
         inst[i].i.b.ir3w1.rs0 = bksel[0];
         inst[i].i.b.ir3w1.rs1 = bksel[1];
-        `asm_msg($psprintf("printf out bksel 0 of r2w1 or r3w1 %0d", bksel[0]), OVM_FULL);
-        `asm_msg($psprintf("printf out bksel 1 of r2w1 or r3w1 %0d", bksel[1]), OVM_FULL);
+        `asm_msg($psprintf("bksel 0 of r2w1 or r3w1 %0d", bksel[0]), OVM_FULL);
+        `asm_msg($psprintf("bksel 1 of r2w1 or r3w1 %0d", bksel[1]), OVM_FULL);
       end
     
     end
@@ -1342,7 +1341,7 @@ class asmig;
     end
     else begin
       for (int i = 0; i < 5; i++) begin
-        if(enOp[i])
+        if(en[i] && !nop[i])
           v_icnt += 1 ; 
       end      
       grpsize = (16 + v_icnt * 40 +  contNum * 32) / 8 + adrBytes;
@@ -1406,7 +1405,7 @@ class asmig;
     end
     else begin
       for(int i = 0; i< 5; i++)
-        gs1.i.unitEn[i] = !nop[i];
+        gs1.i.unitEn[i] = !nop[i] && en[i];
       
       if(contNum < 5)
         gs1.i.coPkgW = contNum;
@@ -1433,7 +1432,7 @@ class asmig;
       
       for(int i = 0; i < 5; i++)
         for(int j = 0; j < 5; j++) begin
-          if(enOp[i])          
+          if(!nop[i] && en[i]) ///enOp[i]
             $fwrite(fo, "%8b\n", inst[i].b[j]);
         end
     end
@@ -1528,6 +1527,7 @@ class ip4_assembler;
         string tk2n = tk.substr(2, tk.len() - 1);
         `asm_msg({"@@read token ", tk}, OVM_HIGH);
         if(tk0 == "/") begin
+          isInst = 0;
           `asm_msg("it's a comment.", OVM_HIGH);
           if(tid != 0) begin
             `asm_err("comment not at begining");
@@ -1610,7 +1610,7 @@ class ip4_assembler;
 ///              "gu1" : cur.chkGrpUp = 1;
               "icc":  if(opts.size() > 0) cur.icc = get_imm(opts.pop_front());
               "nmsk" : cur.grpMsk = 1;
-              "dword" : cur.dword = 1; 
+              "dword" : cur.dword[i] = 1; 
               "mu" : cur.mu = 1;
               "su" : cur.su = 1;
               "fcrl": cur.fcrl = 1;

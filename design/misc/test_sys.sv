@@ -44,7 +44,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "imSize", 1024);
     set_config_int("*", "dmBase", 0);
     set_config_int("*", "dmSize", 64 * 1024);
-    set_config_string("*", "imFilePath", "../misc/fft1.txt"); ///average_filter
+    set_config_string("*", "imFilePath", "../misc/fft2.txt"); ///average_filter
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_string("*", "dmFilePath", "../misc/mem.txt");
     set_config_int("*", "pbId", 2);
@@ -115,7 +115,7 @@ class ip4_sys_test extends ovm_test;
               $bits(i_load), $bits(i_store), $bits(i_mctl), $bits(i_fetadd), $bits(i_cmpxchg), 
               $bits(i_mrfa), $bits(i_cmsg), $bits(i_cmp), $bits(i_cmpi), $bits(i_cop),
               $bits(i_vxchg), $bits(i_i26)));
-///    #2851ns;
+///    #2153ns;
 ///    set_report_verbosity_level_hier(OVM_FULL);
   endtask
 

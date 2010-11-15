@@ -95,7 +95,7 @@ ld.word.rand v9 v2 0x4800 ;
 mul v12 v6 v8 ;
 mul v13 v7 v9 ;
 // v10 is tmp2 real part
-sub v10 v10 v11 ;
+sub v10 v12 v13 ;
 mul v12 v6 v9 ;
 mul v13 v7 v8 ;
 // v11 is tmp2 imag part

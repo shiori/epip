@@ -1,9 +1,14 @@
 //test asm file
 $loop2
-tsync ;
+//tsync ;
 add s15 s15 32 ;
-cmp.unc.< p1 p0 s15 128 ; 
-(p1) b.naz.bc.pop2n $loop2 0 ;
+
+nop
+(p1) b.pb.naz.bc.pop2n $loop2 0
+cmp.unc.< p1 p0 s15 128
+nop
+nop ; 
+
 
 
 vid v0 ;
