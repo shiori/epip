@@ -130,7 +130,7 @@ nop
 nop ; 
 
 //store it to iv[idx]
-(p1) st.word.rand v12 v1 0x0
+(p1) st.word.rand v1 v12 0x0
 nop
 //v13 has tmp + tmp2 imag part
 add v13 v3 v10
@@ -138,7 +138,7 @@ add v13 v3 v10
 cmp.unc.= p2 p0 vzero vzero
 nop ; 
 
-(p1) st.word.rand v12 v1 0x0
+(p1) st.word.rand v1 v12 0x0
 nop
 //v12 has tmp - tmp2 real part
 sub v12 v3 v10
@@ -146,17 +146,17 @@ nop
 nop ;
 
 //store it to iv[idx]
-(p2) st.word.rand v13 v1 0x1000
+(p2) st.word.rand v1 v13 0x1000
 nop
 //init p3 to all 1
 cmp.unc.= p3 p0 vzero vzero
 nop
 nop ; 
 
-(p2) st.word.rand v13 v1 0x1000 ;
+(p2) st.word.rand v1 v13 0x1000 ;
 
 //store it to iv[idx+it]
-(p3) st.word.rand v12 v5 0x2000
+(p3) st.word.rand v5 v12 0x2000
 nop
 //v13 has tmp - tmp2 imag part
 sub v13 v3 v10
@@ -165,16 +165,16 @@ cmp.unc.= p4 p0 vzero vzero
 //inter loop add
 add s6 s6 32 ;
 
-(p3) st.word.rand v12 v5 0x2000 ;
+(p3) st.word.rand v5 v12 0x2000 ;
 
 //store it to iv[idx]
-(p4) st.word.rand v13 v5 0x3000
+(p4) st.word.rand v5 v13 0x3000
 nop
 cmp.unc.< p1 p0 s6 128
 nop
 nop ;
 
-(p4) st.word.rand v13 v5 0x3000
+(p4) st.word.rand v5 v13 0x3000
 (p1) b.naz.bc.pop2n $loop2 0
 nop
 nop
