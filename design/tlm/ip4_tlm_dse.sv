@@ -251,7 +251,7 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fmISE[STAGE_RRF_SEL] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
       if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
-        if(ise.subVec >= (CYC_VEC >> 1)) begin
+        if(ise.subVec >= LAT_XCHG) begin
           word tmp[NUM_SP];
           ///SXG stages loop mode start
           if(v.fmRFM[STAGE_RRF_SXG] != null)
@@ -277,7 +277,7 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fmISE[STAGE_RRF_DC] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
-        if(ise.subVec >= (CYC_VEC >> 1)) begin
+        if(ise.subVec >= LAT_XCHG) begin
           if(vn.fmRFM[STAGE_RRF_LXG0] != null && vn.fmRFM[STAGE_RRF_LXG] != null)
             vn.fmRFM[STAGE_RRF_LXG0].st = vn.fmRFM[STAGE_RRF_LXG].st;
           if(ise.op inside {op_pera, op_tmrf}) begin
@@ -1265,8 +1265,8 @@ class ip4_tlm_dse extends ovm_component;
 ///        sxg[STAGE_RRF_SXG0].xhg[sp] = xhg << WID_WORD;
         sxgBuf[cyc].sl[sp] = '{default : slot};
         sxgBuf[cyc].bk[sp] = '{default : bk};
-///        sxgBuf[cyc].sMemAdr[sp] = bk;
-///        sxgBuf[cyc].sMemGrp[sp] = slot;
+        sxgBuf[cyc].sMemAdr[sp] = bk;
+        sxgBuf[cyc].sMemGrp[sp] = slot;
         for(int os = 0; os < WORD_BYTES; os++)
           sxgBuf[cyc].os[sp][os] = os;
           

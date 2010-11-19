@@ -20,15 +20,15 @@ function automatic int get_imm(string tk);
     tk2n = tk.substr(3, tk.len() - 1);    
   end
   
-  if(tk0.tolower() == "o")
+  if(tk0 == "o")
     get_imm = tk1n.atooct();
-  else if(tk0.tolower() == "h")
+  else if(tk0 == "h")
     get_imm = tk1n.atohex();
-  else if(tk0 == "0" && tk1.tolower() == "x")
+  else if(tk0 == "0" && tk1 == "x")
     get_imm = tk2n.atohex();
-  else if(tk0.tolower() == "b")
+  else if(tk0 == "b")
     get_imm = tk1n.atobin();
-  else if(tk0.tolower() == "d")
+  else if(tk0 == "d")
     get_imm = tk1n.atoi();
   else
     get_imm = tk.atoi();
@@ -1127,9 +1127,9 @@ class asmig;
           end
         "permute32" :
           begin
-            if(immOp[i][3]) begin
+            if(enOp[i][2]) begin
               inst[i].i.op = iop_vxchg;
-              inst[i].i.b.vxchg.fun = imm[i][3];
+              inst[i].i.b.vxchg.fun = 0;
               inst[i].i.b.vxchg.t = 1;
               inst[i].i.b.vxchg.s = emsk;
               inst[i].i.b.vxchg.up = vxup;
@@ -1510,6 +1510,7 @@ class ip4_assembler;
       int state = 0, opcnt = 0;
 ///      bit isInst = 0;///, hasTag = 0;
       if(cur == null) cur  = new();
+      s = s.tolower();
       `asm_msg($psprintf("current pc 0x%0h", pc), OVM_HIGH);
       `asm_msg("@@Asm code as follows:", OVM_HIGH);
       `asm_msg(s, OVM_HIGH, write);
@@ -1575,7 +1576,7 @@ class ip4_assembler;
 ///              `asm_err("predication not at begining");
 ///              return 0;
 ///            end
-            cur.padr[icnt] = (tk1.tolower() == "p") ? tk2n.atoi() : tk1n.atoi();
+            cur.padr[icnt] = (tk1 == "p") ? tk2n.atoi() : tk1n.atoi();
             `asm_msg($psprintf("it's a predication reg :%0d", cur.padr[icnt]), OVM_HIGH);
           end
           else if(tk0 == "r") begin
@@ -1587,7 +1588,7 @@ class ip4_assembler;
             brk_token(tk, {" ", ".", "\t", "\n"}, opts);
             cur.op[icnt] = opts.pop_front();
             `asm_msg($psprintf("cur.op[%d]: %0d", icnt, cur.op[icnt]), OVM_HIGH);
-            if(cur.op[icnt].tolower() != "options") begin
+            if(cur.op[icnt] != "options") begin
               cur.en[icnt] = 1;
               state ++;
               isInst = 1;
@@ -1597,7 +1598,7 @@ class ip4_assembler;
             while(opts.size() > 0) begin
               string opt = opts.pop_front();
               `asm_msg($psprintf("get option: %s", opt), OVM_HIGH);
-              case(opt.tolower())
+              case(opt)
               "s"   : cur.s[icnt] = 1;
               "u"   : cur.s[icnt] = 0;
               "si"  : cur.si[icnt] = 1;
@@ -1716,18 +1717,18 @@ class ip4_assembler;
             `asm_msg($psprintf("trying to get a reg adr or imm for op%0d", opcnt), OVM_HIGH);
             cur.enOp[icnt][opcnt] = 1;
 ///            /// sepecial register defined prefix u-
-///            cur.srOp[icnt][opcnt] = tk0.tolower() == "u";
-            cur.constOp[icnt][opcnt] = tk0.tolower() == "c";
-            cur.pdrOp[icnt][opcnt] = tk0.tolower() == "p";
+///            cur.srOp[icnt][opcnt] = tk0 == "u";
+            cur.constOp[icnt][opcnt] = tk0 == "c";
+            cur.pdrOp[icnt][opcnt] = tk0 == "p";
             if(cur.op[icnt] inside {"b", "fcr"}) begin
-              cur.tagOp[opcnt] = tk0.tolower() == "$";
+              cur.tagOp[opcnt] = tk0 == "$";
               if(cur.tagOp[opcnt])
                 cur.tag = tk1n;
             end
-            cur.bpOp[icnt][opcnt] = tk0.tolower() == "b";
-            cur.vecOp[icnt][opcnt] = tk0.tolower() == "v" || tk.tolower() == "vzero";
-            cur.zeroOp[icnt][opcnt] = tk.tolower() == "zero" || tk.tolower() == "vzero";
-            cur.immOp[icnt][opcnt] = tk0.tolower() != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
+            cur.bpOp[icnt][opcnt] = tk0 == "b";
+            cur.vecOp[icnt][opcnt] = tk0 == "v" || tk == "vzero";
+            cur.zeroOp[icnt][opcnt] = tk == "zero" || tk == "vzero";
+            cur.immOp[icnt][opcnt] = tk0 != "s" && !cur.vecOp[icnt][opcnt] && !cur.zeroOp[icnt][opcnt] && !cur.tagOp[opcnt]
                                      && !cur.bpOp[icnt][opcnt] && !cur.pdrOp[icnt][opcnt] && !cur.constOp[icnt][opcnt];
             
             if(cur.immOp[icnt][opcnt])

@@ -1,4 +1,13 @@
 //test asm file
+
+nop
+nop
+li s0 31
+vid v0
+sub v1 b0 b1 ;
+
+Permute32 v2 v1 v0 ;
+
 $loop2
 //tsync ;
 add s15 s15 32 ;
@@ -29,161 +38,3 @@ ld.byte v0 zero 0x6 ;
 li s0 33 ;
 st.byte zero s0 0x7 ;
 ld.byte s0 zero 0x7 ;
-
-nop
-li s0 1
-li s1 2
-li s2 3
-li s4 4 ;
-
-nop
-add.si s0 s0 1
-add.si s1 s1 1
-add.si s2 s2 1
-add.si s4 s4 1 ;
-
-vid v0 ;
-add.si v3 v0 0x2 ;
-add.si v4 v0 v3 ;
-
-(p0) vid v21 ;
-
-st.byte.nua.burst v0 v1 0x3
-nop
-cmp.unc.>= p0 p1 v21 3
-nop
-nop ;
-(p1) st.byte.nua.burst v0 v21 0x3 ;
-
-ld.byte.nua.burst v0 zero 0x3 ;
-
-(p1) b.az.bc.pb.pop2n $tag1 0 ;
-
-nop
-(p1) b.az.bc.pb.pop2n $tag1 0
-cmp.unc.<= p1 p0 v0 0
-nop
-nop ;
-
-li v6 0x16526C9 ;
-li v7 0x16526C9 ;
-li v6 0x16526C9 ;
-li v7 0x16526C9 ;
-li v6 0x16526C9 ;
-li v7 0x16526C9 ;
-li v6 0x16526C9 ;
-li v7 0x16526C9 ;
-
-(p1) b.az.loop.storemsc $tag1 0x0 ;
-
-(p1) b.az.loop.storemsc $tag2 0x0 ;
-
-udiv v10 v10 s10 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-li v0 0x16526C9 ;
-
-
-(p0) vid v21 ;
-cmp.unc.>= p0 p1 v21 3 ;
-nop
-(p1) b.naz.loop.storemsc $tag1 0x0
-add.si v3 v0 0xffffffff
-add.si v4 v4 0xffffffff
-add.si v5 v12 0xffffffff ;
-
-(p1) li v0 0x16526C9 ;
-
-(p1) li v1 0x16526C9 ;
-
-(p1) li v2 0x16526C9 ;
-shuffle4 v1 v3 v2 0x249 ; 
-udiv v10 v10 s10 ;
-vid v1 ;
-st.byte.nua.burst v0 v1 0x3 ;
-
-ld.byte.nua.burst v0 zero 0x3 ;
-
-li v3 0x16526C9 ;
-$tag1 lu s1 0x18 ;
-li v6 0x16526C9 ;
-li v7 0x16526C9 ;
-$tag2 add.si v2 v23 0x6a6b7 ;
-lu v2 0x16526C9 ;
-//7+3=10 2r1w noimm
-lu s0 0x38 ;
-add.s s3 s0 s1 ;
-//3r1w mad 7*3+8
-lu v23 0x400000 ;
-mad.s v6 v13 v10 v23 ;
-//2r1w1imm shift right 3
-srl v3 v1 0x3 ;
-//2r1w shift right 3
-srl s4 s3 s1 ;
-//3r1w mad 7*3+8
-lu v5 0x400000 ;
-mad.s v6 v3 v1 v5 ;
-// FCR os = 11
-fcr.az.su.mu s4 0xb ;
-//FCR tag1 
-fcr.az.su.mu rpc $tag1 ; 
-// Cache
-cache.icah.ihit.mctbst s3 0x12 ;
-// SYNC
-sync.mctbst.syldst s3 0x12 ;
-// CMP
-cmp.unc.>= p0 p1 s5 s2 ; 
-// TLBWR
-tlbwr ;
-// ALLOC
-alloc v0 0xa ;
-// ASR special register -> general register
-asr.s2g s3 0x13 0x3 ; 
-// ASR general register -> special register
-asr 0x13 s3 0x3 ; 
-// SHUFFLE4 
-shuffle4 v1 v3 v2 0x249 ; 
-// Start group1 test
-
-add.si v2 v3 0x6a6b7
-mad.s v6 v3 v1 v5
-nop
-lu v2 0x16526C9
-nop ;
-// include cant package
-
-options.c1.0x5
-options.c2.0x9
-lu v3 0x16526C9
-nop 
-mad.s v6 v27 v10 v9
-mad.s v4 v3 v1 v6
-add.si v2 v17 0x6a6b7 ;
-// mrfrd inst
-
-mrfrd v3 0x2 ;
-// mrfwr inst
-
-mrfwr.mrsfr v5 v12 0x3 0x2 ;
-// smsg inst
-smsg 0x2 0x3 0x1 ;
-// gain msg inst
-gmsg 0x7 ;
