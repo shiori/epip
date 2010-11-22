@@ -305,7 +305,7 @@ endclass : tr_spa2rfm
 
 class tr_dse2rfm extends ovm_sequence_item;
 	rand word res[NUM_SP], uaRes[NUM_SP];
-	rand bit wrEn[NUM_SP], srfWr, vrfWr, uaWrEn, exp;
+	rand bit wrEn[NUM_SP], wr, uaWrEn, exp;
 	rand uchar tid, tidExp;
 	rand bit expVec[NUM_SP], vec;
 	rand uchar wrGrp, wrAdr, wrBk, 
@@ -319,7 +319,7 @@ class tr_dse2rfm extends ovm_sequence_item;
   	wrAdr inside {[0:NUM_PRF_P_GRP/NUM_VRF_BKS-1]};
   	wrBk inside {[0:NUM_VRF_BKS-1]};
   	subVec dist {0:=5, 1:=5};
-  	srfWr dist {0:=9, 1:=1};
+  	wr dist {0:=9, 1:=1};
   }
 
 	function void post_randomize();
@@ -350,8 +350,7 @@ class tr_dse2rfm extends ovm_sequence_item;
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(vecModeExp, OVM_ALL_ON)
-    `ovm_field_int(srfWr, OVM_ALL_ON)
-    `ovm_field_int(vrfWr, OVM_ALL_ON)
+    `ovm_field_int(wr, OVM_ALL_ON)
     `ovm_field_int(uaWrEn, OVM_ALL_ON)
     `ovm_field_int(exp, OVM_ALL_ON)
   `ovm_object_utils_end

@@ -28,7 +28,7 @@ endclass
 /// vsim +OVM_TESTNAME=ip4_sys_test work.top -c -do "transcript off ; run 90ns ; quit -f" > log.txt
 /// -novopt
 /// cd E:\work\ip4\design\sim
-/// vlog -sv ..\tlm\ip4.sv +incdir+..\tlm\ +incdir+d:\questasim_6.6c\verilog_src\ovm-2.1.1\src\
+/// vlog -sv ..\tlm\ip4.sv +incdir+..\tlm\ +incdir+d:\questasim_6.6d\verilog_src\ovm-2.1.1\src\
 
 class ip4_sys_test extends ovm_test;
   test_sys_env env;

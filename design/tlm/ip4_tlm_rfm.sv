@@ -195,22 +195,22 @@ class ip4_tlm_rfm extends ovm_component;
       `ip4_info("rfm_wr", $psprintf("Write Back DSE: vec %0d, grp: %0d, adr %0d, bk %0d ...",
           dse.vec, dse.wrGrp, dse.wrAdr, dse.wrBk), OVM_HIGH)
       srDSEExp[dse.tid][dse.subVec] = dse.expVec;
-      if(dse.vec) begin
+      if(dse.vec && dse.wr) begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
           `ip4_info("rfm_wr", "dse vec write back canceled...", OVM_HIGH) 
         else
           foreach(dse.wrEn[sp]) begin
-            if(dse.wrEn[sp] && dse.vrfWr) begin
+            if(dse.wrEn[sp]) begin
               vrf[dse.wrGrp][dse.wrAdr][dse.wrBk][dse.subVec][sp] = dse.res[sp];
               if(dse.uaWrEn)
                 vrf[dse.uaWrGrp][dse.uaWrAdr][dse.uaWrBk][dse.subVec][sp] = dse.uaRes[sp];
             end
           end
       end
-      else begin
+      else if(dse.wr) begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
           `ip4_info("rfm_wr", "dse scl write back canceled...", OVM_HIGH) 
-        else if(dse.wrEn[0] && dse.srfWr)
+        else if(dse.wrEn[0])
           srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       end
     end
@@ -267,11 +267,13 @@ class ip4_tlm_rfm extends ovm_component;
         `ip4_info("rfm_rd", $psprintf("Read for dse subVec %0d, cyc %0d ...",
                         subVec, ise.cycDSE), OVM_FULL)
         if(toDSE == null) toDSE = tr_rfm2dse::type_id::create("toDSE", this);
-        foreach(toDSE.base[sp]) begin
-          read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, bpCoDSE, ise.dseImm);
+        foreach(toDSE.base[sp])
           read_rf(dseSt[ise.cycDSE][subVec][sp], ise.dseRdBk[1], sp, cvrf, csrf, bpCoDSE, ise.dseImm);
+        if(ise.cycDSE < 1) begin
+          read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, bpCoDSE, ise.dseImm);
+          foreach(toDSE.base[sp])
+            read_rf(toDSE.base[sp], ise.dseRdBk[0], sp, cvrf, csrf, bpCoDSE, ise.dseImm);
         end
-        read_rf(toDSE.os, ise.dseRdBk[2], 0, cvrf, csrf, bpCoDSE, ise.dseImm);
       end
             
       if(ise.spuEn && ise.cycSPU < 2) begin
