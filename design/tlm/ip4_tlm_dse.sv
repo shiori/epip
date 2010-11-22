@@ -254,21 +254,21 @@ class ip4_tlm_dse extends ovm_component;
         if(ise.subVec >= LAT_XCHG) begin
           word tmp[NUM_SP];
           ///SXG stages loop mode start
-          if(v.fmRFM[STAGE_RRF_SXG] != null)
-            tmp = v.fmRFM[STAGE_RRF_SXG].st;
-          if(v.fmRFM[STAGE_RRF_SXG] != null && v.fmRFM[STAGE_RRF_SEL] != null)
-            v.fmRFM[STAGE_RRF_SXG].st = v.fmRFM[STAGE_RRF_SEL].st;
           if(v.fmRFM[STAGE_RRF_SEL] != null)
-            v.fmRFM[STAGE_RRF_SEL].st = tmp;
+            tmp = v.fmRFM[STAGE_RRF_SEL].st;
+          if(v.fmRFM[STAGE_RRF_SEL + LAT_XCHG] != null && v.fmRFM[STAGE_RRF_SEL] != null)
+            v.fmRFM[STAGE_RRF_SEL].st = v.fmRFM[STAGE_RRF_SEL + LAT_XCHG].st;
+          if(v.fmRFM[STAGE_RRF_SEL + LAT_XCHG] != null)
+            v.fmRFM[STAGE_RRF_SEL + LAT_XCHG].st = tmp;
           if(ise.op inside {op_pera, op_tmrf}) begin
             bit tmp[NUM_SP];
             ///spu need loop too
-            if(v.fmSPU[STAGE_RRF_SXG] != null)
-              tmp = v.fmSPU[STAGE_RRF_SXG].emsk;
-            if(v.fmSPU[STAGE_RRF_SXG] != null && v.fmSPU[STAGE_RRF_SEL] != null)
-              v.fmSPU[STAGE_RRF_SXG].emsk = v.fmSPU[STAGE_RRF_SEL].emsk;
             if(v.fmSPU[STAGE_RRF_SEL] != null)
-              v.fmSPU[STAGE_RRF_SEL].emsk = tmp;            
+              tmp = v.fmSPU[STAGE_RRF_SEL].emsk;
+            if(v.fmSPU[STAGE_RRF_SEL + LAT_XCHG] != null && v.fmSPU[STAGE_RRF_SEL] != null)
+              v.fmSPU[STAGE_RRF_SEL].emsk = v.fmSPU[STAGE_RRF_SEL + LAT_XCHG].emsk;
+            if(v.fmSPU[STAGE_RRF_SEL + LAT_XCHG] != null)
+              v.fmSPU[STAGE_RRF_SEL + LAT_XCHG].emsk = tmp;            
           end
         end
       end
@@ -278,11 +278,11 @@ class ip4_tlm_dse extends ovm_component;
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
         if(ise.subVec >= LAT_XCHG) begin
-          if(v.fmRFM[STAGE_RRF_DC] != null && v.fmRFM[STAGE_RRF_DC + LAT_XCHG - 1] != null)
-            v.fmRFM[STAGE_RRF_DC].st = v.fmRFM[STAGE_RRF_DC + LAT_XCHG - 1].st;
+          if(v.fmRFM[STAGE_RRF_DC] != null && v.fmRFM[STAGE_RRF_DC + LAT_XCHG] != null)
+            v.fmRFM[STAGE_RRF_DC].st = v.fmRFM[STAGE_RRF_DC + LAT_XCHG].st;
           if(ise.op inside {op_pera, op_tmrf}) begin
-            if(v.fmSPU[STAGE_RRF_DC] != null && v.fmSPU[STAGE_RRF_DC + LAT_XCHG - 1] != null)
-              v.fmSPU[STAGE_RRF_DC].emsk = v.fmSPU[STAGE_RRF_DC + LAT_XCHG - 1].emsk;
+            if(v.fmSPU[STAGE_RRF_DC] != null && v.fmSPU[STAGE_RRF_DC + LAT_XCHG] != null)
+              v.fmSPU[STAGE_RRF_DC].emsk = v.fmSPU[STAGE_RRF_DC + LAT_XCHG].emsk;
           end
         end
       end
@@ -1295,8 +1295,8 @@ class ip4_tlm_dse extends ovm_component;
       ///finish one half wrap or whole request
       if(last) begin
         for(int j = 0; j < LAT_XCHG; j++) begin
-          tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + j];
-          tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL + j];
+          tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + LAT_XCHG - 1 - j];
+          tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL + LAT_XCHG - 1 - j];
           if(rfm == null || spu == null) continue;
           for(int i = 0; i < LAT_XCHG; i++) begin
             foreach(rfm.base[sp]) begin
