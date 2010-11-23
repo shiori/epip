@@ -1254,8 +1254,9 @@ class ip4_tlm_dse extends ovm_component;
       foreach(rfm.base[sp]) begin
         ushort bk, slot;
         if(ise.op inside {op_shf4a, op_shf4b}) begin
-          bk = rfm.base[0] >> (2 * (sp >> 2)) & `GML(2);
-          bk += sp & `GMH(2);
+          bk = rfm.os >> ((sp & `GML(2)) * 3) & `GML(3);
+          if((sp >> 2) & 'b01)
+            bk = 7 - bk;
           slot = cyc;
         end
         else begin

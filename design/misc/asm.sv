@@ -1112,13 +1112,13 @@ class asmig;
           end
         "shuffle4" :
           begin
-            if(immOp[i][3]) begin
+            if(immOp[i][2]) begin
               inst[i].i.op = iop_vxchg;
-              inst[i].i.b.vxchg.fun = imm[i][3];
+              inst[i].i.b.vxchg.fun = imm[i][2];
               inst[i].i.b.vxchg.t = 0;
               inst[i].i.b.vxchg.s = 0;
               inst[i].i.b.vxchg.up = vxup;
-              two = 1;
+              one = 1;
             end
             else begin
               `asm_err("op number does not match with the op_code!");

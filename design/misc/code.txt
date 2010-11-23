@@ -7,8 +7,9 @@ vid v0
 sub v1 b0 b1 ;
 
 cmp.unc.< p1 p0 v0 18 ;
+(p1) shuffle4 v2 v1 0xF42 ;
 
-(p1) permute32.penmsk v2 v1 v0 ;
+//(p1) permute32.penmsk v2 v1 v0 ;
 
 $loop2
 //tsync ;

@@ -754,15 +754,17 @@ class inst_c extends ovm_object;
     end    
     else if(inst.i.op == iop_vxchg) begin
       if(inst.i.b.vxchg.t) begin
-      op = inst.i.b.vxchg.s ? op_pera : op_perb;
-      set_rf_en(inst.i.b.vxchg.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+        op = inst.i.b.vxchg.s ? op_pera : op_perb;
+        set_rf_en(inst.i.b.vxchg.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
+        set_rf_en(inst.i.b.vxchg.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       end
       else begin
         op = inst.i.b.vxchg.s ? op_shf4a : op_shf4b;
         imm = inst.i.b.vxchg.fun;
-        rdBkSel[1] = selii;
+        rdBkSel[0] = selz;
+        rdBkSel[2] = selii;
+        set_rf_en(inst.i.b.vxchg.rs0, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       end
-      set_rf_en(inst.i.b.vxchg.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       adrWr[0] = rd;
       wrEn[0] = 1;
       prWrAdr[0] = inst.i.p;
