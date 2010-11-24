@@ -1257,7 +1257,7 @@ class ip4_tlm_dse extends ovm_component;
           bk = rfm.os >> ((sp & `GML(2)) * 3) & `GML(3);
           if((sp >> 2) & 'b01)
             bk = 7 - bk;
-          slot = cyc;
+          slot = cyc & `GML(WID_DCHE_CL);
         end
         else begin
           bk = rfm.base[sp];
