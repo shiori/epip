@@ -113,29 +113,22 @@ parameter uint  NUM_SP            = 8,
                 NUM_W_CNT         = 2,
                 NUM_IFET_BYTES    = 16,
                 NUM_INST_VRF      = 32,
-                NUM_INST_SRF      = 16,
-///                NUM_SMEM_BK       = NUM_SP,   /// register file bank number, must be NUM_SP
-                NUM_SMEM_GRP      = 4,
+                NUM_INST_SRF      = 16;
+
+parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
+
+parameter uint  NUM_SMEM_GRP      = 4,
                 NUM_SMEM_GRP_W    = 512,
-                NUM_DCHE_CL       = LAT_XCHG,
+                NUM_DCHE_CL       = CYC_VEC,
                 NUM_DCHE_ASO      = 4,
                 NUM_DCHE_TAG      = NUM_SMEM_GRP_W / (NUM_DCHE_CL * NUM_DCHE_ASO),
                 NUM_BR_HISTORY    = 32,
                 NUM_FCR_RET       = 8,
-///                NUM_BURST_CL      = LAT_XCHG,
-///                NUM_BURST_LEN     = NUM_BURST_CL * NUM_SMEM_BK,
-///                NUM_EBUS_WORDS    = 2,
-///                NUM_STBUF_LINE    = LAT_XCHG,
                 NUM_STQUE         = 8,
                 NUM_LDQUE         = 16,
                 NUM_LLCK          = 4,
                 NUM_FIFO          = 8;
-
-parameter uint CFG_START_ADR      = 'hf000_0000,
-               CFG_MAX_MSC        = 'hffff_fff0;
-
-parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
                 
 parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_HALF        = n2w(HALF_BYTES),
@@ -145,6 +138,7 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_VID         = n2w(NUM_VEC),
                 WID_SP          = n2w(NUM_SP),
                 WID_CYC         = n2w(CYC_VEC),
+                WID_XCHG        = n2w(LAT_XCHG),
                 WID_IFET        = n2w(NUM_IFET_BYTES),
                 WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
                 WID_SMEM_BK     = n2w(NUM_SP),
@@ -154,8 +148,6 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_DCHE_IDX    = n2w(NUM_DCHE_TAG),
                 WID_DCHE_ASO    = n2w(NUM_DCHE_ASO),
                 WID_DCHE_STAG   = 2;
-///                WID_BURST      = n2w(NUM_BURST_LEN),
-///                WID_STBUFL     = n2w(NUM_STBUF_LINE);
 
 /*
                                            pipeline stages:
@@ -237,42 +229,39 @@ parameter uchar CYC_VEXP_DSE      = STAGE_RRF_VWB - STAGE_RRF_DC,
                 
 parameter uchar CK_STAGE_SFU1     = STAGE_EEX - STAGE_RRF_EXE,      ///19
                 CK_STAGE_SFU0     = CK_STAGE_SFU1 - CYC_VEC + 1;    ///16
-                 
-`ovm_nonblocking_transport_imp_decl(_rfm)
-`ovm_nonblocking_transport_imp_decl(_ise)
-`ovm_nonblocking_transport_imp_decl(_spu)
-`ovm_nonblocking_transport_imp_decl(_spa)
-`ovm_nonblocking_transport_imp_decl(_dse)
-`ovm_nonblocking_transport_imp_decl(_ife)
-`ovm_nonblocking_transport_imp_decl(_tlb)
-`ovm_nonblocking_transport_imp_decl(_eif)
-  
-class tlm_vif_object extends ovm_object;
-  `ovm_object_utils(tlm_vif_object)
-    
-  virtual tlm_sys_if vif;
-    
-  function new(string name="tlm_vif_object");
-    super.new(name);
-  endfunction
-    
-  function virtual tlm_sys_if get_vif();
-    return vif;
-  endfunction /// virtual
-    
-  function  void set_vif( virtual tlm_sys_if pins);
-    vif = pins;
-  endfunction      
-    
-  function void do_copy (ovm_object rhs);
-    tlm_vif_object tmp;
 
-    super.do_copy(rhs);
-    $cast(tmp,rhs);
-    vif= tmp.vif;
-  endfunction /// void
-endclass : tlm_vif_object
-  
+parameter uchar INDEX_ENT    = 7 , /// entry bits
+                NUM_TLB_E    = 1 << INDEX_ENT,  ///128
+                VPN2_WIDTH   = 18,
+                TYPE_WIDTH   = 3,  /// Page Size Type bit width
+                ASID_WIDTH   = 8,
+                IFE_REQ_BUF  = 2,
+                VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
+                PFN_WIDTH    = 26,
+                PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///36
+
+parameter uint CFG_START_ADR      = 'hf000_0000,
+               CFG_MAX_MSC        = 'hffff_fff0;
+               
+parameter uint VADR_MAPPED = 'h0000_0000,
+               VADR_NMAPNC = 'hF000_0000,
+               VADR_EJTAGS = 'hF7F0_0000,
+               VADR_NMAPCH = 'hF800_0000,
+               SMEM_OFFSET = 'h00_0000,
+               TFIF_OFFSET = 'h20_0000,
+               CTLR_OFFSET = 'h24_0000,
+               EJTG_OFFSET = 'h24_1000,
+               EBUS_OFFSET = 'h24_2000;
+               
+parameter uint SGRP_SIZE = NUM_SP * NUM_SMEM_GRP_W * 4,
+               SMEM_SIZE = SGRP_SIZE * NUM_SMEM_GRP,
+               MSGE_SIZE = 256, /// 256BYTE
+               CTLR_SIZE = 128, /// each control register of pb 128byte
+               EJTG_SIZE = 128; /// each ejtag of pb 128byte
+
+typedef bit[PADR_WIDTH - 1:0]     padr_t;
+typedef bit[PADR_WIDTH - WORD_BYTES - WID_SMEM_BK - 1:0] exadr_t;
+
 typedef enum uchar {
   selnull, selv[0:127], sels[0:31], selc[0:7], selz,
   selii, selspu, seldse, selfu[0:15]
@@ -532,36 +521,33 @@ typedef enum uchar {
   UE_FFSFL = 'h80,
   UE_FFSYN = 'h90
 }user_event_os_t;
+  
+class tlm_vif_object extends ovm_object;
+  `ovm_object_utils(tlm_vif_object)
+    
+  virtual tlm_sys_if vif;
+    
+  function new(string name="tlm_vif_object");
+    super.new(name);
+  endfunction
+    
+  function virtual tlm_sys_if get_vif();
+    return vif;
+  endfunction /// virtual
+    
+  function  void set_vif( virtual tlm_sys_if pins);
+    vif = pins;
+  endfunction      
+    
+  function void do_copy (ovm_object rhs);
+    tlm_vif_object tmp;
 
-parameter uchar INDEX_ENT    = 7 , /// entry bits
-                NUM_TLB_E    = 1 << INDEX_ENT,  ///128
-                VPN2_WIDTH   = 18,
-                TYPE_WIDTH   = 3,  /// Page Size Type bit width
-                ASID_WIDTH   = 8,
-                IFE_REQ_BUF  = 2,
-                VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
-                PFN_WIDTH    = 26,
-                PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///36
-
-typedef bit[PADR_WIDTH - 1:0]     padr_t;
-typedef bit[PADR_WIDTH - WORD_BYTES - WID_SMEM_BK - 1:0] exadr_t;
-
-parameter uint VADR_MAPPED = 'h0000_0000,
-               VADR_NMAPNC = 'hF000_0000,
-               VADR_EJTAGS = 'hF7F0_0000,
-               VADR_NMAPCH = 'hF800_0000,
-               SMEM_OFFSET = 'h00_0000,
-               TFIF_OFFSET = 'h20_0000,
-               CTLR_OFFSET = 'h24_0000,
-               EJTG_OFFSET = 'h24_1000,
-               EBUS_OFFSET = 'h24_2000;
-               
-parameter uint SGRP_SIZE = NUM_SP * NUM_SMEM_GRP_W * 4,
-               SMEM_SIZE = SGRP_SIZE * NUM_SMEM_GRP,
-               MSGE_SIZE = 256, /// 256BYTE
-               CTLR_SIZE = 128, /// each control register of pb 128byte
-               EJTG_SIZE = 128; /// each ejtag of pb 128byte
-                               
+    super.do_copy(rhs);
+    $cast(tmp,rhs);
+    vif= tmp.vif;
+  endfunction /// void
+endclass : tlm_vif_object
+  
 class ip4_printer extends ovm_table_printer;
   virtual function void print_object (string name, ovm_object value, byte scope_separator=".");
     ovm_component comp; ///only print components
@@ -573,6 +559,15 @@ class ip4_printer extends ovm_table_printer;
     end
   endfunction
 endclass
+
+`ovm_nonblocking_transport_imp_decl(_rfm)
+`ovm_nonblocking_transport_imp_decl(_ise)
+`ovm_nonblocking_transport_imp_decl(_spu)
+`ovm_nonblocking_transport_imp_decl(_spa)
+`ovm_nonblocking_transport_imp_decl(_dse)
+`ovm_nonblocking_transport_imp_decl(_ife)
+`ovm_nonblocking_transport_imp_decl(_tlb)
+`ovm_nonblocking_transport_imp_decl(_eif)
 
 `include "ip4_tlm_tr.svh"  
 `include "ip4_tlm_inst.svh"

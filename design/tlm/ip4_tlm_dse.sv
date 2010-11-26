@@ -40,15 +40,14 @@ class ip4_tlm_dse_vars extends ovm_component;
 endclass : ip4_tlm_dse_vars
 
 typedef struct{
-  ushort ladr[LAT_XCHG][NUM_SP];
-  bit wrEn[LAT_XCHG][NUM_SP], en, vec;
+  ushort ladr[CYC_VEC][NUM_SP];
+  bit wrEn[CYC_VEC][NUM_SP], en, vec;
   uchar wrGrp, wrAdr, wrBk, tid, subVec, vecMode;
   opcode_e op;
 }ldQue_t;
 
 typedef struct{
   uchar tid;
-///  exadr_t exAdr;
   bit en;///, endian;
 }stQue_t;
 
@@ -352,19 +351,19 @@ class ip4_tlm_dse extends ovm_component;
       if(ise != null && ise.en) begin
         ldReq = ise.op inside {ld_ops};
         stReq = ise.op inside {st_ops};
-        last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+        last = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
         shf4 = ise.op inside {op_shf4a, op_shf4b};
         per = ise.op inside {op_pera, op_perb};
         vXhgEn = ise.op inside {op_pera, op_shf4a, op_tmrf};
         tmsg = ise.op == op_tmrf;
         fmsg = ise.op == op_fmrf;
-        cyc = ise.subVec & `GML(WID_DCHE_CL);
+        cyc = ise.subVec & `GML(WID_XCHG);
         exDataSel = ise.op == op_fmrf && eif2 != null; ///a fmrf valid?
         st2Ex = stReq && exReq[STAGE_RRF_DC];
         if(!ise.vec)
           minSlot = LAT_XCHG - 1;
-        else if((ise.vecMode - (ise.subVec & `GMH(WID_DCHE_CL))) < LAT_XCHG)
-          minSlot = LAT_XCHG - 1 - (ise.vecMode & `GML(WID_DCHE_CL));
+        else if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
+          minSlot = LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
       end
       if(eif != null && eif2 != null) begin
         bit allocFail = 0;
@@ -522,9 +521,9 @@ class ip4_tlm_dse extends ovm_component;
       bit last = 0, ldReq = ise.op inside {ld_ops},
           stReq = ise.op inside {st_ops};
       uchar queId = exQueId[STAGE_RRF_DPRB],
-            cyc = ise.subVec & `GML(WID_DCHE_CL);
+            cyc = ise.subVec & `GML(WID_XCHG);
       
-      last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      last = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
       
       if(exReq[STAGE_RRF_DPRB] && sxg[STAGE_RRF_DPRB] != null) begin
         if(v.eif[STAGE_RRF_DPRB] == null) v.eif[STAGE_RRF_DPRB] = tr_dse2eif::type_id::create("toEIF", this);
@@ -536,7 +535,7 @@ class ip4_tlm_dse extends ovm_component;
             ldQue[queId].wrAdr = ise.wrAdr;
             ldQue[queId].tid = ise.tid;
             ldQue[queId].op = ise.op;
-            ldQue[queId].subVec = ise.subVec & `GMH(WID_DCHE_CL);
+            ldQue[queId].subVec = ise.subVec & `GMH(WID_XCHG);
             ldQue[queId].vec = ise.vec;
             ldQue[queId].vecMode = ise.vecMode;
           end
@@ -572,7 +571,7 @@ class ip4_tlm_dse extends ovm_component;
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DEM];
       bit last = 0;
       
-      last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      last = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
       
       if(ise.vecMode == ise.subVec) begin
         if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
@@ -771,17 +770,17 @@ class ip4_tlm_dse extends ovm_component;
              smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
       uint tlbVAdr;
-      bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec,
+      bit last = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec,
           needExOc = 0, accCache = 0, ldReq = ise.op inside {ld_ops}, stReq = ise.op inside {st_ops};
-      uchar minSlot, cyc = ise.subVec & `GML(WID_DCHE_CL);
+      uchar minSlot, cyc = ise.subVec & `GML(WID_XCHG);
       padr_t lladr;
       bit llrdy;
       uchar llid;
       
       if(!ise.vec)
         minSlot = LAT_XCHG - 1;
-      else if((ise.vecMode - (ise.subVec & `GMH(WID_DCHE_CL))) < LAT_XCHG)
-        minSlot = LAT_XCHG - 1 - (ise.vecMode & `GML(WID_DCHE_CL));
+      else if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
+        minSlot = LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
       else
         minSlot = 0;
         
@@ -1169,7 +1168,7 @@ class ip4_tlm_dse extends ovm_component;
         vn.eif[STAGE_RRF_DEM].endian = selEndian;
         vn.eif[STAGE_RRF_DEM].cacheFill = selWriteAlloc && !selNoCache;
         vn.eif[STAGE_RRF_DEM].sgl = !ise.vec || ise.vecMode == 0;
-        vn.eif[STAGE_RRF_DEM].cyc = ise.subVec & `GML(WID_DCHE_CL);
+        vn.eif[STAGE_RRF_DEM].cyc = ise.subVec & `GML(WID_XCHG);
         vn.eif[STAGE_RRF_DEM].last = last;
         vn.eif[STAGE_RRF_DEM].coherency = selCoherency;
         vn.eif[STAGE_RRF_DEM].uncachable = selNoCache;
@@ -1248,8 +1247,8 @@ class ip4_tlm_dse extends ovm_component;
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL];
-      bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
-      uchar cyc = ise.subVec & `GML(WID_DCHE_CL);
+      bit last = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      uchar cyc = ise.subVec & `GML(WID_XCHG);
       
       foreach(rfm.base[sp]) begin
         ushort bk, slot;
@@ -1257,7 +1256,7 @@ class ip4_tlm_dse extends ovm_component;
           bk = rfm.os >> ((sp & `GML(2)) * 3) & `GML(3);
           if((sp >> 2) & 'b01)
             bk = 7 - bk;
-          slot = cyc & `GML(WID_DCHE_CL);
+          slot = cyc & `GML(WID_XCHG);
         end
         else begin
           bk = rfm.base[sp];
@@ -1327,7 +1326,7 @@ class ip4_tlm_dse extends ovm_component;
       smStart >>= WID_WORD + WID_SMEM_BK;
       smEnd >>= WID_WORD + WID_SMEM_BK;
       smEnd2 >>= WID_WORD + WID_SMEM_BK;
-      first = (cyc & `GML(WID_DCHE_CL)) == 0;
+      first = (cyc & `GML(WID_XCHG)) == 0;
       
       if(eif.last)
         minSlot = LAT_XCHG - 1 - cyc;
@@ -1606,9 +1605,9 @@ class ip4_tlm_dse extends ovm_component;
     ///allocate que, current only dse req need allocate que
     if(v.fmISE[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL].op inside {ld_ops, st_ops}) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
-      bit last = ((ise.subVec + 1) & `GML(WID_DCHE_CL)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec,
+      bit last = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec,
           ldReq = ise.op inside {ld_ops}, stReq = ise.op inside {st_ops};
-      uchar cyc = ise.subVec & `GML(WID_DCHE_CL);
+      uchar cyc = ise.subVec & `GML(WID_XCHG);
       
       if(exReq[STAGE_RRF_DEM] && !cancel[ise.tid][STAGE_RRF_DEM]) begin
         uchar queId = 0;
