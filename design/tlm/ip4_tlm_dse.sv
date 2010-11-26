@@ -70,7 +70,8 @@ class sxg_t;
       sMemWEn[NUM_SP][WORD_BYTES];
   uint sMemAdr[NUM_SP], sMemGrp[NUM_SP];  ///on chip adr grp
   wordu stData[NUM_SP]; ///store exchange buffer
-
+  uchar exMemOpy[NUM_SP]; ///cl info for ex store
+  
   bit exp[NUM_SP], oc[NUM_SP], ex[NUM_SP], re[NUM_SP];
 ///  uchar slot[NUM_SP];
 ///  ushort xhg[NUM_SP]; ///cl + bk + os
@@ -903,7 +904,7 @@ class ip4_tlm_dse extends ovm_component;
               uint tagLo = padr >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL + WID_DCHE_IDX),
                    tagHi = tagLo >> WID_DCHE_STAG;
               tagLo = tagLo & `GML(WID_DCHE_STAG);
-              idx = adr >> WID_DCHE_IDX;
+              idx = (adr & `GML(WID_SMEM_ADR - WID_DCHE_ASO)) >> WID_DCHE_CL;
               
               for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++) begin
                 for(int loTagIdx = NUM_SMEM_GRP - srCacheGrp; loTagIdx < NUM_SMEM_GRP; loTagIdx++) begin
@@ -967,16 +968,28 @@ class ip4_tlm_dse extends ovm_component;
               
             ///external access
             if(ex) begin
-              if(!selExRdy) begin
+              bit exhit = (selExAdr >> WID_DCHE_CL) == (padr >> (WID_SMEM_BK + WID_WORD + WID_DCHE_CL)),
+                  found = 0;
+              if(!selExRdy || exhit) begin
+                bit needsxg = (cl < LAT_XCHG) ^ (ise.subVec < LAT_XCHG);
                 selExRdy = 1;
                 selNoCache |= nc;
                 selExAdr = padr >> (WID_SMEM_BK + WID_WORD);
+                ///some ex stores needs sxg xchg network too
+                if(needsxg && stReq) begin
+                  for(int s = minSlot; s < LAT_XCHG; s++) begin
+                    if(!sxgBuf[s].sMemOpy[bk] || sxgBuf[s].exMemOpy[bk] == cl) begin
+                      sxgBuf[s].sMemOpy[bk] = 1;
+                      sxgBuf[s].exMemOpy[bk] = cl;
+                      slot = s;
+                      found = 1;
+                      break;
+                    end
+                  end
+                end                
               end
               else begin
-                ///bit exhit = (selExAdr >> maxSlot) == (padr >> (maxSlot + WID_SMEM_BK + WID_WORD));
-                bit exhit = (selExAdr >> n2w(LAT_XCHG - minSlot)) == (padr >> (WID_SMEM_BK + WID_WORD + n2w(LAT_XCHG - minSlot)));
-                if(!exhit)
-                  ex = 0;
+                ex = 0;
               end
             end
             
