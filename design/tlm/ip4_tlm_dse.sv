@@ -147,7 +147,8 @@ class ip4_tlm_dse extends ovm_component;
   local ll_ck_t llCk[NUM_LLCK];
   local uchar llNext;
   
-  local wordu xhgData[NUM_SP], eifRes[NUM_SP], spRes[NUM_SP], smWData[NUM_SP];
+  local wordu xhgData[NUM_SP], eifRes[NUM_SP], spRes[NUM_SP], smWData[NUM_SP], dcDataRB[LAT_XCHG][NUM_SP];
+  local bit dcEmskRB[LAT_XCHG][NUM_SP];
   
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
@@ -247,42 +248,54 @@ class ip4_tlm_dse extends ovm_component;
       tlbCached = v.fmTLB;
       
     ///rfm data ring & bypass to support perb instructions
-    if(v.fmISE[STAGE_RRF_SEL] != null) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
-      if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
-        if(ise.subVec >= LAT_XCHG) begin
-          word tmp[NUM_SP];
-          ///SXG stages loop mode start
-          if(v.fmRFM[STAGE_RRF_SEL] != null)
-            tmp = v.fmRFM[STAGE_RRF_SEL].st;
-          if(v.fmRFM[STAGE_RRF_SEL + LAT_XCHG] != null && v.fmRFM[STAGE_RRF_SEL] != null)
-            v.fmRFM[STAGE_RRF_SEL].st = v.fmRFM[STAGE_RRF_SEL + LAT_XCHG].st;
-          if(v.fmRFM[STAGE_RRF_SEL + LAT_XCHG] != null)
-            v.fmRFM[STAGE_RRF_SEL + LAT_XCHG].st = tmp;
-          if(ise.op inside {op_pera, op_tmrf}) begin
-            bit tmp[NUM_SP];
-            ///spu need loop too
-            if(v.fmSPU[STAGE_RRF_SEL] != null)
-              tmp = v.fmSPU[STAGE_RRF_SEL].emsk;
-            if(v.fmSPU[STAGE_RRF_SEL + LAT_XCHG] != null && v.fmSPU[STAGE_RRF_SEL] != null)
-              v.fmSPU[STAGE_RRF_SEL].emsk = v.fmSPU[STAGE_RRF_SEL + LAT_XCHG].emsk;
-            if(v.fmSPU[STAGE_RRF_SEL + LAT_XCHG] != null)
-              v.fmSPU[STAGE_RRF_SEL + LAT_XCHG].emsk = tmp;            
-          end
-        end
-      end
-    end
+///    if(v.fmISE[STAGE_RRF_SEL] != null) begin
+///      tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
+///      if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
+///        if(ise.subVec >= LAT_XCHG) begin
+///          word tmp[NUM_SP];
+///          ///SXG stages loop mode start
+///          if(v.fmRFM[STAGE_RRF_SEL] != null)
+///            tmp = v.fmRFM[STAGE_RRF_SEL].st;
+///          if(v.fmRFM[STAGE_RRF_SEL + LAT_XCHG] != null && v.fmRFM[STAGE_RRF_SEL] != null)
+///            v.fmRFM[STAGE_RRF_SEL].st = v.fmRFM[STAGE_RRF_SEL + LAT_XCHG].st;
+///          if(v.fmRFM[STAGE_RRF_SEL + LAT_XCHG] != null)
+///            v.fmRFM[STAGE_RRF_SEL + LAT_XCHG].st = tmp;
+///          if(ise.op inside {op_pera, op_tmrf}) begin
+///            bit tmp[NUM_SP];
+///            ///spu need loop too
+///            if(v.fmSPU[STAGE_RRF_SEL] != null)
+///              tmp = v.fmSPU[STAGE_RRF_SEL].emsk;
+///            if(v.fmSPU[STAGE_RRF_SEL + LAT_XCHG] != null && v.fmSPU[STAGE_RRF_SEL] != null)
+///              v.fmSPU[STAGE_RRF_SEL].emsk = v.fmSPU[STAGE_RRF_SEL + LAT_XCHG].emsk;
+///            if(v.fmSPU[STAGE_RRF_SEL + LAT_XCHG] != null)
+///              v.fmSPU[STAGE_RRF_SEL + LAT_XCHG].emsk = tmp;            
+///          end
+///        end
+///      end
+///    end
 
     if(v.fmISE[STAGE_RRF_DC] != null) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       if(ise.op inside {op_pera, op_perb, op_tmrf}) begin
-        if(ise.subVec >= LAT_XCHG) begin
-          if(v.fmRFM[STAGE_RRF_DC] != null && v.fmRFM[STAGE_RRF_DC + LAT_XCHG] != null)
-            v.fmRFM[STAGE_RRF_DC].st = v.fmRFM[STAGE_RRF_DC + LAT_XCHG].st;
-          if(ise.op inside {op_pera, op_tmrf}) begin
-            if(v.fmSPU[STAGE_RRF_DC] != null && v.fmSPU[STAGE_RRF_DC + LAT_XCHG] != null)
-              v.fmSPU[STAGE_RRF_DC].emsk = v.fmSPU[STAGE_RRF_DC + LAT_XCHG].emsk;
+        if(ise.subVec < LAT_XCHG) begin
+          if(v.fmRFM[STAGE_RRF_DC] != null) begin
+            dcDataRB[ise.subVec] = v.fmRFM[STAGE_RRF_DC].st;
+            if(v.fmRFM[STAGE_RRF_DC - LAT_XCHG] != null)
+              v.fmRFM[STAGE_RRF_DC].st = v.fmRFM[STAGE_RRF_DC - LAT_XCHG].st;
           end
+          if(ise.op inside {op_pera, op_tmrf}) begin
+            if(v.fmSPU[STAGE_RRF_DC] != null) begin
+              dcEmskRB[ise.subVec] = v.fmSPU[STAGE_RRF_DC].emsk;
+              if(v.fmSPU[STAGE_RRF_DC - LAT_XCHG] != null)
+                v.fmSPU[STAGE_RRF_DC].emsk = v.fmSPU[STAGE_RRF_DC - LAT_XCHG].emsk;
+            end
+          end
+        end
+        else begin
+          if(v.fmRFM[STAGE_RRF_DC] != null)
+            v.fmRFM[STAGE_RRF_DC].st = dcDataRB[ise.subVec - LAT_XCHG];
+          if(ise.op inside {op_pera, op_tmrf} && v.fmSPU[STAGE_RRF_DC] != null)
+            v.fmSPU[STAGE_RRF_DC].emsk = dcEmskRB[ise.subVec - LAT_XCHG];
         end
       end
     end
@@ -374,7 +387,7 @@ class ip4_tlm_dse extends ovm_component;
         exDataSel |= eif.wr && !allocFail && eif2 != null; ///can also be ex wr, or ex ld rsp
         exDataSel |= eif.loadRsp && eif2 != null;
         last = eif.last;
-        cyc = eif.cyc;
+        cyc = eif.cyc & `GML(WID_XCHG);
         if(exLdRsp || exRd) begin
           if(eif.last)
             minSlot = LAT_XCHG - 1 - cyc;
@@ -454,7 +467,7 @@ class ip4_tlm_dse extends ovm_component;
        
         ///lxg initial value
         if(per || shf4 || tmsg) begin
-          bit up = sxglxg[minSlot + cyc].sl[sp][0] < LAT_XCHG;
+          bit up = (sxglxg[minSlot + cyc].sl[sp][0] >= CYC_VEC) || shf4;
           if(up)
             lxgBuf[minSlot + cyc].data[sp] = sxg[STAGE_RRF_DC].stData[sp];
             
@@ -478,10 +491,10 @@ class ip4_tlm_dse extends ovm_component;
             os2 = sxglxg[j].os[sp][os];
             
             if(per || tmsg) begin
-              if(slot >= LAT_XCHG)
-                slot -= LAT_XCHG;
-              else
-                slot = CYC_VEC;
+              if(slot < CYC_VEC) begin
+                if(slot >= LAT_XCHG)
+                  slot -= LAT_XCHG;
+              end
               if(spu != null)
                 wEn = spu.emsk;
             end
@@ -1256,7 +1269,7 @@ class ip4_tlm_dse extends ovm_component;
           bk = rfm.os >> ((sp & `GML(2)) * 3) & `GML(3);
           if((sp >> 2) & 'b01)
             bk = 7 - bk;
-          slot = cyc & `GML(WID_XCHG);
+          slot = ise.subVec;
         end
         else begin
           bk = rfm.base[sp];
@@ -1267,7 +1280,10 @@ class ip4_tlm_dse extends ovm_component;
 
 ///        sxg[STAGE_RRF_SXG0].slot[sp] = slot;
 ///        sxg[STAGE_RRF_SXG0].xhg[sp] = xhg << WID_WORD;
-        sxgBuf[cyc].sl[sp] = '{default : slot};
+        if((slot < LAT_XCHG) ^ (ise.subVec < LAT_XCHG))
+          sxgBuf[cyc].sl[sp] = '{default : slot};
+        else
+          sxgBuf[cyc].sl[sp] = '{default : CYC_VEC};
         sxgBuf[cyc].bk[sp] = '{default : bk};
         sxgBuf[cyc].sMemAdr[sp] = bk;
         sxgBuf[cyc].sMemGrp[sp] = slot;
@@ -1297,10 +1313,11 @@ class ip4_tlm_dse extends ovm_component;
         for(int j = 0; j < LAT_XCHG; j++) begin
           tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + LAT_XCHG - 1 - j];
           tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL + LAT_XCHG - 1 - j];
+          uchar subVec = (ise.subVec & `GMH(WID_XCHG)) + j;
           if(rfm == null || spu == null) continue;
           for(int i = 0; i < LAT_XCHG; i++) begin
             foreach(rfm.base[sp]) begin
-              if(j == sxgBuf[i].sMemGrp[sp]) begin
+              if(subVec == sxgBuf[i].sMemGrp[sp]) begin
                 sxgBuf[i].stData[sp] = rfm.st[sxgBuf[i].sMemAdr[sp]];
                 sxgBuf[i].sMemOpy[sp] = spu.emsk[sxgBuf[i].sMemAdr[sp]];
               end

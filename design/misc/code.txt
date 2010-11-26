@@ -6,7 +6,7 @@ li s0 31
 vid v0
 sub v1 b0 b1 ;
 
-cmp.unc.< p1 p0 v0 5 ;
+cmp.unc.< p1 p0 v0 29 ;
 (p1) shuffle4.penmsk v2 v0 0xF42 ;
 
 //(p1) permute32.penmsk v2 v1 v0 ;
