@@ -116,7 +116,7 @@ class ip4_tlm_eif extends ovm_component;
       while(reqBuf.size() > 0) begin
         tr_eif2dse toDSE;
         tr_dse2eif dse = reqBuf.pop_front();
-        adr = adr + dse.cyc;
+        adr = adr + dse.subVec;
         toDSE = tr_eif2dse::type_id::create("toDSE", this);
         toDSE.endian = 1;///dse.endian;
         toDSE.exAdr = dse.exAdr;
@@ -136,7 +136,7 @@ class ip4_tlm_eif extends ovm_component;
         end
         if(dse.cacheFill || dse.op inside {ld_ops}) begin
           ///read rsp
-          toDSE.cyc = dse.cyc;
+          toDSE.subVec = dse.subVec;
           toDSE.id = dse.id;
           toDSE.last = dse.last;
           foreach(dse.data[bk]) begin

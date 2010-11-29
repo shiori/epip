@@ -1110,7 +1110,7 @@ class tr_dse2eif extends ovm_sequence_item;
            last, endian, allocFail, queryNoHit,
            coherency, priv, uncachable;
   rand opcode_e op;
-  rand uchar id, cyc, mrfAdr;
+  rand uchar id, subVec, mrfAdr;
   rand exadr_t exAdr;
   rand word data[NUM_SP];
   rand bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
@@ -1124,7 +1124,7 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(mrfAdr, OVM_ALL_ON)
     `ovm_field_int(allocFail, OVM_ALL_ON)
-    `ovm_field_int(cyc, OVM_ALL_ON)
+    `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(cacheFlush, OVM_ALL_ON)
     `ovm_field_int(cacheFill, OVM_ALL_ON)
     `ovm_field_int(exAdr, OVM_ALL_ON)
@@ -1147,7 +1147,7 @@ class tr_eif2dse extends ovm_sequence_item;
   rand bit loadRsp, storeRsp, last, noVecSt,
            rd, wr, alloc, noSglSt, noLd, endian,
            queryCacheState, queryAndUpdate;
-  rand uchar id, cyc;
+  rand uchar id, subVec;
   rand exadr_t exAdr;
   rand cache_state_t state;
   
@@ -1167,7 +1167,7 @@ class tr_eif2dse extends ovm_sequence_item;
     `ovm_field_int(noLd, OVM_ALL_ON)
     `ovm_field_int(endian, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
-    `ovm_field_int(cyc, OVM_ALL_ON)
+    `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(exAdr, OVM_ALL_ON)
     `ovm_field_sarray_int(data, OVM_ALL_ON)
     `ovm_field_enum(cache_state_t, state, OVM_ALL_ON)
