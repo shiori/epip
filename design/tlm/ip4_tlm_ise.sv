@@ -697,6 +697,7 @@ class ip4_tlm_ise extends ovm_component;
   local uint srTimer, srPCnt[2], srCmp;
   local uchar srPCntES[2], tidInt;
   local bit srPCntK[2], srPCntU[2], srPCntIE[2], srPCntGS;
+  local uchar ldq,stq, pipSt, pipLd;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntFuBusy, OVM_ALL_ON)
@@ -1137,12 +1138,13 @@ class ip4_tlm_ise extends ovm_component;
     if(!t.lpRndMemMode && t.pendExLoad > 0)
       return 0;
     
+    if(t.enDSE && t.iDSE.op inside {ld_ops} && ldq >= pipLd)
+      return 0;
+    if(t.enDSE && t.iDSE.op inside {st_ops} && stq >= pipSt)
+      return 0;
+      
     if(t.threadState != ts_rdy)
       return 0;
-        
-///    foreach(t.wCntDep[i])
-///      if(t.wCntDep[i] && finalCnt[i] > 0)
-///        return 0;
     
     ///start event only in user mode
     if(t.privMode == priv_user) begin
@@ -1337,10 +1339,14 @@ class ip4_tlm_ise extends ovm_component;
     t.br_pred(vn.rst[1].bpc, vn.rst[1].brSrf);
             
     if(t.enDSE) begin
-      if(t.iDSE.op inside {op_lw, op_lh, op_lhu, op_lb, op_lbu})
+      if(t.iDSE.op inside {ld_ops}) begin
         t.isLastLoad = 1;
-      else if(t.iDSE.op inside {op_sw, op_sh, op_sb})
+        pipLd++;
+      end
+      else if(t.iDSE.op inside {st_ops}) begin
         t.isLastStore = 1;
+        pipSt++;
+      end
       t.isLastVecDse = t.iDSE.isVec;
       if(t.iDSE.isVec)
         wCntWrNext = t.vecMode + 1;
@@ -1557,6 +1563,12 @@ class ip4_tlm_ise extends ovm_component;
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
       t.pendSMsg = dse.pendSMsg;
+      ldq = dse.ldq;
+      stq = dse.stq;
+      
+      if(dse.rlsPipSt) pipSt--;
+      if(dse.rlsPipLd) pipLd--;
+      
       if(dse.noExtSt) begin
         t2.pendExStore = 0;
         if(t2.threadState inside {ts_w_synst, ts_w_syna})
@@ -1579,13 +1591,13 @@ class ip4_tlm_ise extends ovm_component;
         restore_pc(dse.tid, 1, st);
         cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
       end
-      else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DBR]) begin
-        ///todo rerun is not in dbr!!
-        t.flush();
-        restore_pc(dse.tid, 0, st);
-        t.noExt = ~dse.reRun;
-        cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
-      end
+///      else if(|dse.reRun && !cancel[dse.tid][STAGE_ISE_DBR]) begin
+///        ///todo rerun is not in dbr!!
+///        t.flush();
+///        restore_pc(dse.tid, 0, st);
+///        t.noExt = ~dse.reRun;
+///        cancel[dse.tid] |= `GML(STAGE_ISE_DBR);
+///      end
     end
     
     ///update no_* for issue & check
@@ -1974,6 +1986,9 @@ class ip4_tlm_ise extends ovm_component;
     cntSrfWr = '{default: 0};
     cntVrfWr = '{default: 0};
     srExpBase = CFG_START_ADR;
+    
+    ldq = NUM_LDQUE;
+    stq = NUM_STQUE;
     
     printer = new();
     printer.knobs.depth = 1;

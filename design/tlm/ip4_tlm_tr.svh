@@ -935,13 +935,11 @@ class tr_dse2ise extends ovm_sequence_item;
   rand bit rsp,     ///respond
            extLd,     ///this req generate a external load transaction
            exp,     ///the whole req has exception
-///           rdy,     ///one external access finished
            scl,
-           noExtLd, noExtSt;
-  rand uchar tid, tidNoExt, vecMode, pendExLoad, pendExStore, pendSMsg;
+           noExtLd, noExtSt,
+           rlsPipLd, rlsPipSt;
+  rand uchar tid, tidNoExt, vecMode, pendExLoad, pendExStore, pendSMsg, ldq, stq;
   rand cause_dse_t cause;
-  rand bit[CYC_VEC - 1 : 0] reRun;
-///  rand bit pendLoad, pendStore;
   
   constraint dist_var {
     extLd dist {0:=19, 1:=1};
@@ -950,18 +948,19 @@ class tr_dse2ise extends ovm_sequence_item;
   constraint valid_var {
     exp -> rsp;
     extLd -> rsp;
-///    rdy -> rsp;
   }
   
   `ovm_object_utils_begin(tr_dse2ise)
     `ovm_field_int(extLd, OVM_ALL_ON)
     `ovm_field_int(noExtLd, OVM_ALL_ON)
     `ovm_field_int(noExtSt, OVM_ALL_ON)
+    `ovm_field_int(ldq, OVM_ALL_ON)
+    `ovm_field_int(stq, OVM_ALL_ON)
+    `ovm_field_int(rlsPipSt, OVM_ALL_ON)
+    `ovm_field_int(rlsPipLd, OVM_ALL_ON)
     `ovm_field_int(tidNoExt, OVM_ALL_ON)
     `ovm_field_int(rsp, OVM_ALL_ON)
     `ovm_field_int(exp, OVM_ALL_ON)
-    `ovm_field_int(reRun, OVM_ALL_ON)
-///    `ovm_field_int(rdy, OVM_ALL_ON)
     `ovm_field_int(tid, OVM_ALL_ON)
     `ovm_field_int(scl, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)

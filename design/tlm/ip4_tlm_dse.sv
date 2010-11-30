@@ -130,7 +130,7 @@ class ip4_tlm_dse extends ovm_component;
   local bit cacheGrpEn[NUM_SMEM_GRP];
   local bit sendExp;
   local uchar sendExpTid;
-  local bit[CYC_VEC - 1 : 0] dcReRun;
+///  local bit[CYC_VEC - 1 : 0] dcReRun;
   
   local sxg_t sxgBuf[LAT_XCHG],
               sxglxg[LAT_XCHG],
@@ -329,11 +329,11 @@ class ip4_tlm_dse extends ovm_component;
     
     ///**dc stage
     if(sxg[STAGE_RRF_DC] != null) begin
-      uchar st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG),
+      uchar ///st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG),
             cyc, minSlot = 0;
       tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
-      tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC], eif2 = v.fmEIF[st];
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];///, eif2 = v.fmEIF[st];
       tr_spu2dse spu = v.fmSPU[STAGE_RRF_DC];
       
       bit xhgEnd = 0, shf4 = 0, per = 0, tmsg = 0, fmsg = 0, 
@@ -349,21 +349,21 @@ class ip4_tlm_dse extends ovm_component;
         tmsg = ise.op == op_tmrf;
         fmsg = ise.op == op_fmrf;
         cyc = ise.subVec & `GML(WID_XCHG);
-        exDataSel = ise.op == op_fmrf && eif2 != null; ///a fmrf valid?
+        exDataSel = ise.op == op_fmrf;/// && eif2 != null; ///a fmrf valid?
         st2Ex = stReq && exReq[STAGE_RRF_DC];
         if(!ise.vec)
           minSlot = LAT_XCHG - 1;
         else if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
           minSlot = LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
       end
-      if(eif != null && eif2 != null) begin
+      if(eif != null) begin /// && eif2 != null
         bit allocFail = 0;
         exRd = eif.rd;
         exLdRsp = eif.loadRsp;
         if(v.eif[STAGE_RRF_DC] != null)
           allocFail = v.eif[STAGE_RRF_DC].allocFail;
-        exDataSel |= eif.wr && !allocFail && eif2 != null; ///can also be ex wr, or ex ld rsp
-        exDataSel |= eif.loadRsp && eif2 != null;
+        exDataSel |= eif.wr && !allocFail;/// && eif2 != null; ///can also be ex wr, or ex ld rsp
+        exDataSel |= eif.loadRsp;/// && eif2 != null;
         xhgEnd = eif.last;
         cyc = eif.subVec & `GML(WID_XCHG);
         if(exLdRsp || exRd) begin
@@ -379,9 +379,9 @@ class ip4_tlm_dse extends ovm_component;
         ///eif data comes late
         foreach(smWData[bk]) begin
           if(endian[STAGE_RRF_DC])
-            smWData[bk] = eif2.data[bk];
+            smWData[bk] = eif.data[bk];
           else begin
-            wordu res = eif2.data[bk];
+            wordu res = eif.data[bk];
             for(int os = 0; os < WORD_BYTES; os++)
               smWData[bk].b[os] = res.b[WORD_BYTES - 1 - os];
           end
@@ -401,7 +401,7 @@ class ip4_tlm_dse extends ovm_component;
         bit wEn[WORD_BYTES] = sxg[STAGE_RRF_DC].sMemWEn[bk];
         if(exDataSel)
           foreach(wEn[os])
-            wEn[os] = eif2.byteEn[bk][os];
+            wEn[os] = eif.byteEn[bk][os];
         foreach(wEn[os])
           if(wEn[os]) begin
             sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
@@ -573,19 +573,26 @@ class ip4_tlm_dse extends ovm_component;
         toISE.vecMode = ise.vecMode;
         toISE.pendExLoad = 0;
         toISE.pendExStore = 0;
+        toISE.ldq = 0;
+        toISE.stq = 0;
+        toISE.rlsPipLd = ise.op inside {st_ops};
+        toISE.rlsPipSt = ise.op inside {ld_ops};
         toISE.cause = expCause[STAGE_RRF_DEM];
-        toISE.reRun = '1; ///dcReRun;
+///        toISE.reRun = '1; ///dcReRun;
         toISE.extLd = exReq[STAGE_RRF_DEM] && ise.op inside {ld_ops};
-        sendExp = toISE.extLd || (|dcReRun);
+        sendExp = toISE.extLd;
         sendExpTid = ise.tid;
-        dcReRun = 0;
+///        dcReRun = 0;
         foreach(ldQue[i])
           if(ldQue[i].en && ldQue[i].tid == ise.tid)
             toISE.pendExLoad++;
+          else if(!ldQue[i].en)
+            toISE.ldq++;
         foreach(stQue[i])
           if(stQue[i].en && stQue[i].tid == ise.tid)
             toISE.pendExStore++;
-                  
+          else if(!stQue[i].en)
+            toISE.stq++;
         if(expReq[STAGE_RRF_DEM]) begin
           if(toSPU == null) toSPU = tr_dse2spu::type_id::create("toSPU", this);
           if(toRFM == null) toRFM = tr_dse2rfm::type_id::create("toRFM", this);
@@ -602,22 +609,27 @@ class ip4_tlm_dse extends ovm_component;
     begin
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
       if(eif != null && eif.loadRsp && eif.last && sxg[STAGE_RRF_LXG] != null) begin
-        uchar noExtLd = 0, noExtSt = 0;
+        uchar cntExtLd = 0, cntExtSt = 0, ldq = 0, stq = 0;
+        if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
+        toISE.ldq = 0;
+        toISE.stq = 0;
+        toISE.rsp = 1;
         
         foreach(ldQue[i])
           if(ldQue[i].en && ldQue[i].tid == sxg[STAGE_RRF_LXG].tid)
-            noExtLd++;
+            cntExtLd++;
+          else if(!ldQue[i].en)
+            toISE.ldq++;
+            
         foreach(stQue[i])
           if(stQue[i].en && stQue[i].tid == sxg[STAGE_RRF_LXG].tid)
-            noExtSt++;
-                        
-        if(noExtLd == 0 || noExtSt == 0) begin
-          if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
-          toISE.rsp = 1;
-          toISE.noExtLd = noExtLd == 0;
-          toISE.noExtSt = noExtSt == 0;
-          toISE.tidNoExt = sxg[STAGE_RRF_LXG].tid;
-        end
+            cntExtSt++;
+          else if(!stQue[i].en)
+            toISE.stq++;
+
+        toISE.noExtLd = cntExtLd == 0;
+        toISE.noExtSt = cntExtSt == 0;
+        toISE.tidNoExt = sxg[STAGE_RRF_LXG].tid;
       end
     end
     
@@ -1676,16 +1688,16 @@ class ip4_tlm_dse extends ovm_component;
                 break;
               end
               if(!found)
-                `ip4_info("dc", "ld queue overrun!", OVM_FULL)
+                ovm_report_warning("dc", "ld queue overrun!");
           end
           else begin
             queId = exQueId[STAGE_RRF_DEM];
             found = 1;
           end
-          if(!found)
-            dcReRun[ise.subVec] = 1;
-          else if(noLd && ise.subVec == 0)
-            dcReRun = '1;
+///          if(!found)
+///            dcReRun[ise.subVec] = 1;
+///          else if(noLd && ise.subVec == 0)
+///            dcReRun = '1;
         end
         else if(stReq) begin
           if(!selQueRdy) begin
@@ -1700,18 +1712,18 @@ class ip4_tlm_dse extends ovm_component;
                 break;
               end
             if(!found)
-              `ip4_info("dc", "ld queue overrun!", OVM_FULL)
+              ovm_report_warning("dc", "ld queue overrun!");
           end
           else begin
             queId = exQueId[STAGE_RRF_DEM];       
             found = 1;
           end
-          if(!found)
-            dcReRun[ise.subVec] = 1;
-          else if(noVecSt && ise.vec && ise.vecMode != 0 && ise.subVec == 0)
-            dcReRun = '1;
-          else if(noSglSt && (ise.vecMode == 0 || !ise.vec) && ise.subVec == 0)
-            dcReRun = '1;
+///          if(!found)
+///            dcReRun[ise.subVec] = 1;
+///          else if(noVecSt && ise.vec && ise.vecMode != 0 && ise.subVec == 0)
+///            dcReRun = '1;
+///          else if(noSglSt && (ise.vecMode == 0 || !ise.vec) && ise.subVec == 0)
+///            dcReRun = '1;
         end
         
         if(xhgEnd)
