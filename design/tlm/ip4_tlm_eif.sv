@@ -99,12 +99,12 @@ class ip4_tlm_eif extends ovm_component;
         else
           ovm_report_warning("dse", "Physical adr out of bound");
         
-        if(!dse.sgl)
+        if(dse.vec)
           adr = adr & `GMH(1);
-        else if(!dse.last)
-          ovm_report_warning("eif", "dse req sgl without last!");
+///        else if(!dse.last)
+///          ovm_report_warning("eif", "dse req sgl without last!");
           
-        if(dse.last)
+        if(!dse.vec || dse.subVec == dse.vecMode)
           reqAdr.push_back(adr);
         reqBuf.push_back(dse);
       end
@@ -116,6 +116,7 @@ class ip4_tlm_eif extends ovm_component;
       while(reqBuf.size() > 0) begin
         tr_eif2dse toDSE;
         tr_dse2eif dse = reqBuf.pop_front();
+        bit last = !dse.vec || dse.subVec == dse.vecMode;
         adr = adr + dse.subVec;
         toDSE = tr_eif2dse::type_id::create("toDSE", this);
         toDSE.endian = 1;///dse.endian;
@@ -137,8 +138,10 @@ class ip4_tlm_eif extends ovm_component;
         if(dse.cacheFill || dse.op inside {ld_ops}) begin
           ///read rsp
           toDSE.subVec = dse.subVec;
+          toDSE.vecMode = dse.vecMode;
+          toDSE.vec = dse.vec;
           toDSE.id = dse.id;
-          toDSE.last = dse.last;
+///          toDSE.last = dse.last;
           foreach(dse.data[bk]) begin
             wordu res;
             for(int os = 0; os < WORD_BYTES; os++) begin
@@ -157,15 +160,15 @@ class ip4_tlm_eif extends ovm_component;
           typ = 2;
           cnt++;
           dseLdCacheFillRsp.push_back(toDSE);
-          if(dse.last) begin
+          if(last) begin
             typ = 0;
             iseReq.push_back(cnt);
           end
         end
-        else if(dse.op inside {st_ops} && dse.last) begin
+        else if(dse.op inside {st_ops} && last) begin
           ///write rsp
           toDSE.storeRsp = 1;
-          toDSE.last = 1;
+///          toDSE.last = 1;
           toDSE.alloc = 0;
           if(cnt != 0 && typ != 1)
             ovm_report_warning("eif", "inconsistent access typ");
@@ -217,10 +220,10 @@ class ip4_tlm_eif extends ovm_component;
     else if(dseStRsp.size() > 0)
       toDSE = dseStRsp.pop_front();
       
-    if(v.dse[STAGE_ISE_DC - 2] != null) begin
-      if(toDSE == null) toDSE = tr_eif2dse::type_id::create("toDSE", this);
-      toDSE.data = v.dse[STAGE_ISE_DC - 2].data;
-    end
+///    if(v.dse[STAGE_ISE_DC - 2] != null) begin
+///      if(toDSE == null) toDSE = tr_eif2dse::type_id::create("toDSE", this);
+///      toDSE.data = v.dse[STAGE_ISE_DC - 2].data;
+///    end
     
     if(toDSE != null) void'(dse_tr_port.nb_transport(toDSE, toDSE));
     if(toISE != null) void'(ise_tr_port.nb_transport(toISE, toISE));
