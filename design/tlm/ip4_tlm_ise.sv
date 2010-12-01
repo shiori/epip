@@ -697,7 +697,7 @@ class ip4_tlm_ise extends ovm_component;
   local uint srTimer, srPCnt[2], srCmp;
   local uchar srPCntES[2], tidInt;
   local bit srPCntK[2], srPCntU[2], srPCntIE[2], srPCntGS;
-  local uchar ldq,stq, pipSt, pipLd;
+  local uchar ldq, stq, pipSt, pipLd;
   
   `ovm_component_utils_begin(ip4_tlm_ise)
     `ovm_field_int(cntFuBusy, OVM_ALL_ON)
@@ -710,6 +710,10 @@ class ip4_tlm_ise extends ovm_component;
     `ovm_field_int(noSt, OVM_ALL_ON)
     `ovm_field_int(noTMsg, OVM_ALL_ON)
     `ovm_field_int(noFMsg, OVM_ALL_ON)
+    `ovm_field_int(ldq, OVM_ALL_ON)
+    `ovm_field_int(stq, OVM_ALL_ON)
+    `ovm_field_int(pipSt, OVM_ALL_ON)
+    `ovm_field_int(pipLd, OVM_ALL_ON)
     `ovm_field_sarray_int(noFu, OVM_ALL_ON)
     `ovm_field_int(cntPRWr, OVM_ALL_ON)
     `ovm_field_sarray_int(cntSrfWr, OVM_ALL_ON)
@@ -1138,9 +1142,9 @@ class ip4_tlm_ise extends ovm_component;
     if(!t.lpRndMemMode && t.pendExLoad > 0)
       return 0;
     
-    if(t.enDSE && t.iDSE.op inside {ld_ops} && ldq >= pipLd)
+    if(t.enDSE && t.iDSE.op inside {ld_ops} && pipLd >= ldq)
       return 0;
-    if(t.enDSE && t.iDSE.op inside {st_ops} && stq >= pipSt)
+    if(t.enDSE && t.iDSE.op inside {st_ops} && pipSt >= stq)
       return 0;
       
     if(t.threadState != ts_rdy)

@@ -183,7 +183,8 @@ typedef struct packed{
 }i_cmsg;
 
 typedef struct packed{
-  bit[5:0] dummy0;
+  bit f;
+  bit[4:0] dummy0;
   irsa_t rs0, rs1;
   bit[1:0] dummy;
   ipra_t pr0, pr1;
@@ -463,6 +464,11 @@ class inst_c extends ovm_object;
     if(inst.i.b.i26.rd == 63) begin
       noWr = 1;
       isVec = 0;
+      rd = 0;
+    end
+    else if(inst.i.b.i26.rd == 62) begin
+      noWr = 1;
+      isVec = 1;
       rd = 0;
     end
     else if(inst.i.b.i26.rd < 32) begin
@@ -838,6 +844,9 @@ class inst_c extends ovm_object;
         grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
         adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
       end
+      
+    if(noWr)
+      wrEn = '{default : 0};
 	endfunction : decode
   
 	function bit is_unc_br();

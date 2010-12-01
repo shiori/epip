@@ -163,7 +163,7 @@ class asmig;
       if(!isVec[i])
         inst[i].i.b.ir3w1.rd += 32;
       else if(zeroOp[i][0])
-        inst[i].i.b.ir3w1.rd = 63;
+        inst[i].i.b.ir3w1.rd = isVec[i] ? 62 : 63;
         
       case(op[i])
         "li"    :

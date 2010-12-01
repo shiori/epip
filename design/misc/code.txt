@@ -1,5 +1,18 @@
 //test asm file
 
+//tsync ;
+nop
+nop
+vid vzero
+add.si v0 b0 0x2
+nop ;
+
+options.c0.0xf0000000
+st.byte c0 v0 0x7 ;
+
+options.c0.0xf0000000
+ld.byte v0 c0 0x7 ;
+
 nop
 nop
 li s0 31
@@ -21,18 +34,6 @@ cmp.unc.< p1 p0 s15 128
 nop
 nop ; 
 
-
-
-vid v0 ;
-//tsync ;
-
-add.si v0 v0 0x2 ;
-
-options.c0.0xf0000000
-st.byte c0 v0 0x7 ;
-
-options.c0.0xf0000000
-ld.byte v0 c0 0x7 ;
 
 
 st.byte zero v0 0x6 ;
