@@ -53,8 +53,8 @@ typedef struct{
 
 typedef struct{
   padr_t adr;
-  uchar tid[LAT_XCHG][NUM_SP];
-  bit en[LAT_XCHG][NUM_SP];
+  uchar tid[CYC_VEC][NUM_SP];
+  bit en[CYC_VEC][NUM_SP];
 }ll_ck_t;
 
 typedef struct{
@@ -392,26 +392,6 @@ class ip4_tlm_dse extends ovm_component;
         end
       end
       
-      ///shared memory write source select
-///      if(exDataSel) begin
-///        ///eif data comes late
-///        foreach(smWData[bk]) begin
-///          if(endian[STAGE_RRF_DC])
-///            smWData[bk] = eif.data[bk];
-///          else begin
-///            wordu res = eif.data[bk];
-///            for(int os = 0; os < WORD_BYTES; os++)
-///              smWData[bk].b[os] = res.b[WORD_BYTES - 1 - os];
-///          end
-///          `ip4_info("exDataSel", $psprintf("bk %0d, data 0x%0h", bk, smWData[bk]), OVM_FULL)
-///        end
-///      end
-///      else begin
-///        if(stReq && sxg[STAGE_RRF_DC] != null)
-///          foreach(smWData[bk])
-///            smWData[bk] = sxg[STAGE_RRF_DC].stData[bk];
-///      end
-
       if(stReq && sxg[STAGE_RRF_DC] != null)
         foreach(smWData[bk])
           smWData[bk] = sxg[STAGE_RRF_DC].stData[bk];
@@ -445,11 +425,6 @@ class ip4_tlm_dse extends ovm_component;
           xhgData[bk] = dcExData[bk];
           `ip4_info("dc_rd ex_data vxhg ex_st", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
         end
-///        else if(() && rfm != null) begin
-///          ///data from rfm
-///          xhgData[bk] = rfm.st[bk];
-///          `ip4_info("dc_rd vxhg ex_st", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
-///        end
         else if(ldReq) begin
           xhgData[bk] = sharedMem[grp][adr][bk];
           `ip4_info("dc_rd ld_ops", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
@@ -467,10 +442,19 @@ class ip4_tlm_dse extends ovm_component;
        
         ///lxg initial value
         if(per || st2Ex || shf4 || tmsg) begin
-          bit up = (sxglxg[minSlot + cyc].sl[sp][0] >= CYC_VEC) || shf4;
-          if(up)
-            lxgBuf[minSlot + cyc].data[sp] = sxg[STAGE_RRF_DC].stData[sp];
-            
+          bit up;
+          uchar sls;
+          for(int os = 0; os < WORD_BYTES; os++) begin
+            up = (sxglxg[minSlot + cyc].sl[sp][os] >= CYC_VEC) || shf4;
+            sls = st2Ex ? sxglxg[minSlot + cyc].sMemAdr[sp] & `GML(WID_XCHG) : cyc;
+            if(up) begin
+              lxgBuf[minSlot + sls].data[sp].b[os] = sxg[STAGE_RRF_DC].stData[sp].b[os];
+              `ip4_info("dse_initial", $psprintf("subVec %0d, sp %0d, os %0d, data 0x%0h",
+                          ise.subVec, sp, os, sxg[STAGE_RRF_DC].stData[sp]), OVM_HIGH)
+            end
+          end
+          
+          up = (sxglxg[minSlot + cyc].sl[sp][0] >= CYC_VEC) || shf4;
           if(vXhgEn && up)
             lxgBuf[minSlot + cyc].vrfWEn[sp] = sxg[STAGE_RRF_DC].sMemOpy[sp];
           else if(!vXhgEn)
@@ -490,11 +474,15 @@ class ip4_tlm_dse extends ovm_component;
             bk = sxglxg[j].bk[sp][os];
             os2 = sxglxg[j].os[sp][os];
             
-            if(per || tmsg) begin
+            if(per || tmsg || st2Ex) begin
               if(slot < CYC_VEC) begin
                 if(slot >= LAT_XCHG)
                   slot -= LAT_XCHG;
+                if(st2Ex) begin
+                  
+                end
               end
+              
               if(spu != null)
                 wEn = spu.emsk;
             end
@@ -832,23 +820,26 @@ class ip4_tlm_dse extends ovm_component;
         bit oc = spu.emsk[sp] && ise.en,
             ex = spu.emsk[sp] && ise.en && !ise.noExt,
             ocWEn;
-        uchar grp, adr, bk, os, slot, cl;
+        uchar grp, adr, bk, os, slot, cl, clc;
         wordu res;
         wordu st = rfm.st[sp];
         
         ///vadr to padr translation stage
         if(rfm.base[sp] >= VADR_NMAPCH) begin
           padr = rfm.base[sp];
+          selEndian = 1;
         end
         else if(rfm.base[sp] >= VADR_EJTAGS) begin
           nc = 1;
           oc = 0;
           padr = srMapBase + EJTG_OFFSET + pbId * EJTG_SIZE + rfm.base[sp] - VADR_EJTAGS;
+          selEndian = 1;
         end
         else if(rfm.base[sp] >= VADR_NMAPNC) begin
           nc = 1;
           oc = 0;
           padr = srMapBase + rfm.base[sp] - VADR_NMAPNC;
+          selEndian = 1;
         end
         else if(tlb != null) begin
           padr = rfm.base[sp];
@@ -904,6 +895,7 @@ class ip4_tlm_dse extends ovm_component;
           adr = padr >> (WID_WORD + WID_SMEM_BK) & `GML(WID_SMEM_ADR);
           grp = (padr >> (WID_WORD + WID_SMEM_BK + WID_SMEM_ADR)) & `GML(WID_SMEM_GRP);
           cl = (padr >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_DCHE_CL);
+          clc = cl & `GML(WID_XCHG);
           
           ///----------------------start access----------------------------
           ///external mem
@@ -1110,15 +1102,15 @@ class ip4_tlm_dse extends ovm_component;
                 if(exNeedSxg)
                   sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
                 sxgBuf[slot].sMemWEn[bk][os2] = ocWEn;
-                sxgBuf[minSlot + cl].exEn[bk][os3] = ex;
-                sxgBuf[minSlot + cl].os[bk][os3] = os2;
-                sxgBuf[minSlot + cl].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
-                sxgBuf[minSlot + cl].bk[bk][os3] = sp;
+                sxgBuf[minSlot + clc].exEn[bk][os3] = ex && exNeedSxg;
+                sxgBuf[minSlot + clc].os[bk][os3] = os2;
+                sxgBuf[minSlot + clc].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
+                sxgBuf[minSlot + clc].bk[bk][os3] = sp;
               end          
             op_lw,
             op_ll: 
               for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
-                sxgBuf[minSlot + cl].exEn[bk][os2] = ex;
+                sxgBuf[minSlot + clc].exEn[bk][os2] =  ex && exNeedSxg;
                 sxgBuf[minSlot + cyc].os[sp][os2] = os2;
                 sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
@@ -1131,10 +1123,10 @@ class ip4_tlm_dse extends ovm_component;
                 if(exNeedSxg)
                   sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
                 sxgBuf[slot].sMemWEn[bk][adr2 + os2] = ocWEn;
-                sxgBuf[minSlot + cl].exEn[bk][os3] = ex;
-                sxgBuf[minSlot + cl].os[bk][os3] = os2;
-                sxgBuf[minSlot + cl].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
-                sxgBuf[minSlot + cl].bk[bk][os3] = sp;
+                sxgBuf[minSlot + clc].exEn[bk][os3] =  ex && exNeedSxg;
+                sxgBuf[minSlot + clc].os[bk][os3] = os2;
+                sxgBuf[minSlot + clc].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
+                sxgBuf[minSlot + clc].bk[bk][os3] = sp;
               end
             end
             op_lh,
@@ -1142,7 +1134,7 @@ class ip4_tlm_dse extends ovm_component;
             begin
               uchar adr2 = os & `GMH(WID_HALF);
               for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
-                sxgBuf[minSlot + cl].exEn[bk][adr2 + os2] = ex;
+                sxgBuf[minSlot + clc].exEn[bk][adr2 + os2] =  ex && exNeedSxg;
                 sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
                 sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
@@ -1154,15 +1146,15 @@ class ip4_tlm_dse extends ovm_component;
               if(exNeedSxg)
                 sxgBuf[slot].stData[bk].b[os3] = st.b[0];
               sxgBuf[slot].sMemWEn[bk][os] = ocWEn;
-              sxgBuf[minSlot + cl].exEn[bk][os3] = ex;
-              sxgBuf[minSlot + cl].os[bk][os3] = 0;
-              sxgBuf[minSlot + cl].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
-              sxgBuf[minSlot + cl].bk[bk][os3] = sp;
+              sxgBuf[minSlot + clc].exEn[bk][os3] =  ex && exNeedSxg;
+              sxgBuf[minSlot + clc].os[bk][os3] = 0;
+              sxgBuf[minSlot + clc].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
+              sxgBuf[minSlot + clc].bk[bk][os3] = sp;
             end          
             op_lb,
             op_lbu:
             begin
-              sxgBuf[minSlot + cl].exEn[bk][os] = ex;
+              sxgBuf[minSlot + clc].exEn[bk][os] =  ex && exNeedSxg;
               sxgBuf[minSlot + cyc].os[sp][0] = os;
               sxgBuf[minSlot + cyc].sl[sp][0] = slot - minSlot;
               sxgBuf[minSlot + cyc].bk[sp][0] = bk;
@@ -1179,8 +1171,8 @@ class ip4_tlm_dse extends ovm_component;
        
         selValidReq |= oc || ex;
         exReq[STAGE_RRF_DEM] |= ex;
-        `ip4_info("sel_dse", $psprintf("sp %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, re %0d", 
-                        sp, grp, adr, bk, ex, oc, exp, selCause.name, sxgBuf[minSlot + cyc].re[sp]), OVM_FULL)  
+        `ip4_info("sel_dse", $psprintf("sp %0d, sl %0d, grp %0d, adr %0d, bk %0d, ex %0d, oc %0d, exp %0d %s, re %0d", 
+                        sp, slot, grp, adr, bk, ex, oc, exp, selCause.name, sxgBuf[minSlot + cyc].re[sp]), OVM_FULL)  
       end
         
       expCause[STAGE_RRF_DEM] = selCause;
@@ -1265,8 +1257,8 @@ class ip4_tlm_dse extends ovm_component;
       
       ///finish one half wrap or whole request
       if(xhgEnd) begin
-        `ip4_info("sel_dse_xhgEnd", $psprintf("cyc %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
-                        cyc, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_DEM]), OVM_FULL)  
+        `ip4_info("sel_dse_xhgEnd", $psprintf("subVec %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
+                        ise.subVec, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_DEM]), OVM_FULL)  
         if(exReq[STAGE_RRF_DEM])
           `ip4_info("sel", "external access needed", OVM_HIGH)
           
