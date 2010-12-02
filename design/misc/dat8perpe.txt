@@ -1,0 +1,30 @@
+//#define NW 5
+//#define N (1 << NW)
+//#define PI 3.14159265359f
+//	for(int i = 0; i < NW; i++) {
+//		int it = 0x1 << i;
+//		cplx tmp2;
+//		for(int b = 0; b < (N >> 1); b++) {
+//			int q = b >> i,
+//				r = b - (q << i),
+//				idx = (q << (i + 1)) + r,
+//				adr = r << (NW - i - 1);
+//			tmp = iv[idx];
+//			tmp2 = iv[idx + it] * w[adr];
+//			iv[idx] = tmp + tmp2;
+//			iv[idx + it] = tmp - tmp2;
+//		}
+//	}
+
+//total of 512 bf, each thread process 32 * 4 bf
+//assume s0 is the thread id, mul it by 128
+sll s0 s0 7 ;
+// s1 is current stage
+li s1 0 ;
+// s2 is NW
+li s2 10 ;
+// s3 is it
+li s3 1 ;
+li s7 0x2000 ;
+
+tsync ;
