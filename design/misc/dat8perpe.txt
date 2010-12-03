@@ -1,30 +1,72 @@
-//#define NW 5
-//#define N (1 << NW)
-//#define PI 3.14159265359f
-//	for(int i = 0; i < NW; i++) {
-//		int it = 0x1 << i;
-//		cplx tmp2;
-//		for(int b = 0; b < (N >> 1); b++) {
-//			int q = b >> i,
-//				r = b - (q << i),
-//				idx = (q << (i + 1)) + r,
-//				adr = r << (NW - i - 1);
-//			tmp = iv[idx];
-//			tmp2 = iv[idx + it] * w[adr];
-//			iv[idx] = tmp + tmp2;
-//			iv[idx + it] = tmp - tmp2;
-//		}
-//	}
+// PE process eight data once time
+// per PE process N/P data totaly
+// assume that data has been bit-reversed
+// and stored in shared memory. The data organization is as follows(32 data for example):
+// 0~7 8~15 are stored in bank0  16~23 24~31 are stored in bank1
+// only two PE for example.
+// if there are 1024 point, logic PE num is 32, the number assigned to PE is 1024/32=32
+// 0~31->bank0 32~63->bank1 64~95->bank2 96~127->bank3 ...... 992~1023->bank31
+// the twiddle factors has been computed and stored in shared memory
+// m=log2(1024)
+li s8 10 ;
+// fix_dn
+li s0 8 ;
+// dn_pe
+li s1 32 ;
+// log2(dn_pe)-1
+li s2 4 ;
+// iter = dn_pe/fix_dn
+li s3 4 ;
+// constant 1
+li s5 1 ;
+// e
+li s4 0 ;
+// step l
+srl s5 s5 s4 ;
+// tmp variable k
+li s6 0 ;
+// e+1
+add s7 s4 1 ;
 
-//total of 512 bf, each thread process 32 * 4 bf
-//assume s0 is the thread id, mul it by 128
-sll s0 s0 7 ;
-// s1 is current stage
-li s1 0 ;
-// s2 is NW
-li s2 10 ;
-// s3 is it
-li s3 1 ;
-li s7 0x2000 ;
+// initialize the PE ID
+vid v0 ;
+// ff
+li v1 0 ;
 
-tsync ;
+// ff*fix_dn
+mul v1 v1 s0 ;
+// ff*fix_dn + k
+add.u v2 v1 s6 ;
+
+// pe_id*dn_pe + ff*fix_dn + k
+mad.u v3 v0 s1 v2 ;
+
+// v4 res = mod(pe_id*dn_pe + ff*fix_dn + k,l)
+sll v4 v3 s4 ;
+sub v4 v3 v4 ;
+// v5 mod(pe_id*dn_pe + ff*fix_dn + k,2*l)
+sll v5 v3 s7 ;
+sub v5 v3 v5 ;
+
+// mod(i*dn_pe+ff*fix_dn+k,l)==mod(i*dn_pe+ff*fix_dn+k,2*l)
+cmp.unc.= p1 p0 v4 v5 ;
+
+// v6 WNP_adr res*2^(m-(e+1))
+(p1) sub s9 s8 s7 ;
+(p1) sll v6 v4 s9 ;
+
+// v7 the first data v2->offset, v
+(p1) ld.word.rand v6  v2 ;
+// ff*fix_dn + k + l
+(p1) add.u v7 v2 s5 ;
+// v7->offset
+(p1) ld.word.rand v8  v7 ;
+
+
+
+
+
+
+
+
+
