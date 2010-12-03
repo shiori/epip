@@ -68,6 +68,7 @@ class sxg_t;
   bit sMemOpy[NUM_SP],   ///occupy for onchip shared mem
       exMemOpy[NUM_SP], ///cl info for ex store
       exEn[NUM_SP][WORD_BYTES],  ///ext enabled
+      exEn2[NUM_SP][WORD_BYTES],
       sMemWEn[NUM_SP][WORD_BYTES];
   uint sMemAdr[NUM_SP], sMemGrp[NUM_SP];  ///on chip adr grp
   wordu stData[NUM_SP]; ///store exchange buffer
@@ -134,6 +135,7 @@ class ip4_tlm_dse extends ovm_component;
   
   local sxg_t sxgBuf[LAT_XCHG],
               sxglxg[LAT_XCHG],
+              sxgexst[LAT_XCHG],
               sxg[STAGE_RRF_LXG:STAGE_RRF_DEM];
   
   local wordu dcFlushData[STAGE_RRF_LXG:STAGE_RRF_DC][NUM_SP];
@@ -309,454 +311,6 @@ class ip4_tlm_dse extends ovm_component;
     toSPU = v.spu[STAGE_RRF_DPRB];
     toRFM = v.rfm[STAGE_RRF_VWBP];
     toEIF = v.eif[STAGE_RRF_LXG];
-    
-    ///eif query cache state
-    if(v.fmEIF[STAGE_RRF_AG] != null) begin
-      tr_eif2dse eif = v.fmEIF[STAGE_RRF_AG];
-      exadr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
-              smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
-              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
-      if(eif.queryCacheState) begin
-        exadr_t exAdr = eif.exAdr;
-        uint adr, tagLo, tagHi, idx;
-        adr = exAdr & `GML(WID_SMEM_ADR);
-        adr = adr & `GMH(WID_DCHE_CL) + eif.subVec;
-        tagLo = exAdr >> (WID_DCHE_CL + WID_DCHE_IDX);
-        tagHi = tagLo >> WID_DCHE_STAG;
-        idx = adr >> WID_DCHE_IDX;
-        tagLo = tagLo & `GML(WID_DCHE_STAG);
-        if(toEIF == null) toEIF = tr_dse2eif::type_id::create("toEIF", this);
-        toEIF.queryNoHit = 1;
-        if(exAdr < smStart && exAdr >= smEnd && srCacheGrp > 0) begin
-          ///in ext rang, check cache
-          for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++) begin        
-            for(int loTagIdx = (NUM_SMEM_GRP - srCacheGrp); loTagIdx < NUM_SMEM_GRP; loTagIdx++) begin
-              if(cache[idx][hiTagIdx].state[loTagIdx] != cs_inv && cache[idx][hiTagIdx].tagHi == tagHi && 
-                 cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo) begin
-                toEIF.queryRes = cache[idx][hiTagIdx].state[loTagIdx];
-                toEIF.queryNoHit = 0;
-                if(eif.queryAndUpdate)
-                  cache[idx][hiTagIdx].state[loTagIdx] = eif.state;
-                break;
-              end
-            end
-          end
-        end
-      end
-    end
-    
-    ///**dc stage
-    if(sxg[STAGE_RRF_DC] != null) begin
-      uchar ///st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG),
-            cyc, minSlot = 0;
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
-      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
-      tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];///, eif2 = v.fmEIF[st];
-      tr_spu2dse spu = v.fmSPU[STAGE_RRF_DC];
-      
-      bit xhgEnd = 0, shf4 = 0, per = 0, tmsg = 0, fmsg = 0, 
-          vXhgEn, exDataSel = 0, exRd = 0, st2Ex, exLdRsp, ldReq, stReq;
-
-      if(ise != null && ise.en) begin
-        ldReq = ise.op inside {ld_ops};
-        stReq = ise.op inside {st_ops};
-        xhgEnd = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
-        shf4 = ise.op inside {op_shf4a, op_shf4b};
-        per = ise.op inside {op_pera, op_perb};
-        vXhgEn = ise.op inside {op_pera, op_shf4a, op_tmrf};
-        tmsg = ise.op == op_tmrf;
-        fmsg = ise.op == op_fmrf;
-        cyc = ise.subVec & `GML(WID_XCHG);
-        exDataSel = ise.op == op_fmrf;/// && eif2 != null; ///a fmrf valid?
-        st2Ex = stReq && exReq[STAGE_RRF_DC];
-        if(!ise.vec || ise.vecMode == 0)
-          minSlot = LAT_XCHG - 1;
-        else/// if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
-          minSlot = 0;///LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
-      end
-      if(eif != null) begin /// && eif2 != null
-        bit allocFail = 0;
-        exRd = eif.rd;
-        exLdRsp = eif.loadRsp;
-        if(v.eif[STAGE_RRF_DC] != null)
-          allocFail = v.eif[STAGE_RRF_DC].allocFail;
-        exDataSel |= eif.wr && !allocFail;/// && eif2 != null; ///can also be ex wr, or ex ld rsp
-        exDataSel |= eif.loadRsp;/// && eif2 != null;
-        xhgEnd = eif.vecMode == eif.subVec || !eif.vec;
-        cyc = eif.subVec & `GML(WID_XCHG);
-        if(exLdRsp || exRd) begin
-          if(!eif.vec || eif.vecMode == 0)
-            minSlot = LAT_XCHG - 1;
-          else
-            minSlot = 0;
-        end
-      end
-      
-      if(stReq && sxg[STAGE_RRF_DC] != null)
-        foreach(smWData[bk])
-          smWData[bk] = sxg[STAGE_RRF_DC].stData[bk];
-            
-      ///shared memory write
-      for(int bk = 0; bk < NUM_SP; bk++) begin
-        uint adr = sxg[STAGE_RRF_DC].sMemAdr[bk],
-             grp = sxg[STAGE_RRF_DC].sMemGrp[bk];
-        bit wEn[WORD_BYTES] = sxg[STAGE_RRF_DC].sMemWEn[bk];
-        if(exDataSel)
-          foreach(wEn[os])
-            wEn[os] = eif.byteEn[bk][os];
-        foreach(wEn[os])
-          if(wEn[os]) begin
-            sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
-            `ip4_info("dc_wr", $psprintf("grp %0d, adr %0d, bk %0d, os %0d, data 0x%0h", grp, adr, bk, os, smWData[bk].b[os]), OVM_FULL)
-          end
-      end
-      
-      ///sharedMem read
-      for(int bk = 0; bk < NUM_SP; bk++) begin
-        uint adr = sxg[STAGE_RRF_DC].sMemAdr[bk],
-             grp = sxg[STAGE_RRF_DC].sMemGrp[bk],
-             adr2 = adr ^ 'b01;   ///flip last bit
-        if(cacheFlush[STAGE_RRF_DC])
-          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr2][bk];
-        else if(exRd)
-          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr][bk];
-        
-        if(exDataSel || per || shf4 || st2Ex) begin ///data from ex, use smWData
-          xhgData[bk] = dcExData[bk];
-          `ip4_info("dc_rd ex_data vxhg ex_st", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
-        end
-        else if(ldReq) begin
-          xhgData[bk] = sharedMem[grp][adr][bk];
-          `ip4_info("dc_rd ld_ops", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
-        end
-      end
-          
-      ///at begining, get the sxg info
-      if(cyc == 0)
-        for(int j = minSlot; j < LAT_XCHG; j++)
-          sxglxg[j] = sxg[STAGE_RRF_DC + minSlot - j];
-            
-      ///load data exchange
-      for(int sp = 0; sp < NUM_SP; sp++) begin
-        bit wEn[NUM_SP];
-       
-        ///lxg initial value
-        if(per || st2Ex || shf4 || tmsg) begin
-          bit up;
-          uchar sls;
-          for(int os = 0; os < WORD_BYTES; os++) begin
-            up = (sxglxg[minSlot + cyc].sl[sp][os] >= CYC_VEC) || shf4;
-            sls = st2Ex ? sxglxg[minSlot + cyc].sMemAdr[sp] & `GML(WID_XCHG) : cyc;
-            if(up) begin
-              lxgBuf[minSlot + sls].data[sp].b[os] = sxg[STAGE_RRF_DC].stData[sp].b[os];
-              `ip4_info("dse_initial", $psprintf("subVec %0d, sp %0d, os %0d, data 0x%0h",
-                          ise.subVec, sp, os, sxg[STAGE_RRF_DC].stData[sp]), OVM_HIGH)
-            end
-          end
-          
-          up = (sxglxg[minSlot + cyc].sl[sp][0] >= CYC_VEC) || shf4;
-          if(vXhgEn && up)
-            lxgBuf[minSlot + cyc].vrfWEn[sp] = sxg[STAGE_RRF_DC].sMemOpy[sp];
-          else if(!vXhgEn)
-            lxgBuf[minSlot + cyc].vrfWEn[sp] = dcExEmsk[sp];///spu.emsk[sp];
-        end
-        else if(ldReq || exLdRsp || fmsg)
-          lxgBuf[minSlot + cyc].vrfWEn[sp] = sxg[STAGE_RRF_DC].oc[sp] || sxg[STAGE_RRF_DC].ex[sp];
-        else
-          continue;
-        
-        for(int j = minSlot; j < LAT_XCHG; j++) begin
-          if(sxglxg[j] == null)
-            continue;
-          for(int os = 0; os < WORD_BYTES; os++) begin
-            uchar slot, bk, os2;
-            slot = sxglxg[j].sl[sp][os];
-            bk = sxglxg[j].bk[sp][os];
-            os2 = sxglxg[j].os[sp][os];
-            
-            if(per || tmsg || st2Ex) begin
-              if(slot < CYC_VEC) begin
-                if(slot >= LAT_XCHG)
-                  slot -= LAT_XCHG;
-                if(st2Ex) begin
-                  
-                end
-              end
-              
-              if(spu != null)
-                wEn = spu.emsk;
-            end
-            else if(shf4) begin
-              ///not exchange, finished in sxg stages
-              slot = CYC_VEC;
-            end
-            
-            if(slot == cyc) begin
-              if(os2 < WORD_BYTES)
-                lxgBuf[j].data[sp].b[os] = xhgData[bk].b[os2];
-              else
-                lxgBuf[j].data[sp].b[os] = 0;
-              if(vXhgEn)
-                lxgBuf[j].vrfWEn[sp] = wEn[bk];
-              `ip4_info("dc_lxg", $psprintf("stage %0d, slot %0d, sp %0d, bk %0d, os %0d, os2 %0d, data 0x%0h, vrfWEn %0d",
-                              j, slot, sp, bk, os, os2, lxgBuf[j].data[sp], lxgBuf[j].vrfWEn[sp]), OVM_FULL)
-            end
-            else
-              `ip4_info("dc_lxg", $psprintf("not match stage %0d, slot %0d, sp %0d, bk %0d, os %0d", j, slot, sp, bk, os), OVM_FULL)
-          end
-        end
-      end
-      
-      if(xhgEnd) begin
-        for(int i = minSlot; i < LAT_XCHG; i++)
-          lxg[STAGE_RRF_DC + LAT_XCHG - 1 - i] = lxgBuf[i];
-        foreach(lxgBuf[i])
-          lxgBuf[i] = new();
-      end
-    end
-    
-    ///now exception & cancel is resolved, update dse reqs
-    if(v.fmISE[STAGE_RRF_DPRB] != null && v.fmISE[STAGE_RRF_DPRB].op inside {ld_ops, st_ops, op_tmrf, op_fmrf}) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_DPRB];
-      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DPRB];
-      bit xhgEnd = 0, ldReq = ise.op inside {ld_ops},
-          stReq = ise.op inside {st_ops};
-      uchar queId = exQueId[STAGE_RRF_DPRB],
-            cyc = ise.subVec & `GML(WID_XCHG);
-      
-      xhgEnd = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
-      
-      if(exReq[STAGE_RRF_DPRB] && sxg[STAGE_RRF_DPRB] != null) begin
-        if(v.eif[STAGE_RRF_DPRB] == null) v.eif[STAGE_RRF_DPRB] = tr_dse2eif::type_id::create("toEIF", this);
-        v.eif[STAGE_RRF_DPRB].id = queId;
-        if(ldReq) begin
-          if(xhgEnd) begin
-            ldQue[queId].wrGrp = ise.wrGrp;
-            ldQue[queId].wrBk = ise.wrBk;
-            ldQue[queId].wrAdr = ise.wrAdr;
-            ldQue[queId].tid = ise.tid;
-            ldQue[queId].op = ise.op;
-///            ldQue[queId].subVec = ise.subVec & `GMH(WID_XCHG);
-            ldQue[queId].vec = ise.vec;
-            ldQue[queId].vecMode = ise.vecMode;
-          end
-          ldQue[queId].wrEn[cyc] = sxg[STAGE_RRF_DPRB].ex;
-          ldQue[queId].ladr[cyc] = sxg[STAGE_RRF_DPRB].ladr;
-        end
-        else if(stReq)
-          stQue[queId].tid = ise.tid;
-      end
-      
-      if(cancel[ise.tid][STAGE_RRF_DPRB]) begin
-        if(v.rfm[STAGE_RRF_DPRB] != null) begin
-          v.rfm[STAGE_RRF_DPRB].wr = 0;
-          v.rfm[STAGE_RRF_DPRB].uaWrEn = 0;
-          v.rfm[STAGE_RRF_DPRB].exp = 0;
-        end
-        if(v.spu[STAGE_RRF_DPRB] != null)
-          v.spu[STAGE_RRF_DPRB].wrEn = 0;
-        if(ise.op inside {ld_ops, st_ops, op_tmrf} && v.eif[STAGE_RRF_DPRB] != null)
-          v.eif[STAGE_RRF_DPRB].op = op_nop;
-        if(exQueAlloc[STAGE_RRF_DPRB]) begin
-          if(ldReq)
-            ldQue[queId].en = 0;
-          else if(stReq)
-            stQue[queId].en = 0;
-        end
-      end
-    end
-    
-    ///send exp to other module
-    if(v.fmISE[STAGE_RRF_DEM] != null && v.fmISE[STAGE_RRF_DEM].op inside {ld_ops, st_ops}) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_DEM];
-      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DEM];
-      bit xhgEnd = 0;
-      
-      xhgEnd = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
-      
-      if(ise.vecMode == ise.subVec) begin
-        if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
-        toISE.rsp = 1;
-        toISE.exp = expReq[STAGE_RRF_DEM];
-        toISE.scl = ise.vec == 0;
-        toISE.tid = ise.tid;
-        toISE.vecMode = ise.vecMode;
-        toISE.pendExLoad = 0;
-        toISE.pendExStore = 0;
-        toISE.ldq = 0;
-        toISE.stq = 0;
-        toISE.rlsPipLd = ise.op inside {st_ops};
-        toISE.rlsPipSt = ise.op inside {ld_ops};
-        toISE.cause = expCause[STAGE_RRF_DEM];
-///        toISE.reRun = '1; ///dcReRun;
-        toISE.extLd = exReq[STAGE_RRF_DEM] && ise.op inside {ld_ops};
-        sendExp = toISE.extLd;
-        sendExpTid = ise.tid;
-///        dcReRun = 0;
-        foreach(ldQue[i])
-          if(ldQue[i].en && ldQue[i].tid == ise.tid)
-            toISE.pendExLoad++;
-          else if(!ldQue[i].en)
-            toISE.ldq++;
-        foreach(stQue[i])
-          if(stQue[i].en && stQue[i].tid == ise.tid)
-            toISE.pendExStore++;
-          else if(!stQue[i].en)
-            toISE.stq++;
-        if(expReq[STAGE_RRF_DEM]) begin
-          if(toSPU == null) toSPU = tr_dse2spu::type_id::create("toSPU", this);
-          if(toRFM == null) toRFM = tr_dse2rfm::type_id::create("toRFM", this);
-          toSPU.cancel = 1;
-          toSPU.tidCancel = ise.tid;
-          toRFM.exp = 1;
-          toRFM.tidExp = ise.tid;
-          toRFM.vecModeExp = ise.vecMode;
-        end
-      end
-    end
-    
-    ///ext load rsp, STAGE_RRF_LXG stage shold be ok
-    begin
-      tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
-      if(eif != null && eif.loadRsp && sxg[STAGE_RRF_LXG] != null
-          && (eif.vecMode == eif.subVec || !eif.vec)) begin
-        uchar cntExtLd = 0, cntExtSt = 0, ldq = 0, stq = 0;
-        if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
-        toISE.ldq = 0;
-        toISE.stq = 0;
-        toISE.rsp = 1;
-        
-        foreach(ldQue[i])
-          if(ldQue[i].en && ldQue[i].tid == sxg[STAGE_RRF_LXG].tid)
-            cntExtLd++;
-          else if(!ldQue[i].en)
-            toISE.ldq++;
-            
-        foreach(stQue[i])
-          if(stQue[i].en && stQue[i].tid == sxg[STAGE_RRF_LXG].tid)
-            cntExtSt++;
-          else if(!stQue[i].en)
-            toISE.stq++;
-
-        toISE.noExtLd = cntExtLd == 0;
-        toISE.noExtSt = cntExtSt == 0;
-        toISE.tidNoExt = sxg[STAGE_RRF_LXG].tid;
-      end
-    end
-    
-    ///now load exchange data is ready, set them to eif & rfm tr
-    if(sxg[STAGE_RRF_LXG] != null && lxg[STAGE_RRF_LXG] != null) begin
-      tr_ise2dse ise = v.fmISE[STAGE_RRF_LXG];
-      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_LXG];
-      tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
-      tr_spu2dse spu = v.fmSPU[STAGE_RRF_LXG];
-      bit rfmReq = 0, exRd = 0, last = 0;
-      opcode_e op;
-        
-      if(ise != null && ise.op inside {ld_ops, op_shf4a, op_shf4b, op_pera, op_perb, op_fmrf, op_tmrf}) begin
-        rfmReq = 1;
-        op = ise.op;
-        last = ise.subVec == ise.vecMode;
-      end
-      else if(eif != null) begin
-        op = sxg[STAGE_RRF_LXG].op;
-        rfmReq = eif.loadRsp;
-        exRd = eif.rd;
-        last = eif.vecMode == eif.subVec || !eif.vec;
-      end
-      
-      if(rfmReq) begin
-        if(v.rfm[STAGE_RRF_LXG] == null) v.rfm[STAGE_RRF_LXG] = tr_dse2rfm::type_id::create("toRFM", this);
-///        for(int sp = 0; sp < NUM_SP; sp++) begin
-///          uchar os = sxg[STAGE_RRF_LXG].xhg[sp] & `GML(WID_WORD);
-///          wordu res = lxg[STAGE_RRF_LXG].data[sp];
-///          case(op)
-///          op_lh:    res = {{HALF_BITS{res.h[os >> WID_HALF].h[HALF_BITS - 1]}}, res.h[os >> WID_HALF]};
-///          op_lhu:   res = res.h[os >> WID_HALF];
-///          op_lb:    res = res.b[os];
-///          op_lbu:   res = {{(WORD_BITS - 8){res.b[os][7]}}, res.b[os]};
-///          endcase
-///          v.rfm[STAGE_RRF_LXG].res[sp] = res;
-///        end
-        v.rfm[STAGE_RRF_LXG].res = lxg[STAGE_RRF_LXG].data;
-        v.rfm[STAGE_RRF_LXG].wrEn = lxg[STAGE_RRF_LXG].vrfWEn;
-        v.rfm[STAGE_RRF_LXG].expVec = sxg[STAGE_RRF_LXG].exp;
-      end
-      
-      if(cacheFlush[STAGE_RRF_LXG] || exRd) begin
-        ///cache flush or ex read
-        if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
-        v.eif[STAGE_RRF_LXG].data = dcFlushData[STAGE_RRF_LXG];
-        v.eif[STAGE_RRF_LXG].byteEn = '{default : '1};
-      end
-      else if(ise != null) begin
-        ///dse reqs
-        if(ise.op inside {op_tmrf} && !expReq[STAGE_RRF_LXG]) begin
-          ///tmrf will use part of lxg vrfWEn
-          if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
-          v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
-          v.eif[STAGE_RRF_LXG].mrfAdr = ise.mrfAdr;
-          v.eif[STAGE_RRF_LXG].op = ise.op;
-          if(rfm != null) begin
-            uchar shiftNum;
-            uint mask, maskEx, maskRf;
-            shiftNum = rfm.os;
-            if(shiftNum > (ise.subVec * NUM_SP))
-              shiftNum -= ise.subVec * NUM_SP;
-            mask = -1 << shiftNum;
-            if(ise.sendRotRight) begin
-              maskEx = ~mask;
-              maskRf = mask;
-            end
-            else begin
-              maskEx = mask;
-              maskRf = ~mask;
-            end
-            foreach(v.eif[STAGE_RRF_LXG].byteEn[i, j])
-              v.eif[STAGE_RRF_LXG].byteEn[i][j] = maskEx[i] && lxg[STAGE_RRF_LXG].vrfWEn[i];
-            
-            if(v.rfm[STAGE_RRF_LXG] != null)
-              foreach(v.rfm[STAGE_RRF_LXG].wrEn[i])
-                v.rfm[STAGE_RRF_LXG].wrEn[i] = maskRf[i] && lxg[STAGE_RRF_LXG].vrfWEn[i];  
-          end
-        end
-        else if(exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG] && !expReq[STAGE_RRF_LXG]) begin
-          if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
-          v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
-          foreach(v.eif[STAGE_RRF_LXG].byteEn[i, j])
-            v.eif[STAGE_RRF_LXG].byteEn[i][j] = sxg[STAGE_RRF_LXG].exEn[i][j];
-        end
-      end
-    end
-    
-    ///spu ops
-    begin
-      uchar st = `SG(STAGE_RRF_SRA, STAGE_RRF_SRA, STAGE_RRF_AG);
-      tr_spu2dse spu = v.fmSPU[st];
-      if(spu != null && spu.s2gp) begin
-        if(toSPU == null)
-          toSPU = tr_dse2spu::type_id::create("toSPU", this);
-        toSPU.rsp = 1;
-        case(spu.srAdr)
-        SR_MBASE: toSPU.srRes = srMapBase;
-        SR_OCMC:  toSPU.srRes = srCacheGrp;
-        endcase
-      end
-      if(spu != null && spu.op == op_gp2s && !cancel[spu.tid][STAGE_RRF_SRA]) begin
-        case(spu.srAdr)
-        SR_MBASE: srMapBase = spu.op0;
-        SR_OCMC:
-        begin
-          srCacheGrp = spu.op0 & `GML(NUM_SMEM_GRP);
-          foreach(cacheGrpEn[i])
-            if(i >= (NUM_SMEM_GRP - srCacheGrp))
-              cacheGrpEn[i] = 1;
-        end
-        endcase
-      end
-      else
-        tlbRdy = 0;
-    end
 
     ///do pip shift before sel stage
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_DEM; i--) begin
@@ -795,8 +349,6 @@ class ip4_tlm_dse extends ovm_component;
       
       if(!ise.vec || ise.vecMode == 0)
         minSlot = LAT_XCHG - 1;
-///      else if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
-///        minSlot = LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
       else
         minSlot = 0;
         
@@ -1103,14 +655,16 @@ class ip4_tlm_dse extends ovm_component;
                   sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
                 sxgBuf[slot].sMemWEn[bk][os2] = ocWEn;
                 sxgBuf[minSlot + clc].exEn[bk][os3] = ex && exNeedSxg;
-                sxgBuf[minSlot + clc].os[bk][os3] = os2;
+                sxgBuf[minSlot + clc].exEn2[bk][os3] = ex && !exNeedSxg;
                 sxgBuf[minSlot + clc].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
+                sxgBuf[minSlot + clc].os[bk][os3] = os2;
                 sxgBuf[minSlot + clc].bk[bk][os3] = sp;
               end          
             op_lw,
             op_ll: 
               for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
                 sxgBuf[minSlot + clc].exEn[bk][os2] =  ex && exNeedSxg;
+                sxgBuf[minSlot + clc].exEn2[bk][os2] =  ex && !exNeedSxg;
                 sxgBuf[minSlot + cyc].os[sp][os2] = os2;
                 sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
@@ -1124,6 +678,7 @@ class ip4_tlm_dse extends ovm_component;
                   sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
                 sxgBuf[slot].sMemWEn[bk][adr2 + os2] = ocWEn;
                 sxgBuf[minSlot + clc].exEn[bk][os3] =  ex && exNeedSxg;
+                sxgBuf[minSlot + clc].exEn2[bk][os3] =  ex && !exNeedSxg;
                 sxgBuf[minSlot + clc].os[bk][os3] = os2;
                 sxgBuf[minSlot + clc].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
                 sxgBuf[minSlot + clc].bk[bk][os3] = sp;
@@ -1135,6 +690,7 @@ class ip4_tlm_dse extends ovm_component;
               uchar adr2 = os & `GMH(WID_HALF);
               for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
                 sxgBuf[minSlot + clc].exEn[bk][adr2 + os2] =  ex && exNeedSxg;
+                sxgBuf[minSlot + clc].exEn2[bk][adr2 + os2] =  ex && !exNeedSxg;
                 sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
                 sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
@@ -1147,6 +703,7 @@ class ip4_tlm_dse extends ovm_component;
                 sxgBuf[slot].stData[bk].b[os3] = st.b[0];
               sxgBuf[slot].sMemWEn[bk][os] = ocWEn;
               sxgBuf[minSlot + clc].exEn[bk][os3] =  ex && exNeedSxg;
+              sxgBuf[minSlot + clc].exEn2[bk][os3] =  ex && !exNeedSxg;
               sxgBuf[minSlot + clc].os[bk][os3] = 0;
               sxgBuf[minSlot + clc].sl[bk][os3] = exNeedSxg ? CYC_VEC : ise.subVec;///cyc;
               sxgBuf[minSlot + clc].bk[bk][os3] = sp;
@@ -1155,6 +712,7 @@ class ip4_tlm_dse extends ovm_component;
             op_lbu:
             begin
               sxgBuf[minSlot + clc].exEn[bk][os] =  ex && exNeedSxg;
+              sxgBuf[minSlot + clc].exEn2[bk][os] =  ex && !exNeedSxg;
               sxgBuf[minSlot + cyc].os[sp][0] = os;
               sxgBuf[minSlot + cyc].sl[sp][0] = slot - minSlot;
               sxgBuf[minSlot + cyc].bk[sp][0] = bk;
@@ -1254,6 +812,7 @@ class ip4_tlm_dse extends ovm_component;
       
       sxgBuf[minSlot + cyc].op = ise.op;
       sxgBuf[minSlot + cyc].tid = ise.tid;
+      sxg[STAGE_RRF_DEM] = sxgBuf[minSlot + cyc];
       
       ///finish one half wrap or whole request
       if(xhgEnd) begin
@@ -1262,8 +821,8 @@ class ip4_tlm_dse extends ovm_component;
         if(exReq[STAGE_RRF_DEM])
           `ip4_info("sel", "external access needed", OVM_HIGH)
           
-        for(int i = minSlot; i < LAT_XCHG; i++)
-          sxg[STAGE_RRF_DEM + LAT_XCHG -1 - i] = sxgBuf[i];
+///        for(int i = minSlot; i < LAT_XCHG; i++)
+///          sxg[STAGE_RRF_DEM + LAT_XCHG -1 - i] = sxgBuf[i];
         selExp = 0;
         selNoCache = 0;
         selEndian = 0;
@@ -1334,6 +893,7 @@ class ip4_tlm_dse extends ovm_component;
       
       sxgBuf[cyc].sMemWEn = '{default : 0};
       sxgBuf[cyc].exEn = '{default : 0};
+      sxgBuf[cyc].exEn2 = '{default : 0};
       
       if(vn.rfm[STAGE_RRF_DEM] == null) vn.rfm[STAGE_RRF_DEM] = tr_dse2rfm::type_id::create("toRFM", this);
       vn.rfm[STAGE_RRF_DEM].wr = ise.wr;
@@ -1343,6 +903,8 @@ class ip4_tlm_dse extends ovm_component;
       vn.rfm[STAGE_RRF_DEM].wrBk = ise.wrBk;
       vn.rfm[STAGE_RRF_DEM].subVec = ise.subVec;
       vn.rfm[STAGE_RRF_DEM].vecMode = ise.vecMode;
+      
+      sxg[STAGE_RRF_DEM] = sxgBuf[cyc];
       
       ///finish one half wrap or whole request
       if(xhgEnd) begin
@@ -1360,8 +922,8 @@ class ip4_tlm_dse extends ovm_component;
             end
           end
         end
-        for(int i = 0; i <= cyc; i++)
-          sxg[STAGE_RRF_DEM + i] = sxgBuf[LAT_XCHG - 1 - i];
+///        for(int i = 0; i <= cyc; i++)
+///          sxg[STAGE_RRF_DEM + i] = sxgBuf[LAT_XCHG - 1 - i];
         foreach(sxgBuf[i])
           sxgBuf[i] = new();
       end
@@ -1647,13 +1209,17 @@ class ip4_tlm_dse extends ovm_component;
             end
             cache[idx][aso].state[grp] = eif.state;
           end
-          
-          for(int i = minSlot; i < LAT_XCHG; i++)
-            sxg[STAGE_RRF_SXG0 + LAT_XCHG - 1 - i] = sxgBuf[i];
-          selExp = 0;
-          selExRdy = 0;
+         end
+        
+        sxg[STAGE_RRF_SXG0] = sxgBuf[minSlot + cyc];
+        
+        if(xhgEnd) begin
+///          for(int i = minSlot; i < LAT_XCHG; i++)
+///            sxg[STAGE_RRF_SXG0 + LAT_XCHG - 1 - i] = sxgBuf[i];
           foreach(sxgBuf[i])
             sxgBuf[i] = new();
+          selExp = 0;
+          selExRdy = 0;
         end
         
         if(vn.rfm[STAGE_RRF_SXG0] == null) vn.rfm[STAGE_RRF_SXG0] = tr_dse2rfm::type_id::create("toRFM", this);
@@ -1816,6 +1382,471 @@ class ip4_tlm_dse extends ovm_component;
         toTLB.k = ise.priv;
         tlbReqVAdr[STAGE_RRF_TAG] = toTLB.vAdr;
       end
+    end
+        
+    ///eif query cache state
+    if(v.fmEIF[STAGE_RRF_AG] != null) begin
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_AG];
+      exadr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
+              smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
+              smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
+      if(eif.queryCacheState) begin
+        exadr_t exAdr = eif.exAdr;
+        uint adr, tagLo, tagHi, idx;
+        adr = exAdr & `GML(WID_SMEM_ADR);
+        adr = adr & `GMH(WID_DCHE_CL) + eif.subVec;
+        tagLo = exAdr >> (WID_DCHE_CL + WID_DCHE_IDX);
+        tagHi = tagLo >> WID_DCHE_STAG;
+        idx = adr >> WID_DCHE_IDX;
+        tagLo = tagLo & `GML(WID_DCHE_STAG);
+        if(toEIF == null) toEIF = tr_dse2eif::type_id::create("toEIF", this);
+        toEIF.queryNoHit = 1;
+        if(exAdr < smStart && exAdr >= smEnd && srCacheGrp > 0) begin
+          ///in ext rang, check cache
+          for(int hiTagIdx = 0; hiTagIdx < NUM_DCHE_ASO; hiTagIdx++) begin        
+            for(int loTagIdx = (NUM_SMEM_GRP - srCacheGrp); loTagIdx < NUM_SMEM_GRP; loTagIdx++) begin
+              if(cache[idx][hiTagIdx].state[loTagIdx] != cs_inv && cache[idx][hiTagIdx].tagHi == tagHi && 
+                 cache[idx][hiTagIdx].tagLo[loTagIdx] == tagLo) begin
+                toEIF.queryRes = cache[idx][hiTagIdx].state[loTagIdx];
+                toEIF.queryNoHit = 0;
+                if(eif.queryAndUpdate)
+                  cache[idx][hiTagIdx].state[loTagIdx] = eif.state;
+                break;
+              end
+            end
+          end
+        end
+      end
+    end
+    
+    ///**dc stage
+    if(sxg[STAGE_RRF_DC] != null) begin
+      uchar ///st = `SG(STAGE_RRF_DC, STAGE_RRF_DC - 1, STAGE_RRF_AG),
+            cyc, minSlot = 0;
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_DC];
+      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DC];
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];///, eif2 = v.fmEIF[st];
+      tr_spu2dse spu = v.fmSPU[STAGE_RRF_DC];
+      
+      bit xhgEnd = 0, shf4 = 0, per = 0, tmsg = 0, fmsg = 0, 
+          vXhgEn, exDataSel = 0, exRd = 0, st2Ex, exLdRsp, ldReq, stReq;
+      
+      if(ise != null && ise.en) begin
+        ldReq = ise.op inside {ld_ops};
+        stReq = ise.op inside {st_ops};
+        xhgEnd = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+        shf4 = ise.op inside {op_shf4a, op_shf4b};
+        per = ise.op inside {op_pera, op_perb};
+        vXhgEn = ise.op inside {op_pera, op_shf4a, op_tmrf};
+        tmsg = ise.op == op_tmrf;
+        fmsg = ise.op == op_fmrf;
+        cyc = ise.subVec & `GML(WID_XCHG);
+        exDataSel = ise.op == op_fmrf;/// && eif2 != null; ///a fmrf valid?
+        st2Ex = stReq && exReq[STAGE_RRF_DC];
+
+///          if((STAGE_RRF_DC + ise.subVec - CYC_VEC) < STAGE_RRF_SEL)
+///            sxgexst = sxgBuf[LAT_XCHG - (STAGE_RRF_SEL - STAGE_RRF_DC - ise.subVec + CYC_VEC)];
+///          else        
+        if(ise.subVec < LAT_XCHG)
+          foreach(sxgexst[i])
+            sxgexst[i] = sxg[STAGE_RRF_DC + ise.subVec - LAT_XCHG - i];
+        else
+          foreach(sxgexst[i])
+            sxgexst[i] = sxg[STAGE_RRF_DC + ise.subVec - i];
+          
+        if(!ise.vec || ise.vecMode == 0)
+          minSlot = LAT_XCHG - 1;
+        else/// if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
+          minSlot = 0;///LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
+      end
+      if(eif != null) begin /// && eif2 != null
+        bit allocFail = 0;
+        exRd = eif.rd;
+        exLdRsp = eif.loadRsp;
+        if(v.eif[STAGE_RRF_DC] != null)
+          allocFail = v.eif[STAGE_RRF_DC].allocFail;
+        exDataSel |= eif.wr && !allocFail;/// && eif2 != null; ///can also be ex wr, or ex ld rsp
+        exDataSel |= eif.loadRsp;/// && eif2 != null;
+        xhgEnd = eif.vecMode == eif.subVec || !eif.vec;
+        cyc = eif.subVec & `GML(WID_XCHG);
+        if(exLdRsp || exRd) begin
+          if(!eif.vec || eif.vecMode == 0)
+            minSlot = LAT_XCHG - 1;
+          else
+            minSlot = 0;
+        end
+      end
+      
+      if(stReq && sxg[STAGE_RRF_DC] != null)
+        foreach(smWData[bk])
+          smWData[bk] = sxg[STAGE_RRF_DC].stData[bk];
+            
+      ///shared memory write
+      for(int bk = 0; bk < NUM_SP; bk++) begin
+        uint adr = sxg[STAGE_RRF_DC].sMemAdr[bk],
+             grp = sxg[STAGE_RRF_DC].sMemGrp[bk];
+        bit wEn[WORD_BYTES] = sxg[STAGE_RRF_DC].sMemWEn[bk];
+        if(exDataSel)
+          foreach(wEn[os])
+            wEn[os] = eif.byteEn[bk][os];
+        foreach(wEn[os])
+          if(wEn[os]) begin
+            sharedMem[grp][adr][bk].b[os] = smWData[bk].b[os];
+            `ip4_info("dc_wr", $psprintf("grp %0d, adr %0d, bk %0d, os %0d, data 0x%0h", grp, adr, bk, os, smWData[bk].b[os]), OVM_FULL)
+          end
+      end
+      
+      ///sharedMem read
+      for(int bk = 0; bk < NUM_SP; bk++) begin
+        uint adr = sxg[STAGE_RRF_DC].sMemAdr[bk],
+             grp = sxg[STAGE_RRF_DC].sMemGrp[bk],
+             adr2 = adr ^ 'b01;   ///flip last bit
+        if(cacheFlush[STAGE_RRF_DC])
+          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr2][bk];
+        else if(exRd)
+          dcFlushData[STAGE_RRF_DC][bk] = sharedMem[grp][adr][bk];
+        
+        if(exDataSel || per || shf4 || st2Ex) begin ///data from ex, use smWData
+          xhgData[bk] = dcExData[bk];
+          `ip4_info("dc_rd ex_data vxhg ex_st", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
+        end
+        else if(ldReq) begin
+          xhgData[bk] = sharedMem[grp][adr][bk];
+          `ip4_info("dc_rd ld_ops", $psprintf("grp %0d, adr %0d, bk %0d, xhgData 0x%0h", grp, adr, bk, xhgData[bk]), OVM_FULL)
+        end
+      end
+          
+      ///at begining, get the sxg info
+      if(cyc == 0)
+        for(int j = minSlot; j < LAT_XCHG; j++)
+          sxglxg[j] = sxg[STAGE_RRF_DC + minSlot - j];
+            
+      ///load data exchange
+      for(int sp = 0; sp < NUM_SP; sp++) begin
+        bit wEn[NUM_SP];
+       
+        ///lxg initial value
+        if(per || st2Ex || shf4 || tmsg) begin
+          bit up;
+          uchar sls;
+          for(int os = 0; os < WORD_BYTES; os++) begin
+            up = (sxglxg[minSlot + cyc].sl[sp][os] >= CYC_VEC) || shf4;
+            sls = st2Ex ? sxglxg[minSlot + cyc].sMemAdr[sp] & `GML(WID_XCHG) : cyc;
+            if(up) begin
+              lxgBuf[minSlot + sls].data[sp].b[os] = sxg[STAGE_RRF_DC].stData[sp].b[os];
+              `ip4_info("dse_initial", $psprintf("subVec %0d, sp %0d, os %0d, data 0x%0h",
+                          ise.subVec, sp, os, sxg[STAGE_RRF_DC].stData[sp]), OVM_HIGH)
+            end
+            if(st2Ex && sxgexst != null)
+              sxglxg[minSlot + cyc].exEn[sp][os] |= sxgexst[minSlot + cyc].exEn2[sp][os];
+          end
+          
+          up = (sxglxg[minSlot + cyc].sl[sp][0] >= CYC_VEC) || shf4;
+          if(vXhgEn && up)
+            lxgBuf[minSlot + cyc].vrfWEn[sp] = sxg[STAGE_RRF_DC].sMemOpy[sp];
+          else if(!vXhgEn)
+            lxgBuf[minSlot + cyc].vrfWEn[sp] = dcExEmsk[sp];///spu.emsk[sp];
+        end
+        else if(ldReq || exLdRsp || fmsg)
+          lxgBuf[minSlot + cyc].vrfWEn[sp] = sxg[STAGE_RRF_DC].oc[sp] || sxg[STAGE_RRF_DC].ex[sp];
+        else
+          continue;
+        
+        for(int j = minSlot; j < LAT_XCHG; j++) begin
+          if(sxglxg[j] == null)
+            continue;
+          for(int os = 0; os < WORD_BYTES; os++) begin
+            uchar slot, bk, os2;
+            if(st2Ex && sxgexst != null) begin
+              slot = sxgexst[j].sl[sp][os];
+              bk = sxgexst[j].bk[sp][os];
+              os2 = sxgexst[j].os[sp][os];
+            end
+            else begin
+              slot = sxglxg[j].sl[sp][os];
+              bk = sxglxg[j].bk[sp][os];
+              os2 = sxglxg[j].os[sp][os];
+            end
+            
+            if(per || tmsg || st2Ex) begin
+              if(slot < CYC_VEC) begin
+                if(slot >= LAT_XCHG)
+                  slot -= LAT_XCHG;
+              end
+              
+              if(spu != null)
+                wEn = spu.emsk;
+            end
+            else if(shf4) begin
+              ///not exchange, finished in sxg stages
+              slot = CYC_VEC;
+            end
+            
+            if(slot == cyc) begin
+              if(os2 < WORD_BYTES)
+                lxgBuf[j].data[sp].b[os] = xhgData[bk].b[os2];
+              else
+                lxgBuf[j].data[sp].b[os] = 0;
+              if(vXhgEn)
+                lxgBuf[j].vrfWEn[sp] = wEn[bk];
+              `ip4_info("dc_lxg", $psprintf("stage %0d, slot %0d, sp %0d, bk %0d, os %0d, os2 %0d, data 0x%0h, vrfWEn %0d",
+                              j, slot, sp, bk, os, os2, lxgBuf[j].data[sp], lxgBuf[j].vrfWEn[sp]), OVM_FULL)
+            end
+            else
+              `ip4_info("dc_lxg", $psprintf("not match stage %0d, slot %0d, sp %0d, bk %0d, os %0d", j, slot, sp, bk, os), OVM_FULL)
+          end
+        end
+      end
+      
+      if(xhgEnd) begin
+        for(int i = minSlot; i < LAT_XCHG; i++)
+          lxg[STAGE_RRF_DC + LAT_XCHG - 1 - i] = lxgBuf[i];
+        foreach(lxgBuf[i])
+          lxgBuf[i] = new();
+      end
+    end
+    
+    ///now exception & cancel is resolved, update dse reqs
+    if(v.fmISE[STAGE_RRF_DPRB] != null && v.fmISE[STAGE_RRF_DPRB].op inside {ld_ops, st_ops, op_tmrf, op_fmrf}) begin
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_DPRB];
+      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DPRB];
+      bit xhgEnd = 0, ldReq = ise.op inside {ld_ops},
+          stReq = ise.op inside {st_ops};
+      uchar queId = exQueId[STAGE_RRF_DPRB],
+            cyc = ise.subVec & `GML(WID_XCHG);
+      
+      xhgEnd = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      
+      if(exReq[STAGE_RRF_DPRB] && sxg[STAGE_RRF_DPRB] != null) begin
+        if(v.eif[STAGE_RRF_DPRB] == null) v.eif[STAGE_RRF_DPRB] = tr_dse2eif::type_id::create("toEIF", this);
+        v.eif[STAGE_RRF_DPRB].id = queId;
+        if(ldReq) begin
+          if(xhgEnd) begin
+            ldQue[queId].wrGrp = ise.wrGrp;
+            ldQue[queId].wrBk = ise.wrBk;
+            ldQue[queId].wrAdr = ise.wrAdr;
+            ldQue[queId].tid = ise.tid;
+            ldQue[queId].op = ise.op;
+///            ldQue[queId].subVec = ise.subVec & `GMH(WID_XCHG);
+            ldQue[queId].vec = ise.vec;
+            ldQue[queId].vecMode = ise.vecMode;
+          end
+          ldQue[queId].wrEn[cyc] = sxg[STAGE_RRF_DPRB].ex;
+          ldQue[queId].ladr[cyc] = sxg[STAGE_RRF_DPRB].ladr;
+        end
+        else if(stReq)
+          stQue[queId].tid = ise.tid;
+      end
+      
+      if(cancel[ise.tid][STAGE_RRF_DPRB]) begin
+        if(v.rfm[STAGE_RRF_DPRB] != null) begin
+          v.rfm[STAGE_RRF_DPRB].wr = 0;
+          v.rfm[STAGE_RRF_DPRB].uaWrEn = 0;
+          v.rfm[STAGE_RRF_DPRB].exp = 0;
+        end
+        if(v.spu[STAGE_RRF_DPRB] != null)
+          v.spu[STAGE_RRF_DPRB].wrEn = 0;
+        if(ise.op inside {ld_ops, st_ops, op_tmrf} && v.eif[STAGE_RRF_DPRB] != null)
+          v.eif[STAGE_RRF_DPRB].op = op_nop;
+        if(exQueAlloc[STAGE_RRF_DPRB]) begin
+          if(ldReq)
+            ldQue[queId].en = 0;
+          else if(stReq)
+            stQue[queId].en = 0;
+        end
+      end
+    end
+    
+    ///send exp to other module
+    if(v.fmISE[STAGE_RRF_DEM] != null && v.fmISE[STAGE_RRF_DEM].op inside {ld_ops, st_ops}) begin
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_DEM];
+      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_DEM];
+      bit xhgEnd = 0;
+      
+      xhgEnd = ((ise.subVec + 1) & `GML(WID_XCHG)) == 0 || (ise.subVec == ise.vecMode) || !ise.vec;
+      
+      if(ise.vecMode == ise.subVec) begin
+        if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
+        toISE.rsp = 1;
+        toISE.exp = expReq[STAGE_RRF_DEM];
+        toISE.scl = ise.vec == 0;
+        toISE.tid = ise.tid;
+        toISE.vecMode = ise.vecMode;
+        toISE.pendExLoad = 0;
+        toISE.pendExStore = 0;
+        toISE.ldq = 0;
+        toISE.stq = 0;
+        toISE.rlsPipLd = ise.op inside {st_ops};
+        toISE.rlsPipSt = ise.op inside {ld_ops};
+        toISE.cause = expCause[STAGE_RRF_DEM];
+///        toISE.reRun = '1; ///dcReRun;
+        toISE.extLd = exReq[STAGE_RRF_DEM] && ise.op inside {ld_ops};
+        sendExp = toISE.extLd;
+        sendExpTid = ise.tid;
+///        dcReRun = 0;
+        foreach(ldQue[i])
+          if(ldQue[i].en && ldQue[i].tid == ise.tid)
+            toISE.pendExLoad++;
+          else if(!ldQue[i].en)
+            toISE.ldq++;
+        foreach(stQue[i])
+          if(stQue[i].en && stQue[i].tid == ise.tid)
+            toISE.pendExStore++;
+          else if(!stQue[i].en)
+            toISE.stq++;
+        if(expReq[STAGE_RRF_DEM]) begin
+          if(toSPU == null) toSPU = tr_dse2spu::type_id::create("toSPU", this);
+          if(toRFM == null) toRFM = tr_dse2rfm::type_id::create("toRFM", this);
+          toSPU.cancel = 1;
+          toSPU.tidCancel = ise.tid;
+          toRFM.exp = 1;
+          toRFM.tidExp = ise.tid;
+          toRFM.vecModeExp = ise.vecMode;
+        end
+      end
+    end
+    
+    ///ext load rsp, STAGE_RRF_LXG stage shold be ok
+    begin
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
+      if(eif != null && eif.loadRsp && sxg[STAGE_RRF_LXG] != null
+          && (eif.vecMode == eif.subVec || !eif.vec)) begin
+        uchar cntExtLd = 0, cntExtSt = 0, ldq = 0, stq = 0;
+        if(toISE == null) toISE = tr_dse2ise::type_id::create("toISE", this);
+        toISE.ldq = 0;
+        toISE.stq = 0;
+        toISE.rsp = 1;
+        
+        foreach(ldQue[i])
+          if(ldQue[i].en && ldQue[i].tid == sxg[STAGE_RRF_LXG].tid)
+            cntExtLd++;
+          else if(!ldQue[i].en)
+            toISE.ldq++;
+            
+        foreach(stQue[i])
+          if(stQue[i].en && stQue[i].tid == sxg[STAGE_RRF_LXG].tid)
+            cntExtSt++;
+          else if(!stQue[i].en)
+            toISE.stq++;
+
+        toISE.noExtLd = cntExtLd == 0;
+        toISE.noExtSt = cntExtSt == 0;
+        toISE.tidNoExt = sxg[STAGE_RRF_LXG].tid;
+      end
+    end
+    
+    ///now load exchange data is ready, set them to eif & rfm tr
+    if(sxg[STAGE_RRF_LXG] != null && lxg[STAGE_RRF_LXG] != null) begin
+      tr_ise2dse ise = v.fmISE[STAGE_RRF_LXG];
+      tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_LXG];
+      tr_eif2dse eif = v.fmEIF[STAGE_RRF_LXG];
+      tr_spu2dse spu = v.fmSPU[STAGE_RRF_LXG];
+      bit rfmReq = 0, exRd = 0, last = 0;
+      opcode_e op;
+        
+      if(ise != null && ise.op inside {ld_ops, op_shf4a, op_shf4b, op_pera, op_perb, op_fmrf, op_tmrf}) begin
+        rfmReq = 1;
+        op = ise.op;
+        last = ise.subVec == ise.vecMode;
+      end
+      else if(eif != null) begin
+        op = sxg[STAGE_RRF_LXG].op;
+        rfmReq = eif.loadRsp;
+        exRd = eif.rd;
+        last = eif.vecMode == eif.subVec || !eif.vec;
+      end
+      
+      if(rfmReq) begin
+        if(v.rfm[STAGE_RRF_LXG] == null) v.rfm[STAGE_RRF_LXG] = tr_dse2rfm::type_id::create("toRFM", this);
+///        for(int sp = 0; sp < NUM_SP; sp++) begin
+///          uchar os = sxg[STAGE_RRF_LXG].xhg[sp] & `GML(WID_WORD);
+///          wordu res = lxg[STAGE_RRF_LXG].data[sp];
+///          case(op)
+///          op_lh:    res = {{HALF_BITS{res.h[os >> WID_HALF].h[HALF_BITS - 1]}}, res.h[os >> WID_HALF]};
+///          op_lhu:   res = res.h[os >> WID_HALF];
+///          op_lb:    res = res.b[os];
+///          op_lbu:   res = {{(WORD_BITS - 8){res.b[os][7]}}, res.b[os]};
+///          endcase
+///          v.rfm[STAGE_RRF_LXG].res[sp] = res;
+///        end
+        v.rfm[STAGE_RRF_LXG].res = lxg[STAGE_RRF_LXG].data;
+        v.rfm[STAGE_RRF_LXG].wrEn = lxg[STAGE_RRF_LXG].vrfWEn;
+        v.rfm[STAGE_RRF_LXG].expVec = sxg[STAGE_RRF_LXG].exp;
+      end
+      
+      if(cacheFlush[STAGE_RRF_LXG] || exRd) begin
+        ///cache flush or ex read
+        if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
+        v.eif[STAGE_RRF_LXG].data = dcFlushData[STAGE_RRF_LXG];
+        v.eif[STAGE_RRF_LXG].byteEn = '{default : '1};
+      end
+      else if(ise != null) begin
+        ///dse reqs
+        if(ise.op inside {op_tmrf} && !expReq[STAGE_RRF_LXG]) begin
+          ///tmrf will use part of lxg vrfWEn
+          if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
+          v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
+          v.eif[STAGE_RRF_LXG].mrfAdr = ise.mrfAdr;
+          v.eif[STAGE_RRF_LXG].op = ise.op;
+          if(rfm != null) begin
+            uchar shiftNum;
+            uint mask, maskEx, maskRf;
+            shiftNum = rfm.os;
+            if(shiftNum > (ise.subVec * NUM_SP))
+              shiftNum -= ise.subVec * NUM_SP;
+            mask = -1 << shiftNum;
+            if(ise.sendRotRight) begin
+              maskEx = ~mask;
+              maskRf = mask;
+            end
+            else begin
+              maskEx = mask;
+              maskRf = ~mask;
+            end
+            foreach(v.eif[STAGE_RRF_LXG].byteEn[i, j])
+              v.eif[STAGE_RRF_LXG].byteEn[i][j] = maskEx[i] && lxg[STAGE_RRF_LXG].vrfWEn[i];
+            
+            if(v.rfm[STAGE_RRF_LXG] != null)
+              foreach(v.rfm[STAGE_RRF_LXG].wrEn[i])
+                v.rfm[STAGE_RRF_LXG].wrEn[i] = maskRf[i] && lxg[STAGE_RRF_LXG].vrfWEn[i];  
+          end
+        end
+        else if(exReq[STAGE_RRF_LXG] && !cancel[ise.tid][STAGE_RRF_LXG] && !expReq[STAGE_RRF_LXG]) begin
+          if(v.eif[STAGE_RRF_LXG] == null) v.eif[STAGE_RRF_LXG] = tr_dse2eif::type_id::create("toEIF", this);
+          v.eif[STAGE_RRF_LXG].data = lxg[STAGE_RRF_LXG].data;
+          foreach(v.eif[STAGE_RRF_LXG].byteEn[i, j])
+            v.eif[STAGE_RRF_LXG].byteEn[i][j] = sxg[STAGE_RRF_LXG].exEn[i][j];
+        end
+      end
+    end
+    
+    ///spu ops
+    begin
+      uchar st = `SG(STAGE_RRF_SRA, STAGE_RRF_SRA, STAGE_RRF_AG);
+      tr_spu2dse spu = v.fmSPU[st];
+      if(spu != null && spu.s2gp) begin
+        if(toSPU == null)
+          toSPU = tr_dse2spu::type_id::create("toSPU", this);
+        toSPU.rsp = 1;
+        case(spu.srAdr)
+        SR_MBASE: toSPU.srRes = srMapBase;
+        SR_OCMC:  toSPU.srRes = srCacheGrp;
+        endcase
+      end
+      if(spu != null && spu.op == op_gp2s && !cancel[spu.tid][STAGE_RRF_SRA]) begin
+        case(spu.srAdr)
+        SR_MBASE: srMapBase = spu.op0;
+        SR_OCMC:
+        begin
+          srCacheGrp = spu.op0 & `GML(NUM_SMEM_GRP);
+          foreach(cacheGrpEn[i])
+            if(i >= (NUM_SMEM_GRP - srCacheGrp))
+              cacheGrpEn[i] = 1;
+        end
+        endcase
+      end
+      else
+        tlbRdy = 0;
     end
     
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
