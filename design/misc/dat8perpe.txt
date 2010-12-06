@@ -23,13 +23,91 @@ li s5 1 ;
 li s4 0 ;
 // step l
 srl s5 s5 s4 ;
-// tmp variable k
+// tmp variable ff
 li s6 0 ;
 // e+1
 add s7 s4 1 ;
 
 // initialize the PE ID
 vid v0 ;
+// the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
+// 00000_00, 00001_00; 00010_00;.....
+sll v0 v0 2 ;
+
+$loop1
+// ff * fix_dn  0<=ff<iter
+mul s9 s6 s0 ;
+sll s10 s9 7 ;
+// data real part
+add.u v1 v0 s10 ;
+// data imag part
+add.u v2 v0 0x1000 ;
+// WNP_adr real part
+add.u v3 v0 0x2000 ;
+// WNP_adr imag part
+add.u v4 v0 0x10000 ;
+
+// the first data real part
+ld.word.rand v10 v1 0 ;
+// the second data real part
+ld.word.rand v11 v1 128 ;
+// the third data real part
+ld.word.rand v12 v1 256 ;
+// the fourth data real part
+ld.word.rand v13 v1 384 ;
+// the fifth data real part
+ld.word.rand v14 v1 512 ;
+// the sixth data real part
+ld.word.rand v15 v1 640 ;
+// the seventh data real part
+ld.word.rand v16 v1 768 ;
+// the eigth data real part
+ld.word.rand v17 v1 896 ;
+
+// the first data imag part
+ld.word.rand v20 v2 0 ;
+// the second data imag part
+ld.word.rand v21 v2 128 ;
+// the third data imag part
+ld.word.rand v22 v2 256 ;
+// the fourth data imag part
+ld.word.rand v23 v2 384 ;
+// the fifth data imag part
+ld.word.rand v24 v2 512 ;
+// the sixth data imag part
+ld.word.rand v25 v2 640 ;
+// the seventh data imag part
+ld.word.rand v26 v2 768 ;
+// the eigth data imag part
+ld.word.rand v27 v2 896 ;
+
+// compute the bf
+// the first level
+// WNP_adr
+
+ld.word.rand v28
+
+
+cmp.unc.< p1 p0 s6 s3 ; 
+(p1) add.u s6 s6 1 ;
+(p1) b.naz.bc.pop2n $loop1 0 ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ff
 li v1 0 ;
 
