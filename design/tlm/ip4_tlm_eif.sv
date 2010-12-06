@@ -100,7 +100,7 @@ class ip4_tlm_eif extends ovm_component;
           ovm_report_warning("dse", "Physical adr out of bound");
         
         if(dse.vec)
-          adr = adr & `GMH(1);
+          adr = adr & `GMH(WID_DCHE_CL);
 ///        else if(!dse.last)
 ///          ovm_report_warning("eif", "dse req sgl without last!");
           
@@ -141,15 +141,14 @@ class ip4_tlm_eif extends ovm_component;
           toDSE.vecMode = dse.vecMode;
           toDSE.vec = dse.vec;
           toDSE.id = dse.id;
-///          toDSE.last = dse.last;
           foreach(dse.data[bk]) begin
             wordu res;
             for(int os = 0; os < WORD_BYTES; os++) begin
               uint adrb;
-              adrb = os + (adr << (WID_WORD + WID_SMEM_BK)) + (bk << WID_WORD);
+              adrb = (bk << WID_WORD) + (adr << (WID_WORD + WID_SMEM_BK)) + os;
               res.b[os] = dm[adrb];
             end
-            `ip4_info("rd", $psprintf("adr 0x%0h, bk %0d, data: 0x%0h", adr, bk, res), OVM_FULL)
+            `ip4_info("rd", $psprintf("adr 0x%0h, subVec %0d, bk %0d, data: 0x%0h", adr, dse.subVec, bk, res), OVM_FULL)
             toDSE.data[bk] = res;
           end
           toDSE.alloc = dse.cacheFill;

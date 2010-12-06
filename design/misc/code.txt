@@ -1,5 +1,8 @@
 //test asm file
 //tsync ;
+options.c0.0xf0000000
+ld.byte v0 c0 0x5 ;
+
 nop
 nop
 vid vzero
