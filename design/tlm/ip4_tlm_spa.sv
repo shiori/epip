@@ -516,13 +516,13 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   pm_nop:
     foreach(pres[i]) begin
       pres0[i] = pres[i];
-      pres1[i] = pres[i];
+      pres1[i] = !pres[i];
     end
   pm_unc:
     foreach(pres[i]) 
       if(emsk[i]) begin
         pres0[i] = pres[i];
-        pres1[i] = pres[i];
+        pres1[i] = !pres[i];
       end
       else begin
         pres0[i] = 0;
@@ -542,13 +542,13 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
       end    
   pm_or:
     foreach(pres[i])
-      if(emsk[i] && !pres[i]) begin
+      if(emsk[i] && pres[i]) begin
         pres0[i] = 1;
         pres1[i] = 1;
       end 
   pm_orcm:
     foreach(pres[i]) 
-      if(emsk[i] && pres[i]) begin
+      if(emsk[i] && !pres[i]) begin
         pres0[i] = 1;
         pres1[i] = 1;
       end

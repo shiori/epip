@@ -38,7 +38,7 @@ class ip4_alg_test extends ovm_test;
 ///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 1024);
-    set_config_string("*", "imFilePath", "../misc/dat8perpe_m1.txt"); ///average_filter3
+    set_config_string("*", "imFilePath", "../misc/test.txt"); ///average_filter3
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    
@@ -92,7 +92,7 @@ class ip4_alg_test extends ovm_test;
   endfunction
   
   virtual function void end_of_elaboration();
-    set_report_verbosity_level_hier(OVM_LOW); ///OVM_MEDIUM OVM_HIGH OVM_LOW
+    set_report_verbosity_level_hier(OVM_FULL); ///OVM_MEDIUM OVM_HIGH OVM_LOW OVM_FULL
 ///    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);    
   endfunction
   

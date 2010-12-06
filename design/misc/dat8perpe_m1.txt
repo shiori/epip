@@ -81,14 +81,14 @@ sub v11 v15 v16 ;
 ld.word.rand v13 v0 384 ;
 
 // v21 is tmp2 imag part
-add v21 v25 v26 ;
+add.u v21 v25 v26 ;
 // the fourth data imag part
 ld.word.rand v23 v1 384 ;
 
 //v10 has tmp + tmp2 real part
-add v10 v10 v11 ;
+add.u v10 v10 v11 ;
 //v20 has tmp + tmp2 imag part
-add v20 v20 v21 ;
+add.u v20 v20 v21 ;
 // the third data real part
 ld.word.rand v12 v0 256 ;
 //v11 has tmp - tmp2 real part
@@ -110,11 +110,11 @@ mul v26 v13 v28 ;
 ld.word.rand v15 v0 640 ;
 
 // v23 is tmp2 imag part
-add v23 v27 v26 ;
+add.u v23 v27 v26 ;
 //v12 has tmp + tmp2 real part
-add v12 v12 v13 ;
+add.u v12 v12 v13 ;
 //v22 has tmp + tmp2 imag part
-add v22 v22 v23 ;
+add.u v22 v22 v23 ;
 // the sixth data imag part
 ld.word.rand v25 v1 640 ;
 
@@ -137,15 +137,15 @@ ld.word.rand v24 v1 512 ;
 mul v27 v25 v18 ;
 mul v17 v15 v28 ;
 // v25 is tmp2 imag part
-add v25 v27 v9 ;
+add.u v25 v27 v9 ;
 
 // the eigth data real part
 ld.word.rand v17 v0 896 ;
 
 //v14 has tmp + tmp2 real part
-add v14 v14 v15 ;
+add.u v14 v14 v15 ;
 //v24 has tmp + tmp2 imag part
-add v24 v24 v25 ;
+add.u v24 v24 v25 ;
 
 //v15 has tmp - tmp2 real part
 sub v15 v14 v15 ;
@@ -167,14 +167,14 @@ ld.word.rand v16 v0 768 ;
 mul v2 v27 v18 ;
 mul v9 v17 v28 ;
 // v27 is tmp2 imag part
-add v27 v2 v9 ;
+add.u v27 v2 v9 ;
 // the seventh data imag part
 ld.word.rand v26 v1 768 ;
 
 //v16 has tmp + tmp2 real part
-add v16 v16 v17 ;
+add.u v16 v16 v17 ;
 //v26 has tmp + tmp2 imag part
-add v26 v26 v27 ;
+add.u v26 v26 v27 ;
 
 //v17 has tmp - tmp2 real part
 sub v17 v16 v17 ;
@@ -192,12 +192,12 @@ sub v12 v2 v9 ;
 mul v2 v22 v18 ;
 mul v9 v12 v28 ;
 // v22 is tmp2 imag part
-add v22 v2 v9 ;
+add.u v22 v2 v9 ;
 
 //v10 has tmp + tmp2 real part
-add v10 v10 v12 ;
+add.u v10 v10 v12 ;
 //v20 has tmp + tmp2 imag part
-add v20 v20 v22 ;
+add.u v20 v20 v22 ;
 
 //v12 has tmp - tmp2 real part
 sub v12 v10 v12 ;
@@ -214,12 +214,12 @@ sub v13 v2 v9 ;
 mul v2 v23 v19 ;
 mul v9 v13 v29 ;
 // v23 is tmp2 imag part
-add v23 v2 v9 ;
+add.u v23 v2 v9 ;
 
 //v11 has tmp + tmp2 real part
-add v11 v11 v13 ;
+add.u v11 v11 v13 ;
 //v21 has tmp + tmp2 imag part
-add v21 v21 v23 ;
+add.u v21 v21 v23 ;
 
 //v13 has tmp - tmp2 real part
 sub v13 v11 v13 ;
@@ -236,12 +236,12 @@ sub v16 v2 v9 ;
 mul v2 v26 v18 ;
 mul v9 v16 v28 ;
 // v26 is tmp2 imag part
-add v26 v2 v9 ;
+add.u v26 v2 v9 ;
 
 //v14 has tmp + tmp2 real part
-add v14 v14 v16 ;
+add.u v14 v14 v16 ;
 //v24 has tmp + tmp2 imag part
-add v24 v24 v26 ;
+add.u v24 v24 v26 ;
 
 //v16 has tmp - tmp2 real part
 sub v16 v14 v16 ;
@@ -258,12 +258,12 @@ sub v17 v2 v9 ;
 mul v2 v27 v19 ;
 mul v9 v17 v29 ;
 // v27 is tmp2 imag part
-add v27 v2 v9 ;
+add.u v27 v2 v9 ;
 
 //v15 has tmp + tmp2 real part
-add v15 v15 v17 ;
+add.u v15 v15 v17 ;
 //v25 has tmp + tmp2 imag part
-add v25 v25 v27 ;
+add.u v25 v25 v27 ;
 
 //v17 has tmp - tmp2 real part
 sub v17 v15 v17 ;
@@ -281,12 +281,12 @@ sub v14 v2 v9 ;
 mul v2 v24 v18 ;
 mul v9 v14 v28 ;
 // v24 is tmp2 imag part
-add v24 v2 v9 ;
+add.u v24 v2 v9 ;
 
 //v10 has tmp + tmp2 real part
-add v10 v10 v14 ;
+add.u v10 v10 v14 ;
 //v20 has tmp + tmp2 imag part
-add v20 v20 v24 ;
+add.u v20 v20 v24 ;
 
 //v14 has tmp - tmp2 real part
 sub v14 v10 v14 ;
@@ -303,12 +303,12 @@ sub v15 v2 v9 ;
 mul v2 v25 v5 ;
 mul v9 v15 v6 ;
 // v25 is tmp2 imag part
-add v25 v2 v9 ;
+add.u v25 v2 v9 ;
 
 //v11 has tmp + tmp2 real part
-add v11 v11 v15 ;
+add.u v11 v11 v15 ;
 //v21 has tmp + tmp2 imag part
-add v21 v21 v25 ;
+add.u v21 v21 v25 ;
 
 //v15 has tmp - tmp2 real part
 sub v15 v11 v15 ;
@@ -325,12 +325,12 @@ sub v16 v2 v9 ;
 mul v2 v26 v7 ;
 mul v9 v16 v8 ;
 // v26 is tmp2 imag part
-add v26 v2 v9 ;
+add.u v26 v2 v9 ;
 
 //v12 has tmp + tmp2 real part
-add v12 v12 v16 ;
+add.u v12 v12 v16 ;
 //v22 has tmp + tmp2 imag part
-add v22 v22 v26 ;
+add.u v22 v22 v26 ;
 
 //v16 has tmp - tmp2 real part
 sub v15 v12 v16 ;
@@ -347,12 +347,12 @@ sub v17 v2 v9 ;
 mul v2 v27 v30 ;
 mul v9 v17 v31 ;
 // v27 is tmp2 imag part
-add v27 v2 v9 ;
+add.u v27 v2 v9 ;
 
 //v13 has tmp + tmp2 real part
-add v13 v13 v17 ;
+add.u v13 v13 v17 ;
 //v23 has tmp + tmp2 imag part
-add v23 v23 v27 ;
+add.u v23 v23 v27 ;
 
 //v17 has tmp - tmp2 real part
 sub v17 v13 v17 ;
@@ -436,25 +436,31 @@ mul s10 s8 s7 ;
 
 // WNP_adr 
 // WNP real part 2^(10-4)=64
-ld.word.rand v5 v3 s10 ;
+add.u v7 v3 s10 ;
+ld.word.rand v5 v7 0 ;
 // WNP imag part  
-ld.word.rand v6 v4 s10 ;
+add.u v8 v4 s10 ;
+ld.word.rand v6 v8 0 ;
 
 $loop2
 mul s11 s9 128 ;
 // real part 0 
-ld.word.rand v24 v0 s11 ;
+add.u v9 v0 s11 ;
+ld.word.rand v24 v9 0 ;
 // imag part 0 
-ld.word.rand v25 v1 s11 ;
+add.u v10 v1 s11 ;
+ld.word.rand v25 v10 0 ;
 
 // idx+b
 add.u s12 s9 s5 ;
 mul s12 s12 128 ;
 
 // real part 
-ld.word.rand v19 v0 s12 ;
+add.u v11 v0 s12 ;
+ld.word.rand v19 v11 0 ;
 // imag part 
-ld.word.rand v21 v1 s12 ;
+add.u v12 v1 s12 ;
+ld.word.rand v21 v12 0 ;
 
 // WNP*(IDX+B) REAL PART
 mul v28 v19 v3 ;
@@ -465,12 +471,12 @@ sub v19 v28 v29 ;
 mul v30 v21 v3 ;
 mul v31 v19 v4 ;
 // v21 is tmp2 imag part
-add v21 v30 v31 ;
+add.u v21 v30 v31 ;
 
 //v24 has tmp + tmp2 real part
-add v24 v24 v19 ;
+add.u v24 v24 v19 ;
 //v25 has tmp + tmp2 imag part
-add v25 v25 v21 ;
+add.u v25 v25 v21 ;
 
 //v19 has tmp - tmp2 real part
 sub v19 v24 v19 ;
@@ -478,14 +484,14 @@ sub v19 v24 v19 ;
 sub v21 v25 v21 ;
 
 // write back the data real part
-st.word.rand v24 v0 896 ;
+st.word.rand v24 v9 0 ;
 // write back the data imag part
-st.word.rand v25 v1 896 ;
+st.word.rand v25 v10 0 ;
 
 // write back the data real part
-st.word.rand v19 v0 896 ;
+st.word.rand v19 v11 0 ;
 // write back the data imag part
-st.word.rand v21 v1 896 ;
+st.word.rand v21 v12 0 ;
 
 cmp.unc.< p1 p0 s9 32 ;
 (p1) add.u s9 s9 s13 ;
@@ -527,7 +533,7 @@ add.u s5 s4 5 ;
 // m-e+log2(dn_pe)
 sub s7 s2 s5 ;
 // m-e+log2(dn_pe) + 1
-add s7 s7 1 ;
+add.u s7 s7 1 ;
 
 // j2=j2-1
 sub s0 s0 1 ;
@@ -548,8 +554,37 @@ sub v5 v0 v5 ;
 srl v6 v0 s8 ;
 sub v6 v0 v6 ;
 
-cmp.unc.== p1 p2 v5 v6 ;
+cmp.unc.= p1 p2 v5 v6 ;
 $loop5
+
+//i*dn_pe+k
+mad v14 v2 s15 s11 ;
+// res=mod(i*dn_pe+k,l)
+(p1) srl v15 v14 s5 ;
+(p1) sub v15 v14 v15 ;  
+// WNP_adr res*2(m-l)
+(p1) sll v16 v15 s7 ;
+// real part
+(p1) add.u v27 v3 v16 ;
+(p1) ld.word.rand v17 v27 0;
+// imag part
+(p1) add.u v28 v4 v16 ;
+(p1) ld.word.rand v18 v28 0;
+
+//i*dn_pe+k
+(p2) add.u v14 v14 s3 ;
+// res=mod(i*dn_pe+k+dn_pe/2,l)
+(p2) srl v15 v14 s5 ;
+(p2) sub v15 v14 v15 ;  
+// WNP_adr res*2(m-l)
+(p2) sll v16 v15 s7 ;
+// real part
+(p2) add.u v27 v3 v16 ; 
+(p2) ld.word.rand v17 v27 0 ;
+// imag part
+(p2) add.u v28 v4 v16 ;
+(p2) ld.word.rand v18 v28 0 ;
+
 // nn+dn_pe/2
 add.u s12 s11 s3 ;
 
@@ -561,97 +596,82 @@ mul s14 s12 128 ;
 // the destination pe_id
 (p1) add.u v7 v0 s9 ;
 // real part
-(p1) ld.word.rand v8 v0 s13 ;
+(p1) add.u v27 v0 s13 ; 
+(p1) ld.word.rand v8 v27 0 ;
 // imag part
-(p1) ld.word.rand v9 v1 s13 ;
+(p1) add.u v28 v1 s13 ; 
+(p1) ld.word.rand v9 v28 0 ;
 // real part
-(p1) ld.word.rand v10 v0 s14 ;
+(p1) add.u v29 v0 s14 ; 
+(p1) ld.word.rand v10 v29 0 ;
 // imag part
-(p1) ld.word.rand v11 v1 s14 ;
+(p1) add.u v30 v1 s14 ; 
+(p1) ld.word.rand v11 v30 0 ;
 
 // the destination pe_id
 (p2) sub v7 v0 s9 ;
 // real part
-(p2) ld.word.rand v8 v0 s14 ;
+(p2) add.u v27 v0 s14 ; 
+(p2) ld.word.rand v8 v27 0 ;
 // imag part
-(p2) ld.word.rand v9 v1 s14 ;
+(p2) add.u v28 v1 s14 ; 
+(p2) ld.word.rand v9 v28 0 ;
 // real part
-(p2) ld.word.rand v10 v0 s13 ;
+(p2) add.u v29 v0 s13 ; 
+(p2) ld.word.rand v10 v29 0 ;
 // imag part
-(p2) ld.word.rand v11 v1 s13 ;
+(p2) add.u v30 v1 s13 ;
+(p2) ld.word.rand v11 v30 0 ;
 
 // rd real part v12
-// image 
+// image part rd v13
 //real part exchange
 permute32 v12 v7 v10 ;
 permute32 v13 v7 v11 ;
 
-//i*dn_pe+k
-mad v14 v2 s15 s11 ;
-// res=mod(i*dn_pe+k,l)
-(p1) srl v15 v14 s5 ;
-(p1) sub v15 v14 v15 ;  
-// WNP_adr res*2(m-l)
-(p1) sll v16 v15 s7 ;
-// real part
-(p1) ld.word.rand v17 v3 v16;
-// imag part
-(p1) ld.word.rand v18 v4 v16;
-
-//i*dn_pe+k
-(p2) add.u v14 v14 s3 ;
-// res=mod(i*dn_pe+k+dn_pe/2,l)
-(p2) srl v15 v14 s5 ;
-(p2) sub v15 v14 v15 ;  
-// WNP_adr res*2(m-l)
-(p2) sll v16 v15 s7 ;
-// real part
-(p2) ld.word.rand v17 v3 v16;
-// imag part
-(p2) ld.word.rand v18 v4 v16;
 
 // butterfly computation
 // WNP*(IDX+B) REAL PART
-(p1)mul v19 v12 v17 ;
-(p1)mul v20 v13 v18 ;
+(p1) mul v19 v12 v17 ;
+(p1) mul v20 v13 v18 ;
 // v12 is tmp2 real part
-(p1)sub v12 v19 v20 ;
+(p1) sub v12 v19 v20 ;
 
-(p1)mul v21 v13 v17 ;
-(p1)mul v22 v12 v18 ;
+(p1) mul v21 v13 v17 ;
+(p1) mul v22 v12 v18 ;
 // v13 is tmp2 imag part
-(p1)add v13 v21 v22 ;
+(p1) add.u v13 v21 v22 ;
 
 //v8 has tmp + tmp2 real part
-(p1)add v8 v8 v12 ;
+(p1) add.u v8 v8 v12 ;
 //v9 has tmp + tmp2 imag part
-(p1)add v9 v9 v13 ;
+(p1) add.u v9 v9 v13 ;
 
 //v12 has tmp - tmp2 real part
-(p1)sub v12 v8 v12 ;
+(p1) sub v12 v8 v12 ;
 //v13 has tmp - tmp2 imag part
-(p1)sub v13 v8 v12 ;
+(p1) sub v13 v8 v12 ;
 
 // ******** WNP*(IDX+B) REAL PART
-(p2)mul v23 v8 v17 ;
-(p2)mul v24 v9 v18 ;
+(p2) mul v23 v8 v17 ;
+(p2) mul v24 v9 v18 ;
 // v8 is tmp2 real part
-(p2)sub v8 v23 v24 ;
+(p2) sub v8 v23 v24 ;
 
-(p2)mul v25 v9 v17 ;
-(p2)mul v26 v8 v18 ;
+(p2) mul v25 v9 v17 ;
+(p2) mul v26 v8 v18 ;
 // v9 is tmp2 imag part
-(p2)add v9 v25 v26 ;
+(p2) add.u v9 v25 v26 ;
 
 //v12 has tmp + tmp2 real part
-(p2)add v12 v12 v8 ;
+(p2) add.u v12 v12 v8 ;
 //v13 has tmp + tmp2 imag part
-(p2)add v13 v13 v9 ;
+(p2) add.u v13 v13 v9 ;
 
 //v8 has tmp - tmp2 real part
-(p2)sub v8 v12 v8 ;
+(p2) sub v8 v12 v8 ;
 //v9 has tmp - tmp2 imag part
-(p2)sub v9 v13 v9 ;
+(p2) sub v9 v13 v9 ;
 
 // rd real part v12
 // image 
@@ -660,22 +680,22 @@ permute32 v10 v7 v12 ;
 permute32 v11 v7 v13 ;
 
 //*****  write back real part **************//
-(p1) st.word.rand v8 v0 s13 ;
+(p1) st.word.rand v8 v27 0 ;
 // imag part
-(p1) st.word.rand v9 v1 s13 ;
+(p1) st.word.rand v9 v28 0 ;
 // real part
-(p1) st.word.rand v10 v0 s14 ;
+(p1) st.word.rand v10 v29 0 ;
 // imag part
-(p1) st.word.rand v11 v1 s14 ;
+(p1) st.word.rand v11 v30 0 ;
 
 // real part
-(p2) st.word.rand v8 v0 s14 ;
+(p2) st.word.rand v8 v27 0 ;
 // imag part
-(p2) st.word.rand v9 v1 s14 ;
+(p2) st.word.rand v9 v28 0 ;
 // real part
-(p2) st.word.rand v10 v0 s13 ;
+(p2) st.word.rand v10 v29 0 ;
 // imag part
-(p2) st.word.rand v11 v1 s13 ;
+(p2) st.word.rand v11 v30 0 ;
 
 cmp.unc.< p4 p3 s11 s3 ;
 (p4) add.u s11 s11 1 ;
