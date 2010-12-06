@@ -1,17 +1,16 @@
 //test asm file
-
 //tsync ;
 nop
 nop
 vid vzero
-add.si v0 b0 0x2
+add.si v0 b0 0x0
 nop ;
 
 options.c0.0xf0000000
-st.byte c0 v0 0x7 ;
+st.byte c0 v0 0x5 ;
 
 options.c0.0xf0000000
-ld.byte v0 c0 0x7 ;
+ld.byte v0 c0 0x5 ;
 
 nop
 nop
@@ -22,7 +21,7 @@ sub v1 b0 b1 ;
 cmp.unc.< p1 p0 v0 29 ;
 //(p1) shuffle4.penmsk v2 v0 0xF42 ;
 
-(p1) permute32 v2 v1 v0 ;
+(p1) permute32.penmsk v2 v1 v0 ;
 
 $loop2
 //tsync ;
