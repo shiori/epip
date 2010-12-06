@@ -949,7 +949,7 @@ class ip4_tlm_dse extends ovm_component;
       exadr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
               smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - srCacheGrp) * SGRP_SIZE,
               smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;
-      bit smWEn = eif.wr, allocFail = 0, needSxg = 0, xhgEnd = 0,
+      bit smWEn = eif.wr, allocFail = 0, xhgEnd = 0,
           last = !eif.vec || eif.vecMode == eif.subVec;
       uchar minSlot, cyc = eif.subVec & `GML(WID_XCHG);
       
@@ -1001,46 +1001,48 @@ class ip4_tlm_dse extends ovm_component;
               uchar cl = (ldQue[eif.id].ladr[subVec][sp] >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_DCHE_CL),
                     bk = (ldQue[eif.id].ladr[subVec][sp] >> WID_WORD) & `GML(WID_SMEM_BK),
                     os = ldQue[eif.id].ladr[subVec][sp] & `GML(WID_WORD);
-              bit needSxg = !((cl < LAT_XCHG)^ (subVec < LAT_XCHG));
-              sxgBuf[minSlot + cyc].sl[sp] = needSxg ? '{default : CYC_VEC} : '{default : cl};
-              case(ldQue[eif.id].op)
-              op_lw,
-              op_ll:
-              begin
-                if(needSxg)
-                  sxgBuf[minSlot + cyc].stData[sp] = eif.data[cl & `GML(WID_XCHG)];
-                for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
-                  sxgBuf[minSlot + cyc].os[sp][os2] = os2;
+              bit needSxg = !((cl < LAT_XCHG) ^ (subVec < LAT_XCHG));
+              if(needSxg && (cl & `GML(LAT_XCHG)) == i) begin
+                sxgBuf[minSlot + cyc].sl[sp] = needSxg ? '{default : CYC_VEC} : '{default : cl};
+                case(ldQue[eif.id].op)
+                op_lw,
+                op_ll:
+                begin
+                  if(needSxg)
+                    sxgBuf[minSlot + cyc].stData[sp] = eif.data[cl & `GML(WID_XCHG)];
+                  for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
+                    sxgBuf[minSlot + cyc].os[sp][os2] = os2;
+                  end
                 end
+                op_lhu,
+                op_lh:
+                begin
+                  uchar adr2 = os & `GMH(WID_HALF);
+                  wordu d = eif.data[cl & `GML(WID_XCHG)];
+                  for(int os2 = 0; os2 < HALF_BYTES; os2++)
+                    sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
+                  if(needSxg) begin
+                    for(int os2 = 0; os2 < WORD_BYTES; os2++)
+                      if(os2 < HALF_BYTES)
+                        sxgBuf[minSlot + cyc].stData[sp].b[os2] = d.b[adr2 + os2];
+                      else if(ldQue[eif.id].op == op_lh)
+                        sxgBuf[minSlot + cyc].stData[sp].b[os2] = '{default : d.h[0][HALF_BYTES - 1]};
+                  end
+                end
+                op_lbu,
+                op_lb:
+                begin
+                  wordu d = eif.data[cl & `GML(WID_XCHG)];
+                  sxgBuf[minSlot + cyc].os[sp][0] = os;
+                  if(needSxg) begin
+                    sxgBuf[minSlot + cyc].stData[sp].b[0] = d.b[os];
+                    if(ldQue[eif.id].op == op_lb)
+                      for(int os2 = 1; os2 < WORD_BYTES; os2++)
+                        sxgBuf[minSlot + cyc].stData[sp].b[os2] = '{default : d.b[0][7]};
+                  end
+                end          
+                endcase
               end
-              op_lhu,
-              op_lh:
-              begin
-                uchar adr2 = os & `GMH(WID_HALF);
-                wordu d = eif.data[cl & `GML(WID_XCHG)];
-                for(int os2 = 0; os2 < HALF_BYTES; os2++)
-                  sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
-                if(needSxg) begin
-                  for(int os2 = 0; os2 < WORD_BYTES; os2++)
-                    if(os2 < HALF_BYTES)
-                      sxgBuf[minSlot + cyc].stData[sp].b[os2] = d.b[adr2 + os2];
-                    else if(ldQue[eif.id].op == op_lh)
-                      sxgBuf[minSlot + cyc].stData[sp].b[os2] = '{default : d.h[0][HALF_BYTES - 1]};
-                end
-              end
-              op_lbu,
-              op_lb:
-              begin
-                wordu d = eif.data[cl & `GML(WID_XCHG)];
-                sxgBuf[minSlot + cyc].os[sp][0] = os;
-                if(needSxg) begin
-                  sxgBuf[minSlot + cyc].stData[sp].b[0] = d.b[os];
-                  if(ldQue[eif.id].op == op_lb)
-                    for(int os2 = 1; os2 < WORD_BYTES; os2++)
-                      sxgBuf[minSlot + cyc].stData[sp].b[os2] = '{default : d.b[0][7]};
-                end
-              end          
-              endcase
             end
           end
         end
@@ -1225,7 +1227,7 @@ class ip4_tlm_dse extends ovm_component;
           end
          end
         
-        sxg[STAGE_RRF_SXG0] = sxgBuf[minSlot + cyc];
+        sxg[STAGE_RRF_SEL] = sxgBuf[minSlot + cyc];
         
         if(xhgEnd) begin
 ///          for(int i = minSlot; i < LAT_XCHG; i++)
@@ -1555,8 +1557,8 @@ class ip4_tlm_dse extends ovm_component;
             sls = st2Ex ? sxglxg[minSlot + cyc].sMemAdr[sp] & `GML(WID_XCHG) : cyc;
             if(up) begin
               lxgBuf[minSlot + sls].data[sp].b[os] = sxg[STAGE_RRF_DC].stData[sp].b[os];
-              `ip4_info("dse_initial", $psprintf("subVec %0d, sls %0d, sp %0d, os %0d, data 0x%0h",
-                          ise.subVec, sls, sp, os, lxgBuf[minSlot + sls].data[sp]), OVM_HIGH)
+              `ip4_info("dse_initial", $psprintf("cyc %0d, sls %0d, sp %0d, os %0d, data 0x%0h",
+                          cyc, sls, sp, os, lxgBuf[minSlot + sls].data[sp]), OVM_HIGH)
             end
             if(st2Ex && sxgexst[minSlot + cyc] != null)
               sxglxg[minSlot + cyc].exEn[sp][os] |= sxgexst[minSlot + cyc].exEn1[sp][os];
