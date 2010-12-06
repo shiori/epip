@@ -92,7 +92,7 @@ class ip4_alg_test extends ovm_test;
   endfunction
   
   virtual function void end_of_elaboration();
-    set_report_verbosity_level_hier(OVM_FULL); ///OVM_MEDIUM OVM_HIGH OVM_LOW OVM_FULL
+    set_report_verbosity_level_hier(OVM_LOW); ///OVM_MEDIUM OVM_HIGH OVM_LOW OVM_FULL
 ///    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);    
   endfunction
   

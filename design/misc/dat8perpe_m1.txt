@@ -13,14 +13,14 @@ li s3 4 ;
 li s6 0 ;
 
 // initialize the PE ID
-vid v0 ;
+vid v2 ;
 // the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
 // 00000_00, 00001_00; 00010_00;.....
-sll v0 v0 2 ;
+sll v2 v2 2 ;
 // WNP_adr real part
-add.u v3 v0 0x2000 ;
+add.u v3 v2 0x2000 ;
 // WNP_adr imag part
-add.u v4 v0 0x2800 ;
+add.u v4 v2 0x2800 ;
 
 // compute the bf
 // the first level
@@ -56,9 +56,10 @@ ld.word.rand v31 v4 0x180 ;
 $loop1
 // ff * fix_dn  0<=ff<iter
 // data real part base addr 1024 real data
-add.u v0 v0 s6 ;
+mul s7 s6 1024 ;
+add.u v0 v2 s7 ;
 // data imag part base addr 1024(0x400)*4 imag data
-add.u v1 v0 0x1000 ;
+add.u v1 v2 0x1000 ;
 
 // the first data real part
 ld.word.rand v10 v0 0 ;
@@ -397,7 +398,7 @@ st.word.rand v17 v0 896 ;
 st.word.rand v27 v1 896 ;
 
 cmp.unc.< p1 p0 s6 s3 ; 
-(p1) add.u s6 s6 0x400 ;
+(p1) add.u s6 s6 1 ;
 (p1) b.naz.bc.pop2n $loop1 0 ;
 
 //************ the fourth AND FIFTH level **************************//
