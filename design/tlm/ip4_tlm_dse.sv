@@ -20,7 +20,7 @@ class ip4_tlm_dse_vars extends ovm_component;
 
   tr_dse2rfm rfm[STAGE_RRF_VWBP:STAGE_RRF_SXG0];
   tr_dse2eif eif[STAGE_RRF_LXG:STAGE_RRF_SXG0];
-  tr_dse2spu spu[STAGE_RRF_DPRB:STAGE_RRF_LXG0];
+  tr_dse2spu spu[STAGE_RRF_DPRB:STAGE_RRF_DEM];
   
   `ovm_component_utils_begin(ip4_tlm_dse_vars)
      `ovm_field_sarray_object(fmISE, OVM_ALL_ON + OVM_REFERENCE)
@@ -236,9 +236,9 @@ class ip4_tlm_dse extends ovm_component;
       vn.rfm[i] = v.rfm[i - 1];
     vn.rfm[STAGE_RRF_SXG0] = null;
 
-    for(int i = STAGE_RRF_DPRB; i > STAGE_RRF_LXG0; i--)
+    for(int i = STAGE_RRF_DPRB; i > STAGE_RRF_DEM; i--)
       vn.spu[i] = v.spu[i - 1];
-    vn.spu[STAGE_RRF_LXG0] = null;
+    vn.spu[STAGE_RRF_DEM] = null;
     
     for(int i = STAGE_RRF_LXG; i > STAGE_RRF_SXG0; i--)
       vn.eif[i] = v.eif[i - 1];
@@ -810,17 +810,19 @@ class ip4_tlm_dse extends ovm_component;
         vn.rfm[STAGE_RRF_DEM].uaRes = rfm.base; ///ise.ua == ua_post ?? todo
       end
       
-      if(ise.op inside {ld_ops, st_ops, op_fmrf, op_tmrf}) begin
+      if(ise.op inside {ld_ops, st_ops}) begin
         if(vn.spu[STAGE_RRF_DEM] == null) vn.spu[STAGE_RRF_DEM] = tr_dse2spu::type_id::create("toSPU", this);
         vn.spu[STAGE_RRF_DEM].tid = ise.tid;
         vn.spu[STAGE_RRF_DEM].wrEn = ise.ua != ua_no;
-        if(ise.op == op_fmrf && eif != null && spu != null) begin
-          foreach(eif.byteEn[i])
-            if(eif.byteEn[i][0])
-              vn.spu[STAGE_RRF_DEM].pres[i] = 1;
-            else
-              vn.spu[STAGE_RRF_DEM].pres[i] = spu.emsk[i];
-        end
+        vn.spu[STAGE_RRF_DEM].pres = sxgBuf[minSlot + cyc].re;
+      end
+      else if(ise.op == op_fmrf && eif != null && spu != null) begin
+        if(vn.spu[STAGE_RRF_DEM] == null) vn.spu[STAGE_RRF_DEM] = tr_dse2spu::type_id::create("toSPU", this);
+        foreach(eif.byteEn[i])
+          if(eif.byteEn[i][0])
+            vn.spu[STAGE_RRF_DEM].pres[i] = 1;
+          else
+            vn.spu[STAGE_RRF_DEM].pres[i] = spu.emsk[i];
       end
       
       sxgBuf[minSlot + cyc].op = ise.op;
@@ -1266,7 +1268,7 @@ class ip4_tlm_dse extends ovm_component;
           vn.eif[STAGE_RRF_SXG0].exAdr += idx << WID_DCHE_CL;
         end
       end
-      
+        
       ///que is released here
       if(last) begin
         if(eif.storeRsp)

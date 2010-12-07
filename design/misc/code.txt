@@ -1,7 +1,8 @@
 //test asm file
 //tsync ;
+cmp.unc.= p1 p0 vzero vzero ; 
 options.c0.0xf0000000
-ld.word v0 c0 0x4 ;
+(p1) ld.word v0 c0 0x4 ;
 
 nop
 nop

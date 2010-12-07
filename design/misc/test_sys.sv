@@ -41,7 +41,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*.sequencer", "count", 200);
 ///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
-    set_config_int("*", "imSize", 1024);
+    set_config_int("*", "imSize", 2048);
     set_config_int("*", "dmBase", 0);
     set_config_int("*", "dmSize", 64 * 1024);
     set_config_string("*", "imFilePath", "../misc/code.txt"); ///average_filter
@@ -115,7 +115,7 @@ class ip4_sys_test extends ovm_test;
               $bits(i_load), $bits(i_store), $bits(i_mctl), $bits(i_fetadd), $bits(i_cmpxchg), 
               $bits(i_mrfa), $bits(i_cmsg), $bits(i_cmp), $bits(i_cmpi), $bits(i_cop),
               $bits(i_vxchg), $bits(i_i26)));
-///    #189ns;
+///    #2929ns;
 ///    set_report_verbosity_level_hier(OVM_FULL);
   endtask
 
