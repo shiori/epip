@@ -292,7 +292,7 @@ class ip4_tlm_dse extends ovm_component;
       if(eif.loadRsp) begin
         if(eif.subVec < LAT_XCHG) begin
           dcDataRB[eif.subVec] = v.fmEIF[STAGE_RRF_DC].data;
-          if(v.fmISE[STAGE_RRF_DC - LAT_XCHG] != null)
+          if(v.fmEIF[STAGE_RRF_DC - LAT_XCHG] != null)
             dcExData = v.fmEIF[STAGE_RRF_DC - LAT_XCHG].data;
         end
         else
@@ -777,7 +777,7 @@ class ip4_tlm_dse extends ovm_component;
       
       ///ext access allocate tr
       if(exReq[STAGE_RRF_SEL]) begin
-        if(vn.eif[STAGE_RRF_DEM] == null) vn.eif[STAGE_RRF_DEM] = tr_dse2eif::type_id::create("toSPU", this);
+        if(vn.eif[STAGE_RRF_DEM] == null) vn.eif[STAGE_RRF_DEM] = tr_dse2eif::type_id::create("toEIF", this);
         vn.eif[STAGE_RRF_DEM].op = ise.op;
         vn.eif[STAGE_RRF_DEM].req = 1;
         vn.eif[STAGE_RRF_DEM].exAdr = selExAdr;
@@ -1592,7 +1592,7 @@ class ip4_tlm_dse extends ovm_component;
             end
             
             wEn = dcExEmsk;
-            if(per || tmsg) begin
+            if(per || tmsg || exLdRsp) begin
               if(slot < CYC_VEC) begin
                 if(slot >= LAT_XCHG)
                   slot -= LAT_XCHG;
