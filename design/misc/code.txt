@@ -1,7 +1,13 @@
 //test asm file
+li s2 1 ;
+li s3 4 ;
+sll s13 s2 s3 ;
+add.u s9 s9 s13 ;
+
 //tsync ;
+cmp.unc.= p1 p0 vzero vzero ; 
 options.c0.0xf0000000
-ld.byte v0 c0 0x5 ;
+(p1) ld.word v0 c0 0x4 ;
 
 nop
 nop

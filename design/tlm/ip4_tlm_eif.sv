@@ -111,13 +111,13 @@ class ip4_tlm_eif extends ovm_component;
     end
     
     if(reqAdr.size() > 0) begin
-      uint adr = reqAdr.pop_front();
+      uint adr, adr1 = reqAdr.pop_front();
       uchar cnt = 0, typ = 0;
       while(reqBuf.size() > 0) begin
         tr_eif2dse toDSE;
         tr_dse2eif dse = reqBuf.pop_front();
         bit last = !dse.vec || dse.subVec == dse.vecMode;
-        adr = adr + dse.subVec;
+        adr = adr1 + dse.subVec;
         toDSE = tr_eif2dse::type_id::create("toDSE", this);
         toDSE.endian = 1;///dse.endian;
         toDSE.exAdr = dse.exAdr;
