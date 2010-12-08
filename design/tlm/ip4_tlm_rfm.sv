@@ -152,11 +152,15 @@ class ip4_tlm_rfm extends ovm_component;
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1] = spa.fu[fid].res1[0];
             if(spa.fu[fid].wr[0]) begin
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0] = spa.fu[fid].res0[0];
-///              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 2 && bk0 == 1) 
-///               || (spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 0 && bk0 == 1))begin
-///                $display($psprintf("%t write scl: %0d", $time, spa.fu[fid].res0[0]));
+              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 0 && bk0 == 0))begin
+                $display($psprintf("%t write s8: %0d", $time, spa.fu[fid].res0[0]));
 ///                $stop;
-///              end
+              end
+              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 0 && bk0 == 1))begin
+                $display($psprintf("%t write s9: %0d", $time, spa.fu[fid].res0[0]));
+///                $stop;
+              end
+              
             end
           end
         end
