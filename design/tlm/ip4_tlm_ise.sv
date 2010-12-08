@@ -1274,8 +1274,11 @@ class ip4_tlm_ise extends ovm_component;
       if(ciRFM[i] == null) ciRFM[i] = tr_ise2rfm::type_id::create("toRFM", this);
       ciRFM[i].bpCo = t.co; ///possible overwrite!!
       foreach(t.iFu[fid])
-        if(t.enFu[fid])
+        if(t.enFu[fid]) begin
           t.iFu[fid].fill_rfm(ciRFM[i], i);
+          ciRFM[i].cycFu = i;
+          ciRFM[i].vecModeFu = t.vecMode;
+        end
     end
     
     for(int i = 0; i < t.cntFuBusy; i++) begin
@@ -1293,13 +1296,10 @@ class ip4_tlm_ise extends ovm_component;
       ciSPA[i].vecMode = t.vecMode;
       ciSPA[i].subVec = i;
       ciSPA[i].rndMode = t.srRndMode;
-      ciSPA[i].expMsk = t.srExpMsk;      
+      ciSPA[i].expMsk = t.srExpMsk; 
       ciSPU[i].vecModeFu = t.vecMode;
       ciSPU[i].subVecFu = i;
       ciSPU[i].tidFu = tid;
-      ciRFM[i].cycFu = i;
-      ciRFM[i].vecModeFu = t.vecMode;
-///      ciRFM[i].tidFu = tid;
     end
   endfunction : fill_issue
 
