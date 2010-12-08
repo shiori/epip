@@ -13,14 +13,14 @@ li s3 4 ;
 li s6 0 ;
 
 // initialize the PE ID
-vid v2 ;
+vid v0 ;
 // the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
 // 00000_00, 00001_00; 00010_00;.....
-sll v2 v2 2 ;
+sll v0 v0 2 ;
 // WNP_adr real part
-add.u v3 v2 0x2000 ;
+add.u v3 v0 0x2000 ;
 // WNP_adr imag part
-add.u v4 v2 0x2800 ;
+add.u v4 v0 0x2800 ;
 
 // compute the bf
 // the first level
@@ -57,9 +57,9 @@ $loop1
 // ff * fix_dn  0<=ff<iter
 // data real part base addr 1024 real data
 mul s7 s6 1024 ;
-add.u v0 v2 s7 ;
+add.u v0 v0 s7 ;
 // data imag part base addr 1024(0x400)*4 imag data
-add.u v1 v2 0x1000 ;
+add.u v1 v0 0x1000 ;
 
 // the first data real part
 ld.word.rand v10 v0 0 ;
@@ -334,9 +334,9 @@ add.u v12 v12 v16 ;
 add.u v22 v22 v26 ;
 
 //v16 has tmp - tmp2 real part
-sub v15 v12 v16 ;
+sub v16 v12 v16 ;
 //v26 has tmp - tmp2 imag part
-sub v25 v22 v26 ;
+sub v26 v22 v26 ;
 
 // ************* WNP3 ******************//
 // WNP*(IDX+B) REAL PART
@@ -362,40 +362,40 @@ sub v27 v23 v27 ;
 
 //***** write back into memory *******//
 // the first data real part
-st.word.rand v10 v0 0 ;
+st.word.rand v0 v10 0 ;
 // the first data imag part
-st.word.rand v20 v1 0 ;
+st.word.rand v1 v20 0 ;
 // the second data real part
-st.word.rand v11 v0 128 ;
+st.word.rand v0 v11 128 ;
 // the second data imag part
-st.word.rand v21 v1 128 ;
+st.word.rand v1 v21 128 ;
 
 // the third data real part
-st.word.rand v12 v0 256 ;
+st.word.rand v0 v12 256 ;
 // the third data imag part
-st.word.rand v22 v1 256 ;
+st.word.rand v1 v22 256 ;
 // the fourth data real part
-st.word.rand v13 v0 384 ;
+st.word.rand v0 v13 384 ;
 // the fourth data imag part
-st.word.rand v23 v1 384 ;
+st.word.rand v1 v23 384 ;
 
 // the fifth data real part
-st.word.rand v14 v0 512 ;
+st.word.rand v0 v14 512 ;
 // the fifth data imag part
-st.word.rand v24 v1 512 ;
+st.word.rand v1 v24 512 ;
 // the sixth data real part
-st.word.rand v15 v0 640 ;
+st.word.rand v0 v15 640 ;
 // the sixth data imag part
-st.word.rand v25 v1 640 ;
+st.word.rand v1 v25 640 ;
 
 // the seventh data real part
-st.word.rand v16 v0 768 ;
+st.word.rand v0 v16 768 ;
 // the seventh data imag part
-st.word.rand v26 v1 768 ;
+st.word.rand v1 v26 768 ;
 // the eigth data real part
-st.word.rand v17 v0 896 ;
+st.word.rand v0 v17 896 ;
 // the eigth data imag part
-st.word.rand v27 v1 896 ;
+st.word.rand v1 v27 896 ;
 
 cmp.unc.< p1 p0 s6 s3 ; 
 (p1) add.u s6 s6 1 ;
@@ -415,7 +415,7 @@ $loop4
 // l-1
 sub s4 s3 1 ;
 // step B 2^(l-1)
-srl s5 s2 s4 ;
+sll s5 s2 s4 ;
 
 // m-l=10-4
 sub s6 s1 s3 ;
@@ -426,7 +426,7 @@ sll s7 s2 s6 ;
 li s8 0 ;
 
 // 2^l
-srl s13 s2 s3 ;
+sll s13 s2 s3 ;
 
 $loop3
 // k = J
@@ -485,14 +485,14 @@ sub v19 v24 v19 ;
 sub v21 v25 v21 ;
 
 // write back the data real part
-st.word.rand v24 v9 0 ;
+st.word.rand v9 v24 0 ;
 // write back the data imag part
-st.word.rand v25 v10 0 ;
+st.word.rand v10 v25 0 ;
 
 // write back the data real part
-st.word.rand v19 v11 0 ;
+st.word.rand v11 v19 0 ;
 // write back the data imag part
-st.word.rand v21 v12 0 ;
+st.word.rand v12 v21 0 ;
 
 cmp.unc.< p1 p0 s9 32 ;
 (p1) add.u s9 s9 s13 ;
@@ -510,6 +510,19 @@ cmp.unc.<= p1 p0 s3 5 ;
 //******************** each PE work ************************************//
 // PE ID
 vid v2 ;
+
+// the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
+// 00000_00, 00001_00; 00010_00;.....
+sll v0 v2 2 ;
+// WNP_adr real part
+add.u v3 v0 0x2000 ;
+// WNP_adr imag part
+add.u v4 v0 0x2800 ;
+
+// data real part base addr 1024 real data
+// add.u v0 v0 0 ;
+// data imag part base addr 1024(0x400)*4 imag data
+add.u v1 v0 0x1000 ;
 
 // J2 =log2(32) + 1
 li s0 6 ;
@@ -549,11 +562,11 @@ srl s9 s10 s0 ;
 li s11 0 ;
 
 //mod(i,t)==mod(i,2*t)
-srl v5 v0 s4 ;
-sub v5 v0 v5 ;
+srl v5 v2 s4 ;
+sub v5 v2 v5 ;
 
-srl v6 v0 s8 ;
-sub v6 v0 v6 ;
+srl v6 v2 s8 ;
+sub v6 v2 v6 ;
 
 cmp.unc.= p1 p2 v5 v6 ;
 $loop5
@@ -595,7 +608,7 @@ mul s13 s11 128 ;
 mul s14 s12 128 ;
 
 // the destination pe_id
-(p1) add.u v7 v0 s9 ;
+(p1) add.u v7 v2 s9 ;
 // real part
 (p1) add.u v27 v0 s13 ; 
 (p1) ld.word.rand v8 v27 0 ;
@@ -610,7 +623,7 @@ mul s14 s12 128 ;
 (p1) ld.word.rand v11 v30 0 ;
 
 // the destination pe_id
-(p2) sub v7 v0 s9 ;
+(p2) sub v7 v2 s9 ;
 // real part
 (p2) add.u v27 v0 s14 ; 
 (p2) ld.word.rand v8 v27 0 ;
@@ -629,7 +642,6 @@ mul s14 s12 128 ;
 //real part exchange
 permute32 v12 v7 v10 ;
 permute32 v13 v7 v11 ;
-
 
 // butterfly computation
 // WNP*(IDX+B) REAL PART
@@ -681,22 +693,22 @@ permute32 v10 v7 v12 ;
 permute32 v11 v7 v13 ;
 
 //*****  write back real part **************//
-(p1) st.word.rand v8 v27 0 ;
+(p1) st.word.rand v27 v8 0 ;
 // imag part
-(p1) st.word.rand v9 v28 0 ;
+(p1) st.word.rand v28 v9 0 ;
 // real part
-(p1) st.word.rand v10 v29 0 ;
+(p1) st.word.rand v29 v10 0 ;
 // imag part
-(p1) st.word.rand v11 v30 0 ;
+(p1) st.word.rand v30 v11 0 ;
 
 // real part
-(p2) st.word.rand v8 v27 0 ;
+(p2) st.word.rand v27 v8 0 ;
 // imag part
-(p2) st.word.rand v9 v28 0 ;
+(p2) st.word.rand v28 v9 0 ;
 // real part
-(p2) st.word.rand v10 v29 0 ;
+(p2) st.word.rand v29 v10 0 ;
 // imag part
-(p2) st.word.rand v11 v30 0 ;
+(p2) st.word.rand v30 v11 0 ;
 
 cmp.unc.< p4 p3 s11 s3 ;
 (p4) add.u s11 s11 1 ;
