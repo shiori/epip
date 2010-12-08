@@ -56,7 +56,7 @@ class ip4_tlm_spu extends ovm_component;
             mscUF[CYC_VEC:0][NUM_SP],
             stkWEn[CYC_VEC:0],
             mskWEn[CYC_VEC:0];
-  local word mscNext[CYC_VEC][NUM_SP];
+  local word mscNext[CYC_VEC:0][NUM_SP];
   local bit brAllZero[STAGE_RRF_VWB:STAGE_RRF_RRC];
   
   `ovm_component_utils_begin(ip4_tlm_spu)
