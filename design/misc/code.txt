@@ -1,17 +1,20 @@
 //test asm file
 //tsync ;
 
-(p1) b.naz.bc.pop2n $loop2 0 ;
+options.c0.0xf0000000
+ld.half s0 c0 0x6 ;
 
-li v0 1 ;
-li v0 1 ;
-li v0 1 ;
-$loop2 li v0 1 ;
-li v0 1 ;
-li v0 1 ;
+options.c0.0xf0000000
+st.half c0 s0 0x6 ;
 
-st.byte zero v0 0x6 ;
-ld.byte v0 zero 0x6 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
 
 li s0 33 ;
 st.byte zero s0 0x7 ;

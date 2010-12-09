@@ -46,7 +46,7 @@ class ip4_tlm_spu extends ovm_component;
   local bit cm[NUM_THREAD][CYC_VEC][NUM_SP];
   local word msc[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit mscGuard[NUM_THREAD][CYC_VEC][NUM_SP];
-  local bit pr[NUM_THREAD][NUM_PR:1][CYC_VEC][NUM_SP];
+  local bit pr[NUM_THREAD][NUM_PR:0][CYC_VEC][NUM_SP];
   local bit prSPU[STAGE_RRF_VWBP:STAGE_RRF_EXS1];
   local bit[STAGE_RRF_SRA:0] cancel[NUM_THREAD];
   local bit expFu, expMSC, brCancel, emskAllZero;

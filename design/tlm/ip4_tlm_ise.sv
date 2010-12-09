@@ -1561,9 +1561,9 @@ class ip4_tlm_ise extends ovm_component;
     ///cancel condition 3 dse exp or cache miss
     if(v.fmDSE != null && v.fmDSE.rsp) begin
       tr_dse2ise dse = v.fmDSE;
-      uchar st = STAGE_ISE_DBR;
       ise_thread_inf t = thread[dse.tid],
                      t2 = thread[dse.tidNoExt];
+      uchar st = STAGE_ISE_DBR + dse.vecMode;
       t.pendExLoad = dse.pendExLoad;
       t.pendExStore = dse.pendExStore;
       t.pendSMsg = dse.pendSMsg;
@@ -1583,7 +1583,6 @@ class ip4_tlm_ise extends ovm_component;
         if(t2.threadState inside {ts_w_synld, ts_w_syna})
           t2.threadState = ts_rdy;
       end
-      st += t.vecMode;
       if(dse.exp && !cancel[dse.tid][STAGE_ISE_DBR]) begin
         t.srCauseDSE = dse.cause;
         t.flush();
