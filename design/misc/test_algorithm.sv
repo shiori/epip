@@ -38,7 +38,7 @@ class ip4_alg_test extends ovm_test;
 ///    set_config_int("*", "recording_detail", 1);
     set_config_int("*", "imBase", CFG_START_ADR);
     set_config_int("*", "imSize", 4096);
-    set_config_string("*", "imFilePath", "../misc/dat8perpe.txt"); ///average_filter3
+    set_config_string("*", "imFilePath", "../misc/dat8perpe_4thread.txt"); ///average_filter3
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_int("*", "pbId", 2);
    
@@ -77,10 +77,10 @@ class ip4_alg_test extends ovm_test;
 ///    set_config_int("*thread1*", "threadState", ts_rdy);
 ///    set_config_int("*thread2*", "threadState", ts_rdy);
 ///    set_config_int("*thread3*", "threadState", ts_rdy);
-    
-    set_config_int("*thread1*", "privMode", priv_kernel);
-    set_config_int("*thread2*", "privMode", priv_kernel);
-    set_config_int("*thread3*", "privMode", priv_kernel);
+///    
+///    set_config_int("*thread1*", "privMode", priv_kernel);
+///    set_config_int("*thread2*", "privMode", priv_kernel);
+///    set_config_int("*thread3*", "privMode", priv_kernel);
         
     set_config_int("*tlb*", "vpn2[0]", 0);
     set_config_int("*tlb*", "pageTyp[0]", page_64K);
@@ -97,7 +97,7 @@ class ip4_alg_test extends ovm_test;
   endfunction
   
   virtual task run();
-///   #13089ns;
+///   #4009ns;
 ///   set_report_verbosity_level_hier(OVM_FULL);
 ///`ip4_info("scalar register value",$psprintf("s9 %0d, s8 %d, s5 %d, s3 %d", core.rfm.srf[1][0][1],core.rfm.srf[1][0][0],core.rfm.srf[0][2][1],core.rfm.srf[0][1][1]), OVM_LOW)
   endtask

@@ -152,12 +152,17 @@ class ip4_tlm_rfm extends ovm_component;
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1] = spa.fu[fid].res1[0];
             if(spa.fu[fid].wr[0]) begin
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0] = spa.fu[fid].res0[0];
-              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 0 && bk0 == 0))begin
-                $display($psprintf("%t write s8: %0d", $time, spa.fu[fid].res0[0]));
+              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 1 && bk0 == 1))begin
+                $display($psprintf("%t write s11: %0d", $time, spa.fu[fid].res0[0]));
 ///                $stop;
               end
-              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 0 && bk0 == 1))begin
-                $display($psprintf("%t write s9: %0d", $time, spa.fu[fid].res0[0]));
+///              if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 0 && bk0 == 1))begin
+///                $display($psprintf("%t write s9: %0d", $time, spa.fu[fid].res0[0]));
+//////                $stop;
+///              end
+              
+               if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 3 && bk0 == 1))begin
+                $display($psprintf("%t write s15: %0d", $time, spa.fu[fid].res0[0]));
 ///                $stop;
               end
               
@@ -189,8 +194,20 @@ class ip4_tlm_rfm extends ovm_component;
                                 
             if(spa.fu[fid].wr[1])
               vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1][spa.fu[fid].subVec][sp] = spa.fu[fid].res1[sp];
-            if(spa.fu[fid].wr[0])
+            if(spa.fu[fid].wr[0]) begin
               vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
+///              if(spa.fu[fid].wrGrp ==1 && spa.fu[fid].wrAdr == 1 && bk0 == 3)
+///                $display($psprintf("v15[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
+              
+///              if(spa.fu[fid].wrGrp ==1 && spa.fu[fid].wrAdr == 1 && bk0 == 2)
+///                $display($psprintf("v14[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
+///              
+///              if(spa.fu[fid].wrGrp ==0 && spa.fu[fid].wrAdr == 0 && bk0 == 2)
+///                $display($psprintf("v2[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
+///                
+///              if(spa.fu[fid].wrGrp ==0 && spa.fu[fid].wrAdr == 1 && bk0 == 2)
+///                $display($psprintf("v6[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
+            end
           end
       end
     end
