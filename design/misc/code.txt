@@ -1,5 +1,6 @@
 //test asm file
 //tsync ;
+mad v14 v2 s15 s11 ;
 
 options.c0.0xf0000000
 ld.half s0 c0 0x6 ;
