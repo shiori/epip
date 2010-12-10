@@ -546,6 +546,10 @@ class ise_thread_inf extends ovm_component;
                     adrs[tmp], tmp, i, j), OVM_FULL)
           tmp++;
         end
+        else if(j > 0) begin
+           srfGrp[i][j] =  srfGrp[i][j - 1];
+           srfAdr[i][j] = srfAdr[i][j - 1];
+        end
     end
     
 ///    foreach(iFu[fid])

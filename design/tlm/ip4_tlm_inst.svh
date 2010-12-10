@@ -518,7 +518,7 @@ class inst_c extends ovm_object;
         wrEn = '{default : 1};
         adrWr[0] = rd & `GMH(1);
         adrWr[1] = adrWr[0] + 1;
-        rdBkSel[3] = rbk_sel_e'(rdBkSel[2] + 1);
+        rdBkSel[3] = rbk_sel_e'(rdBkSel[2] | 'b01);
       end
       else begin
         wrEn[0] = 1;
