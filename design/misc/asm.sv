@@ -1152,22 +1152,36 @@ class asmig;
       default: begin `asm_err("op not understood!"); return 0; end
       endcase
       
-      ///alloc 3rd rs, should be vec
+      ///alloc 3rd rs
       if(three && dual) begin
         bit failed = 1;
         adru[2] = adr[i][3] >> WID_VRF_BKS;
         bk[2] = adr[i][3] & `GML(WID_VRF_BKS);
         bk[2] = bk[2] & `GMH(1);
         for(int k = 0; k < CYC_VEC; k ++)
-          if((!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2])
-              && (!vrfEn[k][bk[2] + 1] || vrfAdr[k][bk[2] + 1] == adru[2])) begin
-            vrfEn[k][bk[2]] = 1;
-            vrfEn[k][bk[2] + 1] = 1;
-            vrfAdr[k][bk[2]] = adru[2];
-            vrfAdr[k][bk[2] + 1] = 255;
-            failed = 0;
-            bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
-            break;
+          if(vecOp[i][3]) begin
+            if((!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2])
+                && (!vrfEn[k][bk[2] + 1] || vrfAdr[k][bk[2] + 1] == adru[2])) begin
+              vrfEn[k][bk[2]] = 1;
+              vrfEn[k][bk[2] + 1] = 1;
+              vrfAdr[k][bk[2]] = adru[2];
+              vrfAdr[k][bk[2] + 1] = 255;
+              failed = 0;
+              bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
+              break;
+            end
+          end
+          else if(!immOp[i][3]) begin
+            if((!srfEn[k][bk[2]] || srfAdr[k][bk[2]] == adru[2])
+                && (!srfEn[k][bk[2] + 1] || srfAdr[k][bk[2] + 1] == adru[2])) begin
+              srfEn[k][bk[2]] = 1;
+              srfEn[k][bk[2] + 1] = 1;
+              srfAdr[k][bk[2]] = adru[2];
+              srfAdr[k][bk[2] + 1] = 255;
+              failed = 0;
+              bksel[2] = k * NUM_SRF_BKS + bk[2];
+              break;
+            end
           end
         if(failed) begin
           `asm_err("vec reg alloc failed!");
@@ -1182,15 +1196,29 @@ class asmig;
         `asm_msg($psprintf("adru[2] of r3w1 %0d", adru[2]), OVM_FULL);
         bk[2] = adr[i][3] & `GML(WID_VRF_BKS);
         for(int k = 0; k < CYC_VEC; k++)
-          if(!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2]) begin
-            vrfEn[k][bk[2]] = 1;
-            vrfAdr[k][bk[2]] = adru[2];
-            `asm_msg($psprintf("Three vrfEn[%0d][bk[2]] %0d", k,vrfEn[k][bk[2]]), OVM_FULL);
-            `asm_msg($psprintf("Three of 2 vrfAdr %0d, ", adru[2]), OVM_FULL);
-            failed = 0;
-            `asm_msg($psprintf("bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
-            bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
-            break;
+          if(vecOp[i][3]) begin
+            if(!vrfEn[k][bk[2]] || vrfAdr[k][bk[2]] == adru[2]) begin
+              vrfEn[k][bk[2]] = 1;
+              vrfAdr[k][bk[2]] = adru[2];
+              `asm_msg($psprintf("Three vrfEn[%0d][bk[2]] %0d", k, vrfEn[k][bk[2]]), OVM_FULL);
+              `asm_msg($psprintf("Three of 2 vrfAdr %0d, ", adru[2]), OVM_FULL);
+              failed = 0;
+              `asm_msg($psprintf("bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
+              bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
+              break;
+            end
+          end
+          else if(!immOp[i][3]) begin
+            if(!srfEn[k][bk[2]] || srfAdr[k][bk[2]] == adru[2]) begin
+              srfEn[k][bk[2]] = 1;
+              srfAdr[k][bk[2]] = adru[2];
+              `asm_msg($psprintf("Three srfEn[%0d][bk[2]] %0d", k, srfEn[k][bk[2]]), OVM_FULL);
+              `asm_msg($psprintf("Three of 2 srfAdr %0d, ", adru[2]), OVM_FULL);
+              failed = 0;
+              `asm_msg($psprintf("bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
+              bksel[2] = k * NUM_SRF_BKS + bk[2];
+              break;
+            end
           end
         if(failed) begin
           `asm_err("Err: vec reg alloc failed!");
