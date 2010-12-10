@@ -198,7 +198,7 @@ class ip4_tlm_rfm extends ovm_component;
               vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
 ///              if(spa.fu[fid].wrGrp ==1 && spa.fu[fid].wrAdr == 1 && bk0 == 3)
 ///                $display($psprintf("v15[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
-              
+///              
 ///              if(spa.fu[fid].wrGrp ==1 && spa.fu[fid].wrAdr == 1 && bk0 == 2)
 ///                $display($psprintf("v14[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
 ///              
