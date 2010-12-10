@@ -1,10 +1,25 @@
 //test asm file
-li s2 1 ;
-li s3 4 ;
-sll s13 s2 s3 ;
-add.u s9 s9 s13 ;
-
 //tsync ;
+
+options.c0.0xf0000000
+ld.half s0 c0 0x6 ;
+
+options.c0.0xf0000000
+st.half c0 s0 0x6 ;
+
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+li v0 0 ;
+
+li s0 33 ;
+st.byte zero s0 0x7 ;
+ld.byte s0 zero 0x7 ;
+
 cmp.unc.= p1 p0 vzero vzero ; 
 options.c0.0xf0000000
 (p1) ld.word v0 c0 0x4 ;
@@ -31,22 +46,3 @@ cmp.unc.< p1 p0 v0 29 ;
 //(p1) shuffle4.penmsk v2 v0 0xF42 ;
 
 (p1) permute32.penmsk v2 v1 v0 ;
-
-$loop2
-//tsync ;
-add s15 s15 32 ;
-
-nop
-(p1) b.pb.naz.bc.pop2n $loop2 0
-cmp.unc.< p1 p0 s15 128
-nop
-nop ; 
-
-
-
-st.byte zero v0 0x6 ;
-ld.byte v0 zero 0x6 ;
-
-li s0 33 ;
-st.byte zero s0 0x7 ;
-ld.byte s0 zero 0x7 ;
