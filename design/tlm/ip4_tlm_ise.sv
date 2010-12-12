@@ -1773,17 +1773,17 @@ class ip4_tlm_ise extends ovm_component;
     vn.dse[1] = ciDSE[0];  
     
     foreach(ciDSE[i]) begin
-      if(ciDSE[i] != null && cancel[ciDSE[i].tid][0]) begin
+      if(ciDSE[i] != null && thread[ciDSE[i].tid].cancel) begin
         ciDSE[i].op = op_nop;
         ciDSE[i].en = 0;
         ciDSE[i].wr = 0;
         ciDSE[i].uaWrEn = 0;
       end
-      if(ciSPU[i] != null && cancel[ciSPU[i].tidSPU][0]) begin
+      if(ciSPU[i] != null && thread[ciSPU[i].tidSPU].cancel) begin
         ciSPU[i].op = op_nop;
         ciSPU[i].wrEn = 0;
       end
-      if(ciSPA[i] != null && cancel[ciSPA[i].tid][0])
+      if(ciSPA[i] != null && thread[ciSPA[i].tid].cancel)
         foreach(ciSPA[0].fu[j]) begin
           ciSPA[i].fu[j].op = op_nop;
           ciSPA[i].fu[j].wrEn = '{default : 0};
@@ -1791,20 +1791,20 @@ class ip4_tlm_ise extends ovm_component;
     end
 
     foreach(v.rfm[i]) begin
-      if(vn.dse[i] != null && cancel[vn.dse[i].tid][0]) begin
-        vn.dse[i].op = op_nop;
-        vn.dse[i].en = 0;
-        vn.dse[i].wr = 0;
-        vn.dse[i].uaWrEn = 0;
+      if(v.dse[i] != null && thread[v.dse[i].tid].cancel) begin
+        v.dse[i].op = op_nop;
+        v.dse[i].en = 0;
+        v.dse[i].wr = 0;
+        v.dse[i].uaWrEn = 0;
       end
-      if(vn.spu[i] != null && cancel[vn.spu[i].tidSPU][0]) begin
-        vn.spu[i].op = op_nop;
-        vn.spu[i].wrEn = 0;
+      if(v.spu[i] != null && thread[v.spu[i].tidSPU].cancel) begin
+        v.spu[i].op = op_nop;
+        v.spu[i].wrEn = 0;
       end
-      if(vn.spa[i] != null && cancel[vn.spa[i].tid][0])
-        foreach(vn.spa[1].fu[j]) begin
-          vn.spa[i].fu[j].op = op_nop;
-          vn.spa[i].fu[j].wrEn = '{default : 0};
+      if(v.spa[i] != null && thread[v.spa[i].tid].cancel)
+        foreach(v.spa[1].fu[j]) begin
+          v.spa[i].fu[j].op = op_nop;
+          v.spa[i].fu[j].wrEn = '{default : 0};
         end
     end
             

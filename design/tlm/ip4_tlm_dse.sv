@@ -1909,7 +1909,7 @@ class ip4_tlm_dse extends ovm_component;
     assert(req != null);
     void'(begin_tr(req));
     rsp = req;
-    if(cancel[req.tid][0]) begin
+    if(cancel[req.tid][1]) begin
       `ip4_info("dse_tr", "req canceled", OVM_FULL)
       end_tr(req);
     end
