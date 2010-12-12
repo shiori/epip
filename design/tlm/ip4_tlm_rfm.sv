@@ -117,7 +117,7 @@ class ip4_tlm_rfm extends ovm_component;
       if(spu.expFu)
         cancel[spu.tid] |= `GML(STAGE_RRF_VWB - spu.vecMode);
       if(spu.missBr || spu.expMSC)
-        cancel[spu.tid] |=  `GML(STAGE_RRF_CEM);
+        cancel[spu.tidBr] |=  `GML(STAGE_RRF_CEM);
     end
     
     ///dse self cancel, rfm only cancel next group
@@ -152,14 +152,14 @@ class ip4_tlm_rfm extends ovm_component;
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1] = spa.fu[fid].res1[0];
             if(spa.fu[fid].wr[0]) begin
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0] = spa.fu[fid].res0[0];
-              if(spa.fu[fid].wrGrp == 0 && spa.fu[fid].wrAdr == 2 && bk0 == 0) begin
-                $display($psprintf("%t write t0 s4: %0d", $time, spa.fu[fid].res0[0]));
-///                $stop;
-              end
-              if(spa.fu[fid].wrGrp == 4 && spa.fu[fid].wrAdr == 2 && bk0 == 0) begin
-                $display($psprintf("%t write t2 s4: %0d", $time, spa.fu[fid].res0[0]));
-///                $stop;
-              end
+///              if(spa.fu[fid].wrGrp == 0 && spa.fu[fid].wrAdr == 2 && bk0 == 0) begin
+///                $display($psprintf("%t write t0 s4: %0d", $time, spa.fu[fid].res0[0]));
+//////                $stop;
+///              end
+///              if(spa.fu[fid].wrGrp == 4 && spa.fu[fid].wrAdr == 2 && bk0 == 0) begin
+///                $display($psprintf("%t write t2 s4: %0d", $time, spa.fu[fid].res0[0]));
+//////                $stop;
+///              end
             end
           end
         end
@@ -228,8 +228,8 @@ class ip4_tlm_rfm extends ovm_component;
         `ip4_info("rfm_wr", $psprintf("tid %0d, write Back SPU: grp: %0d, adr %0d, bk %0d ...",
             spu.tid, spu.srfWrGrp, spu.srfWrAdr, spu.srfWrBk), OVM_HIGH)
         if(spu.wrSrMSC) begin
-          srMSCU[spu.tid][spu.subVec] = spu.mscu;
-          srMSCO[spu.tid][spu.subVec] = spu.msco;
+          srMSCU[spu.tidMSC][spu.subVecMSC] = spu.mscu;
+          srMSCO[spu.tidMSC][spu.subVecMSC] = spu.msco;
         end
         if(spu.wrEn)
           srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = spu.res;

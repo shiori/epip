@@ -586,7 +586,7 @@ class ip4_tlm_spu extends ovm_component;
         if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
         toRFM.missBr = missBr;
         toRFM.expMSC = expMSC;
-        toRFM.tid = tid;
+        toRFM.tidBr = tid;
         if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
         toDSE.missBr = missBr;
         toDSE.expMSC = expMSC;
@@ -603,7 +603,8 @@ class ip4_tlm_spu extends ovm_component;
       toRFM.wrSrMSC = 1;
       toRFM.msco = mscOF[CYC_VEC];
       toRFM.mscu = mscUF[CYC_VEC];
-      toRFM.subVec = ise.subVecSPU;
+      toRFM.subVecMSC = ise.subVecSPU;
+      toRFM.tidMSC = ise.tidSPU;
     end
     
     ///send bpc to ise
