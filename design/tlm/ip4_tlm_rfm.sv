@@ -57,7 +57,7 @@ class ip4_tlm_rfm extends ovm_component;
             srDSEExp[NUM_THREAD][CYC_VEC][NUM_SP];
   
   local word dseSt[2][CYC_VEC][NUM_SP];
-  local bit[STAGE_RRF_VWB:1] cancel[NUM_THREAD];
+  local bit[STAGE_RRF_VWB:0] cancel[NUM_THREAD];
   local tr_rfm2spa spa[CYC_VEC][CYC_VEC];
   local tr_rfm2spu spu[2];
   local word cvrf[NUM_VRF_BKS][NUM_SP];
@@ -138,12 +138,12 @@ class ip4_tlm_rfm extends ovm_component;
         uchar tid = spa.fu[fid].tid,
               subVec = spa.fu[fid].subVec;
         if(cancel[tid][STAGE_RRF_VWB]) begin
-          `ip4_info("rfm_wr", $psprintf("FU%0d write back canceled...", fid), OVM_HIGH) 
+          `ip4_info("rfm_wr", $psprintf("tid %0d, FU%0d write back canceled...", tid, fid), OVM_HIGH) 
           continue;
         end
         if(spa.fu[fid].wr[0] || spa.fu[fid].wr[1])
-          `ip4_info("rfm_wr", $psprintf("Write Back FU%0d : %s, vec %0d, grp: %0d, adr %0d, bk %0d ...",
-            fid, fu_cfg[fid].name, spa.fu[fid].vec, spa.fu[fid].wrGrp, spa.fu[fid].wrAdr, spa.fu[fid].wrBk), OVM_HIGH)
+          `ip4_info("rfm_wr", $psprintf("tid %0d, write Back FU%0d : %s, vec %0d, grp: %0d, adr %0d, bk %0d ...",
+            tid, fid, fu_cfg[fid].name, spa.fu[fid].vec, spa.fu[fid].wrGrp, spa.fu[fid].wrAdr, spa.fu[fid].wrBk), OVM_HIGH)
         bk0 = spa.fu[fid].wr[1] ? (spa.fu[fid].wrBk & `GMH(1)) : spa.fu[fid].wrBk;
         bk1 = bk0 + 1;
         if(!spa.fu[fid].vec) begin
@@ -152,26 +152,14 @@ class ip4_tlm_rfm extends ovm_component;
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1] = spa.fu[fid].res1[0];
             if(spa.fu[fid].wr[0]) begin
               srf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0] = spa.fu[fid].res0[0];
-///              if((spa.fu[fid].wrGrp == 3 && spa.fu[fid].wrAdr == 1 && bk0 == 1))begin
-///                $display($psprintf("%t write t1 s11: %0d", $time, spa.fu[fid].res0[0]));
-//////                $stop;
-///              end
-              
-///              if((spa.fu[fid].wrGrp == 2 && spa.fu[fid].wrAdr == 2 && bk0 == 0))begin
-///                $display($psprintf("%t write t1 s4: %0d", $time, spa.fu[fid].res0[0]));
-//////                $stop;
-///              end
-              
-               if((spa.fu[fid].wrGrp == 0 && spa.fu[fid].wrAdr == 2 && bk0 == 0))begin
+              if(spa.fu[fid].wrGrp == 0 && spa.fu[fid].wrAdr == 2 && bk0 == 0) begin
                 $display($psprintf("%t write t0 s4: %0d", $time, spa.fu[fid].res0[0]));
 ///                $stop;
               end
-              
-///               if((spa.fu[fid].wrGrp == 1 && spa.fu[fid].wrAdr == 3 && bk0 == 1))begin
-///                $display($psprintf("%t write s15: %0d", $time, spa.fu[fid].res0[0]));
-//////                $stop;
-///              end
-              
+              if(spa.fu[fid].wrGrp == 4 && spa.fu[fid].wrAdr == 2 && bk0 == 0) begin
+                $display($psprintf("%t write t2 s4: %0d", $time, spa.fu[fid].res0[0]));
+///                $stop;
+              end
             end
           end
         end
@@ -200,29 +188,8 @@ class ip4_tlm_rfm extends ovm_component;
                                 
             if(spa.fu[fid].wr[1])
               vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk1][spa.fu[fid].subVec][sp] = spa.fu[fid].res1[sp];
-            if(spa.fu[fid].wr[0]) begin
+            if(spa.fu[fid].wr[0])
               vrf[spa.fu[fid].wrGrp][spa.fu[fid].wrAdr][bk0][spa.fu[fid].subVec][sp] = res0;
-///              if(spa.fu[fid].wrGrp ==1 && spa.fu[fid].wrAdr == 1 && bk0 == 3)
-///                $display($psprintf("v15[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
-//////              
-///              if(spa.fu[fid].wrGrp ==1 && spa.fu[fid].wrAdr == 1 && bk0 == 2)
-///                $display($psprintf("v14[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
-//////              
-///              if(spa.fu[fid].wrGrp ==0 && spa.fu[fid].wrAdr == 0 && bk0 == 2)
-///                $display($psprintf("v2[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
-///                
-///              if(spa.fu[fid].wrGrp ==0 && spa.fu[fid].wrAdr == 0 && bk0 == 3)
-///                $display($psprintf("v3[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));  
-///                
-///              if(spa.fu[fid].wrGrp ==3 && spa.fu[fid].wrAdr == 0 && bk0 == 3)
-///                $display($psprintf("v27[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));  
-//////                
-///              if(spa.fu[fid].wrGrp ==2 && spa.fu[fid].wrAdr == 0 && bk0 == 0)
-///                $display($psprintf("v16[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
-///              
-///               if(spa.fu[fid].wrGrp ==2 && spa.fu[fid].wrAdr == 0 && bk0 == 1)
-///                $display($psprintf("v17[%0d] = %0d", spa.fu[fid].subVec * 8 + sp, res0));
-            end
           end
       end
     end
@@ -230,8 +197,8 @@ class ip4_tlm_rfm extends ovm_component;
     if(v.fmDSE != null) begin
       tr_dse2rfm dse = v.fmDSE;
       if(dse.wr)
-        `ip4_info("rfm_wr", $psprintf("Write Back DSE: vec %0d, grp: %0d, adr %0d, bk %0d ...",
-            dse.vec, dse.wrGrp, dse.wrAdr, dse.wrBk), OVM_HIGH)
+        `ip4_info("rfm_wr", $psprintf("tid %0d, write Back DSE: vec %0d, grp: %0d, adr %0d, bk %0d ...",
+            dse.tid, dse.vec, dse.wrGrp, dse.wrAdr, dse.wrBk), OVM_HIGH)
       srDSEExp[dse.tid][dse.subVec] = dse.expVec;
       if(dse.vec && dse.wr) begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
@@ -247,7 +214,7 @@ class ip4_tlm_rfm extends ovm_component;
       end
       else if(dse.wr) begin
         if(cancel[dse.tid][STAGE_RRF_VWB])
-          `ip4_info("rfm_wr", "dse scl write back canceled...", OVM_HIGH) 
+          `ip4_info("rfm_wr", $psprintf("tid %0d, dse scl write back canceled...", dse.tid), OVM_HIGH) 
         else if(dse.wrEn[0])
           srf[dse.wrGrp][dse.wrAdr][dse.wrBk] = v.fmDSE.res[0];
       end
@@ -255,11 +222,11 @@ class ip4_tlm_rfm extends ovm_component;
     
     if(v.fmSPU != null && v.fmSPU.wrEn && !cancel[v.fmSPU.tid][STAGE_RRF_VWB]) begin
       tr_spu2rfm spu = v.fmSPU;
-      if(cancel[v.fmSPU.tid][STAGE_RRF_VWB])
-        `ip4_info("rfm_wr", "spu write back canceled...", OVM_HIGH) 
+      if(cancel[spu.tid][STAGE_RRF_VWB])
+        `ip4_info("rfm_wr", $psprintf("tid %0d, spu write back canceled...", spu.tid), OVM_HIGH) 
       else begin
-        `ip4_info("rfm_wr", $psprintf("Write Back SPU: grp: %0d, adr %0d, bk %0d ...",
-            spu.srfWrGrp, spu.srfWrAdr, spu.srfWrBk), OVM_HIGH)
+        `ip4_info("rfm_wr", $psprintf("tid %0d, write Back SPU: grp: %0d, adr %0d, bk %0d ...",
+            spu.tid, spu.srfWrGrp, spu.srfWrAdr, spu.srfWrBk), OVM_HIGH)
         if(spu.wrSrMSC) begin
           srMSCU[spu.tid][spu.subVec] = spu.mscu;
           srMSCO[spu.tid][spu.subVec] = spu.msco;

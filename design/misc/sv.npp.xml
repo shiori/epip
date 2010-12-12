@@ -1,0 +1,36 @@
+<NotepadPlus>
+    <UserLang name="SystemVerilog" ext="sv svh">
+        <Settings>
+            <Global caseIgnored="no" />
+            <TreatAsSymbol comment="no" commentLine="no" />
+            <Prefix words1="no" words2="no" words3="yes" words4="yes" />
+        </Settings>
+        <KeywordLists>
+            <Keywords name="Delimiters">000000</Keywords>
+            <Keywords name="Folder+">begin function task attribute case casex casez module primitive table specify program specify class config group generate interface package clocking property sequence </Keywords>
+            <Keywords name="Folder-">end endfunction endtask endattribute endcase endcase endcase endmodule endprimitive endtable endspecify endprogram endspecify endclass endconfig endgroup endgenerate endinterface endpackage endclocking endproperty endsequence</Keywords>
+            <Keywords name="Operators">- ! &quot; # % &amp; ( ) * / : ; ? @ [ \ ] ^ { | } ~ + &lt; = &gt;</Keywords>
+            <Keywords name="Comment">1/* 1 2*/ 2 0// 0///</Keywords>
+            <Keywords name="Words1">alias always always_comb always_ff always_latch and assert assign assume automatic &#x000D;&#x000A;before bind bins binsof bit break buf bufif0 bufif1 byte&#x000D;&#x000A;cell chandle cmos const constraint context continue cover covergroup coverpoint cross&#x000D;&#x000A;deassign default defparam design disable dist do&#x000D;&#x000A;edge else enum event expect export extends extern&#x000D;&#x000A;final first_match foreach for force forever fork forkjoin &#x000D;&#x000A;genvar &#x000D;&#x000A;highz0 highz1 &#x000D;&#x000A;if iff ifnone ignore_bins illegal_bins import incdir include initial inout input inside instance int integer intersect&#x000D;&#x000A;join join_any join_none&#x000D;&#x000A;large liblist library local localparam longint&#x000D;&#x000A;macromodule matches medium modport &#x000D;&#x000A;nand negedge new nmos none nor noshowcancelled not notif0 notif1 null&#x000D;&#x000A;or output &#x000D;&#x000A;packed parameter pulsestyle_onevent pulsestyle_ondetect pmos posedge priority protected pull0 pull1 pullup pulldown pulsestyle_onevent pulsestyle_ondetect pure&#x000D;&#x000A;rand randc randcase randsequence randomize real realtime ref reg release return repeat rcmos rnmos rpmos rtran rtranif0 rtanif1&#x000D;&#x000A;scalared showcancelled shortint shortreal signed small solve specparam static strength string strong0 strong1 struct super supply0 supply1 &#x000D;&#x000A;tagged this time timeprecision timeunit tran tranif0 tranif1 tri tri1 tri0 triand trior trireg throughout type typedef&#x000D;&#x000A;union unique unsigned use uwire&#x000D;&#x000A;var vectored virtual void&#x000D;&#x000A;wait wait_order wand weak0 weak1 while wildcard with within wire wor &#x000D;&#x000A;xnor xor </Keywords>
+            <Keywords name="Words2">$assertkill $assertoff $asserton $async$and$array $async$and$plane $async$nand$array $async$nand$plane $async$nor$array $async$nor$plane $async$or$array $async$or$plane &#x000D;&#x000A;$bits $bitstoreal $bitstoshortreal&#x000D;&#x000A;$cast $countdrivers $countones $coverage_control $coverage_merge $coverage_save&#x000D;&#x000A;$dimensions $display $displayb $displayh $displayo &#x000D;&#x000A;$dist_chi_square $dist_erlang $dist_exponential $dist_normal $dist_poisson $dist_t $dist_uniform $dumpall $dumpfile $dumpflush $dumplimit $dumpoff $dumpon $dumpportsall $dumpportsflush $dumpportslimit $dumpportsoff $dumpportson $dumpvars &#x000D;&#x000A;$error $exit &#x000D;&#x000A;$fatal $fell $fclose $fdisplayh $fdisplay $fdisplayf $fdisplayb $ferror $fflush $fgetc $fgets $finish $fmonitorb $fmonitor $fmonitorf $fmonitorh $fopen $fread $fscanf $fseek $fsscanf $fstrobe $fstrobebb $fstrobef $fstrobeh $ftel $fullskew $fwriteb $fwritef $fwriteh $fwrite &#x000D;&#x000A;$getpattern $get_coverage &#x000D;&#x000A;$high $history $hold &#x000D;&#x000A;$increment $info $incsave $input $isunbounded $isunknown $itor &#x000D;&#x000A;$key &#x000D;&#x000A;$left $list $load_coverage_db $log $low&#x000D;&#x000A;$monitorb $monitorh $monitoroff $monitoron $monitor $monitorb $monitorh $monitoro $monitoroff $monitoron&#x000D;&#x000A;$nochange $nokey $nolog &#x000D;&#x000A;$onehot $onehot0&#x000D;&#x000A;$past $period $printtimescale &#x000D;&#x000A;$q_add $q_exam $q_full $q_initialize $q_remove &#x000D;&#x000A;$random $readmemb $readmemh $realtime $realtobits $recovery $recrem $removal $reset_count $reset $reset_value $restart $rewind $right $root $rose $rtoi &#x000D;&#x000A;$sampled $save $scale $scope $sdf_annotate $setup $setuphold $set_coverage_db_name $sformat $showscopes $showvariables $showvars $shortrealtobits $signed $size $skew $sreadmemb $sreadmemh $stable $stime $stop $strobeb $strobe $strobeh $strobeo $swriteb $swriteh $swriteo $swrite $sync$and$array $sync$and$plane $sync$nand$array $sync$nand$plane $sync$nor$array $sync$nor$plane $sync$or$array $sync$or$plane &#x000D;&#x000A;$test$plusargs $time $timeformat $timeskew $typename&#x000D;&#x000A;$ungetc $unit $unsigned $urandom $urandom_range&#x000D;&#x000A;$value$plusargs &#x000D;&#x000A;$warning $width $writeb $writeh $write $writememb $writememh $writeo </Keywords>
+            <Keywords name="Words3">&apos;b &apos;B &apos;o &apos;O &apos;d &apos;D &apos;h &apos;H &apos;sb &apos;sB &apos;so &apos;sO &apos;sd &apos;sD &apos;sh &apos;sH &apos;Sb &apos;SB &apos;So &apos;SO &apos;Sd &apos;SD &apos;Sh &apos;SH</Keywords>
+            <Keywords name="Words4">`</Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="DEFAULT" styleID="11" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="FOLDEROPEN" styleID="12" fgColor="0080FF" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="FOLDERCLOSE" styleID="13" fgColor="0080FF" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="KEYWORD1" styleID="5" fgColor="0080FF" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="KEYWORD2" styleID="6" fgColor="00FFFF" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="KEYWORD3" styleID="7" fgColor="FF80FF" bgColor="FFFFFF" fontName="" fontStyle="2" />
+            <WordsStyle name="KEYWORD4" styleID="8" fgColor="008080" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="COMMENT" styleID="1" fgColor="00FF40" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="COMMENT LINE" styleID="2" fgColor="00FF40" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="NUMBER" styleID="4" fgColor="FF80FF" bgColor="FFFFFF" fontName="" fontStyle="2" />
+            <WordsStyle name="OPERATOR" styleID="10" fgColor="0080FF" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="DELIMINER1" styleID="14" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="DELIMINER2" styleID="15" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+            <WordsStyle name="DELIMINER3" styleID="16" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" />
+        </Styles>
+    </UserLang>
+</NotepadPlus>

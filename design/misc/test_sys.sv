@@ -44,7 +44,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "imSize", 2048);
     set_config_int("*", "dmBase", 0);
     set_config_int("*", "dmSize", 64 * 1024);
-    set_config_string("*", "imFilePath", "../misc/code.txt"); ///average_filter
+    set_config_string("*", "imFilePath", "../misc/dat8perpe_4thread.txt"); ///average_filter
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_string("*", "dmFilePath", "../misc/mem.txt");
     set_config_int("*", "pbId", 2);
@@ -83,9 +83,9 @@ class ip4_sys_test extends ovm_test;
     
 ///    set_config_int("*thread0*", "threadState", ts_disabled);
     
-///    set_config_int("*thread1*", "threadState", ts_rdy);
-///    set_config_int("*thread2*", "threadState", ts_rdy);
-///    set_config_int("*thread3*", "threadState", ts_rdy);
+    set_config_int("*thread1*", "threadState", ts_rdy);
+    set_config_int("*thread2*", "threadState", ts_rdy);
+    set_config_int("*thread3*", "threadState", ts_rdy);
     
     set_config_int("*thread1*", "privMode", priv_kernel);
     set_config_int("*thread2*", "privMode", priv_kernel);
@@ -105,7 +105,7 @@ class ip4_sys_test extends ovm_test;
 ///  endfunction
 
   virtual function void end_of_elaboration();
-    set_report_verbosity_level_hier(OVM_FULL); ///OVM_FULL OVM_MEDIUM OVM_HIGH OVM_LOW
+    set_report_verbosity_level_hier(OVM_LOW); ///OVM_FULL OVM_MEDIUM OVM_HIGH OVM_LOW
 ///    env.core.ise.set_report_verbosity_level_hier(OVM_HIGH);    
   endfunction
     
@@ -115,7 +115,7 @@ class ip4_sys_test extends ovm_test;
               $bits(i_load), $bits(i_store), $bits(i_mctl), $bits(i_fetadd), $bits(i_cmpxchg), 
               $bits(i_mrfa), $bits(i_cmsg), $bits(i_cmp), $bits(i_cmpi), $bits(i_cop),
               $bits(i_vxchg), $bits(i_i26)));
-///    #2929ns;
+///    #7035ns;
 ///    set_report_verbosity_level_hier(OVM_FULL);
   endtask
 
