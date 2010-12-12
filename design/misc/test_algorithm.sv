@@ -50,30 +50,30 @@ class ip4_alg_test extends ovm_test;
     set_config_int("*thread0*", "srfMap[1]", 1);
     set_config_int("*thread0*", "srExpMsk", 1);
 
-    set_config_int("*thread1*", "vrfMap[0]", 4);
-    set_config_int("*thread1*", "vrfMap[1]", 5);
-    set_config_int("*thread1*", "vrfMap[2]", 6);
-    set_config_int("*thread1*", "vrfMap[3]", 7);
-    set_config_int("*thread1*", "srfMap[0]", 2);
-    set_config_int("*thread1*", "srfMap[1]", 3);
-    set_config_int("*thread1*", "srExpMsk", 1);
-    
-    set_config_int("*thread2*", "vrfMap[0]", 8);
-    set_config_int("*thread2*", "vrfMap[1]", 9);
-    set_config_int("*thread2*", "vrfMap[2]", 10);
-    set_config_int("*thread2*", "vrfMap[3]", 11);
-    set_config_int("*thread2*", "srfMap[0]", 4);
-    set_config_int("*thread2*", "srfMap[1]", 5);
-    set_config_int("*thread2*", "srExpMsk", 1);
-    
-    set_config_int("*thread3*", "vrfMap[0]", 12);
-    set_config_int("*thread3*", "vrfMap[1]", 13);
-    set_config_int("*thread3*", "vrfMap[2]", 14);
-    set_config_int("*thread3*", "vrfMap[3]", 15);
-    set_config_int("*thread3*", "srfMap[0]", 6);
-    set_config_int("*thread3*", "srfMap[1]", 7);
-    set_config_int("*thread3*", "srExpMsk", 1);
-    
+///    set_config_int("*thread1*", "vrfMap[0]", 4);
+///    set_config_int("*thread1*", "vrfMap[1]", 5);
+///    set_config_int("*thread1*", "vrfMap[2]", 6);
+///    set_config_int("*thread1*", "vrfMap[3]", 7);
+///    set_config_int("*thread1*", "srfMap[0]", 2);
+///    set_config_int("*thread1*", "srfMap[1]", 3);
+///    set_config_int("*thread1*", "srExpMsk", 1);
+///    
+///    set_config_int("*thread2*", "vrfMap[0]", 8);
+///    set_config_int("*thread2*", "vrfMap[1]", 9);
+///    set_config_int("*thread2*", "vrfMap[2]", 10);
+///    set_config_int("*thread2*", "vrfMap[3]", 11);
+///    set_config_int("*thread2*", "srfMap[0]", 4);
+///    set_config_int("*thread2*", "srfMap[1]", 5);
+///    set_config_int("*thread2*", "srExpMsk", 1);
+///    
+///    set_config_int("*thread3*", "vrfMap[0]", 12);
+///    set_config_int("*thread3*", "vrfMap[1]", 13);
+///    set_config_int("*thread3*", "vrfMap[2]", 14);
+///    set_config_int("*thread3*", "vrfMap[3]", 15);
+///    set_config_int("*thread3*", "srfMap[0]", 6);
+///    set_config_int("*thread3*", "srfMap[1]", 7);
+///    set_config_int("*thread3*", "srExpMsk", 1);
+///    
 ///    set_config_int("*thread1*", "threadState", ts_rdy);
 ///    set_config_int("*thread2*", "threadState", ts_rdy);
 ///    set_config_int("*thread3*", "threadState", ts_rdy);

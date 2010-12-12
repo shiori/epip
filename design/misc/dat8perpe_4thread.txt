@@ -91,17 +91,20 @@ add.u v21 v25 v26 ;
 // the fourth data imag part
 ld.word.rand v23 v1 384 ;
 
+// v2 = tmp
+add.u v2 v10 0 ;
+add.u v9 v11 0 ;
 //v10 has tmp + tmp2 real part
-add.u v10 v10 v11 ;
+add.u v10 v2 v11 ;
 //v20 has tmp + tmp2 imag part
-add.u v20 v20 v21 ;
+add.u v20 v9 v21 ;
 // the third data real part
 ld.word.rand v12 v0 256 ;
 //v11 has tmp - tmp2 real part
-sub v11 v10 v11 ;
+sub v11 v2 v11 ;
 
 //v21 has tmp - tmp2 imag part
-sub v21 v20 v21 ;
+sub v21 v9 v21 ;
 // the third data imag part
 ld.word.rand v22 v1 256 ;
 // WNP*(IDX+B) REAL PART
@@ -117,17 +120,22 @@ ld.word.rand v15 v0 640 ;
 
 // v23 is tmp2 imag part
 add.u v23 v27 v26 ;
+
+// v17 = tmp
+add.u v17 v12 0 ;
+add.u v27 v22 0 ;
+
 //v12 has tmp + tmp2 real part
-add.u v12 v12 v13 ;
+add.u v12 v17 v13 ;
 //v22 has tmp + tmp2 imag part
-add.u v22 v22 v23 ;
+add.u v22 v27 v23 ;
 // the sixth data imag part
 ld.word.rand v25 v1 640 ;
 
 //v13 has tmp - tmp2 real part
-sub v13 v12 v13 ;
+sub v13 v17 v13 ;
 //v23 has tmp - tmp2 imag part
-sub v23 v22 v23 ;
+sub v23 v27 v23 ;
 // the fifth data real part
 ld.word.rand v14 v0 512 ;
 
@@ -148,18 +156,22 @@ add.u v25 v27 v9 ;
 // the eigth data real part
 ld.word.rand v17 v0 896 ;
 
+// v2 = tmp
+add.u v2 v14 0 ;
+add.u v9 v24 0 ;
+
 //v14 has tmp + tmp2 real part
-add.u v14 v14 v15 ;
+add.u v14 v2 v15 ;
 //v24 has tmp + tmp2 imag part
-add.u v24 v24 v25 ;
+add.u v24 v9 v25 ;
 
 //v15 has tmp - tmp2 real part
-sub v15 v14 v15 ;
+sub v15 v2 v15 ;
 
 // the eigth data imag part
 ld.word.rand v27 v1 896 ;
 //v25 has tmp - tmp2 imag part
-sub v25 v24 v25 ;
+sub v25 v9 v25 ;
 
 // WNP*(IDX+B) REAL PART
 mul v9 v17 v18 ;
@@ -177,15 +189,19 @@ add.u v27 v2 v9 ;
 // the seventh data imag part
 ld.word.rand v26 v1 768 ;
 
+// v2 = tmp
+add.u v2 v16 0 ;
+add.u v9 v26 0 ;
+
 //v16 has tmp + tmp2 real part
-add.u v16 v16 v17 ;
+add.u v16 v2 v17 ;
 //v26 has tmp + tmp2 imag part
-add.u v26 v26 v27 ;
+add.u v26 v9 v27 ;
 
 //v17 has tmp - tmp2 real part
-sub v17 v16 v17 ;
+sub v17 v2 v17 ;
 //v27 has tmp - tmp2 imag part
-sub v27 v26 v27 ;
+sub v27 v9 v27 ;
 //**********************************************************//
 // the second level
 // ************ WNP0 *******************//
@@ -289,15 +305,19 @@ mul v9 v14 v28 ;
 // v24 is tmp2 imag part
 add.u v24 v2 v9 ;
 
+// v3 = tmp
+add.u v3 v10 0 ;
+add.u v4 v20 0 ;
+
 //v10 has tmp + tmp2 real part
-add.u v10 v10 v14 ;
+add.u v10 v3 v14 ;
 //v20 has tmp + tmp2 imag part
-add.u v20 v20 v24 ;
+add.u v20 v4 v24 ;
 
 //v14 has tmp - tmp2 real part
-sub v14 v10 v14 ;
+sub v14 v3 v14 ;
 //v24 has tmp - tmp2 imag part
-sub v24 v20 v24 ;
+sub v24 v4 v24 ;
 
 // ************* WNP1 ******************//
 // WNP*(IDX+B) REAL PART
@@ -311,15 +331,19 @@ mul v9 v15 v6 ;
 // v25 is tmp2 imag part
 add.u v25 v2 v9 ;
 
+// v3 = tmp
+add.u v3 v11 0 ;
+add.u v4 v21 0 ;
+
 //v11 has tmp + tmp2 real part
-add.u v11 v11 v15 ;
+add.u v11 v3 v15 ;
 //v21 has tmp + tmp2 imag part
-add.u v21 v21 v25 ;
+add.u v21 v4 v25 ;
 
 //v15 has tmp - tmp2 real part
-sub v15 v11 v15 ;
+sub v15 v3 v15 ;
 //v25 has tmp - tmp2 imag part
-sub v25 v21 v25 ;
+sub v25 v4 v25 ;
 
 // ************* WNP2 ******************//
 // WNP*(IDX+B) REAL PART
@@ -333,15 +357,19 @@ mul v9 v16 v8 ;
 // v26 is tmp2 imag part
 add.u v26 v2 v9 ;
 
+// v3 = tmp
+add.u v3 v12 0 ;
+add.u v4 v22 0 ;
+
 //v12 has tmp + tmp2 real part
-add.u v12 v12 v16 ;
+add.u v12 v3 v16 ;
 //v22 has tmp + tmp2 imag part
-add.u v22 v22 v26 ;
+add.u v22 v4 v26 ;
 
 //v16 has tmp - tmp2 real part
-sub v16 v12 v16 ;
+sub v16 v3 v16 ;
 //v26 has tmp - tmp2 imag part
-sub v26 v22 v26 ;
+sub v26 v4 v26 ;
 
 // ************* WNP3 ******************//
 // WNP*(IDX+B) REAL PART
@@ -355,15 +383,19 @@ mul v9 v17 v31 ;
 // v27 is tmp2 imag part
 add.u v27 v2 v9 ;
 
+// v3 = tmp
+add.u v3 v13 0 ;
+add.u v4 v23 0 ;
+
 //v13 has tmp + tmp2 real part
-add.u v13 v13 v17 ;
+add.u v13 v3 v17 ;
 //v23 has tmp + tmp2 imag part
-add.u v23 v23 v27 ;
+add.u v23 v4 v27 ;
 
 //v17 has tmp - tmp2 real part
-sub v17 v13 v17 ;
+sub v17 v3 v17 ;
 //v27 has tmp - tmp2 imag part
-sub v27 v23 v27 ;
+sub v27 v4 v27 ;
 
 //***** write back into memory *******//
 // the first data real part
@@ -412,6 +444,11 @@ add.u v2 v2 s0 ;
 
 // the data  base address real:v0 imag:v1
 // the WNP base address real:v3 imag:v4
+// the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
+// WNP_adr real part
+add.u v3 v0 0x2000 ;
+// WNP_adr imag part
+add.u v4 v0 0x2800 ;
 
 // J2 =log2(32) + 1
 li s0 6 ;
@@ -474,9 +511,10 @@ cmp.unc.= p1 p2 v5 v6 ;
 
 $loop1
 //i*dn_pe+k
-//mad v14 v2 s15 s11 ;
-mul v14 v2 s15 ;
-add.u v14 v14 s11 ;
+mad v14 v2 s15 s11 ;
+//mul v14 v2 s15 ;
+//add.u v14 v14 s11 ;
+
 //i*dn_pe+k+dn_pe/2
 (p2) add.u v14 v14 s3 ;
 
@@ -487,6 +525,8 @@ sll v15 v15 s5 ;
 sub v15 v14 v15 ;  
 // WNP_adr res*2(m-l)
 sll v16 v15 s7 ;
+// the low two bit is 00
+sll v16 v16 2 ;
 // real part
 add.u v27 v3 v16 ;
 ld.word.rand v17 v27 0 ;
@@ -542,15 +582,18 @@ sll s14 s12 9 ;
 // v11 is tmp2 imag part
 (p1) add.u v11 v21 v22 ;
 
+// v5 = tmp
+(p1) add.u v5 v8 0 ;
+(p1) add.u v6 v9 0 ;
 //v8 has tmp + tmp2 real part
-(p1) add.u v8 v8 v10 ;
+(p1) add.u v8 v5 v10 ;
 //v9 has tmp + tmp2 imag part
-(p1) add.u v9 v9 v11 ;
+(p1) add.u v9 v6 v11 ;
 
 //v10 has tmp - tmp2 real part
-(p1) sub v10 v8 v10 ;
+(p1) sub v10 v5 v10 ;
 //v11 has tmp - tmp2 imag part
-(p1) sub v11 v8 v11 ;
+(p1) sub v11 v6 v11 ;
 
 // ******** WNP*(IDX+B) REAL PART
 (p2) mul v23 v8 v17 ;
@@ -563,15 +606,18 @@ sll s14 s12 9 ;
 // v9 is tmp2 imag part
 (p2) add.u v9 v25 v26 ;
 
+// v5 = tmp
+(p2) add.u v5 v10 0 ;
+(p2) add.u v6 v11 0 ;
 //v10 has tmp + tmp2 real part
-(p2) add.u v10 v10 v8 ;
+(p2) add.u v10 v5 v8 ;
 //v11 has tmp + tmp2 imag part
-(p2) add.u v11 v11 v9 ;
+(p2) add.u v11 v6 v9 ;
 
 //v8 has tmp - tmp2 real part
-(p2) sub v8 v10 v8 ;
+(p2) sub v8 v5 v8 ;
 //v9 has tmp - tmp2 imag part
-(p2) sub v9 v11 v9 ;
+(p2) sub v9 v6 v9 ;
 
 //*****  write back real part **************//
 st.word.rand v27 v8 0 ;
@@ -660,9 +706,9 @@ add.u v13 v12 0x1000 ;
 $loop5
 
 //i*dn_pe+k
-//mad v14 v2 s15 s11 ;
-mul v14 v2 s15 ;
-add.u v14 v14 s11 ;
+mad v14 v2 s15 s11 ;
+//mul v14 v2 s15 ;
+//add.u v14 v14 s11 ;
 //i*dn_pe+k+dn_pe/2
 (p2) add.u v14 v14 s3 ;
 
@@ -673,6 +719,7 @@ sll v15 v15 s5 ;
 sub v15 v14 v15 ;  
 // WNP_adr res*2(m-l)
 sll v16 v15 s7 ;
+sll v16 v16 2 ;
 // real part
 add.u v27 v3 v16 ;
 ld.word.rand v17 v27 0 ;
@@ -728,15 +775,19 @@ sll s14 s12 9 ;
 // v11 is tmp2 imag part
 (p1) add.u v11 v21 v22 ;
 
+// v5 = tmp
+(p1) add.u v5 v8 0 ;
+(p1) add.u v6 v9 0 ;
+
 //v8 has tmp + tmp2 real part
-(p1) add.u v8 v8 v10 ;
+(p1) add.u v8 v5 v10 ;
 //v9 has tmp + tmp2 imag part
-(p1) add.u v9 v9 v11 ;
+(p1) add.u v9 v6 v11 ;
 
 //v10 has tmp - tmp2 real part
-(p1) sub v10 v8 v10 ;
+(p1) sub v10 v5 v10 ;
 //v11 has tmp - tmp2 imag part
-(p1) sub v11 v8 v11 ;
+(p1) sub v11 v6 v11 ;
 
 // ******** WNP*(IDX+B) REAL PART
 (p2) mul v23 v8 v17 ;
@@ -749,15 +800,19 @@ sll s14 s12 9 ;
 // v9 is tmp2 imag part
 (p2) add.u v9 v25 v26 ;
 
+// v5 = tmp
+(p2) add.u v5 v10 0 ;
+(p2) add.u v6 v11 0 ;
+
 //v10 has tmp + tmp2 real part
-(p2) add.u v10 v10 v8 ;
+(p2) add.u v10 v5 v8 ;
 //v11 has tmp + tmp2 imag part
-(p2) add.u v11 v11 v9 ;
+(p2) add.u v11 v6 v9 ;
 
 //v8 has tmp - tmp2 real part
-(p2) sub v8 v10 v8 ;
+(p2) sub v8 v5 v8 ;
 //v9 has tmp - tmp2 imag part
-(p2) sub v9 v11 v9 ;
+(p2) sub v9 v6 v9 ;
 
 //*****  write back real part **************//
 st.word.rand v27 v8 0 ;
@@ -773,7 +828,7 @@ cmp.unc.< p4 p3 s11 s3 ;
 (p4) b.naz.bc.pop2n $loop5 0 ;
 
 add.u s4 s4 1 ;
-cmp.unc.< p6 p5 s4 1 ;
+cmp.unc.< p6 p5 s4 2 ;
 (p6) b.naz.bc.pop2n $loop6 0 ;
 
 
