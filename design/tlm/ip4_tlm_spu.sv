@@ -332,16 +332,15 @@ class ip4_tlm_spu extends ovm_component;
       toISE.tidSclExp = ise.tidSPU;
     end
 
-    if(v.fmISE[STAGE_RRF_SRB] != null && v.fmRFM[STAGE_RRF_SRB] != null) begin
+    if(v.fmISE[STAGE_RRF_SRB] != null) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_SRB];
-      tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_SRB];    
+      word s = v.fmRFM[STAGE_RRF_SRB] != null ? v.fmRFM[STAGE_RRF_SRB].op0 : 0;
       
       ///redirect sr reqs
       if(prSPU[STAGE_RRF_SRB] && ise.op == op_gp2s) begin
         if(ise.srAdr inside {tlb_sr}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
-          toTLB.op0 = rfm.op0;
-          toTLB.s2gp = 1;
+          toTLB.op0 = s;
           toTLB.req = 1;
           toTLB.tid = ise.tidSPU;
           toTLB.srAdr = ise.srAdr;
@@ -349,7 +348,6 @@ class ip4_tlm_spu extends ovm_component;
         else if(ise.srAdr inside {SR_OCMC, SR_MBASE}) begin
           if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
           toDSE.srReq = 1;
-          toDSE.s2gp = 1;
           toDSE.op = ise.op;
           toDSE.tid = ise.tidSPU;
           toDSE.srAdr = ise.srAdr;
@@ -357,24 +355,23 @@ class ip4_tlm_spu extends ovm_component;
         else begin
           if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
           toISE.srReq = 1;
-          toISE.s2gp = 1;
           toISE.op = ise.op;
+          toISE.op0 = s;
           toISE.tidSPU = ise.tidSPU;
           toISE.srAdr = ise.srAdr;
         end
       end
     end
 
-    if(v.fmISE[STAGE_RRF_SRB] != null && v.fmRFM[STAGE_RRF_SRB] != null
-        && !cancel[v.fmISE[STAGE_RRF_SRB].tidSPU][STAGE_RRF_SRB]) begin
+    if(v.fmISE[STAGE_RRF_SRB] != null && !cancel[v.fmISE[STAGE_RRF_SRB].tidSPU][STAGE_RRF_SRB]) begin
       tr_ise2spu ise = v.fmISE[STAGE_RRF_SRB];
-      tr_rfm2spu rfm = v.fmRFM[STAGE_RRF_SRB];
       bit prPass = prSPU[STAGE_RRF_SRB] || ise.op == op_tsync;
+      word s = v.fmRFM[STAGE_RRF_SRB] != null ? v.fmRFM[STAGE_RRF_SRB].op0 : 0;
       
       if(prPass && ise.op inside {op_s2gp, tlb_ops, ise_ops, op_smsg, op_rmsg}) begin
         if(ise.srAdr inside {tlb_sr} && ise.op inside {tlb_ops}) begin
           toTLB = tr_spu2tlb::type_id::create("toTLB", this);
-          toTLB.op0 = rfm.op0;
+          toTLB.op0 = s;
           toTLB.op = ise.op;
           toTLB.req = 1;
           toTLB.tid = ise.tidSPU;
@@ -394,7 +391,7 @@ class ip4_tlm_spu extends ovm_component;
         else begin
           if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
           toISE.srReq = 1;
-          toISE.op0 = rfm.op0;
+          toISE.op0 = s;
           toISE.op = ise.op;
           toISE.tidSPU = ise.tidSPU;
           toISE.srAdr = ise.srAdr;
@@ -403,7 +400,7 @@ class ip4_tlm_spu extends ovm_component;
         if(ise.srAdr inside {SR_OCMC, SR_MBASE} && ise.op inside {op_s2gp, tlb_ops}) begin
           if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
           toDSE.srReq = 1;
-          toDSE.op0 = rfm.op0;
+          toDSE.op0 = s;
           toDSE.op = ise.op;
           toDSE.tid = ise.tidSPU;
           toDSE.srAdr = ise.srAdr;
@@ -578,7 +575,6 @@ class ip4_tlm_spu extends ovm_component;
         if(toISE == null) toISE = tr_spu2ise::type_id::create("toISE", this);
         toISE.brRsp = 1;
         toISE.tidBr = tid;
-        toISE.mscExp = 0;
         toISE.vecMode = ise.vecModeSPU;
         toISE.mscExp = expMSC;
         toISE.brTaken = brTaken;
@@ -586,12 +582,12 @@ class ip4_tlm_spu extends ovm_component;
         if(toRFM == null) toRFM = tr_spu2rfm::type_id::create("toRFM", this);
         toRFM.missBr = missBr;
         toRFM.expMSC = expMSC;
-        toRFM.tid = tid;
+        toRFM.tidBr = tid;
         if(toDSE == null) toDSE = tr_spu2dse::type_id::create("toDSE", this);
         toDSE.missBr = missBr;
         toDSE.expMSC = expMSC;
         toDSE.tidExpMSC = tid;
-        brCancel = 1;
+        brCancel = expMSC || missBr;
         expMSC = 0;
       end
     end
@@ -603,7 +599,8 @@ class ip4_tlm_spu extends ovm_component;
       toRFM.wrSrMSC = 1;
       toRFM.msco = mscOF[CYC_VEC];
       toRFM.mscu = mscUF[CYC_VEC];
-      toRFM.subVec = ise.subVecSPU;
+      toRFM.subVecMSC = ise.subVecSPU;
+      toRFM.tidMSC = ise.tidSPU;
     end
     
     ///send bpc to ise

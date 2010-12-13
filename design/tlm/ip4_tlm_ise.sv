@@ -838,6 +838,8 @@ class ip4_tlm_ise extends ovm_component;
   function word exe_ise(input uchar tid, opcode_e op, word op0 = 0, uchar sr = 0);
     ise_thread_inf t = thread[tid];
     word res;
+    if(cancel[tid][STAGE_ISE_SRA] && !op inside {ise_zw_ops})
+      return 0;
     case(op)
     op_exit,
     op_sys: 
@@ -1335,9 +1337,9 @@ class ip4_tlm_ise extends ovm_component;
     if(t.enSPU) begin
       /// spu or scalar dse issue
       if(t.iSPU.is_priv()) begin
-        if(t.privMode == priv_kernel)
+        if(t.privMode == priv_kernel && t.iSPU.op inside {ise_zw_ops})
           void'(exe_ise(tid, t.iSPU.op));
-        else
+        if(t.privMode != priv_kernel)
           enter_exp(tid, exp_priv_err);
       end
       else if(t.iSPU.op inside {ise_zw_ops})
@@ -1540,11 +1542,11 @@ class ip4_tlm_ise extends ovm_component;
     ///SR Requests
     if(v.fmSPU != null && v.fmSPU.srReq) begin
       tr_spu2ise spu = v.fmSPU;
-      if(spu != null && spu.s2gp) begin
+      if(spu.op == op_s2gp) begin
         if(ciSPU[0] != null) ciSPU[0] = tr_ise2spu::type_id::create("toSPU", this);
         ciSPU[0].srRes = exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr);
       end
-      if(spu.op != op_s2gp)
+      else
         void'(exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr));
     end
     
