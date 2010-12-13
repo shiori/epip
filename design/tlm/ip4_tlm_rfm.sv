@@ -227,12 +227,12 @@ class ip4_tlm_rfm extends ovm_component;
       else begin
         `ip4_info("rfm_wr", $psprintf("tid %0d, write Back SPU: grp: %0d, adr %0d, bk %0d ...",
             spu.tid, spu.srfWrGrp, spu.srfWrAdr, spu.srfWrBk), OVM_HIGH)
-        if(spu.wrSrMSC) begin
-          srMSCU[spu.tidMSC][spu.subVecMSC] = spu.mscu;
-          srMSCO[spu.tidMSC][spu.subVecMSC] = spu.msco;
-        end
         if(spu.wrEn)
           srf[spu.srfWrGrp][spu.srfWrAdr][spu.srfWrBk] = spu.res;
+      end
+      if(spu.wrSrMSC) begin
+        srMSCU[spu.tidMSC][spu.subVecMSC] = spu.mscu;
+        srMSCO[spu.tidMSC][spu.subVecMSC] = spu.msco;
       end
     end
          

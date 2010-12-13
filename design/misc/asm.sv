@@ -1258,7 +1258,7 @@ class asmig;
         end
         `asm_msg($psprintf("vecOp %0d, ps: %0d, i: %0d, j: %0d", vecOp[i][ps + j], ps, i, j), OVM_FULL);
         if(vecOp[i][ps + j]) begin
-          if(adr[ps + j] > 31) begin
+          if(adr[i][ps + j] > 31) begin
             `asm_err("vec reg out of bound!");
             return 0;
           end
