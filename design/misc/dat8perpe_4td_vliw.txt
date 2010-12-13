@@ -1,0 +1,1100 @@
+// four threads VLIW
+// PE process eight data once time
+// per PE process N/P data totaly
+// assume that data has been bit-reversed
+// and stored in shared memory. The data organization is as follows(32 data for example):
+// 0~7 8~15 are stored in bank0  16~23 24~31 are stored in bank1
+// only two PE for example.
+// if there are 1024 point, logic PE num is 32, the number assigned to PE is 1024/32=32
+// 0~31->bank0 32~63->bank1 64~95->bank2 96~127->bank3 ...... 992~1023->bank31
+// the twiddle factors has been computed and stored in shared memory
+
+// assume s0 is thread id, 1024 points are assigned to 128pe ,and each pe 
+// correspond 8 data
+// each thread has its own scalar register and vector register
+////////////// ************ b1 = v0 b0 = s0 ****************************** /////
+nop
+tsync 
+sll s0 s0 5
+// initialize the PE ID
+// 0~31
+vid v0 
+// 0~127
+add.u v0 b1 b0 ;
+
+//////********************b0 = v0 ********************************   ///
+nop
+nop
+// the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
+// 00000_00, 00001_00; 00010_00;.....
+sll v0 v0 2 
+// WNP_adr real part
+add.u v3 b0 0x2000 
+// ff * fix_dn  0<=ff<iter
+// data real part base addr 1024 real data
+// add.u v0 v0 0 ;
+// data imag part base addr 1024(0x400)*4 imag data
+add.u v1 b0 0x1000 ;
+
+///////// *********************************************** ////////////////
+// compute the bf
+// the first level
+// * WNP0 real part
+ld.word.rand v18 v3 0
+nop 
+nop
+nop
+// WNP_adr imag part
+add.u v4 v0 0x2800 ;
+
+// * WNP0 image part  
+ld.word.rand v28 v4 0 ;
+
+// the second data real part
+ld.word.rand v11 v0 128 ;
+nop
+nop
+nop
+// WNP*(IDX+B) REAL PART
+mul v15 v11 v18 ;
+
+// the second data imag part
+ld.word.rand v21 v1 128 ;
+
+ 
+
+////////// ****************************************************////
+// the first data real part
+ld.word.rand v10 v0 0 
+nop
+// imag part
+mul v25 v21 v18 
+mul v26 v11 v28  
+mul v16 v21 v28 ;
+
+///// ****************************************************** ///////
+// the first data imag part
+ld.word.rand v20 v1 0 
+nop
+// v11 is tmp2 real part
+sub v11 v15 v16 
+// v21 is tmp2 imag part
+add.u v21 v25 v26 
+// v2 = tmp
+add.u v2 v10 0 ;
+
+////////// ******** b1 = v9 ******************************************** ///////
+// the fourth data real part
+ld.word.rand v13 v0 384
+nop 
+//v10 has tmp + tmp2 real part
+add.u v10 v2 v11
+add.u v9 v20 0 
+//v20 has tmp + tmp2 imag part
+add.u v20 b1 v21 ;
+
+/////////// ********************************************** ///////////
+// the fourth data imag part
+ld.word.rand v23 v1 384 
+nop 
+//v11 has tmp - tmp2 real part
+sub v11 v2 v11
+//v21 has tmp - tmp2 imag part
+sub v21 v9 v21
+// WNP*(IDX+B) REAL PART
+mul v9 v13 v18 ;
+
+/////// ************************************************** /////
+// the third data real part
+ld.word.rand v12 v0 256 
+nop
+mul v16 v23 v28  
+mul v27 v23 v18 
+mul v26 v13 v28 ;
+
+////////// ***************************************************  ////////////
+// the third data imag part
+ld.word.rand v22 v1 256 
+nop
+// v13 is tmp2 real part
+sub v13 v9 v16
+// v23 is tmp2 imag part
+add.u v23 v27 v26 
+// v17 = tmp
+add.u v17 v12 0 ;
+
+///// ********** b0 = v27 **************************************  ///////
+// the sixth data real part
+ld.word.rand v15 v0 640 
+nop
+add.u v27 v22 0 
+//v12 has tmp + tmp2 real part
+add.u v12 v17 v13 
+//v22 has tmp + tmp2 imag part
+add.u v22 b0 v23 ;
+
+////// ************************************************* //// 
+// the sixth data imag part
+ld.word.rand v25 v1 640 
+nop 
+//v13 has tmp - tmp2 real part
+sub v13 v17 v13 
+//v23 has tmp - tmp2 imag part
+sub v23 v27 v23 
+// WNP*(IDX+B) REAL PART
+mul v9 v15 v18 ;
+
+////////// ************************************ ///////////////
+// the fifth data real part
+ld.word.rand v14 v0 512 
+nop
+mul v17 v25 v28 
+mul v27 v25 v18
+mul v2 v15 v28 ;
+
+//// *************************************  //////////
+// the fifth data imag part
+ld.word.rand v24 v1 512 
+nop
+// v15 is tmp2 real part
+sub v15 v9 v17  
+// v25 is tmp2 imag part
+add.u v25 v27 v2
+// v2 = tmp
+add.u v2 v14 0 ;
+
+//////// ******** b0 = v9 ******************* /////// 
+// the eigth data real part
+ld.word.rand v17 v0 896 
+nop
+add.u v9 v24 0 
+//v14 has tmp + tmp2 real part
+add.u v14 v2 v15 
+//v24 has tmp + tmp2 imag part
+add.u v24 b0 v25 ;
+
+///// ****************************  /////////
+// the eigth data imag part
+ld.word.rand v27 v1 896 
+nop
+//v15 has tmp - tmp2 real part
+sub v15 v2 v15 
+//v25 has tmp - tmp2 imag part
+sub v25 v9 v25 
+// WNP*(IDX+B) REAL PART
+mul v9 v17 v18 ;
+
+//////// ****************************************  ////////
+nop
+nop
+mul v2 v27 v28 
+mul v16 v27 v18 
+mul v26 v17 v28 ;
+
+//////////// ****************************** /////
+// the seventh data real part
+ld.word.rand v16 v0 768
+nop
+nop
+// v17 is tmp2 real part
+sub v17 v9 v2 
+// v27 is tmp2 imag part
+add.u v27 v16 v26 ;
+
+//// ********* b1 = v2 ************ ///////////////
+// the seventh data imag part
+ld.word.rand v26 v1 768
+nop
+nop
+// v2 = tmp
+add.u v2 v16 0 
+//v16 has tmp + tmp2 real part
+add.u v16 b1 v17 ;
+
+/////// ***** b0 = v9 ***************************** ////
+nop
+nop
+add.u v9 v26 0 
+//v26 has tmp + tmp2 imag part
+add.u v26 b0 v27 
+//v17 has tmp - tmp2 real part
+sub v17 v2 v17 ;
+
+////////// ************************************* ///
+nop
+nop
+//v27 has tmp - tmp2 imag part
+sub v27 v9 v27 
+//**********************************************************//
+// the second level
+// ************ WNP0 *******************//
+// WNP*(IDX+B) REAL PART
+mul v2 v12 v18 
+mul v9 v22 v28 ;
+
+//////// ******************************************  //////
+// the second level WNP
+// WNP1 real part 2^(10-2)=256
+ld.word.rand v19 v3 0x100  
+nop 
+mul v7 v22 v18 
+mul v8 v12 v28 
+// v12 is tmp2 real part
+sub v12 v2 v9 ; 
+
+//// *******************************************  /////
+// WNP1 image part  
+ld.word.rand v29 v4 0x100 
+nop
+// v22 is tmp2 imag part
+add.u v22 v7 v8
+/// v19 = tmp 
+add.u v7 v10 0 
+add.u v8 v20 0 ;
+
+//////// ********************************* /////
+// the third level WNP
+// WNP1 real part 2^(10-3)=128
+ld.word.rand v5 v3 0x80 
+nop
+//v10 has tmp + tmp2 real part
+add.u v10 v7 v12 
+//v20 has tmp + tmp2 imag part
+add.u v20 v8 v22    
+//v12 has tmp - tmp2 real part
+sub v12 v7 v12 ;
+
+//////// *****************************************  ////
+// WNP1 image part  
+ld.word.rand v6 v4 0x80 
+nop
+//v22 has tmp - tmp2 imag part
+sub v22 v8 v22 
+// ************** WNP1 *****************//
+// WNP*(IDX+B) REAL PART
+mul v30 v13 v19 
+mul v31 v23 v29 ;
+
+// WNP2  2*128
+// WNP2 real part
+ld.word.rand v7 v3 0x100 
+nop
+mul v2 v23 v19 
+mul v9 v13 v29 
+// v13 is tmp2 real part
+sub v13 v30 v31 ;
+
+////////// ************** b1= v30 *************************  ///////////////
+// WNP2 image part  
+ld.word.rand v8 v4 0x100 
+nop
+// v23 is tmp2 imag part
+add.u v23 v2 v9 
+// v30 = tmp
+add.u v30 v11 0 
+//v11 has tmp + tmp2 real part
+add.u v11 b1 v13 ;
+
+///////// ***************** b0 = v31 ***********************  /////////////////
+// WNP3 3*128
+// WNP2 real part
+ld.word.rand v30 v3 0x180 
+nop
+add.u v31 v21 0
+//v21 has tmp + tmp2 imag part
+add.u v21 b0 v23
+//v13 has tmp - tmp2 real part
+sub v13 v30 v13 ;
+
+////////// **************************************  /////
+// WNP2 image part  
+ld.word.rand v31 v4 0x180
+nop
+//v23 has tmp - tmp2 imag part
+sub v23 v21 v23 
+// ************** WNP0 *****************//
+// WNP*(IDX+B) REAL PART
+mul v2 v16 v18 
+mul v9 v26 v28 ;
+
+//////// ********************************************  //////
+nop
+nop
+mul v3 v26 v18 
+mul v4 v16 v28 
+// v16 is tmp2 real part
+sub v16 v2 v9 ;
+
+///// ************ b1 = v2 ***************************   /////
+nop
+nop
+// v26 is tmp2 imag part
+add.u v26 v3 v4 
+// v2 = tmp
+add.u v2 v14 0 
+//v14 has tmp + tmp2 real part
+add.u v14 b1 v16 ;
+
+//////// ********* b0 = v9 ****************************  //////
+nop
+nop
+add.u v9 v24 0 
+//v24 has tmp + tmp2 imag part
+add.u v24 b0 v26
+//v16 has tmp - tmp2 real part
+sub v16 v2 v16 ;
+
+///////////////// *******************************  //////
+nop
+nop
+//v26 has tmp - tmp2 imag part
+sub v26 v9 v26 
+// ************* WNP1 ******************//
+// WNP*(IDX+B) REAL PART
+mul v3 v17 v19
+mul v4 v27 v29 ;
+
+//////// *********************************************  /////
+nop
+nop
+mul v2 v27 v19 
+mul v9 v17 v29 
+// v17 is tmp2 real part
+sub v17 v3 v4 ;
+
+///// *********** b1 = v3 ********************  ////
+nop
+nop
+// v27 is tmp2 imag part
+add.u v27 v2 v9
+// v3 = tmp
+add.u v3 v15 0 
+//v15 has tmp + tmp2 real part
+add.u v15 b1 v17 ;
+
+/////// ******* b0 = v4 ************************   //////
+nop
+nop
+add.u v4 v25 0 
+//v25 has tmp + tmp2 imag part
+add.u v25 b0 v27
+//v17 has tmp - tmp2 real part
+sub v17 v3 v17 ;
+
+/////////// *****************************************   ///////
+nop
+nop
+//v27 has tmp - tmp2 imag part
+sub v27 v4 v27
+//**********************************************************//
+// the third level
+// ************** WNP0 *****************//
+// WNP*(IDX+B) REAL PART
+mul v2 v14 v18
+mul v9 v24 v28 ;
+
+//////// ***************************************    //////
+nop
+nop
+mul v3 v24 v18 
+mul v4 v14 v28 
+// v14 is tmp2 real part
+sub v14 v2 v9 ;
+
+//////////// ********** b1 = v2 ********************  ////
+nop
+nop
+// v24 is tmp2 imag part
+add.u v24 v2 v9
+// v2 = tmp
+add.u v2 v10 0
+//v10 has tmp + tmp2 real part
+add.u v10 b1 v14 ;
+
+////////// **** b0 = v9 ************************  ///
+// the first data real part
+st.word.rand v0 v10 0 
+nop
+add.u v9 v20 0
+//v20 has tmp + tmp2 imag part
+add.u v20 b0 v24
+//v24 has tmp - tmp2 imag part
+sub v24 b0 v24 ;
+
+//////////////// ****************************  /////
+// the first data imag part
+st.word.rand v1 v20 0
+nop
+//v14 has tmp - tmp2 real part
+sub v14 v3 v14
+// ************* WNP1 ******************//
+// WNP*(IDX+B) REAL PART
+mul v2 v15 v5
+mul v9 v25 v6 ;
+
+////// *************************  /////
+// the fifth data real part
+st.word.rand v0 v14 512
+nop
+mul v3 v25 v5
+mul v4 v15 v6
+// v15 is tmp2 real part
+sub v15 v2 v9 ;
+
+//////////// ******  b1 = v2 *******************  ////////
+// the fifth data imag part
+st.word.rand v1 v24 512
+nop
+// v25 is tmp2 imag part
+add.u v25 v3 v4 
+// v2 = tmp
+add.u v2 v11 0
+//v11 has tmp + tmp2 real part
+add.u v11 b1 v15 ;
+
+////////////////// ****** b0 = v4 *************************************  /////
+// the second data real part
+st.word.rand v0 v11 128
+nop
+add.u v4 v21 0
+//v21 has tmp + tmp2 imag part
+add.u v21 b0 v25
+//v25 has tmp - tmp2 imag part
+sub v25 b0 v25 ;
+
+/////////////// ***********************************************    ///////
+// the second data imag part
+st.word.rand v1 v21 128
+nop
+//v15 has tmp - tmp2 real part
+sub v15 v3 v15
+// ************* WNP2 ******************//
+// WNP*(IDX+B) REAL PART
+mul v2 v16 v7
+mul v9 v26 v8 ;
+
+/////////////// ***************************************  /////
+// the sixth data real part
+st.word.rand v0 v15 640
+nop
+mul v3 v26 v7 
+mul v4 v16 v8 
+// v16 is tmp2 real part
+sub v16 v2 v9 ;
+
+//////////////////// ********** b1 = v2 ***************************  ////
+// the sixth data imag part
+st.word.rand v1 v25 640
+nop
+// v26 is tmp2 imag part
+add.u v26 v3 v4
+// v2 = tmp
+add.u v2 v12 0
+//v12 has tmp + tmp2 real part
+add.u v12 b1 v16 ;
+
+///////////////  ************** b0 = v9 ********************   ////
+// the third data real part
+st.word.rand v0 v12 256
+nop
+add.u v9 v22 0
+//v22 has tmp + tmp2 imag part
+add.u v22 b0 v26
+//v26 has tmp - tmp2 imag part
+sub v26 b0 v26 ;
+
+//////////////////////  **********************************   ///////
+// the third data imag part
+st.word.rand v1 v22 256
+nop
+//v16 has tmp - tmp2 real part
+sub v16 v3 v16
+// ************* WNP3 ******************//
+// WNP*(IDX+B) REAL PART
+mul v2 v17 v30
+mul v9 v27 v31 ;
+
+//////// ********************************************  //////
+// the seventh data real part
+st.word.rand v0 v16 768
+nop
+mul v3 v27 v30
+mul v4 v17 v31
+// v17 is tmp2 real part
+sub v17 v2 v9 ;
+
+/////////////// ******** b1 = v2 ******************************  ////////////
+// the seventh data imag part
+st.word.rand v1 v26 768
+nop
+// v27 is tmp2 imag part
+add.u v27 v3 v4
+// v2 = tmp
+add.u v2 v13 0
+//v13 has tmp + tmp2 real part
+add.u v13 b1 v17 ;
+
+///////////////// ************* b0 = v9 *******************************   /////////
+// the fourth data real part
+st.word.rand v0 v13 384
+nop
+add.u v9 v23 0
+//v23 has tmp + tmp2 imag part
+add.u v23 b0 v27
+//v27 has tmp - tmp2 imag part
+sub v27 b0 v27 ;
+
+/////////////////// *******************************************************    ///////
+//***** write back into memory *******//
+// the fourth data imag part
+st.word.rand v1 v23 384 
+nop
+nop
+nop
+//v17 has tmp - tmp2 real part
+sub v17 v3 v17 ;
+
+
+///*******************************   the following part is the key one to effectively organize the data *********************//
+//******************** there is inter-PE connmuication but no communication between thread ************************************//
+/////////////// ***************************************************  ///////
+// the eigth data real part
+st.word.rand v0 v17 896
+nop
+// PE ID
+// 0~31
+vid v2
+// 0~127
+add.u v2 b0 s0
+// the data  base address real:v0 imag:v1
+// the WNP base address real:v3 imag:v4
+// the memory bank address PE0->BANK0 PE1->BANK1 PE2->BANK2
+// WNP_adr real part
+add.u v3 v0 0x2000 ;
+
+//////////////////////// *********************************************************8  /////
+// the eigth data imag part
+st.word.rand v1 v27 896
+nop
+// WNP_adr imag part
+add.u v4 v0 0x2800 
+// J2 =log2(32) + 1
+li s0 6
+// log2(p)
+li s1 5 ;
+
+///////////////// *******************************************************  /////////
+nop
+nop
+// m log2(1024£©
+li s2 10
+// dn_pe/2 dn_pe=8
+li s3 4
+// dn_pe
+sll s15 s3 1 ;
+
+//////*********************************************************   ///////
+nop
+nop
+// e
+li s4 0
+// constant 1
+li s6 1
+// p
+li s10 32 ;
+
+$loop2
+////////////// ************ b0= s5 b1 =s7 **************** ////////////////
+nop
+nop
+// e+log2(dn_pe)
+add.u s5 s4 3
+// m-(e+log2(dn_pe))
+sub s7 s2 b0
+// m-(e+log2(dn_pe) + 1)
+sub s7 b1 s6 ;
+
+/////////// ***** b0 = s0 ***********************  ////////////
+nop
+nop
+// j2=j2-1
+sub s0 s0 s6
+// p>>j2 (p/v)
+srl s9 s10 b0
+// 2*t = 2^(e+1)
+add.u s8 s4 1 ;
+
+
+/// *********** b0 = v5  b1 = v5 ********************  ////// 
+nop
+nop
+//mod(i,t)==mod(i,2*t)
+srl v5 v2 s4
+sll v5 b0 s4
+sub v5 v2 b1 ;
+
+/////////////////  *********** b0 = v6  b1 = v6 *******************************   /////////
+nop
+nop
+srl v6 v2 s8
+sll v6 b0 s8
+sub v6 v2 b1 ;
+
+nop
+nop
+nop
+// nn , k
+li s11 0 
+cmp.unc.= p1 p2 v5 v6 ;
+
+//// **************************** b0 = v7  b1=v12 ************************************  ////
+nop
+nop
+// the destination pe_id
+(p1) add.u v7 v2 s9
+(p1) sll v12 b0 2
+(p1) add.u v13 b1 0x1000 ;
+
+////////////////////// ************ b0 = v7  b1 = v12 **************************************************  /////
+nop
+nop
+// the destination pe_id
+(p2) sub v7 v2 s9
+(p2) sll v12 b0 2
+(p2) add.u v13 b1 0x1000 ;
+
+$loop1
+//i*dn_pe+k
+mad v14 v2 s15 s11 ;
+//mul v14 v2 s15 ;
+//add.u v14 v14 s11 ;
+
+//////// ************* b0=v14 b1=v15 ********************************   ///////
+nop
+nop
+//i*dn_pe+k+dn_pe/2
+(p2) add.u v14 v14 s3
+// res=mod(i*dn_pe+k,l)
+// res=mod(i*dn_pe+k+dn_pe/2,l)
+srl v15 b0 s5
+sll v15 b1 s5 ;
+
+///////// *********** b0 = v15  b1 = v16 ***************************************  //////
+nop
+nop
+sub v15 v14 v15  
+// WNP_adr res*2(m-l)
+sll v16 b0 s7
+// the low two bit is 00
+sll v16 b1 2 ;
+
+////////// **********************************************************  //////
+nop
+nop
+// real part
+add.u v27 v3 v16
+// imag part
+add.u v28 v4 v16
+// nn+dn_pe/2
+add.u s12 s11 s3 ;
+
+//////// ********************* b0 = s13 ******************************   /////
+ld.word.rand v17 v27 0
+nop
+// nn * 512 data addr
+sll s13 s11 9
+// read data
+// real part 0
+(p1) add.u v27 v0 b0
+// (nn+dn_pe/2)*512 data addr
+sll s14 s12 9 ;
+
+//////// ********************************************   /////
+ld.word.rand v18 v28 0
+nop
+// imag part 0
+(p1) add.u v28 v1 s13 
+// real part 32
+(p1) add.u v29 v12 s13 
+// imag part 32
+(p1) add.u v30 v13 s13 ; 
+
+//////// ************************************************  ////////
+(p1) ld.word.rand v10 v29 0
+nop
+// read data
+// real part 48 
+(p2) add.u v27 v0 s14
+// imag part 48 
+(p2) add.u v28 v1 s14
+// real part 16
+(p2) add.u v29 v12 s14 ;
+
+////////////////////// **********************************************   /////
+(p1) ld.word.rand v11 v30 0
+nop
+// imag part 16 
+(p2) add.u v30 v13 s14
+// butterfly computation
+// WNP*(IDX+B) REAL PART
+(p1) mul v19 v10 v17
+(p1) mul v20 v11 v18 ;
+
+///////// ******************************************************   ////
+(p1) ld.word.rand v8 v27 0
+nop
+(p1) mul v21 v11 v17
+(p1) mul v22 v10 v18
+// v10 is tmp2 real part
+(p1) sub v10 v19 v20 ;
+
+//////////// ************ b1 = v5 ******************************   ////////
+(p1) ld.word.rand v9 v28 0
+nop
+// v11 is tmp2 imag part
+(p1) add.u v11 v21 v22
+// v5 = tmp
+(p1) add.u v5 v8 0
+//v8 has tmp + tmp2 real part
+(p1) add.u v8 b1 v10 ;
+
+/////// **************** b0 = v6 **********************  /////////////
+(p2) ld.word.rand v8 v27 0
+nop
+(p1) add.u v6 v9 0 
+//v9 has tmp + tmp2 imag part
+(p1) add.u v9 b0 v11
+//v10 has tmp - tmp2 real part
+(p1) sub v10 v5 v10 ;
+
+//////////////////  ***************************************************   /////
+(p2) ld.word.rand v9 v28 0
+nop
+//v11 has tmp - tmp2 imag part
+(p1) sub v11 v6 v11
+// ******** WNP*(IDX+B) REAL PART
+(p2) mul v23 v8 v17 
+(p2) mul v26 v8 v18 ;
+
+//// ************* v24 = b0 *******************  ////////////////// 
+(p2) ld.word.rand v10 v29 0
+nop
+(p2) mul v24 v9 v18
+// v8 is tmp2 real part
+(p2) sub v8 v23 b0
+(p2) mul v25 v9 v17 ;
+
+///// ********************* b1 = v5 ***************************   ///
+(p2) ld.word.rand v11 v30 0
+nop
+// v9 is tmp2 imag part
+(p2) add.u v9 v25 v26
+// v5 = tmp
+(p2) add.u v5 v10 0
+//v10 has tmp + tmp2 real part
+(p2) add.u v10 b1 v8 ;
+
+/////////// ****************************************   ///
+//*****  write back real part **************//
+// real part
+st.word.rand v29 v10 0
+nop
+(p2) add.u v6 v11 0
+//v11 has tmp + tmp2 imag part
+(p2) add.u v11 v6 v9
+//v8 has tmp - tmp2 real part
+(p2) sub v8 v5 v8 ;
+
+/////////// ****************************  ///
+// imag part
+st.word.rand v30 v11 0
+nop
+//v9 has tmp - tmp2 imag part
+(p2) sub v9 v6 v9
+nop
+nop ;
+
+// imag part
+st.word.rand v28 v9 0 ;
+
+///////////// ************* b1 = s11 ******************   /////
+st.word.rand v27 v8 0
+(p4) b.pb.naz.bc.pop2n $loop1 0
+nop
+add.u s11 s11 1 
+cmp.unc.< p4 p3 b1 s3 ;
+
+///////// *********** b1 = s4  ***************** //// 
+nop
+(p6) b.pb.naz.bc.pop2n $loop2 0
+nop
+add.u s4 s4 1 
+cmp.unc.< p6 p5 b1 s1 ;
+
+//******************** there is inter-PE connmuication and inter-thread communication ************************************//
+
+nop
+nop
+vid v2
+// the data  base address real:v0 imag:v1
+// the WNP base address real:v3 imag:v4
+// J2
+li s1 3
+// m log2(1024£©
+li s2 10 ;
+
+///////////////////  ********************** b0 = s3 ************************  ////
+nop
+nop
+// dn_pe/2 dn_pe=8
+li s3 4
+// dn_pe
+sll s15 b0 1
+// e
+li s4 0 ;
+
+////////////// *****************************************  /////
+nop
+nop
+nop
+// constant 1
+li s6 1
+// p
+li s10 4 ;
+
+$loop6
+////////////  ************************ b0 = s5 b1 = s7 ****************** //////
+nop
+tsync
+// e+8
+add.u s5 s4 8
+// m-(e+8)
+sub s7 s2 b0
+// m-(e+log2(dn_pe) + 1)
+sub s7 b1 s6 ;
+
+nop
+nop
+// j2=j2-1
+sub s1 s1 s6
+// 2*t = 2^(e+1)
+add.u s8 s4 1
+// p>>j2 (p/v)  
+srl s9 s10 s1 ;
+
+///// ***************** b1 = s12********************************  /////
+nop
+nop
+// nn , k
+li s11 0
+//mod(tid,t)==mod(tid,2*t)
+srl s12 s0 s4
+sll s12 b1 s4 ;
+
+//////////////////////// ************************* b1 = s13 **************/////
+nop
+nop
+sub s12 s0 s12
+srl s13 s0 s8
+sll s13 b1 s8 ;
+
+///////////////////// ********************* /////////////////
+nop
+nop
+nop
+sub s13 s0 s13
+cmp.unc.= p1 p2 s12 s13 ;
+
+/////////// ******************************* //////////
+nop
+nop
+// the destination tid 
+(p1) add.u s14 s0 s9
+(p2) sub s14 s0 s9
+sll s0 s0 5 ;
+
+////////////////////// ******** b0 = s14 ******************** ////////
+nop
+nop
+sll s14 s14 5
+// the destination pe_id
+add.u v7 v2 b0
+add.u v2 v2 s0 ;
+
+////////// ********* b1 = v12 ******************** /////
+nop
+nop
+nop
+// memory address
+sll v12 v7 2
+add.u v13 b1 0x1000 ;
+
+$loop5
+
+//////////////////  ******** b0 = v14  b1 = v14 ********************  ///
+nop
+nop
+//i*dn_pe+k
+mad v14 v2 s15 s11
+//mul v14 v2 s15 ;
+//add.u v14 v14 s11 ;
+//i*dn_pe+k+dn_pe/2
+(p2) add.u v14 b0 s3
+// res=mod(i*dn_pe+k,l)
+// res=mod(i*dn_pe+k+dn_pe/2,l)
+srl v15 b1 s5 ;
+
+//////////////////////// ******* b0 = v15  b1 = v15 ************** /////
+nop 
+nop
+sll v15 v15 s5
+sub v15 v14 b0  
+// WNP_adr res*2(m-l)
+sll v16 b1 s7 ;
+
+//////////////// ************ b0 = v16 ***************** ////
+nop
+nop
+sll v16 v16 2
+// real part
+add.u v27 v3 b0
+// imag part
+add.u v28 v4 b0 ;
+
+///////////////// ****************************88  ///////////
+ld.word.rand v17 v27 0
+nop
+// nn+dn_pe/2
+add.u s12 s11 s3
+// nn * 512 data addr
+sll s13 s11 9
+// (nn+dn_pe/2)*512 data addr
+sll s14 s12 9 ;
+
+///////////////////////// ********************************** /////
+ld.word.rand v18 v28 0
+nop
+// read data
+// real part 0
+(p1) add.u v27 v0 s13 
+// imag part 0
+(p1) add.u v28 v1 s13 
+// real part 32
+(p1) add.u v29 v12 s13 ; 
+
+////////////////////////////// ******************************************  //////
+(p1) ld.word.rand v10 v29 0
+nop
+// imag part 32
+(p1) add.u v30 v13 s13
+// read data
+// real part 48 
+(p2) add.u v27 v0 s14
+// imag part 48 
+(p2) add.u v28 v1 s14 ; 
+
+///////////////// ***************************************  ///////////
+(p1) ld.word.rand v11 v30 0
+nop
+// real part 16
+(p2) add.u v29 v12 s14
+// imag part 16 
+(p2) add.u v30 v13 s14
+// butterfly computation
+// WNP*(IDX+B) REAL PART
+(p1) mul v19 v10 v17 ;
+
+/////////////// ******************************* ///// 
+(p1) ld.word.rand v8 v27 0
+nop
+(p1) mul v20 v11 v18 
+(p1) mul v21 v11 v17 
+(p1) mul v22 v10 v18 ;
+
+//////////////// ****************************  ///
+(p1) ld.word.rand v9 v28 0
+nop
+// v10 is tmp2 real part
+(p1) sub v10 v19 v20
+// v11 is tmp2 imag part
+(p1) add.u v11 v21 v22
+// v5 = tmp
+(p1) add.u v5 v8 0 ;
+
+/////////////////// ********** b0 = v6 ************** ////
+(p2) ld.word.rand v8 v27 0
+nop
+(p1) add.u v6 v9 0 
+//v9 has tmp + tmp2 imag part
+(p1) add.u v9 b0 v11
+//v8 has tmp + tmp2 real part
+(p1) add.u v8 v5 v10 ;
+
+//////////////// *********************************** ////////////
+(p2) ld.word.rand v9 v28 0
+nop
+//v10 has tmp - tmp2 real part
+(p1) sub v10 v5 v10
+//v11 has tmp - tmp2 imag part
+(p1) sub v11 v6 v11
+// ******** WNP*(IDX+B) REAL PART
+(p2) mul v23 v8 v17 ;
+
+/////////////// ******************************************  ///
+(p2) ld.word.rand v10 v29 0
+nop
+(p2) mul v24 v9 v18
+(p2) mul v25 v9 v17
+(p2) mul v26 v8 v18 ;
+
+/////////////////////// *********************************************  ///////
+(p2) ld.word.rand v11 v30 0
+nop
+// v8 is tmp2 real part
+(p2) sub v8 v23 v24
+// v9 is tmp2 imag part
+(p2) add.u v9 v25 v26
+// v5 = tmp
+(p2) add.u v5 v10 0 ;
+
+/////////////////////////// ff *****************************************  ////
+nop
+nop
+(p2) add.u v6 v11 0
+//v10 has tmp + tmp2 real part
+(p2) add.u v10 v5 v8
+//v11 has tmp + tmp2 imag part
+(p2) add.u v11 b0 v9 ;
+
+////////////////  *************************** //////////////
+// real part
+st.word.rand v29 v10 0
+nop
+nop
+//v8 has tmp - tmp2 real part
+(p2) sub v8 v5 v8
+//v9 has tmp - tmp2 imag part
+(p2) sub v9 v6 v9 ;
+
+//*****  write back real part **************//
+st.word.rand v27 v8 0 ;
+// imag part
+st.word.rand v28 v9 0 ;
+
+///////////////// ****** b1 = s11 ************ ////
+// imag part
+st.word.rand v30 v11 0
+(p4) b.pb.naz.bc.pop2n $loop5 0
+nop
+add.u s11 s11 1
+cmp.unc.< p4 p3 b1 s3 ;
+
+////////////////// ****** b1 = s4 ***************** ////
+nop
+(p6) b.pb.naz.bc.pop2n $loop6 0
+nop
+add.u s4 s4 1
+cmp.unc.< p6 p5 b1 2 ;
+
+tsync ;
+
