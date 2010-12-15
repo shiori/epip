@@ -128,7 +128,8 @@ parameter uint  NUM_SMEM_GRP      = 4,
                 NUM_STQUE         = 8,
                 NUM_LDQUE         = 16,
                 NUM_LLCK          = 4,
-                NUM_FIFO          = 8;
+                NUM_FIFO          = 8,
+                NUM_INST_ADR      = max2(NUM_INST_VRF / NUM_VRF_BKS, NUM_INST_SRF / NUM_SRF_BKS);
                 
 parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_HALF        = n2w(HALF_BYTES),
@@ -141,6 +142,7 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_XCHG        = n2w(LAT_XCHG),
                 WID_IFET        = n2w(NUM_IFET_BYTES),
                 WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
+                WID_INST_ADR    = n2w(NUM_INST_ADR),
                 WID_SMEM_BK     = n2w(NUM_SP),
                 WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
                 WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),

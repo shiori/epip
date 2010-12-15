@@ -251,7 +251,7 @@ typedef union packed{
   bit [4:0][7:0] b;
 } inst_u;
 
-typedef bit[2:0] iga_t;
+typedef bit[WID_INST_ADR - 1:0] iga_t;
 parameter uchar NUM_INST_BYTES = $bits(inst_u) / 8;
 
 typedef struct packed{
@@ -274,29 +274,29 @@ typedef struct packed{
   bit nmsk, adrPkgB, coPkgW;
 }i_gs0_t;
 
-typedef struct packed{
-  iga_t[1:0] a;
-  bit[1:0] dummy;
-}i_ap0_t;
-
-typedef struct packed{
-  iga_t[4:0] a;
-  bit dummy;
-}i_ap1_t;
-
-typedef union packed{
-  i_ap1_t i;
-  bit [1:0][7:0] b;
-} i_ap1_u;
-
-typedef struct packed{
-  iga_t[7:0] a;
-}i_ap2_t;
-
-typedef union packed{
-  i_ap2_t i;
-  bit [2:0][7:0] b;
-} i_ap2_u;
+///typedef struct packed{
+///  iga_t[1:0] a;
+///  bit[1:0] dummy;
+///}i_ap0_t;
+///
+///typedef struct packed{
+///  iga_t[4:0] a;
+///  bit dummy;
+///}i_ap1_t;
+///
+///typedef union packed{
+///  i_ap1_t i;
+///  bit [1:0][7:0] b;
+///} i_ap1_u;
+///
+///typedef struct packed{
+///  iga_t[7:0] a;
+///}i_ap2_t;
+///
+///typedef union packed{
+///  i_ap2_t i;
+///  bit [2:0][7:0] b;
+///} i_ap2_u;
 
 parameter iop_e iop_i26[] = '{
         iop_lu,     iop_li
@@ -816,12 +816,12 @@ class inst_c extends ovm_object;
         wrEn[0] = inst.i.b.cop.code[0];
         op = wrEn[0] ? op_s2gp : op_gp2s;
         adrWr[0] = rd;
-        srAdr = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
+        srAdr = wrEn[0] ? inst.i.b.cop.code[20:15] : inst.i.b.ir2w1.rd;
         if(!wrEn[0])
           set_rf_en(inst.i.b.ir2w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
         else 
           rdBkSel[0] = selii;
-        imm = wrEn[0] ? inst.i.b.ir2w1.rd : inst.i.b.ir2w1.rs0;
+        imm = inst.i.b.cop.code[10:2];
         if(!wrEn[0] && !(srAdr inside {non_kernel_sr}))
           priv = 1;
       end
