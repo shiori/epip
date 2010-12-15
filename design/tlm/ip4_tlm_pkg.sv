@@ -354,7 +354,8 @@ typedef enum uchar {
   ///multiply opcodes
   op_umul,    op_smul,    op_umad,    op_smad,    op_umsu,    
   op_smsu,    op_udmul,   op_sdmul,   op_udmad,   op_sdmad,
-  op_udmsu,   op_sdmsu,   op_add3,    op_uadd3,
+  op_udmsu,   op_sdmsu,   op_add3,    op_uadd3,   op_fmul,
+  op_fmad,    op_fmsu,
   ///alu opcodes
   op_and,     op_or,      op_xor,     op_nor,
   op_add,     op_uadd,    op_sub,     op_usub,
@@ -363,9 +364,20 @@ typedef enum uchar {
   op_min,     op_umin,    op_umax,
   op_ext,     op_ins,     op_seb,     op_she,
   op_wsbh,    op_vid,
+  ///floating point
+  op_fadd,    op_fsub,    op_fmax,    op_fmin,
+  op_fround,  op_ffloor,  op_ftrunc,  op_fceil,
+  op_fabs,    op_fdim,    
   ///sfu opcodes
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
+  op_fdiv,    op_fmod,    op_fexp2,
+  op_flog2,   op_frootn,  op_fpow,
+  op_fpown,   op_fpowr,   op_fsqrt,
+  op_frsqrt,  op_fhypot,  op_fsin,
+  op_fcos,    op_ftan,    op_fatan,
+  op_fsinh,   op_fcosh,   op_ftanh,
+  op_fatanh,
   ///dse opcodes
   op_pera,    op_perb,    op_shf4a,   op_shf4b,
   op_lw,      op_sw,      op_lh,      op_sh,
@@ -388,12 +400,22 @@ parameter opcode_e bp_ops[] = '{
   op_srl,     op_sra,     op_sll,     op_ror,
   op_clo,     op_clz,     op_ext,     op_ins,
   op_lid,     op_seb,     op_she,     op_wsbh,
-  op_max,     op_min,     op_umin,    op_umax
+  op_max,     op_min,     op_umin,    op_umax,
+  op_fadd,    op_fsub,    op_fmax,    op_fmin,
+  op_fround,  op_ffloor,  op_ftrunc,  op_fceil,
+  op_fabs,    op_fdim
 };
 
 parameter opcode_e sfu_only_ops[] = '{
   op_div,     op_udiv,    op_quo,
-  op_uquo,    op_res,     op_ures
+  op_uquo,    op_res,     op_ures,
+  op_fdiv,    op_fmod,    op_fexp2,
+  op_flog2,   op_frootn,  op_fpow,
+  op_fpown,   op_fpowr,   op_fsqrt,
+  op_frsqrt,  op_fhypot,  op_fsin,
+  op_fcos,    op_ftan,    op_fatan,
+  op_fsinh,   op_fcosh,   op_ftanh,
+  op_fatanh
 };
 
 parameter opcode_e mac_ops[] = '{
@@ -401,7 +423,8 @@ parameter opcode_e mac_ops[] = '{
   op_bp1,     op_bp2,     op_bp3,      
   op_umul,    op_smul,    op_umad,    op_smad,    op_umsu,    
   op_smsu,    op_udmul,   op_sdmul,   op_udmad,   op_sdmad,
-  op_udmsu,   op_sdmsu,   op_add3,    op_uadd3
+  op_udmsu,   op_sdmsu,   op_add3,    op_uadd3,   op_fmul,
+  op_fmad,    op_fmsu
 };
 
 parameter opcode_e alu_ops[] = '{
@@ -409,14 +432,18 @@ parameter opcode_e alu_ops[] = '{
   op_bp1,     op_bp2,     op_bp3,      
   op_umul,    op_smul,    op_umad,    op_smad,    op_umsu,    
   op_smsu,    op_udmul,   op_sdmul,   op_udmad,   op_sdmad,
-  op_udmsu,   op_sdmsu,   op_add3,    op_uadd3,
+  op_udmsu,   op_sdmsu,   op_add3,    op_uadd3,   op_fmul,
+  op_fmad,    op_fmsu,
   op_and,     op_or,      op_xor,     op_nor,
   op_add,     op_uadd,    op_sub,     op_usub,
   op_srl,     op_sra,     op_sll,     op_ror,
   op_clo,     op_clz,     op_max,     op_min,     
   op_umin,    op_umax,    op_lid,
   op_ext,     op_ins,     op_seb,     op_she,
-  op_wsbh
+  op_wsbh,
+  op_fadd,    op_fsub,    op_fmax,    op_fmin,
+  op_fround,  op_ffloor,  op_ftrunc,  op_fceil,
+  op_fabs,    op_fdim
 };
 
 parameter opcode_e sfu_ops[] = '{
@@ -427,7 +454,10 @@ parameter opcode_e sfu_ops[] = '{
   op_srl,     op_sra,     op_sll,     op_ror,
   op_clo,     op_clz,     op_ext,     op_ins,
   op_lid,     op_seb,     op_she,     op_wsbh,
-  op_max,     op_min,     op_umin,    op_umax
+  op_max,     op_min,     op_umin,    op_umax,
+  op_fadd,    op_fsub,    op_fmax,    op_fmin,
+  op_fround,  op_ffloor,  op_ftrunc,  op_fceil,
+  op_fabs,    op_fdim
 };
 
 parameter opcode_e dse_ops[] = '{
@@ -473,7 +503,10 @@ parameter opcode_e spu_com_ops[] = '{
   op_add,     op_uadd,    op_sub,     op_usub,
   op_srl,     op_sra,     op_sll,     op_ror,
   op_clo,     op_clz,     op_ext,     op_ins,
-  op_seb,     op_she,     op_wsbh
+  op_seb,     op_she,     op_wsbh,
+  op_fadd,    op_fsub,    op_fmax,    op_fmin,
+  op_fround,  op_ffloor,  op_ftrunc,  op_fceil,
+  op_fabs,    op_fdim
 };
 
 parameter opcode_e ise_zw_ops[] = '{

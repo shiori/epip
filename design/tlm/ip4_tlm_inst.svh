@@ -37,7 +37,8 @@ typedef struct packed{
 
 typedef enum bit[4:0] {
   iop31_mul,    iop31_mad,    iop31_msu,
-  iop31_add3
+  iop31_add3,   iop31_fmul,   iop32_fmad,
+  iop31_fmsu
 } iop_r3w1_e;
 
 typedef struct packed{
@@ -53,13 +54,21 @@ typedef enum bit[6:0] {
   iop21_or,     iop21_div,    iop21_quo,    iop21_res,
   iop21_clo,    iop21_ext,    iop21_sll,    iop21_rot,
   iop21_and,    iop21_seb,    iop21_wsbh,   iop21_max,
-  iop21_min,    iop21_vid,
+  iop21_min,    iop21_vid,    iop21_fadd,   iop21_fmax,
+  iop21_fdiv,   iop21_fexp2,  iop21_frootn, iop21_fpown,
+  iop21_fround, iop21_ftrunc, iop21_fsqrt,  iop21_fabs,
+  iop21_fhypot, iop21_fsin,   iop21_ftan,   iop21_fsinh,
+  iop21_ftanh,
   iop21_add = 'b1000000,  
                 iop21_sub,    iop21_sra,    iop21_srav,
   iop21_nor,    iop21_udiv,   iop21_uquo,   iop21_ures,
   iop21_clz,    iop21_ins,    iop21_sllv,   iop21_rotv,
   iop21_xor,    iop21_she,    iop21_mv2s,   iop21_umax,
-  iop21_umin
+  iop21_umin,   iop21_dummy0, iop21_fsub,   iop21_fmin,
+  iop21_fmod,   iop21_flog2,  iop21_fpow,   iop21_fpowr,
+  iop21_ffloor, iop21_fceil,  iop21_frsqrt, iop21_fdim,
+  iop21_dummy1, iop21_cos,    iop21_fatan,  iop21_fcosh,
+  iop21_fatanh
 } iop_r2w1_e;
 
 /// iop21_vror,   iop21_vsr,    iop21_vsl,
@@ -511,7 +520,7 @@ class inst_c extends ovm_object;
     else if(inst.i.op == iop_r3w1) begin
       set_rf_en(inst.i.b.ir3w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       set_rf_en(inst.i.b.ir3w1.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      if(inst.i.b.ir3w1.fun != iop31_mul)
+      if(!inst.i.b.ir3w1.fun inside {iop31_mul, iop31_fmul})
         set_rf_en(inst.i.b.ir3w1.rs2, rdBkSel[2], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
 
       if(inst.i.b.ir3w1.d) begin
@@ -530,6 +539,9 @@ class inst_c extends ovm_object;
       iop31_mad   : begin op = inst.i.b.ir3w1.s ? op_smad : op_umad; end
       iop31_msu   : begin op = inst.i.b.ir3w1.s ? op_smsu : op_umsu; end
       iop31_add3  : begin op = inst.i.b.ir3w1.s ? op_add3 : op_uadd3; end
+      iop31_fmul  : begin op = op_fmul; end
+      iop32_fmad  : begin op = op_fmad; end
+      iop31_fmsu  : begin op = op_fmsu; end
       endcase
     end
     else if(inst.i.op == iop_r2w1) begin
@@ -586,6 +598,36 @@ class inst_c extends ovm_object;
       iop21_umax  : begin op = op_umax; end
       iop21_umin  : begin op = op_umin; end
       iop21_vid   : begin op = op_vid; rdBkSel[0] = selnull; rdBkSel[1] = selnull;end
+      iop21_fadd  : begin op = op_fadd; end 
+      iop21_fmax  : begin op = op_fmax; end 
+      iop21_fdiv  : begin op = op_fdiv; end 
+      iop21_fexp2 : begin op = op_fexp2; end 
+      iop21_frootn: begin op = op_frootn; end 
+      iop21_fpown : begin op = op_fpown; end 
+      iop21_fround: begin op = op_fround; end 
+      iop21_ftrunc: begin op = op_ftrunc; end 
+      iop21_fsqrt : begin op = op_fsqrt; end 
+      iop21_fabs  : begin op = op_fabs; end 
+      iop21_fhypot: begin op = op_fhypot; end 
+      iop21_fsin  : begin op = op_fsin; end 
+      iop21_ftan  : begin op = op_ftan; end 
+      iop21_fsinh : begin op = op_fsinh; end 
+      iop21_ftanh : begin op = op_ftanh; end 
+      
+      iop21_fsub  : begin op = op_fsub; end 
+      iop21_fmin  : begin op = op_fmin; end 
+      iop21_fmod  : begin op = op_fmod; end 
+      iop21_flog2 : begin op = op_flog2; end 
+      iop21_fpow  : begin op = op_fpow; end 
+      iop21_fpowr : begin op = op_fpowr; end 
+      iop21_ffloor: begin op = op_ffloor; end 
+      iop21_fceil : begin op = op_fceil; end 
+      iop21_frsqrt: begin op = op_frsqrt; end 
+      iop21_fdim  : begin op = op_fdim; end 
+      iop21_cos   : begin op = op_fcos; end 
+      iop21_fatan : begin op = op_fatan; end 
+      iop21_fcosh : begin op = op_fcosh; end 
+      iop21_fatanh: begin op = op_fatanh; end 
       endcase
     end
     else if(inst.i.op inside {iop_fcrs}) begin
