@@ -508,7 +508,7 @@ class ise_thread_inf extends ovm_component;
           
     ///fill in rf address
     begin
-      bit[8:0][7:0] tmp0;
+      bit[WID_INST_ADR * 3 - 1:0][7:0] tmp0;
       for(int i = 0; i < adrPkgBytes; i++) begin
         tmp0[i] = iBuf[offSet];
         offSet++;
@@ -1539,17 +1539,6 @@ class ip4_tlm_ise extends ovm_component;
     if(v.fmSPU != null && v.rst[STAGE_ISE_EXS1].brSrf)
       vn.rst[STAGE_ISE_EXS2].bpc = v.fmSPU.bpc;
     
-    ///SR Requests
-    if(v.fmSPU != null && v.fmSPU.srReq) begin
-      tr_spu2ise spu = v.fmSPU;
-      if(spu.op == op_s2gp) begin
-        if(ciSPU[0] != null) ciSPU[0] = tr_ise2spu::type_id::create("toSPU", this);
-        ciSPU[0].srRes = exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr);
-      end
-      else
-        void'(exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr));
-    end
-    
     ///cancel condition 1 branch mispredication, msc exp
     if(v.fmSPU != null && v.fmSPU.brRsp) begin
       tr_spu2ise spu = v.fmSPU;
@@ -1814,7 +1803,19 @@ class ip4_tlm_ise extends ovm_component;
     toSPA = v.spa[STAGE_ISE];
     toSPU = v.spu[STAGE_ISE];
     toDSE = v.dse[STAGE_ISE];
-    
+
+    ///SR Requests
+    if(v.fmSPU != null && v.fmSPU.srReq) begin
+      tr_spu2ise spu = v.fmSPU;
+      if(spu.op == op_s2gp) begin
+        if(toSPU == null) toSPU = tr_ise2spu::type_id::create("toSPU", this);
+        toSPU.srRes = exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr);
+        toSPU.srRsp = 1;
+      end
+      else
+        void'(exe_ise(spu.tidSPU, spu.op, spu.op0, spu.srAdr));
+    end
+        
     ///ife req search
     for(int i = 0; i < NUM_THREAD; i++) begin
       uchar tid = i + v.TIdFetchSel;

@@ -87,7 +87,7 @@ class asmig;
   uchar grpMsk, icc; ///chkGrp, chkGrpUp, 
   uchar grpsize;
   uint pc;
-  bit[2:0] allAdr[25];
+  iga_t allAdr[25];
   bit isVec[5]; 
   uchar adrcnt;
   i_gs0_t gs0;
@@ -1086,7 +1086,7 @@ class asmig;
               enOp[i][2] = 0;
               if(immOp[i][2]) begin
                 inst[i].i.b.cop.code[10:2] = imm[i][2];
-                inst[i].i.b.cop.code[20:16] = imm[i][1];
+                inst[i].i.b.cop.code[20:15] = imm[i][1];
               end
               else begin
                 `asm_err("op number does not match with the op_code!");
@@ -1258,7 +1258,7 @@ class asmig;
         end
         `asm_msg($psprintf("vecOp %0d, ps: %0d, i: %0d, j: %0d", vecOp[i][ps + j], ps, i, j), OVM_FULL);
         if(vecOp[i][ps + j]) begin
-          if(adr[i][ps + j] > 31) begin
+          if(adr[i][ps + j] > (NUM_INST_VRF - 1)) begin
             `asm_err("vec reg out of bound!");
             return 0;
           end
@@ -1287,7 +1287,7 @@ class asmig;
           end
         end
         else if(!immOp[i][ps + j]) begin
-          if(adr[i][ps + j] > 15) begin
+          if(adr[i][ps + j] > (NUM_INST_SRF - 1)) begin
             `asm_err($psprintf("scl reg out of bound! %0d", adr[i][ps + j]));
             return 0;
           end
@@ -1331,7 +1331,7 @@ class asmig;
       for(int j = 0; j < NUM_VRF_BKS; j++) begin
         `asm_msg($psprintf("vrfEn[%0d][%0d] :%0d", i,j,vrfEn[i][j]), OVM_FULL);
         `asm_msg($psprintf("vector address  :%0d", vrfAdr[i][j]), OVM_FULL);
-        if(vrfEn[i][j] && vrfAdr[i][j] < 32) begin
+        if(vrfEn[i][j] && vrfAdr[i][j] < NUM_INST_VRF) begin
           `asm_msg($psprintf("adrcnt address:%0d", adrcnt), OVM_FULL);
           allAdr[adrcnt] = vrfAdr[i][j];
           `asm_msg($psprintf("vector address:%0d", allAdr[adrcnt]), OVM_FULL);
@@ -1340,7 +1340,7 @@ class asmig;
       end
          
       for(int j = 0; j < NUM_SRF_BKS; j++)
-        if(srfEn[i][j]) begin
+        if(srfEn[i][j] && srfAdr[i][j] < NUM_INST_SRF) begin
           `asm_msg($psprintf("count scalar address:%0d", adrcnt), OVM_FULL);
           allAdr[adrcnt] = srfAdr[i][j];
           `asm_msg($psprintf("scalar address:%0d", allAdr[adrcnt]), OVM_FULL);
@@ -1391,8 +1391,8 @@ class asmig;
   
   function bit wirte_out(int fo, ref asmig tag2ig[string], ovm_verbosity verb);
     bit[7:0] constPkg[NUM_BP_CO][4];
-    bit[8:0][7:0] tmp0;
-    bit[23:0][2:0] tmp1;
+    bit[WID_INST_ADR * 3 - 1:0][7:0] tmp0;
+    bit[23:0][WID_INST_ADR - 1:0] tmp1;
     
     $fwrite(fo, "%s", $psprintf("//pc: 0x%0h, source line %0d --------------------------------\n", pc, lid));
     `asm_msg($psprintf("//pc: 0x%0h --------------------------------", pc));

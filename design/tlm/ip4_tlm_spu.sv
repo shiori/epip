@@ -47,7 +47,7 @@ class ip4_tlm_spu extends ovm_component;
   local word msc[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit mscGuard[NUM_THREAD][CYC_VEC][NUM_SP];
   local bit pr[NUM_THREAD][NUM_PR:0][CYC_VEC][NUM_SP];
-  local bit prSPU[STAGE_RRF_VWBP:STAGE_RRF_EXS1];
+  local bit prSPU[STAGE_RRF_VWBP:STAGE_RRF_EXS0];
   local bit[STAGE_RRF_SRA:0] cancel[NUM_THREAD];
   local bit expFu, expMSC, brCancel, emskAllZero;
   local bit cmNext[CYC_VEC:0][NUM_SP],
@@ -127,9 +127,9 @@ class ip4_tlm_spu extends ovm_component;
       vn.rfm[i] = v.rfm[i - 1];
     vn.rfm[STAGE_RRF_EXS1] = null;
 
-    for(int i = STAGE_RRF_VWBP; i > STAGE_RRF_EXS1; i--)
+    for(int i = STAGE_RRF_VWBP; i > STAGE_RRF_EXS0; i--)
       prSPU[i] = prSPU[i - 1];
-    prSPU[STAGE_RRF_EXS1] = 0;
+    prSPU[STAGE_RRF_EXS0] = 0;
    
     for(int i = STAGE_RRF_VWB; i > STAGE_RRF_RRC; i--)
       brAllZero[i] = brAllZero[i - 1];
@@ -276,7 +276,7 @@ class ip4_tlm_spu extends ovm_component;
         prTmp = !prTmp;
       if(!ise.prNMskSPU)
        prTmp = prTmp && ilm[ise.tidSPU][0][0] && cm[ise.tidSPU][0][0];
-      prSPU[STAGE_RRF_EXS1] = prTmp;
+      prSPU[STAGE_RRF_EXS0] = prTmp;
 
       op0 = {o0[WORD_BITS - 1], o0};
       op1 = {o1[WORD_BITS - 1], o1};
@@ -318,7 +318,7 @@ class ip4_tlm_spu extends ovm_component;
       endcase
       vn.rfm[STAGE_RRF_EXS1] = tr_spu2rfm::type_id::create("toRFM", this);
       vn.rfm[STAGE_RRF_EXS1].res = r0[WORD_BITS-1:0];
-      vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS1] && !exp && ise.wrEn;
+      vn.rfm[STAGE_RRF_EXS1].wrEn = prSPU[STAGE_RRF_EXS0] && !exp && ise.wrEn;
       vn.rfm[STAGE_RRF_EXS1].expFu = exp;
       vn.rfm[STAGE_RRF_EXS1].tid = ise.tidSPU;
       vn.rfm[STAGE_RRF_EXS1].vecMode = ise.vecModeFu;
