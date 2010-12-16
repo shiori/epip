@@ -520,9 +520,11 @@ class inst_c extends ovm_object;
     else if(inst.i.op == iop_r3w1) begin
       set_rf_en(inst.i.b.ir3w1.rs0, rdBkSel[0], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       set_rf_en(inst.i.b.ir3w1.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-      if(!inst.i.b.ir3w1.fun inside {iop31_mul, iop31_fmul})
+      if(inst.i.b.ir3w1.fun inside {iop31_mul, iop31_fmul})
+        rdBkSel[2] = selnull;
+      else
         set_rf_en(inst.i.b.ir3w1.rs2, rdBkSel[2], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
-
+      
       if(inst.i.b.ir3w1.d) begin
         wrEn = '{default : 1};
         adrWr[0] = rd & `GMH(1);

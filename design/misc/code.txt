@@ -1,6 +1,10 @@
 //test asm file
 //tsync ;
 
+//3DFBE76D: 0.123
+options.c0.0x3DFBE76D
+fmul s1 c0 c0 ;
+
 asr.s2g s0 0 0 ;
 
 //nop

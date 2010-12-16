@@ -441,11 +441,11 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
           r0[i]++;
         else
           break;
-  op_ext:   ovm_report_warning("SPA_UNIMP", "ext is not implemented yet");
-  op_ins:   ovm_report_warning("SPA_UNIMP", "ins is not implemented yet");
-  op_seb:   ovm_report_warning("SPA_UNIMP", "seb is not implemented yet");
-  op_she:   ovm_report_warning("SPA_UNIMP", "she is not implemented yet");
-  op_wsbh:  ovm_report_warning("SPA_UNIMP", "wsbh is not implemented yet");
+  op_ext,
+  op_ins,
+  op_seb,
+  op_she,
+  op_wsbh:  ovm_report_warning("SPA_UNIMP", $psprintf("%s is not implemented yet", op.name));
   
   op_cmp,
   op_ucmp,  
@@ -487,6 +487,38 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
     r0 = op0;
   end
   op_vid:   foreach(r0[i]) r0[i] = i + subVec * NUM_SP;
+  op_fmul:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) * $bitstoshortreal(o[1][i]));
+  op_fmad:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[2][i]) + $bitstoshortreal(o[0][i]) * $bitstoshortreal(o[1][i]));
+  op_fmsu:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[2][i]) - $bitstoshortreal(o[0][i]) * $bitstoshortreal(o[1][i]));
+  op_fadd:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) + $bitstoshortreal(o[1][i]));
+  op_fsub:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) + $bitstoshortreal(o[1][i]));
+  op_fmax:  foreach(r0[i]) r0[i] = ($bitstoshortreal(o[0][i]) > $bitstoshortreal(o[1][i])) ? o[0][i] : o[1][1];
+  op_fmin:  foreach(r0[i]) r0[i] = ($bitstoshortreal(o[0][i]) > $bitstoshortreal(o[1][i])) ? o[1][i] : o[0][1];
+  op_fround,
+  op_ffloor,
+  op_ftrunc,
+  op_fceil: foreach(r0[i]) r0[i] = $bitstoshortreal(o[0][i]);
+  op_fabs:  foreach(r0[i]) r0[i] = ($bitstoshortreal(o[0][i]) > 0.0) ? r0[i] : $shortrealtobits(-$bitstoshortreal(o[0][i]));
+  op_fdim:  foreach(r0[i]) r0[i] = ($bitstoshortreal(o[0][i]) > $bitstoshortreal(o[1][i])) ? $shortrealtobits($bitstoshortreal(o[0][i]) - $bitstoshortreal(o[1][i])) : $shortrealtobits(+0.0);
+  op_fdiv:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) / $bitstoshortreal(o[1][i]));
+  op_fmod:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) % $bitstoshortreal(o[1][i]));
+  op_fexp2,
+  op_flog2,
+  op_frootn,
+  op_fpow,
+  op_fpown,
+  op_fpowr,
+  op_fsqrt,
+  op_frsqrt,
+  op_fhypot,
+  op_fsin,
+  op_fcos,
+  op_ftan,
+  op_fatan,
+  op_fsinh,
+  op_fcosh,
+  op_ftanh,
+  op_fatanh:    ovm_report_warning("SPA_UNIMP", $psprintf("%s is not implemented yet", op.name));
   default:  ovm_report_warning("SPA_ILLEGAL", "Illegal instruction opcode!!!");
   endcase
   

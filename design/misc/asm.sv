@@ -5,12 +5,13 @@ $d(s);
 
 `define asm_err(s) $display({"Err: ", string'(s)});
 
-function automatic int get_imm(string tk);
+function automatic word get_imm(string tk);
   string tk0 = tk.substr(0, 0);
   string tk1 = tk.substr(1, 1);
   string tk1n = tk.substr(1, tk.len() - 1);
   string tk2n = tk.substr(2, tk.len() - 1);
   bit neg = 0;
+///  shortreal sr;
   
   if(tk0 == "-") begin
     neg = 1;
@@ -35,6 +36,9 @@ function automatic int get_imm(string tk);
   
   if(neg)
     get_imm = ~get_imm + 1'b1;
+  
+///  if($sscanf(tk, "%f", sr))
+///    get_imm = $shortrealtobits(sr);
 endfunction
 
 function automatic void brk_token(string s, string sp[$], ref string tokens[$]);
