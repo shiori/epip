@@ -197,6 +197,18 @@ class asmig;
               two = 1;
             end
           end
+        "fadd"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_fadd;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
         "and"   :
           begin
             if(immOp[i][2]) begin
@@ -252,11 +264,42 @@ class asmig;
               return 0;
             end
           end
+        "fmul"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop31_fmul;
+              inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = dword[i];
+              two = 1;
+///              three = 1;
+              if(dword[i]) dual = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
         "mad"   :
           begin
             if(enOp[i][3]) begin
               inst[i].i.op = iop_r3w1;
               inst[i].i.b.ir3w1.fun = iop31_mad;
+              inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = dword[i];
+              three = 1;
+              if(dword[i]) dual = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "fmad"   :
+          begin
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop32_fmad;
               inst[i].i.b.ir3w1.s = s[i];
               inst[i].i.b.ir3w1.d = dword[i];
               three = 1;
@@ -282,11 +325,38 @@ class asmig;
               return 0;
             end
           end
+        "fmsu"   :
+          begin
+            if(enOp[i][3]) begin
+              inst[i].i.op = iop_r3w1;
+              inst[i].i.b.ir3w1.fun = iop31_fmsu;
+              inst[i].i.b.ir3w1.s = s[i];
+              inst[i].i.b.ir3w1.d = dword[i];
+              three = 1;
+              if(dword[i]) dual = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
         "sub"   :
           begin
             if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_sub;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "fsub"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_fsub;
               two = 1;
             end
             else begin
@@ -383,6 +453,18 @@ class asmig;
             if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_div;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "fdiv"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_fdiv;
               two = 1;
             end
             else begin
@@ -618,6 +700,18 @@ class asmig;
               return 0;
             end
           end
+        "fmax"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_fmax;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
         "umax"  :
           begin
             if(enOp[i][2]) begin
@@ -635,6 +729,18 @@ class asmig;
             if(enOp[i][2]) begin
               inst[i].i.op = iop_r2w1;
               inst[i].i.b.ir2w1.fun = iop21_min;
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "fmin"   :
+          begin
+            if(enOp[i][2]) begin
+              inst[i].i.op = iop_r2w1;
+              inst[i].i.b.ir2w1.fun = iop21_fmin;
               two = 1;
             end
             else begin
