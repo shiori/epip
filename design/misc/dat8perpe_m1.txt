@@ -506,11 +506,11 @@ add.u v12 v1 s12 ;
 ld.word.rand v21 v12 0 ;
 
 // WNP*(IDX+B) REAL PART
-mul v28 v19 v7 ;
-mul v29 v21 v8 ;
+mul v28 v19 v5 ;
+mul v29 v21 v6 ;
 
-mul v30 v21 v7 ;
-mul v31 v19 v8 ;
+mul v30 v21 v5 ;
+mul v31 v19 v6 ;
 // v19 is tmp2 real part
 sub v19 v28 v29 ;
 // v21 is tmp2 imag part
@@ -561,9 +561,9 @@ vid v2 ;
 // 00000_00, 00001_00; 00010_00;.....
 sll v0 v2 2 ;
 // WNP_adr real part
-//add.u v3 v0 0x2000 ;
+add.u v3 v0 0x2000 ;
 // WNP_adr imag part
-//add.u v4 v0 0x2800 ;
+add.u v4 v0 0x2800 ;
 
 // data real part base addr 1024 real data
 // add.u v0 v0 0 ;
@@ -602,7 +602,7 @@ sub s7 s7 s6 ;
 //add.u s8 s4 1 ;
 
 // p>>j2 (p/v) = 2^e
-srl s8 s6 s4 ;
+sll s8 s6 s4 ;
 
 // nn , k
 li s11 0 ;
@@ -620,8 +620,8 @@ and v5 v2 s8 ;
 cmp.unc.= p1 p2 v5 0 ;
 
 // the destination pe_id
-(p1) add.u v7 v2 s9 ;
-(p2) sub v7 v2 s9 ;
+(p1) add.u v7 v2 s8 ;
+(p2) sub v7 v2 s8 ;
 sll v12 v7 2 ;
 add.u v13 v12 0x1000 ;
 
