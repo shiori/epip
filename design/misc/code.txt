@@ -3,9 +3,9 @@
 
 //3DFBE76D: 0.123
 options.c0.0x3DFBE76D
-fmul s1 c0 c0 ;
+fmul s6 c0 c0 ;
 
-asr.s2g s0 0 0 ;
+s2g s3 0 0 ;
 
 //nop
 //nop
@@ -20,15 +20,6 @@ ld.half s0 c0 0x6 ;
 
 options.c0.0xf0000000
 st.half c0 s0 0x6 ;
-
-li v0 0 ;
-li v0 0 ;
-li v0 0 ;
-li v0 0 ;
-li v0 0 ;
-li v0 0 ;
-li v0 0 ;
-li v0 0 ;
 
 li s0 33 ;
 st.byte zero s0 0x7 ;

@@ -501,7 +501,6 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
   op_fabs:  foreach(r0[i]) r0[i] = ($bitstoshortreal(o[0][i]) > 0.0) ? r0[i] : $shortrealtobits(-$bitstoshortreal(o[0][i]));
   op_fdim:  foreach(r0[i]) r0[i] = ($bitstoshortreal(o[0][i]) > $bitstoshortreal(o[1][i])) ? $shortrealtobits($bitstoshortreal(o[0][i]) - $bitstoshortreal(o[1][i])) : $shortrealtobits(+0.0);
   op_fdiv:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) / $bitstoshortreal(o[1][i]));
-  op_fmod:  foreach(r0[i]) r0[i] = $shortrealtobits($bitstoshortreal(o[0][i]) % $bitstoshortreal(o[1][i]));
   op_fexp2,
   op_flog2,
   op_frootn,

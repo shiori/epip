@@ -114,7 +114,7 @@ class ip4_sys_test extends ovm_test;
               $bits(i_r1w1), $bits(i_r3w1), $bits(i_r2w1), $bits(i_fcr), $bits(i_b), 
               $bits(i_load), $bits(i_store), $bits(i_mctl), $bits(i_fetadd), $bits(i_cmpxchg), 
               $bits(i_mrfa), $bits(i_cmsg), $bits(i_cmp), $bits(i_cmpi), $bits(i_cop),
-              $bits(i_vxchg), $bits(i_i26)));
+              $bits(i_vxchg), $bits(i_i28)));
 ///    #20171ns;
 ///    set_report_verbosity_level_hier(OVM_FULL);
   endtask

@@ -295,7 +295,7 @@ class ise_thread_inf extends ovm_component;
           
         if(iSPU.op == op_fcr) begin
           ///function call
-          if(iSPU.rdBkSel[0] == selfu2) begin
+          if(iSPU.rdBkSel[0] == selpc) begin
             while(fcrRet.size() > NUM_FCR_RET)
               void'(fcrRet.pop_back());
             fcrRet.push_front(pc + iGrpBytes);
@@ -304,7 +304,7 @@ class ise_thread_inf extends ovm_component;
           end
           else if(iSPU.rdBkSel[0] == selz)
             pc = 0;
-          else if(iSPU.rdBkSel[0] inside {[selc0:selc7]})
+          else if(iSPU.rdBkSel[0] >= selc0 && iSPU.rdBkSel[0] <= selc_e)
             pc = co[iSPU.rdBkSel[0] - selc0];
           else begin
             brSrf = 1;
@@ -525,6 +525,44 @@ class ise_thread_inf extends ovm_component;
       
     ///allocate reg read address
     tmp = 0;
+    if(iDSE.enDSE && iDSE.needWrAdr) begin
+      if(iDSE.isVec) begin
+        map_iadr(1, adrs[tmp], iDSE.grpWr[0], iDSE.adrWr[0]);
+        `ip4_info("get wr adr", $psprintf("dse get vrf adr[%0d] %0d", tmp, adrs[tmp]), OVM_FULL)
+      end
+      else begin
+        map_iadr(0, adrs[tmp], iDSE.grpWr[0], iDSE.adrWr[0]);
+        `ip4_info("get wr adr", $psprintf("dse get vrf adr[%0d] %0d", tmp, adrs[tmp]), OVM_FULL)
+      end
+      tmp++;
+    end
+    
+    if(iSPU.enSPU && iSPU.needWrAdr) begin
+      if(iSPU.isVec) begin
+        map_iadr(1, adrs[tmp], iSPU.grpWr[0], iSPU.adrWr[0]);
+        `ip4_info("get wr adr", $psprintf("spu get vrf adr[%0d] %0d", tmp, adrs[tmp]), OVM_FULL)
+      end
+      else begin
+        map_iadr(0, adrs[tmp], iSPU.grpWr[0], iSPU.adrWr[0]);
+        `ip4_info("get wr adr", $psprintf("spu get vrf adr[%0d] %0d", tmp, adrs[tmp]), OVM_FULL)
+      end
+      tmp++;
+    end
+    
+    foreach(iFu[i])
+      if(iFu[i].enFu && iFu[i].needWrAdr) begin
+        if(iFu[i].isVec) begin
+          map_iadr(1, adrs[tmp], iFu[i].grpWr[0], iFu[i].adrWr[0]);
+          `ip4_info("get wr adr", $psprintf("ifu%0d get vrf adr[%0d] %0d",
+                    i, tmp, adrs[tmp]), OVM_FULL)
+        end
+        else begin
+          map_iadr(0, adrs[tmp], iFu[i].grpWr[0], iFu[i].adrWr[0]);
+          `ip4_info("get wr adr", $psprintf("ifu%0d get srf adr[%0d] %0d",
+                    i, tmp, adrs[tmp]), OVM_FULL)
+        end
+        tmp++;
+      end
     
     for(int i = 0; i < CYC_VEC; i++) begin
       for(int j = 0; j < NUM_VRF_BKS; j++)
@@ -571,15 +609,15 @@ class ise_thread_inf extends ovm_component;
     
     decoded = 1;
     
-    foreach(iFu[i])
-      foreach(iFu[0].grpWr[j])
-        iFu[i].grpWr[j] = iFu[i].isVec ? vrfMap[iFu[i].grpWr[j]] : srfMap[iFu[i].grpWr[j]];
-    
-    foreach(iDSE.grpWr[i])
-      iDSE.grpWr[i] = iDSE.isVec ? vrfMap[iDSE.grpWr[i]] : srfMap[iDSE.grpWr[i]];
-
-    foreach(iSPU.grpWr[i])
-      iSPU.grpWr[i] = srfMap[iSPU.grpWr[i]];
+///    foreach(iFu[i])
+///      foreach(iFu[0].grpWr[j])
+///        iFu[i].grpWr[j] = iFu[i].isVec ? vrfMap[iFu[i].grpWr[j]] : srfMap[iFu[i].grpWr[j]];
+///    
+///    foreach(iDSE.grpWr[i])
+///      iDSE.grpWr[i] = iDSE.isVec ? vrfMap[iDSE.grpWr[i]] : srfMap[iDSE.grpWr[i]];
+///
+///    foreach(iSPU.grpWr[i])
+///      iSPU.grpWr[i] = srfMap[iSPU.grpWr[i]];
             
     `ip4_info("decode_igrp", {"\n", sprint()}, OVM_FULL)
   endfunction : decode_igrp

@@ -75,12 +75,13 @@ class asmig;
   bit[4:0][3:0] vecOp, immOp, zeroOp, enOp, bpOp, pdrOp, constOp;
   bit[3:0] tagOp;  /// operation
   bit[4:0] nop;
-  uchar adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
+  uchar adrWr[5], adr[5][4], padr[5]; /// 0 of v0 is stored into adr[i][j] , 4 of p4 is stored into padr[i] 
+  bit needWrAdr[5];
   int imm[5][4] , cont[5][4];  /// imm[i][0] = rd;
   string tag;
   string op[5];
   bit[4:0] en, s, si, dword;  /// option
-  bit mu, su, fcrl, emsk, vxup, alocd, s2g;  /// option
+  bit mu, su, fcrl, emsk, vxup, alocd;  /// option
   bit fcrPc, pb, az;
   bit ldLk, mhalfu, mbyteu;
   bit mhalf, mbyte, stCn;
@@ -145,13 +146,14 @@ class asmig;
     grpMsk = 0;
     adrcnt = 0;
     contNum = 0;
+    needWrAdr = '{default : 0};
     for(int i=0; i < NUM_BP_CO; i++)
       coEn[i] = 0;
     mrst = 0;
   endfunction
 
   function bit pack_grp(ovm_verbosity verb);
-      uchar v_icnt;
+    uchar v_icnt;
     ///assemble each inst
     foreach(inst[i]) begin
       uchar adru[3], bk[3];
@@ -163,22 +165,31 @@ class asmig;
       `asm_msg($psprintf("assemble inst %0d op %s", i, op[i]), OVM_HIGH);
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
-      inst[i].i.b.ir3w1.rd = adr[i][0];
-      if(!isVec[i])
-        inst[i].i.b.ir3w1.rd += 32;
-      else if(zeroOp[i][0])
-        inst[i].i.b.ir3w1.rd = isVec[i] ? 62 : 63;
-        
+      needWrAdr[i] = 1;
+      if(!isVec[i]) begin
+        adrWr[i] = adr[i][0] >> WID_VRF_BKS;
+        inst[i].i.b.ir3w1.rd = (adr[i][0] & `GML(WID_VRF_BKS)) + ird_vrfb0;
+      end
+      else begin
+        adrWr[i] = adr[i][0] >> WID_SRF_BKS;
+        inst[i].i.b.ir3w1.rd = (adr[i][0] & `GML(WID_SRF_BKS)) + ird_srfb0;
+      end
+      
+      if(zeroOp[i][0]) begin
+        inst[i].i.b.ir3w1.rd = isVec[i] ? ird_zv : ird_zs;
+        needWrAdr[i] = 0;
+      end
+      
       case(op[i])
         "li"    :
           begin
             inst[i].i.op = iop_li;
-            {inst[i].i.b.i26.imm1, inst[i].i.b.i26.imm0} = imm[i][1]; 
+            {inst[i].i.b.i28.imm1, inst[i].i.b.i28.imm0} = imm[i][1]; 
           end
         "lu"    :
           begin
             inst[i].i.op = iop_lu;
-            {inst[i].i.b.i26.imm1, inst[i].i.b.i26.imm0} = imm[i][1]; 
+            {inst[i].i.b.i28.imm1, inst[i].i.b.i28.imm0} = imm[i][1]; 
           end
         "add"   :
           begin
@@ -393,23 +404,7 @@ class asmig;
               inst[i].i.b.ir2w1.fun = iop21_srlv;
               two = 1;
             end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
           end
-///        "srlv"  :
-///          begin
-///            if(enOp[i][2]) begin
-///              inst[i].i.op = iop_r2w1;
-///              inst[i].i.b.ir2w1.fun = iop21_srlv;
-///              two = 1;
-///            end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
-///          end
         "sra"   :
           begin
             if(immOp[i][2]) begin
@@ -423,23 +418,7 @@ class asmig;
               inst[i].i.b.ir2w1.fun = iop21_srav;
               two = 1;
             end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
           end
-///        "srav"  :
-///          begin
-///            if(enOp[i][2]) begin
-///              inst[i].i.op = iop_r2w1;
-///              inst[i].i.b.ir2w1.fun = iop21_srav;
-///              two = 1;
-///            end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
-///          end
         "nor"   :
           begin
             if(enOp[i][2]) begin
@@ -597,23 +576,7 @@ class asmig;
               inst[i].i.b.ir2w1.fun = iop21_sllv;
               two = 1;
             end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
           end
-///        "sllv"  :
-///          begin
-///            if(enOp[i][2]) begin
-///              inst[i].i.op = iop_r2w1;
-///              inst[i].i.b.ir2w1.fun = iop21_sllv;
-///              two = 1;
-///            end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
-///          end
         "rot"   :
           begin
             if(immOp[i][2]) begin
@@ -627,23 +590,7 @@ class asmig;
               inst[i].i.b.ir2w1.fun = iop21_rotv;
               two = 1;
             end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
           end
-///        "rotv"  :
-///          begin
-///            if(enOp[i][2]) begin
-///              inst[i].i.op = iop_r2w1;
-///              inst[i].i.b.ir2w1.fun = iop21_rotv;
-///              two = 1;
-///            end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
-///          end
         "seb"   :
           begin
             if(enOp[i][2]) begin
@@ -776,6 +723,7 @@ class asmig;
             inst[i].i.b.fcr.mu = mu;
             inst[i].i.b.fcr.su = su;
             inst[i].i.b.fcr.l  = fcrl;
+            needWrAdr[i] = 0; 
             `asm_msg($psprintf("fcr pc: %0d", fcrPc), OVM_HIGH); 
             if(fcrPc) begin              
               inst[i].i.b.fcr.ja = 14;
@@ -792,6 +740,7 @@ class asmig;
         "b"     :
           begin
             `asm_msg($psprintf("branch tagop: %0d", tagOp[0]), OVM_HIGH);
+            needWrAdr[i] = 0;
             if(tagOp[0]) begin
               case({pb, az})
                 2'b00 : inst[i].i.op = iop_b;
@@ -834,6 +783,7 @@ class asmig;
         "st"    :
           begin
             ps = 0;
+            needWrAdr[i] = 0;
             isVec[i] = vecOp[i][1];
             inst[i].i.b.st.s = !isVec[i];
             if(immOp[i][2]) begin
@@ -884,6 +834,7 @@ class asmig;
           end
         "cache" :
           begin
+            needWrAdr[i] = 0;
             ps = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
@@ -901,6 +852,7 @@ class asmig;
         "pref" :
           begin
             ps = 0;
+            needWrAdr[i] = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = mcfun;
@@ -917,6 +869,7 @@ class asmig;
         "sync" :
           begin
             ps = 0;
+            needWrAdr[i] = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = mcfun;
@@ -933,6 +886,7 @@ class asmig;
         "synci" :
           begin
             ps = 0;
+            needWrAdr[i] = 0;
             if(immOp[i][1]) begin
               inst[i].i.op = iop_mctl;
               inst[i].i.b.mctl.fun = 13;
@@ -959,6 +913,7 @@ class asmig;
           end
         end
         "mrfwr": begin
+          needWrAdr[i] = 0;
           if(immOp[i][3]) begin
             inst[i].i.op = iop_mrfa;
             inst[i].i.b.mrfa.s = imm[i][3];
@@ -974,6 +929,7 @@ class asmig;
         end
         "smsg" :
           begin
+            needWrAdr[i] = 0;
             if(immOp[i][2]) begin
               inst[i].i.op = iop_cmsg;
               inst[i].i.b.cmsg.sr = 1;
@@ -988,6 +944,7 @@ class asmig;
           end
         "gmsg" :
           begin
+            needWrAdr[i] = 0;
             if(immOp[i][0]) begin
               inst[i].i.op = iop_cmsg;
               inst[i].i.b.cmsg.sr = 0;
@@ -1000,6 +957,7 @@ class asmig;
           end
         "cmp"  :
           begin
+            needWrAdr[i] = 0;
             if(immOp[i][3] && pdrOp[i][1]) begin
               ps = 2;
               isVec[i] = 1;
@@ -1028,6 +986,7 @@ class asmig;
           end
         "cmpu" :
           begin
+            needWrAdr[i] = 0;
             if(immOp[i][3] && pdrOp[i][1]) begin
               ps = 2;
               isVec[i] = 1;
@@ -1054,44 +1013,9 @@ class asmig;
               return 0;
             end
           end
-///        "cmpi" :
-///          begin
-///            if(immOp[i][3] && pdrOp[i][1]) begin
-///              ps = 2;
-///              isVec[i] = 1;
-///              inst[i].i.op = iop_cmpi;
-///              inst[i].i.b.cmpi.ctyp = ctyp;
-///              inst[i].i.b.cmpi.mtyp = mtyp;
-///              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
-///              inst[i].i.b.cmp.pr0 = adr[i][0];
-///              inst[i].i.b.cmp.pr1 = adr[i][1];
-///              one = 1;
-///            end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
-///          end
-///        "cmpiu" :
-///          begin
-///            if(immOp[i][3] && pdrOp[i][1]) begin
-///              ps = 2;
-///              isVec[i] = 1;
-///              inst[i].i.op = iop_cmpiu;
-///              inst[i].i.b.cmpi.ctyp = ctyp;
-///              inst[i].i.b.cmpi.mtyp = mtyp;
-///              {inst[i].i.b.cmpi.imm1, inst[i].i.b.cmpi.imm0} = imm[i][3];
-///              inst[i].i.b.cmp.pr0 = adr[i][0];
-///              inst[i].i.b.cmp.pr1 = adr[i][1];
-///              one = 1;
-///            end
-///            else begin
-///              `asm_err("op number does not match with the op_code!");
-///              return 0;
-///            end
-///          end
         "alloc" :
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_alloc;
             inst[i].i.op =iop_cop;
             if(!alocd) begin
@@ -1113,6 +1037,7 @@ class asmig;
           end
         "sysc"  : 
           begin
+            needWrAdr[i] = 0;
             ps = 0;
             inst[i].i.b.cop.fun = icop_alloc;
             inst[i].i.op = iop_cop;
@@ -1127,11 +1052,13 @@ class asmig;
           end
         "ipwait" : 
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_wait;
             inst[i].i.op = iop_cop;
           end
         "ipexit" :
-          begin 
+          begin
+            needWrAdr[i] = 0;
             ps = 0;
             inst[i].i.b.cop.fun = icop_exit;
             inst[i].i.op = iop_cop;
@@ -1144,6 +1071,7 @@ class asmig;
           end
         "ipbreak": 
           begin
+            needWrAdr[i] = 0;
             ps = 0;
             inst[i].i.b.cop.fun = icop_brk;
             inst[i].i.op = iop_cop;
@@ -1156,64 +1084,73 @@ class asmig;
           end
         "tsync" : 
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_tsync;
             inst[i].i.op = iop_cop;
           end
         "msync" : 
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_msync;
             inst[i].i.op = iop_cop;
           end
         "tlbp"  : 
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_tlbp;
             inst[i].i.op = iop_cop;
           end
         "tlbr"  : 
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_tlbr;
             inst[i].i.op = iop_cop;
           end  
         "tlbwi" : 
           begin
+            needWrAdr[i] = 0;
             inst[i].i.b.cop.fun = icop_tlbwi;
             inst[i].i.op = iop_cop;
           end
         "tlbwr" : 
           begin
+            needWrAdr[i] = 0;
             `asm_msg("it is tlbwr inst", OVM_FULL);
             inst[i].i.b.cop.fun = icop_tlbwr;
             inst[i].i.op = iop_cop;            
           end
-        "asr"   : 
+        "s2g"   : 
           begin
             inst[i].i.b.cop.fun = icop_asr;
             inst[i].i.op = iop_cop;
-            inst[i].i.b.cop.code[0] = s2g;
-            if(s2g) begin
-              enOp[i][0] = 0;
-              enOp[i][1] = 0;
-              enOp[i][2] = 0;
-              if(immOp[i][2]) begin
-                inst[i].i.b.cop.code[10:2] = imm[i][2];
-                inst[i].i.b.cop.code[20:15] = imm[i][1];
-              end
-              else begin
-                `asm_err("op number does not match with the op_code!");
-                return 0;
-              end
+            enOp[i][0] = 0;
+            enOp[i][1] = 0;
+            enOp[i][2] = 0;
+            inst[i].i.b.cop.code[0] = 1;
+            if(immOp[i][2]) begin
+              inst[i].i.b.cop.code[9:1] = imm[i][2];
+              inst[i].i.b.cop.code[17:10] = imm[i][1];
             end
             else begin
-              one = 1;
-              if(immOp[i][2]) begin
-                inst[i].i.b.cop.code[10:2] = imm[i][2];
-                inst[i].i.b.cop.code[25:21] = imm[i][0];
-              end
-              else begin
-                `asm_err("op number does not match with the op_code!");
-                return 0;
-              end
-            end            
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
+        "g2s"   :
+          begin
+            inst[i].i.b.cop.fun = icop_asr;
+            inst[i].i.op = iop_cop;
+            needWrAdr[i] = 0;
+            one = 1;
+            inst[i].i.b.cop.code[0] = 0;
+            if(immOp[i][2]) begin
+              inst[i].i.b.cop.code[9:1] = imm[i][2];
+              inst[i].i.b.cop.code[17:10] = imm[i][1];
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
           end
         "eret"  : 
           begin
@@ -1436,6 +1373,13 @@ class asmig;
     end
     
     ///collect all address
+    foreach(en[i])
+      if(en[i] && needWrAdr[i]) begin
+        allAdr[adrcnt] = isVec[i] ? adr[i][0] >> WID_VRF_BKS : adr[i][0] >> WID_SRF_BKS;
+         `asm_msg($psprintf("wr address %0d :%0d", adrcnt, allAdr[adrcnt]), OVM_FULL);
+        adrcnt++;
+      end
+    
     for(int i = 0; i < CYC_VEC; i++) begin
       `asm_msg("collect address" , OVM_FULL);
       for(int j = 0; j < NUM_VRF_BKS; j++) begin
@@ -1811,8 +1755,6 @@ class ip4_assembler;
               "rand" : cur.ty = 1;
               "randnu" : cur.ty = 2;
               "alocd" : cur.alocd = 1;
-              "s2g" : cur.s2g = 1;
-              "g2s" : cur.s2g = 0; 
               "icah" : cur.devcah = 0;
               "dcah" : cur.devcah = 1;
               "ihit" : cur.opcah  = 0;

@@ -266,12 +266,13 @@ typedef bit[PADR_WIDTH - WORD_BYTES - WID_SMEM_BK - 1:0] exadr_t;
 
 typedef enum uchar {
   selnull, selv[0:127], sels[0:31], selc[0:7], selz,
-  selii, selspu, seldse, selfu[0:15]
+  selii, selpc, selspu, seldse, selfu[0:15]
 } rbk_sel_e;
   
 parameter rbk_sel_e selv_e = rbk_sel_e'(selv0 + NUM_VRF_BKS * CYC_VEC - 1),
                     sels_e = rbk_sel_e'(sels0 + NUM_SRF_BKS * CYC_VEC - 1),
-                    selc_e = rbk_sel_e'(selc0 + NUM_BP_CO - 1);
+                    selc_e = rbk_sel_e'(selc0 + NUM_BP_CO - 1),
+                    selb_e = rbk_sel_e'(selfu0 + NUM_FU - 1);
 
 typedef enum uchar {
   mac, alu, dse, sfu, spu
@@ -371,7 +372,7 @@ typedef enum uchar {
   ///sfu opcodes
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
-  op_fdiv,    op_fmod,    op_fexp2,
+  op_fdiv,    op_fexp2,
   op_flog2,   op_frootn,  op_fpow,
   op_fpown,   op_fpowr,   op_fsqrt,
   op_frsqrt,  op_fhypot,  op_fsin,
@@ -409,7 +410,7 @@ parameter opcode_e bp_ops[] = '{
 parameter opcode_e sfu_only_ops[] = '{
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
-  op_fdiv,    op_fmod,    op_fexp2,
+  op_fdiv,    op_fexp2,
   op_flog2,   op_frootn,  op_fpow,
   op_fpown,   op_fpowr,   op_fsqrt,
   op_frsqrt,  op_fhypot,  op_fsin,
