@@ -1,6 +1,11 @@
 //test asm file
 //tsync ;
+vid v0 ;
 
+nop
+add s21 s18 1 
+add v43 v0 3
+add v36 v33 6
 add v53 v46 v34 ;
 
 //3DFBE76D: 0.123

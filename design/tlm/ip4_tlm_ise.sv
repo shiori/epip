@@ -1094,7 +1094,7 @@ class ip4_tlm_ise extends ovm_component;
     ise_thread_inf t = thread[tid];
     `ip4_info("can_req_ifetch", $psprintf("tid %0d, %s, iBuf lv %0d, pd %0d, sel %0d",
               tid, t.threadState.name, t.iBuf.size(), t.pendIFetch, v.TIdFetchSel), OVM_MEDIUM)
-    if(t.threadState inside {ts_disabled, ts_w_rst})
+    if(t.threadState inside {ts_disabled, ts_w_rst, ts_w_tsyn})
       return 0;
     if((t.iBuf.size() + (t.pendIFetch + 1) * NUM_IFET_BYTES) >  NUM_IBUF_BYTES)
       return 0;
@@ -1121,7 +1121,7 @@ class ip4_tlm_ise extends ovm_component;
     if(t.waitPip && t.iCnt > 0)
       return 0;
     
-    if(t.iwCnt > t.iCnt && t.iwCnt != 0)
+    if(t.iCnt >= t.iwCnt && t.iwCnt != 0)
       return 0;
       
     if(t.waitLng && t.ilCnt > 0)
@@ -1692,7 +1692,7 @@ class ip4_tlm_ise extends ovm_component;
         if(v.TIdIssueSel == tid || thread[v.TIdIssueSel].threadState != ts_rdy) begin
           for(int j = 1; i < NUM_THREAD; j++) begin
             uchar nxt = (v.TIdIssueSel + j) & `GML(WID_TID);
-            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst}) begin
+            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst, ts_w_tsyn}) begin
               vn.TIdIssueSel = nxt;
               break;
             end
@@ -1720,13 +1720,13 @@ class ip4_tlm_ise extends ovm_component;
       if(t.iBuf.size() > 1 && !t.decoded)
         t.decode_igrp_start();
               
-      if(!(t.threadState inside {ts_disabled, ts_w_rst}) && t.iBuf.size() > 2
+      if(!(t.threadState inside {ts_disabled, ts_w_rst, ts_w_tsyn}) && t.iBuf.size() > 2
            && !t.decoded && t.iBuf.size() >= t.iGrpBytes) begin
         t.decode_igrp();
         if(v.TIdDecodeSel == tid || thread[v.TIdDecodeSel].threadState != ts_rdy) begin
           for(int j = 1; i < NUM_THREAD; j++) begin
             uchar nxt = (v.TIdDecodeSel + j) & `GML(WID_TID);
-            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst}) begin
+            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst, ts_w_tsyn}) begin
               vn.TIdDecodeSel = nxt;
               break;
             end
@@ -1866,7 +1866,7 @@ class ip4_tlm_ise extends ovm_component;
         if(v.TIdFetchSel == tid || thread[v.TIdFetchSel].threadState != ts_rdy) begin
           for(int j = 1; i < NUM_THREAD; j++) begin
             uchar nxt = (v.TIdFetchSel + j) & `GML(WID_TID);
-            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst}) begin
+            if(!thread[nxt].threadState inside {ts_disabled, ts_w_rst, ts_w_tsyn}) begin
               vn.TIdFetchSel = nxt;
               break;
             end
@@ -1897,7 +1897,7 @@ class ip4_tlm_ise extends ovm_component;
       toEIF.issueFMsg = toDSE.op == op_fmrf;
       toEIF.issueTMsg = toDSE.op == op_tmrf;
     end
-    $display($psprintf("t2 iwCnt = %0d", thread[2].iwCnt));
+///    $display($psprintf("t2 iwCnt = %0d", thread[2].iwCnt));
     ///------------req to other module----------------
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));

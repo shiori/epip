@@ -901,18 +901,18 @@ class inst_c extends ovm_object;
       endcase
     end
     
-    if(isVec)
-      foreach(adrWr[i]) begin
-        bkWr[i] = adrWr[i] & `GML(WID_VRF_BKS);
-        grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
-        adrWr[i] = (adrWr[i] >> WID_VRF_BKS) & `GML(WID_PRF_P_GRP - WID_VRF_BKS);
-      end
-  	else
-      foreach(adrWr[i]) begin
-        bkWr[i] = adrWr[i] & `GML(WID_SRF_BKS);
-        grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
-        adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
-      end
+///    if(isVec)
+///      foreach(adrWr[i]) begin
+///        bkWr[i] = adrWr[i] & `GML(WID_VRF_BKS);
+///        grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+///        adrWr[i] = (adrWr[i] >> WID_VRF_BKS) & `GML(WID_PRF_P_GRP - WID_VRF_BKS);
+///      end
+///  	else
+///      foreach(adrWr[i]) begin
+///        bkWr[i] = adrWr[i] & `GML(WID_SRF_BKS);
+///        grpWr[i] = adrWr[i] >> WID_PRF_P_GRP;
+///        adrWr[i] = (adrWr[i] >> WID_SRF_BKS) & `GML(WID_PRF_P_GRP - WID_SRF_BKS);
+///      end
       
     if(noRfWr)
       wrEn = '{default : 0};

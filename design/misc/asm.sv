@@ -157,12 +157,12 @@ class asmig;
     ///assemble each inst
     foreach(inst[i]) begin
       uchar adru[3], bk[3];
-      uchar bksel[3] = '{default : 15};
+      uchar bksel[3] = '{default : irs_z};
       bit dual = 0, three = 0, one = 0, two = 0;
       uchar ps = 1;
       
       if(!en[i]) break;
-      `asm_msg($psprintf("assemble inst %0d op %s", i, op[i]), OVM_HIGH);
+      `asm_msg($psprintf("--assemble inst %0d op %s", i, op[i]), OVM_HIGH);
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
       needWrAdr[i] = 1;
@@ -1190,6 +1190,7 @@ class asmig;
         "nop": begin
           nop[i] = 1;
           enOp[i] = 0;
+          needWrAdr[i] = 0;
         end
         "vid": begin
           `asm_msg("it is vid inst", OVM_FULL);
@@ -1214,7 +1215,7 @@ class asmig;
               vrfAdr[k][bk[2]] = adru[2];
               vrfAdr[k][bk[2] + 1] = 255;
               failed = 0;
-              bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
+              bksel[2] = irs_vrf0 + k * NUM_VRF_BKS + bk[2];
               break;
             end
           end
@@ -1229,7 +1230,7 @@ class asmig;
               srfAdr[k][bk[2]] = adru[2];
               srfAdr[k][bk[2] + 1] = 255;
               failed = 0;
-              bksel[2] = k * NUM_SRF_BKS + bk[2];
+              bksel[2] = irs_srf0 + k * NUM_SRF_BKS + bk[2];
               break;
             end
           end
@@ -1254,7 +1255,7 @@ class asmig;
               `asm_msg($psprintf("Three of 2 vrfAdr %0d, ", adru[2]), OVM_FULL);
               failed = 0;
               `asm_msg($psprintf("bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
-              bksel[2] = 16 + k * NUM_VRF_BKS + bk[2];
+              bksel[2] = irs_vrf0 + k * NUM_VRF_BKS + bk[2];
               break;
             end
           end
@@ -1271,7 +1272,7 @@ class asmig;
               `asm_msg($psprintf("Three of 2 srfAdr %0d, ", adru[2]), OVM_FULL);
               failed = 0;
               `asm_msg($psprintf("bk 2 of r3w1 %0d", bk[2]), OVM_FULL);
-              bksel[2] = k * NUM_SRF_BKS + bk[2];
+              bksel[2] = irs_srf0 + k * NUM_SRF_BKS + bk[2];
               break;
             end
           end
@@ -1288,15 +1289,15 @@ class asmig;
       foreach(bk[j]) begin    
         `asm_msg("assign rs0 and rs1 bank!", OVM_FULL);   
         if(zeroOp[i][ps + j]) begin
-          bksel[j] = 15;
+          bksel[j] = irs_z;
           continue;
         end
         if(bpOp[i][ps + j]) begin
-          bksel[j] = 12 + adr[i][ps + j];
+          bksel[j] = irs_bp0 + adr[i][ps + j];
           continue;
         end
         if(constOp[i][ps + j]) begin
-          bksel[j] = 8 + adr[i][ps + j];
+          bksel[j] = irs_co0 + adr[i][ps + j];
           continue;
         end
         if(!enOp[i][ps + j]) begin
@@ -1324,7 +1325,7 @@ class asmig;
                 `asm_msg($psprintf("bk[%0d], vrfEn[%0d][bk[%0d]]: %0d, ", j, k,j,vrfEn[k][bk[j]]), OVM_FULL);
                 `asm_msg($psprintf("vrfAdr %0d, j:%0d", adru[j],j), OVM_FULL);
                 failed = 0;
-                bksel[j] = 16 + k * NUM_VRF_BKS + bk[j];
+                bksel[j] = irs_vrf0 + k * NUM_VRF_BKS + bk[j];
                 break;
               end
             if(failed) begin
@@ -1348,7 +1349,7 @@ class asmig;
                 srfEn[k][bk[j]] = 1;
                 srfAdr[k][bk[j]] = adru[j];
                 failed = 0;
-                bksel[j] = k * NUM_SRF_BKS + bk[j];
+                bksel[j] = irs_srf0 + k * NUM_SRF_BKS + bk[j];
                 break;
               end
             if(failed) begin
@@ -1373,31 +1374,27 @@ class asmig;
     end
     
     ///collect all address
-    foreach(en[i])
-      if(en[i] && needWrAdr[i]) begin
+    `asm_msg("--collect address" , OVM_FULL);
+    for(int i = 0; i < 5; i++)
+      if(en[i] && !nop[i] && needWrAdr[i]) begin
         allAdr[adrcnt] = isVec[i] ? adr[i][0] >> WID_VRF_BKS : adr[i][0] >> WID_SRF_BKS;
-         `asm_msg($psprintf("wr address %0d :%0d", adrcnt, allAdr[adrcnt]), OVM_FULL);
+         `asm_msg($psprintf("wr address[%0d] :%0d, inst%0d", adrcnt, allAdr[adrcnt], i), OVM_FULL);
         adrcnt++;
       end
     
     for(int i = 0; i < CYC_VEC; i++) begin
-      `asm_msg("collect address" , OVM_FULL);
       for(int j = 0; j < NUM_VRF_BKS; j++) begin
-        `asm_msg($psprintf("vrfEn[%0d][%0d] :%0d", i,j,vrfEn[i][j]), OVM_FULL);
-        `asm_msg($psprintf("vector address  :%0d", vrfAdr[i][j]), OVM_FULL);
         if(vrfEn[i][j] && vrfAdr[i][j] < NUM_INST_VRF) begin
-          `asm_msg($psprintf("adrcnt address:%0d", adrcnt), OVM_FULL);
           allAdr[adrcnt] = vrfAdr[i][j];
-          `asm_msg($psprintf("vector address:%0d", allAdr[adrcnt]), OVM_FULL);
+          `asm_msg($psprintf("rd address[%0d] = %0d, vrfEn[%0d][%0d]", adrcnt, allAdr[adrcnt], i, j), OVM_FULL);
           adrcnt++;
         end
       end
          
       for(int j = 0; j < NUM_SRF_BKS; j++)
         if(srfEn[i][j] && srfAdr[i][j] < NUM_INST_SRF) begin
-          `asm_msg($psprintf("count scalar address:%0d", adrcnt), OVM_FULL);
           allAdr[adrcnt] = srfAdr[i][j];
-          `asm_msg($psprintf("scalar address:%0d", allAdr[adrcnt]), OVM_FULL);
+          `asm_msg($psprintf("rd address[%0d] = %0d, srfEn[%0d][%0d]", adrcnt, allAdr[adrcnt], i, j), OVM_FULL);
           adrcnt++;
         end
     end
@@ -1603,10 +1600,10 @@ class ip4_assembler;
       if(cur == null) cur  = new();
       s = s.tolower();
       `asm_msg($psprintf("current pc 0x%0h", pc), OVM_HIGH);
-      `asm_msg("@@Asm code as follows:", OVM_HIGH);
+      `asm_msg("--Asm code as follows:", OVM_HIGH);
       `asm_msg(s, OVM_HIGH, write);
       brk_token(s, '{" ", "\t", "\n"}, tokens);
-      `asm_msg("@@Tokens:", OVM_MEDIUM);
+      `asm_msg("--Tokens:", OVM_MEDIUM);
       foreach(tokens[i])
         `asm_msg({tokens[i], "||"}, OVM_MEDIUM, write);
       `asm_msg("\n", OVM_MEDIUM, write);
@@ -1617,7 +1614,7 @@ class ip4_assembler;
         string tk1 = tk.substr(1, 1);
         string tk1n = tk.substr(1, tk.len() - 1);
         string tk2n = tk.substr(2, tk.len() - 1);
-        `asm_msg({"@@read token ", tk}, OVM_HIGH);
+        `asm_msg({"--read token ", tk}, OVM_HIGH);
         if(tk0 == "/") begin
           isInst = 0;
           `asm_msg("it's a comment.", OVM_HIGH);
@@ -1629,7 +1626,7 @@ class ip4_assembler;
           break;
         end
         else if(tk0 == ";") begin
-          `asm_msg("it's a group end.", OVM_HIGH);          
+          `asm_msg("-----it's a group end.", OVM_HIGH);          
           if(!cur.pack_grp(verb)) begin
             `asm_err("pack instruction grp failed");
             return 0;
