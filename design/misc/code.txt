@@ -6,7 +6,13 @@ nop
 add s21 s18 1 
 add v43 v0 3
 add v36 v33 6
-add v53 v46 v34 ;
+add v53 v46 v0 ;
+
+nop
+add s21 s21 1 
+add v43 v43 3
+add v36 v36 6
+add v53 v53 v36 ;
 
 //3DFBE76D: 0.123
 options.c0.0x3DFBE76D

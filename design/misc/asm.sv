@@ -1404,16 +1404,13 @@ class asmig;
     
     `asm_msg($psprintf("adrcnt :%0d", adrcnt), OVM_FULL);
     if(adrcnt > 0) begin
-        modBytes = (adrcnt  * 3) % 8;
+        modBytes = (adrcnt  * WID_INST_ADR) % 8;
         `asm_msg($psprintf("modBytes :%0d", modBytes), OVM_FULL);
         if(modBytes != 0) begin
-///          if(modBytes == 1)
-///            adrBytes = adrcnt * 3 / 8;
-///          else
-            adrBytes = (adrcnt * 3 / 8) + 1;
+          adrBytes = (adrcnt * WID_INST_ADR / 8) + 1;
         end
         else
-          adrBytes = (adrcnt * 3 / 8);
+          adrBytes = (adrcnt * WID_INST_ADR / 8);
     end
     else
       adrBytes = 0;
