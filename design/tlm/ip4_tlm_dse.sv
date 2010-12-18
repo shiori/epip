@@ -2033,6 +2033,20 @@ class ip4_tlm_dse extends ovm_component;
     if(smFilePath != "")
       $readmemh(smFilePath, sharedMem);
   endfunction
+
+  virtual function void report();
+    int fp0, fp1;
+    fp0 = $fopen("sm_hex.txt", "w");
+    fp1 = $fopen("sm_float.txt", "w");
+    for(int i = 0; i < NUM_SMEM_GRP; i++)
+      for(int j = 0; j < NUM_SMEM_GRP_W; j++)
+        for(int k = 0; k < NUM_SP; k++) begin
+          shortreal sr;
+          $fwrite(fp0, "%h\n", sharedMem[i][j][k]);
+          $fwrite(fp1, "%f\n", $bitstoshortreal(sharedMem[i][j][k]));
+        end
+  endfunction
+  
 endclass : ip4_tlm_dse
 
 ///-------------------------------------other functions-----------------------------------------

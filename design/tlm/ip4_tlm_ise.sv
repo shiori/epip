@@ -1897,7 +1897,7 @@ class ip4_tlm_ise extends ovm_component;
       toEIF.issueFMsg = toDSE.op == op_fmrf;
       toEIF.issueTMsg = toDSE.op == op_tmrf;
     end
-    
+    $display($psprintf("t2 iwCnt = %0d", thread[2].iwCnt));
     ///------------req to other module----------------
     if(toRFM != null) void'(rfm_tr_port.nb_transport(toRFM, toRFM));
     if(toSPU != null) void'(spu_tr_port.nb_transport(toSPU, toSPU));

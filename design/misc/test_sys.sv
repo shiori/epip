@@ -44,7 +44,7 @@ class ip4_sys_test extends ovm_test;
     set_config_int("*", "imSize", 4096);
     set_config_int("*", "dmBase", 0);
     set_config_int("*", "dmSize", 64 * 1024);
-    set_config_string("*", "imFilePath", "../misc/code.txt"); ///average_filter
+    set_config_string("*", "imFilePath", "../misc/dat8perpe_4td_vliw.txt"); ///average_filter dat8perpe_4td_vliw
     set_config_string("*", "smFilePath", "../misc/sm.txt");
     set_config_string("*", "dmFilePath", "../misc/mem.txt");
     set_config_int("*", "pbId", 2);
@@ -83,9 +83,9 @@ class ip4_sys_test extends ovm_test;
     
 ///    set_config_int("*thread0*", "threadState", ts_disabled);
     
-///    set_config_int("*thread1*", "threadState", ts_rdy);
-///    set_config_int("*thread2*", "threadState", ts_rdy);
-///    set_config_int("*thread3*", "threadState", ts_rdy);
+    set_config_int("*thread1*", "threadState", ts_rdy);
+    set_config_int("*thread2*", "threadState", ts_rdy);
+    set_config_int("*thread3*", "threadState", ts_rdy);
     
     set_config_int("*thread1*", "privMode", priv_kernel);
     set_config_int("*thread2*", "privMode", priv_kernel);

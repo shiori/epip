@@ -375,6 +375,7 @@ class inst_c extends ovm_object;
     `ovm_field_int(imm, OVM_ALL_ON)
     `ovm_field_int(offSet, OVM_ALL_ON)
     `ovm_field_sarray_int(wrEn, OVM_ALL_ON)
+    `ovm_field_sarray_int(bkWr, OVM_ALL_ON)
     `ovm_field_sarray_int(adrWr, OVM_ALL_ON)
     `ovm_field_sarray_int(grpWr, OVM_ALL_ON)
     `ovm_field_enum(cmp_opcode_e, cmpOp, OVM_ALL_ON)

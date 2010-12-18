@@ -166,7 +166,7 @@ class asmig;
       isVec[i] = vecOp[i][0];
       inst[i].i.p = padr[i];
       needWrAdr[i] = 1;
-      if(!isVec[i]) begin
+      if(isVec[i]) begin
         adrWr[i] = adr[i][0] >> WID_VRF_BKS;
         inst[i].i.b.ir3w1.rd = (adr[i][0] & `GML(WID_VRF_BKS)) + ird_vrfb0;
       end
