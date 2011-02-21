@@ -12,4 +12,4 @@
 ///`include "ip4_rtl_eif.sv"
 ///`include "ip4_rtl_ife.sv"
 ///`include "ip4_rtl_agent.sv"
-///`include "ip4_rtl_core.sv"
+`include "ip4_rtl_core.sv"

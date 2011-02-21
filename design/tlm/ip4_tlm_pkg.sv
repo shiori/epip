@@ -91,6 +91,7 @@ endclass
 `include "../misc/test_sys.sv"
 `include "../misc/test.sv"
 `include "../misc/test_algorithm.sv"
+`include "../misc/test_direct.sv"
 
 endpackage : ip4_tlm_pkg
 

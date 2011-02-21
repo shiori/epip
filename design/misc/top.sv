@@ -6,9 +6,26 @@ module top;
   import ip4_tlm_pkg::*;
   
   tlm_vif_object vif;
-  bit clk;
+  bit clk, rst_n;
   tlm_sys_if sysif(.*);
   always #(CLK_P/2) clk = !clk;
+  
+  ip4_axi_if axim(
+    .aclk  (clk)
+  );
+
+  ip4_axi_if axis(
+    .aclk  (clk)
+  );
+    
+  ip4_rtl_core #(
+    .pbId   (2)
+  )core(
+    .clk,
+    .rst_n,
+    .axim,
+    .axis
+  );
   
   initial begin
     vif = new("vif");

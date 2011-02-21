@@ -12,7 +12,7 @@
 
 `ifndef IP4_RTL_PKG
 `define IP4_RTL_PKG
-`include "ip4_rtl.svh"
+///`include "ip4_rtl.svh"
 
 package ip4_rtl_pkg;
 `include "ip4_tlm_ts.svh"
