@@ -2,6 +2,7 @@
 `include "ip4_rtl_pkg.sv"
 `include "ip4_rtl_if.svh"
 
+`include "ip4_rtl_bb.sv"
 ///`include "ip4_rtl_rfm.sv"
 `include "ip4_rtl_spa.sv"
 ///`include "ip4_rtl_spu.sv"

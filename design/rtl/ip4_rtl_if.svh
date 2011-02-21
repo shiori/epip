@@ -7,24 +7,54 @@ interface ip4_axi_if(input logic aclk);
   `include "ip4_tlm_ts.svh"
   import ip4_rtl_pkg::*;
   
-  logic [WID_AXI_ID-1:0] awid, wid, rid;
+  logic [WID_AXI_ID-1:0] awid, wid, rid, bid, arid;
   logic [WID_AXI_DATA-1:0] wdata, rdata;
-  logic [WID_AXI_ADDR-1:0] awaddr;
+  logic [WID_AXI_ADDR-1:0] awaddr, araddr;
   
-  logic [3:0] awlen;
-  logic [2:0] awsize;
+  logic [3:0] awlen, awcache;
+  logic [2:0] awsize, awprot;
+  logic [1:0] awburst, awlock;
+  logic awvalid, awready;
   
   logic [BYTES_AXI_DATA-1:0] wstrb;
   logic wlast, wvalid, wready;
   
+  logic [1:0] bresp;
+  logic bvalid, bready;
   
+  logic [3:0] arlen, arcache;
+  logic [2:0] arsize, arprot;
+  logic [1:0] arburst, arlock;
+  logic arvalid, arready;
+  
+  logic [1:0] rresp;
+  logic rlast, rvalid, rready;
   
  	modport mst(
-   	input aclk
+   	input aclk,
+   	      awready,
+   	      wready,
+   	      bid, bresp, bvalid,
+   	      arready,
+   	      rid, rdata, rresp, rlast, rvalid,
+   	output awid, awaddr, awlen, awsize, awburst, awlock, awcache, awprot, awvalid,      
+   	       wid, wdata, wstrb, wlast, wvalid, 
+   	       bready,
+   	       arid, araddr, arlen, arsize, arburst, arlock, arcache, arprot, arvalid,
+   	       rready
    );
    
-   modport slv(
-   	input aclk
+  modport slv(
+   	 input aclk,
+   	       awid, awaddr, awlen, awsize, awburst, awlock, awcache, awprot, awvalid,      
+           wid, wdata, wstrb, wlast, wvalid, 
+   	       bready,
+   	       arid, araddr, arlen, arsize, arburst, arlock, arcache, arprot, arvalid,
+   	       rready,
+   	output awready,
+   	       wready,
+   	       bid, bresp, bvalid,
+   	       arready
    );
 endinterface
 
