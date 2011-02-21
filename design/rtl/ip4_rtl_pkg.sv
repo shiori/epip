@@ -79,6 +79,11 @@ function automatic ulong min2(
     min2 = a1;
 endfunction
 
+parameter uchar WID_AXI_DATA    = 64,
+                WID_AXI_ADDR    = 32,
+                WID_AXI_ID      = 4,
+                BYTES_AXI_DATA  = WID_AXI_DATA / 8;
+
 parameter uchar LAT_MAC           = 5,
                 LAT_SFU           = 16,
                 LAT_RF            = 1,

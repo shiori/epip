@@ -5,12 +5,12 @@
 /// File             : ip4_rtl_spa.sv
 /// Title            : ip4 stream processor array
 /// Version          : 0.1
-/// Last modified    : Feb 7 2011
+/// Last modified    : Feb 20 2011
 /// =============================================================================
 ///Log:
-///Created by Andy Chen on Feb 7 2011
+///Created by Andy Chen on Feb 20 2011
 
-module ip4_rtl_spa(ip4_rtl_if.spa intf);
+module ip4_rtl_spa(ip4_int_if.spa intf);
 
 
 endmodule : ip4_rtl_spa
