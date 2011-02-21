@@ -41,7 +41,6 @@
 import ovm_pkg::*;
 `include "ovm_macros.svh"
 import ip4_tlm_pkg::*;
-import tlm_rec_pkg::*;
 
 `endif
 
