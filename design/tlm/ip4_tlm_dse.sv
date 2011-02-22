@@ -68,9 +68,8 @@ class sxg_t;
   bit sMemOpy[NUM_SP],   ///occupy for onchip shared mem
       exMemOpy[NUM_SP], ///cl info for ex store
       exEn[NUM_SP][WORD_BYTES],  ///ext enabled
-      exEn1[NUM_SP][WORD_BYTES],
-      exEn2[NUM_SP][WORD_BYTES],
-      exEn3[NUM_SP][WORD_BYTES],
+      exLxgEn[NUM_SP][WORD_BYTES],
+      exSxgEn[NUM_SP][WORD_BYTES],
       sMemWEn[NUM_SP][WORD_BYTES];
   uint sMemAdr[NUM_SP], sMemGrp[NUM_SP];  ///on chip adr grp
   wordu stData[NUM_SP]; ///store exchange buffer
@@ -659,12 +658,11 @@ class ip4_tlm_dse extends ovm_component;
                 uchar os3 = selEndian ? os2 : WORD_BYTES - os2;
                 if(exNeedSxg) begin
                   sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
-                  sxgBuf[slot].exEn3[bk][os3] = ex;
+                  sxgBuf[slot].exSxgEn[bk][os3] = ex;
                 end
                 sxgBuf[slot].sMemWEn[bk][os2] = ocWEn;
-                sxgBuf[minSlot + clc].exEn[bk][os3] = ex && exNeedSxg;
-                sxgBuf[minSlot + clc].exEn1[bk][os3] = ex && !exNeedSxg;
-                sxgBuf[minSlot + clc].exEn2[bk][os3] = ex && !exNeedSxg;
+                sxgBuf[minSlot + clc].exEn[bk][os3] = ex;
+                sxgBuf[minSlot + clc].exLxgEn[bk][os3] = ex && !exNeedSxg;
                 sxgBuf[minSlot + clc].sl[bk][os3] = cyc;
                 sxgBuf[minSlot + clc].os[bk][os3] = os2;
                 sxgBuf[minSlot + clc].bk[bk][os3] = sp;
@@ -672,8 +670,7 @@ class ip4_tlm_dse extends ovm_component;
             op_lw,
             op_ll: 
               for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
-                sxgBuf[minSlot + clc].exEn[bk][os2] =  ex && exNeedSxg;
-                sxgBuf[minSlot + clc].exEn1[bk][os2] =  ex && !exNeedSxg;
+                sxgBuf[minSlot + clc].exEn[bk][os2] =  ex;
                 sxgBuf[minSlot + cyc].os[sp][os2] = os2;
                 sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
@@ -685,12 +682,11 @@ class ip4_tlm_dse extends ovm_component;
                 uchar os3 = selEndian ? adr2 + os2 : WORD_BYTES - adr2 - os2;
                 if(exNeedSxg) begin
                   sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
-                  sxgBuf[slot].exEn3[bk][os3] = ex;
+                  sxgBuf[slot].exSxgEn[bk][os3] = ex;
                 end
                 sxgBuf[slot].sMemWEn[bk][adr2 + os2] = ocWEn;
-                sxgBuf[minSlot + clc].exEn[bk][os3] = ex && exNeedSxg;
-                sxgBuf[minSlot + clc].exEn1[bk][os3] = ex && !exNeedSxg;
-                sxgBuf[minSlot + clc].exEn2[bk][os3] = ex && !exNeedSxg;
+                sxgBuf[minSlot + clc].exEn[bk][os3] = ex;
+                sxgBuf[minSlot + clc].exLxgEn[bk][os3] = ex && !exNeedSxg;
                 sxgBuf[minSlot + clc].os[bk][os3] = os2;
                 sxgBuf[minSlot + clc].sl[bk][os3] = cyc;
                 sxgBuf[minSlot + clc].bk[bk][os3] = sp;
@@ -701,8 +697,7 @@ class ip4_tlm_dse extends ovm_component;
             begin
               uchar adr2 = os & `GMH(WID_HALF);
               for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
-                sxgBuf[minSlot + clc].exEn[bk][adr2 + os2] = ex && exNeedSxg;
-                sxgBuf[minSlot + clc].exEn1[bk][adr2 + os2] = ex && !exNeedSxg;
+                sxgBuf[minSlot + clc].exEn[bk][adr2 + os2] = ex;
                 sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
                 sxgBuf[minSlot + cyc].sl[sp][os2] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][os2] = bk;
@@ -713,12 +708,11 @@ class ip4_tlm_dse extends ovm_component;
               uchar os3 = selEndian ? os : WORD_BYTES - os;
               if(exNeedSxg) begin
                 sxgBuf[slot].stData[bk].b[os3] = st.b[0];
-                sxgBuf[slot].exEn3[bk][os3] = ex;
+                sxgBuf[slot].exSxgEn[bk][os3] = ex;
               end
               sxgBuf[slot].sMemWEn[bk][os] = ocWEn;
-              sxgBuf[minSlot + clc].exEn[bk][os3] = ex && exNeedSxg;
-              sxgBuf[minSlot + clc].exEn1[bk][os3] = ex && !exNeedSxg;
-              sxgBuf[minSlot + clc].exEn2[bk][os3] = ex && !exNeedSxg;
+              sxgBuf[minSlot + clc].exEn[bk][os3] = ex;
+              sxgBuf[minSlot + clc].exLxgEn[bk][os3] = ex && !exNeedSxg;
               sxgBuf[minSlot + clc].os[bk][os3] = 0;
               sxgBuf[minSlot + clc].sl[bk][os3] = cyc;
               sxgBuf[minSlot + clc].bk[bk][os3] = sp;
@@ -726,8 +720,7 @@ class ip4_tlm_dse extends ovm_component;
             op_lb,
             op_lbu:
             begin
-              sxgBuf[minSlot + clc].exEn[bk][os] =  ex && exNeedSxg;
-              sxgBuf[minSlot + clc].exEn1[bk][os] =  ex && !exNeedSxg;
+              sxgBuf[minSlot + clc].exEn[bk][os] =  ex;
               sxgBuf[minSlot + cyc].os[sp][0] = os;
               sxgBuf[minSlot + cyc].sl[sp][0] = slot - minSlot;
               sxgBuf[minSlot + cyc].bk[sp][0] = bk;
@@ -909,9 +902,8 @@ class ip4_tlm_dse extends ovm_component;
       
       sxgBuf[cyc].sMemWEn = '{default : 0};
       sxgBuf[cyc].exEn = '{default : 0};
-      sxgBuf[cyc].exEn1 = '{default : 0};
-      sxgBuf[cyc].exEn2 = '{default : 0};
-      sxgBuf[cyc].exEn3 = '{default : 0};
+      sxgBuf[cyc].exLxgEn = '{default : 0};
+      sxgBuf[cyc].exSxgEn = '{default : 0};
       
       if(vn.rfm[STAGE_RRF_DEM] == null) vn.rfm[STAGE_RRF_DEM] = tr_dse2rfm::type_id::create("toRFM", this);
       vn.rfm[STAGE_RRF_DEM].wr = ise.wr;
@@ -1557,7 +1549,7 @@ class ip4_tlm_dse extends ovm_component;
             if(shf4)
               up = 1;
             else if(st2Ex)
-              up = sxglxg[minSlot + cyc].exEn3[sp][os];
+              up = sxglxg[minSlot + cyc].exSxgEn[sp][os];
             else if(per || exLdRsp || tmsg)
               up = sxglxg[minSlot + cyc].sl[sp][os] >= CYC_VEC;
             else
@@ -1568,8 +1560,6 @@ class ip4_tlm_dse extends ovm_component;
               `ip4_info("dse_initial", $psprintf("cyc %0d, sls %0d, sp %0d, os %0d, data 0x%0h",
                           cyc, sls, sp, os, lxgBuf[minSlot + sls].data[sp]), OVM_HIGH)
             end
-            if(st2Ex && sxgexst[minSlot + cyc] != null)
-              sxglxg[minSlot + cyc].exEn[sp][os] |= sxgexst[minSlot + cyc].exEn1[sp][os];
           end
           
           up = (sxglxg[minSlot + cyc].sl[sp][0] >= CYC_VEC) || shf4;
@@ -1589,7 +1579,7 @@ class ip4_tlm_dse extends ovm_component;
             uchar slot, bk, os2;
             if(st2Ex) begin
               if(sxgexst[j] != null) begin
-                slot = sxgexst[j].exEn2[sp][os] ? sxgexst[j].sl[sp][os] : CYC_VEC;
+                slot = sxgexst[j].exLxgEn[sp][os] ? sxgexst[j].sl[sp][os] : CYC_VEC;
                 bk = sxgexst[j].bk[sp][os];
                 os2 = sxgexst[j].os[sp][os];
               end
