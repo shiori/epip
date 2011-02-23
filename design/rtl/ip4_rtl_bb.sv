@@ -10,12 +10,34 @@
 ///Log:
 ///Created by Andy Chen on Feb 21 2011
 
+module ip4_sm_bk import ip4_rtl_pkg::*; (
+  input logic clk, wen,
+        smadr_t adr,
+        word datai,
+  output word datao      
+);
+
 `ifdef IP4_ASIC_MODE
-
-
 `else
 `ifdef IP4_FPGA_MODE
 
 
 `endif
+`endif  
+endmodule
+
+module ip4_tm_bk import ip4_rtl_pkg::*; (
+  input logic clk, wen,
+        bit[WID_DCHE_IDX - 1:0] adr[2],
+        cache_t datai[2],
+  output cache_t datao[2]      
+);
+
+`ifdef IP4_ASIC_MODE
+`else
+`ifdef IP4_FPGA_MODE
+
+
 `endif
+`endif  
+endmodule

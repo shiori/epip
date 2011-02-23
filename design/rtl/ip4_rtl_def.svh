@@ -72,3 +72,94 @@
     uchar tid;
   }spa2dse_s;
   
+  typedef struct{
+    bit req, cacheFlush, cacheFill, vec,
+        endian, queryNoHit,///allocFail
+        coherency, priv, uncachable;
+    opcode_e op;
+    uchar id, vecMode, subVec, mrfAdr;
+    exadr_t exAdr;
+    word data[NUM_SP];
+    bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
+    cache_state_t queryRes, state;
+  }dse2eif_s;
+  
+  typedef struct{
+    bit loadRsp, storeRsp, noVecSt, vec,
+        rd, wr, alloc, noSglSt, noLd, endian,
+        queryCacheState, queryAndUpdate;
+    uchar id, subVec, vecMode;
+    exadr_t exAdr;
+    cache_state_t state;
+    
+    ///those 2 comes late
+    bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
+    word data[NUM_SP];
+  }eif2dse_s;
+  
+  typedef struct{
+	  word base[NUM_SP], st[NUM_SP], os;
+ }rfm2dse_s;
+ 
+  typedef struct{
+	  word res[NUM_SP], uaRes[NUM_SP];
+	  bit wrEn[NUM_SP], wr, uaWrEn, exp;
+	  uchar tid, tidExp;
+	  bit expVec[NUM_SP], vec;
+	  uchar wrGrp, wrAdr, wrBk, 
+          uaWrGrp, uaWrAdr, uaWrBk, 
+          subVec, vecMode, vecModeExp;
+  }dse2rfm_s;
+  
+  typedef struct{
+    bit emsk[NUM_SP];
+    word op0;
+    bit srReq, expFu, missBr, expMSC, s2gp;
+    opcode_e op;
+    uchar tid, srAdr, vecMode, tidExpFu, tidExpMSC, vecModeExpFu;
+  }spu2dse_s;
+  
+  typedef struct{
+    uchar tid, tidCancel;
+    bit pres[NUM_SP], wrEn, rsp, cancel;
+    word srRes;  
+  }dse2spu_s;
+  
+  typedef struct{
+    uchar wrGrp, wrAdr, wrBk,
+          uaWrGrp, uaWrAdr, uaWrBk, tid;
+    bit priv, vec, en, wr, uaWrEn, nonBlock, noExt, sendRotRight;
+    opcode_e op;
+    uchar vecMode, subVec, mrfAdr;
+    update_adr_t ua;
+    access_typ_t at;
+  }ise2dse_s;
+  
+  typedef struct{
+  /// sync to dem0 stage
+    bit rsp,     ///respond
+        extLd,     ///this req generate a external load transaction
+        exp,     ///the whole req has exception
+        scl,
+        noExtLd, noExtSt,
+        rlsPipLd, rlsPipSt;
+    uchar tid, tidNoExt, vecMode, pendExLoad, pendExStore, pendSMsg, ldq, stq;
+    cause_dse_t cause;
+  }dse2ise_s;
+  
+  typedef struct{
+    word pfn;
+    bit endian, exp;
+    bit writeAlloc, writeThru, coherency, cached;
+    uchar eobit;  /// evenoddbit
+    cause_dse_t cause;
+  }tlb2dse_s;
+  
+  typedef struct{  
+    word vAdr;
+    opcode_e op;
+    uchar tid;
+    bit req, k;
+  }dse2tlb_s;
+  
+  

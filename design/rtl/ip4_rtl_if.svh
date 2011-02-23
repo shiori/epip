@@ -81,6 +81,21 @@ interface ip4_int_if;
 ///  dse2spa_s dse2spa;
   spa2dse_s spa2dse;
   
+  dse2eif_s dse2eif;
+  eif2dse_s eif2dse;
+  
+  rfm2dse_s rfm2dse;
+  dse2rfm_s dse2rfm;
+  
+  spu2dse_s spu2dse;
+  dse2spu_s dse2spu;
+  
+  ise2dse_s ise2dse;
+  dse2ise_s dse2ise;
+  
+  tlb2dse_s tlb2dse;
+  dse2tlb_s dse2tlb;
+  
  	modport spa(
    	input ise2spa,
    	      spu2spa,
@@ -89,28 +104,47 @@ interface ip4_int_if;
    	       spa2spu,
    	       spa2rfm,
    	       spa2dse
-   );
+  );
 
  	modport ise(
    	input spa2ise,
-   	output ise2spa
-   );
+   	output ise2spa,
+   	       ise2dse
+  );
    
   modport spu(
     input spa2spu,
-    output spu2spa
-   );
+    output spu2spa,
+           spu2dse
+  );
    
   modport rfm(
     input spa2rfm,
-    output rfm2spa
-   );
+    output rfm2spa,
+           rfm2dse
+  );
    
   modport dse(
-    input spa2dse
-///    output dse2spa
-    );
-   
+    input spa2dse,
+          ise2dse,
+          eif2dse,
+          rfm2dse,
+          spu2dse,
+    output dse2eif,
+           dse2rfm,
+           dse2spu,
+           dse2ise
+  );
+  
+  modport eif(
+    input dse2eif,
+    output eif2dse
+  );
+    
+  modport tlb(
+    input dse2tlb,
+    output tlb2dse
+  );
 endinterface
 
 `endif

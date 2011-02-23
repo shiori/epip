@@ -381,6 +381,7 @@ class ip4_tlm_dse extends ovm_component;
         smadr_t adr;
         wordu res;
         wordu st = rfm.st[sp];
+        tag_t tag;/// = padr.ex.c.t;/// >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL + WID_DCHE_IDX),
         
         ///vadr to padr translation stage
         if(rfm.base[sp] >= VADR_NMAPCH) begin
@@ -454,6 +455,7 @@ class ip4_tlm_dse extends ovm_component;
           grp = padr.ex.c.t.grp;    ///(padr >> (WID_WORD + WID_SMEM_BK + WID_SMEM_ADR)) & `GML(WID_SMEM_GRP);
           cl = padr.ex.c.cl;        ///(padr >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_DCHE_CL);
           clc = cl & `GML(WID_XCHG);
+          tag = padr.ex.c.t;
           
           if(!ise.vec)
             clc = 0;
@@ -467,7 +469,6 @@ class ip4_tlm_dse extends ovm_component;
             
             ///chk cache for match
             if(!nc && oc && srCacheGrp != 0) begin ///when oc is possible
-              tag_t tag = padr.ex.c.t;/// >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL + WID_DCHE_IDX),
               uint grp = (tag.grp & `GML(n2w(srCacheGrp))) + (NUM_SMEM_GRP - ('b01 << n2w(srCacheGrp))),
                    idx = padr.ex.c.idx;
               
@@ -601,12 +602,13 @@ class ip4_tlm_dse extends ovm_component;
           ///load link & store conditional
           if(ise.op inside {op_ll, op_sc} && (oc || ex)) begin
             bit found = 0, failed = 1;
-            uint tag = adr >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL);
+            uint idx = padr.ex.c.idx;
+///            uint tag = adr >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL);
             if(!llrdy) begin
               ///one cycle can only check one valid address in vector
               llrdy = 1;
               foreach(llCk[i]) begin
-                if(llCk[i].adr == tag) begin
+                if(llCk[i].adr.c.t == tag && llCk[i].adr.c.idx == idx) begin
                   found = 1;
                   llid = i;
                   lladr = tag;
@@ -619,7 +621,8 @@ class ip4_tlm_dse extends ovm_component;
                   llNext = 0;
                 llid = llNext;
                 found = 1;
-                llCk[llid].adr = tag;
+                llCk[llid].adr.c.t = tag;
+                llCk[llid].adr.c.idx = idx;
                 llCk[llid].en = '{default : 0};
               end
             end
