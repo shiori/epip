@@ -910,7 +910,10 @@ parameter iop_e iop_ls_dse[] = '{
 parameter iop_e iop_cmps[] = '{
         iop_cmp,    iop_cmpu,   iop_cmpi,   iop_cmpiu
         };
-        
+
+
+`include "ip4_rtl_def.svh"
+
 endpackage : ip4_rtl_pkg
 
 `endif

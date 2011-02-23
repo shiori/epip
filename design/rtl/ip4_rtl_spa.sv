@@ -29,6 +29,28 @@ module ip4_rtl_spa(
   `include "ip4_rtl.svh"
   `IP4_DEF_PARAM
   
-
+  spu2spa_s fmSPU;
+  ise2spa_s fmISE[STAGE_RRF_EXE0:0], fmISEn[STAGE_RRF_EXE0:0];
+  
+  always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n) begin
+      fmSPU <= '{default : 0};
+      fmISE <= '{default : '{default : 0}};
+    end
+    else begin
+      fmSPU <= inf.spu2spa;
+      fmISE <= fmISEn;
+    end
+  
+  always_comb
+  begin : comb_proc
+    for(int i = STAGE_RRF_EXE0; i > 0; i--)
+      fmISEn[i] = fmISE[i - 1];
+    fmISEn[0] = inf.ise2spa;
+    
+    
+    
+  end : comb_proc
+    
 endmodule : ip4_rtl_spa
 
