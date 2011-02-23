@@ -195,6 +195,7 @@ class ip4_tlm_spa extends ovm_component;
           proc_data(fu.op, fu.cop, ise.prMerge, ise.subVec, ise.rndMode, spu.fu[fid].emsk, op,
                     presCmp0, presCmp1, vn.rfm[1].fu[fid].res0, vn.rfm[1].fu[fid].res1,
                     vn.rfm[1].fu[fid].expFlag);
+                    
           foreach(vn.rfm[1].fu[0].expFlag[sp])
             if(vn.rfm[1].fu[fid].expFlag[sp] != 0)
               exeExp = 1;
