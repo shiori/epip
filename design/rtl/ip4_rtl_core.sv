@@ -18,7 +18,7 @@ module ip4_rtl_core(
   `include "ip4_rtl.svh"
   `IP4_DEF_PARAM
   
-  ip4_int_if intf(.*);
+  ip4_int_if inf();
   
   ip4_rtl_spa #(`IP4_PARAM) spa(.*);
 

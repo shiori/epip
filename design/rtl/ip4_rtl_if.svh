@@ -64,14 +64,49 @@ interface ip4_axi_if(input logic aclk);
 endinterface
 
 ///ip4 internal interface
-interface ip4_int_if(input logic clk, rst_n);
+
+interface ip4_int_if;
   `include "ip4_tlm_ts.svh"
   import ip4_rtl_pkg::*;
   
+  typedef struct{
+    bit en, vec, wrEn[2];
+    opcode_e op;
+    cmp_opcode_e cop;
+    uchar wrBk, wrAdr, wrGrp;
+    rbk_sel_e bpSel[NUM_FU_RP];
+  }ise2spa_fu_s;
+
+  typedef struct{
+    ise2spa_fu_s fu[NUM_FU];
+    pr_merge_e prMerge;
+    uchar subVec, tid;  ///vecMode = 3
+    uchar bpRfDSEwp;
+    rbk_sel_e bpRfDSE;
+    round_mode_t rndMode;
+    uchar expMsk;
+    bit noExp;
+  }ise2spa_s;
+    
+  typedef struct{
+    bit noFu[NUM_FU];
+    bit exp;
+    uchar tid;
+  }spa2ise_s;
+
+  ise2spa_s ise2spa;
+  spa2ise_s spa2ise;
+      
  	modport spa(
-   	input clk, rst_n
+   	input ise2spa,
+   	output spa2ise
    );
 
+ 	modport ise(
+   	input spa2ise,
+   	output ise2spa
+   );
+   
 endinterface
 
 `endif

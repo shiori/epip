@@ -12,20 +12,20 @@
 
 module ip4_rtl_sp import ip4_rtl_pkg::*; (
   input logic clk,
-        wordu op0, op1, op2, op3,
-        opcode_e op,
-  output wordu fr, nr0, nr1, lr0, lr1
+        wordu op[3][4],
+        opcode_e opcode,
+  output wordu res[3][2]
 );
   `include "ip4_rtl.svh"
-  parameter bit has_fp_op   = 1,
-                has_lng_op  = 1,
-                stage       = 0;
   
     
 endmodule
 
 
-module ip4_rtl_spa(ip4_int_if.spa intf);
+module ip4_rtl_spa(
+  input logic clk, rst_n,
+  ip4_int_if.spa inf
+);
   `include "ip4_rtl.svh"
   `IP4_DEF_PARAM
   
