@@ -121,7 +121,7 @@ parameter uint  NUM_SMEM_GRP      = 4,
                 NUM_SMEM_GRP_W    = 512,
                 NUM_DCHE_CL       = CYC_VEC,
                 NUM_DCHE_ASO      = 4,
-                NUM_DCHE_TAG      = NUM_SMEM_GRP_W / (NUM_DCHE_CL * NUM_DCHE_ASO),
+                NUM_DCHE_ENT      = NUM_SMEM_GRP_W / (NUM_DCHE_CL * NUM_DCHE_ASO),
                 NUM_BR_HISTORY    = 32,
                 NUM_FCR_RET       = 8,
                 NUM_STQUE         = 8,
@@ -146,9 +146,8 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_SMEM_ADR    = n2w(NUM_SMEM_GRP_W),
                 WID_SMEM_GRP    = n2w(NUM_SMEM_GRP),
                 WID_DCHE_CL     = n2w(NUM_DCHE_CL),
-                WID_DCHE_IDX    = n2w(NUM_DCHE_TAG),
-                WID_DCHE_ASO    = n2w(NUM_DCHE_ASO),
-                WID_DCHE_STAG   = 2;
+                WID_DCHE_IDX    = n2w(NUM_DCHE_ENT),
+                WID_DCHE_ASO    = n2w(NUM_DCHE_ASO);
 
 /*
                                            pipeline stages:
@@ -260,8 +259,42 @@ parameter uint SGRP_SIZE = NUM_SP * NUM_SMEM_GRP_W * 4,
                CTLR_SIZE = 128, /// each control register of pb 128byte
                EJTG_SIZE = 128; /// each ejtag of pb 128byte
 
-typedef bit[PADR_WIDTH - 1:0]     padr_t;
-typedef bit[PADR_WIDTH - WORD_BYTES - WID_SMEM_BK - 1:0] exadr_t;
+///typedef bit[PADR_WIDTH - 1:0]     padr_t;
+///typedef bit[PADR_WIDTH - WORD_BYTES - WID_SMEM_BK - 1:0] exadr_t;
+
+typedef struct packed{
+  bit[WID_DCHE_ASO - 1:0] aso;
+  bit[WID_DCHE_IDX - 1:0] idx;
+  bit[WID_DCHE_CL - 1:0] cl;
+} smadr_t;
+
+typedef struct packed{
+  bit[PADR_WIDTH - WID_WORD - WID_SMEM_BK - WID_DCHE_CL - WID_DCHE_IDX - WID_SMEM_GRP - 1:0] tag;
+  bit[WID_SMEM_GRP - 1:0] grp;
+} tag_t;
+
+typedef struct packed{
+  tag_t t;
+  bit[WID_DCHE_IDX - 1:0] idx;
+  bit[WID_DCHE_CL - 1:0] cl;
+} exadr_ch_t;
+
+typedef struct packed{
+  bit[PADR_WIDTH - WID_WORD - WID_SMEM_BK - WID_SMEM_ADR - WID_SMEM_GRP - 1:0] d;
+  bit[WID_SMEM_GRP - 1:0] grp;
+  smadr_t a;
+} exadr_sm_t;
+
+typedef union packed{
+  exadr_sm_t s;
+  exadr_ch_t c;
+} exadr_t;
+
+typedef struct packed{
+   exadr_t ex;
+   bit[WID_SMEM_BK - 1:0] bk;
+   bit[WID_WORD - 1:0] os;
+} padr_t;
 
 typedef enum uchar {
   selnull, selv[0:127], sels[0:31], selc[0:7], selz,
