@@ -1110,7 +1110,7 @@ endclass : tr_tlb2ife
 ///---------------------------trsaction dse_eif eif_dse------------------------
 class tr_dse2eif extends ovm_sequence_item;
   rand bit req, cacheFlush, cacheFill, vec,
-           endian, allocFail, queryNoHit,
+           endian, queryNoHit,///allocFail
            coherency, priv, uncachable;
   rand opcode_e op;
   rand uchar id, vecMode, subVec, mrfAdr;
@@ -1126,7 +1126,7 @@ class tr_dse2eif extends ovm_sequence_item;
     `ovm_field_enum(opcode_e, op, OVM_ALL_ON)
     `ovm_field_int(id, OVM_ALL_ON)
     `ovm_field_int(mrfAdr, OVM_ALL_ON)
-    `ovm_field_int(allocFail, OVM_ALL_ON)
+///    `ovm_field_int(allocFail, OVM_ALL_ON)
     `ovm_field_int(subVec, OVM_ALL_ON)
     `ovm_field_int(vecMode, OVM_ALL_ON)
     `ovm_field_int(cacheFlush, OVM_ALL_ON)

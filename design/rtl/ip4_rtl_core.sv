@@ -21,6 +21,7 @@ module ip4_rtl_core(
   ip4_int_if inf();
   
   ip4_rtl_spa #(`IP4_PARAM) spa(.*);
-
+  ip4_rtl_dse #(`IP4_PARAM) dse(.*);
+  
 endmodule : ip4_rtl_core
 
