@@ -130,10 +130,12 @@ interface ip4_int_if;
           eif2dse,
           rfm2dse,
           spu2dse,
+          tlb2dse,
     output dse2eif,
            dse2rfm,
            dse2spu,
-           dse2ise
+           dse2ise,
+           dse2tlb
   );
   
   modport eif(

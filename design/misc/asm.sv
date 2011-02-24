@@ -1013,6 +1013,25 @@ class asmig;
               return 0;
             end
           end
+        "cmpf"  :
+          begin
+            needWrAdr[i] = 0;
+            if(enOp[i][3] && pdrOp[i][1]) begin
+              isVec[i] = 1;
+              ps = 2;
+              inst[i].i.op = iop_cmp;
+              inst[i].i.b.cmp.f = 1;
+              inst[i].i.b.cmp.ctyp = ctyp;
+              inst[i].i.b.cmp.mtyp = mtyp;
+              inst[i].i.b.cmp.pr0 = adr[i][0];
+              inst[i].i.b.cmp.pr1 = adr[i][1];
+              two = 1;
+            end
+            else begin
+              `asm_err("op number does not match with the op_code!");
+              return 0;
+            end
+          end
         "alloc" :
           begin
             needWrAdr[i] = 0;

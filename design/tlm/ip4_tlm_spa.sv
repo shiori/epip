@@ -543,7 +543,16 @@ function void ip4_tlm_spa::proc_data(input opcode_e op, cmp_opcode_e cop, pr_mer
     cop_le:   foreach(pres[i]) pres[i] = unsigned'(o[0][i]) <= unsigned'(o[1][i]);
     default:  ovm_report_warning("SPA_ILLEGAL", "Illegal cop!!!");
     endcase  
-  
+  else if(op == op_fcmp)
+    case(cop)
+    cop_e:    foreach(pres[i]) pres[i] = $bitstoshortreal(o[0][i]) == $bitstoshortreal(o[1][i]);
+    cop_g:    foreach(pres[i]) pres[i] = $bitstoshortreal(o[0][i]) > $bitstoshortreal(o[1][i]);
+    cop_l:    foreach(pres[i]) pres[i] = $bitstoshortreal(o[0][i]) < $bitstoshortreal(o[1][i]);
+    cop_ge:   foreach(pres[i]) pres[i] = $bitstoshortreal(o[0][i]) >= $bitstoshortreal(o[1][i]);
+    cop_le:   foreach(pres[i]) pres[i] = $bitstoshortreal(o[0][i]) <= $bitstoshortreal(o[1][i]);
+    default:  ovm_report_warning("SPA_ILLEGAL", "Illegal cop!!!");
+    endcase  
+    
   case(prMerge)
   pm_nop:
     foreach(pres[i]) begin

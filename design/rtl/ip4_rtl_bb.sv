@@ -10,8 +10,10 @@
 ///Log:
 ///Created by Andy Chen on Feb 21 2011
 
+`include "../model/DW_fp_cmp.v"
+
 module ip4_sm_bk import ip4_rtl_pkg::*; (
-  input logic clk, wen,
+  input logic clk, wr,
         smadr_t adr,
         word datai,
   output word datao      
@@ -26,11 +28,11 @@ module ip4_sm_bk import ip4_rtl_pkg::*; (
 `endif  
 endmodule
 
-module ip4_tm_bk import ip4_rtl_pkg::*; (
-  input logic clk, wen,
-        bit[WID_DCHE_IDX - 1:0] adr[2],
-        cache_t datai[2],
-  output cache_t datao[2]      
+module ip4_tm import ip4_rtl_pkg::*; (
+  input logic clk, wr0,
+        bit[WID_DCHE_IDX - 1:0] adr0, adr1,
+        cache_t datai,
+  output cache_t datao0, datao1      
 );
 
 `ifdef IP4_ASIC_MODE
@@ -43,14 +45,29 @@ module ip4_tm_bk import ip4_rtl_pkg::*; (
 endmodule
 
 module ip4_fcmp import ip4_rtl_pkg::*; (
-  input logic clk,
-        wordu op0, op1,
-        opcode_e opcode,
-  output wordu r
+  input word op0, op1,
+  output word max, min,
+         bit[7:0] st0, st1,
+         bit eq, lt, gt, uo
 );
   `include "ip4_rtl.svh"
   
 `ifdef IP4_ASIC_MODE
+
+  DW_fp_cmp cmp(
+    .a        (op0), 
+    .b        (op1), 
+    .zctr     (1'b1), 
+    .aeqb     (eq),
+    .altb     (lt), 
+    .agtb     (gt), 
+    .unordered (uo), 
+    .z0       (max), 
+    .z1       (min), 
+    .status0  (st0), 
+    .status1  (st1)
+  );
+  
 `else
 `ifdef IP4_FPGA_MODE
 

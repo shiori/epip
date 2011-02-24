@@ -364,7 +364,7 @@ class inst_c extends ovm_object;
       case(inst.i.op)
       iop_cmp   :
       begin
-        op = op_cmp;
+        op = inst.i.b.cmp.f ? op_fcmp : op_cmp;
         set_rf_en(inst.i.b.cmp.rs1, rdBkSel[1], vecRd, vrfEn, srfEn, CntVrfRd, CntSrfRd);
       end
       iop_cmpu  :
@@ -375,6 +375,7 @@ class inst_c extends ovm_object;
       iop_cmpi  : begin op = op_cmp; rdBkSel[1] = selii; end
       iop_cmpiu : begin op = op_ucmp; rdBkSel[1] = selii; end
       endcase
+      
       case(inst.i.b.cmp.ctyp)
       3'b000 : cmpOp = cop_e;
       3'b001 : cmpOp = cop_g;
@@ -382,6 +383,7 @@ class inst_c extends ovm_object;
       3'b011 : cmpOp = cop_l;
       3'b100 : cmpOp = cop_le;
       endcase
+      
       case(inst.i.b.cmp.mtyp)
       4'b0000 : mergeOp = pm_nop;
       4'b0001 : mergeOp = pm_unc;

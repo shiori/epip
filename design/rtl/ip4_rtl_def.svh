@@ -68,7 +68,7 @@
 ///  }dse2spa_s;
   
   typedef struct{
-    bit cancel;
+    bit en, cancel;
     uchar tid;
   }spa2dse_s;
   
@@ -85,7 +85,7 @@
   }dse2eif_s;
   
   typedef struct{
-    bit loadRsp, storeRsp, noVecSt, vec,
+    bit en, loadRsp, storeRsp, noVecSt, vec,
         rd, wr, alloc, noSglSt, noLd, endian,
         queryCacheState, queryAndUpdate;
     uchar id, subVec, vecMode;
@@ -98,6 +98,7 @@
   }eif2dse_s;
   
   typedef struct{
+    bit en;
 	  word base[NUM_SP], st[NUM_SP], os;
  }rfm2dse_s;
  
@@ -114,21 +115,21 @@
   typedef struct{
     bit emsk[NUM_SP];
     word op0;
-    bit srReq, expFu, missBr, expMSC, s2gp;
+    bit en, srReq, expFu, missBr, expMSC, s2gp;
     opcode_e op;
     uchar tid, srAdr, vecMode, tidExpFu, tidExpMSC, vecModeExpFu;
   }spu2dse_s;
   
   typedef struct{
     uchar tid, tidCancel;
-    bit pres[NUM_SP], wrEn, rsp, cancel;
+    bit en, pres[NUM_SP], wrEn, rsp, cancel;
     word srRes;  
   }dse2spu_s;
   
   typedef struct{
     uchar wrGrp, wrAdr, wrBk,
           uaWrGrp, uaWrAdr, uaWrBk, tid;
-    bit priv, vec, en, wr, uaWrEn, nonBlock, noExt, sendRotRight;
+    bit en, priv, vec, wr, uaWrEn, nonBlock, noExt, sendRotRight;
     opcode_e op;
     uchar vecMode, subVec, mrfAdr;
     update_adr_t ua;
@@ -137,7 +138,8 @@
   
   typedef struct{
   /// sync to dem0 stage
-    bit rsp,     ///respond
+    bit en,
+        rsp,     ///respond
         extLd,     ///this req generate a external load transaction
         exp,     ///the whole req has exception
         scl,
@@ -149,7 +151,7 @@
   
   typedef struct{
     word pfn;
-    bit endian, exp;
+    bit en, endian, exp;
     bit writeAlloc, writeThru, coherency, cached;
     uchar eobit;  /// evenoddbit
     cause_dse_t cause;
@@ -159,7 +161,7 @@
     word vAdr;
     opcode_e op;
     uchar tid;
-    bit req, k;
+    bit en, k;
   }dse2tlb_s;
   
   

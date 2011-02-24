@@ -14,20 +14,57 @@ module ip4_rtl_ffu import ip4_rtl_pkg::*; (
   input logic clk,
         wordu op[NUM_FU][NUM_FU_RP][NUM_SP],
         opcode_e opcode[NUM_FU],
-  output wordu r[NUM_FU][2][NUM_SP]
+  output wordu r[2][NUM_FU][NUM_SP],
+         bit gt[NUM_FU][NUM_SP],
+             lt[NUM_FU][NUM_SP],
+             eq[NUM_FU][NUM_SP],
+             uo[NUM_FU][NUM_SP],
+         bit [7:0] st[2][NUM_FU][NUM_SP]
 );
   `include "ip4_rtl.svh"
-   
+  
+  
+  bit [7:0] st0Cmp[NUM_FU][NUM_SP],
+            st1Cmp[NUM_FU][NUM_SP];
+            
+  wordu rCmp[2][NUM_FU][NUM_SP];
+  
+  always_comb
+  begin
+    st = '{default : '0};
+    r = '{default : '0};
+    
+    for(int i = 0; i < NUM_FU; i++) begin
+      case(opcode[i])
+        op_fmax:
+        begin
+          r[0] = rCmp[0];
+          st[0] = st0Cmp;
+        end
+        op_fmin:
+        begin
+          r[0] = rCmp[1];
+          st[0] = st1Cmp;
+        end
+      endcase
+    end
+  end
+  
   genvar i, j;
    
   for(i = 0; i < NUM_FU; i++) begin : fu
     for(j = 0; j < NUM_SP; j++) begin : sp
       ip4_fcmp fcmp(
-        .clk,
-        .opcode   (opcode[i]),
-        .op0      (op[i][0][j]),
-        .op1      (op[i][1][j]),
-        .r        (r[i][0][j])
+        .op0      (op[0][i][j]),
+        .op1      (op[1][i][j]),
+        .gt       (gt[i][j]),
+        .lt       (lt[i][j]),
+        .eq       (eq[i][j]),
+        .uo       (uo[i][j]),
+        .st0      (st0Cmp[i][j]),
+        .st1      (st1Cmp[i][j]),
+        .max      (rCmp[0][i][j]),
+        .min      (rCmp[1][i][j])
        );
     end
   end
@@ -37,7 +74,7 @@ module ip4_rtl_nfu import ip4_rtl_pkg::*; (
   input logic clk,
         wordu op[NUM_FU][NUM_FU_RP][NUM_SP],
         opcode_e opcode[NUM_FU],
-  output wordu r[NUM_FU][2][NUM_SP]
+  output wordu r[2][NUM_FU][NUM_SP]
 );
   `include "ip4_rtl.svh"
   
@@ -48,7 +85,7 @@ module ip4_rtl_lfu import ip4_rtl_pkg::*; (
   input logic clk,
         wordu op[NUM_FU][NUM_FU_RP][NUM_SP],
         opcode_e opcode[NUM_FU],
-  output wordu r[NUM_FU][2][NUM_SP]
+  output wordu r[2][NUM_FU][NUM_SP]
 );
   `include "ip4_rtl.svh"
   
@@ -79,13 +116,18 @@ module ip4_rtl_spa(
   wordu opN[NUM_FU][NUM_FU_RP][NUM_SP],
         opF[NUM_FU][NUM_FU_RP][NUM_SP],
         opL[NUM_FU][NUM_FU_RP][NUM_SP],
-        rN[NUM_FU][2][NUM_SP],
-        rF[NUM_FU][2][NUM_SP],
-        rL[NUM_FU][2][NUM_SP];
-    
+        rN[2][NUM_FU][NUM_SP],
+        rF[2][NUM_FU][NUM_SP],
+        rL[2][NUM_FU][NUM_SP];
+  bit gt[NUM_FU][NUM_SP],
+      lt[NUM_FU][NUM_SP],
+      eq[NUM_FU][NUM_SP],
+      uo[NUM_FU][NUM_SP];
+  bit[7:0] st[2][NUM_FU][NUM_SP];
+             
   always_ff @(posedge clk or negedge rst_n)
     if(!rst_n) begin
-      v <= '{default : 0};
+      v <= '{default : '0};
     end
     else begin
       v <= vn;
@@ -97,7 +139,7 @@ module ip4_rtl_spa(
     spu2spa_s spu;
     rfm2spa_s rfm;
     
-    vn = '{default : 0};
+    vn = '{default : '0};
     ise = v.fmISE[STAGE_RRF_EXE0];
     spu = v.fmSPU;
     rfm = v.fmRFM;
@@ -114,8 +156,8 @@ module ip4_rtl_spa(
       bit exeExp;
       
       op = '{default :0};
-      r0 = '{default : 0};
-      r1 = '{default : 0};
+      r0 = '{default : '0};
+      r1 = '{default : '0};
       fu = ise.fu[fid];
       exeExp = 0;
       
@@ -153,7 +195,7 @@ module ip4_rtl_spa(
           op_s2gp,
           op_bp0:   for(int i = 0; i < NUM_SP; i++) r0[i] = op[0][i];
           op_fmax,  
-          op_fmin:  for(int i = 0; i < NUM_SP; i++) r0[i] = rF[fid][0][i];
+          op_fmin:  for(int i = 0; i < NUM_SP; i++) r0[i] = rF[0][fid][i];
         endcase
                            
         for(int sp = NUM_SP - 1; sp >= 0; sp--)///NUM_SP = 8
@@ -174,7 +216,12 @@ module ip4_rtl_spa(
     .clk,
     .op     (opF),
     .opcode (opcode),
-    .r      (rF)
+    .r      (rF),
+    .gt,
+    .lt,
+    .eq,
+    .uo,
+    .st
   );
     
   ip4_rtl_lfu lfu(

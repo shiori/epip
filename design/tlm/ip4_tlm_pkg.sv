@@ -25,6 +25,12 @@ parameter time CLK_P              = 2ns;
 
 parameter uchar   LAT_EXM           = 4;  ///external memory latency
 
+
+parameter unit_typ_e fu_cfg[NUM_FU] = '{
+  mac0  : mac, 
+  alu0  : alu,
+  sfu0  : sfu
+};
                 
 class tlm_vif_object extends ovm_object;
   `ovm_object_utils(tlm_vif_object)

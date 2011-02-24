@@ -314,12 +314,6 @@ typedef enum uchar {
   mac0 = 0, alu0, sfu0, spu0, dse0, fu_null
 } unit_inst_e;
 
-parameter unit_typ_e fu_cfg[NUM_FU] = '{
-  mac0  : mac, 
-  alu0  : alu,
-  sfu0  : sfu
-};
-
 typedef enum uchar {
   cop_e,    cop_g,    cop_ge,    cop_l,   cop_le,
   cop_ug,   cop_uge,  cop_ul,    cop_ule
@@ -378,8 +372,8 @@ endfunction
 
 typedef enum uchar {
   ///bypass opcodes
-  op_nop,     op_cmp,     op_ucmp,    op_bp0,
-  op_bp1,     op_bp2,     op_bp3,      
+  op_nop,     op_cmp,     op_ucmp,    op_fcmp,
+  op_bp0,     op_bp1,     op_bp2,     op_bp3,      
   ///multiply opcodes
   op_umul,    op_smul,    op_umad,    op_smad,    op_umsu,    
   op_smsu,    op_udmul,   op_sdmul,   op_udmad,   op_sdmad,
