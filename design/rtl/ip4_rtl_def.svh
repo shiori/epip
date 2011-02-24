@@ -9,7 +9,7 @@
   typedef struct{
     ise2spa_fu_s fu[NUM_FU];
     pr_merge_e prMerge;
-    uchar subVec, tid;  ///vecMode = 3
+    uchar subVec, tid;
     uchar bpRfDSEwp;
     rbk_sel_e bpRfDSE;
     round_mode_t rndMode;
@@ -77,7 +77,7 @@
         endian, queryNoHit,///allocFail
         coherency, priv, uncachable;
     opcode_e op;
-    uchar id, vecMode, subVec, mrfAdr;
+    uchar id, subVec, mrfAdr;
     exadr_t exAdr;
     word data[NUM_SP];
     bit[WORD_BYTES - 1:0] byteEn[NUM_SP];
@@ -88,7 +88,7 @@
     bit en, loadRsp, storeRsp, noVecSt, vec,
         rd, wr, alloc, noSglSt, noLd, endian,
         queryCacheState, queryAndUpdate;
-    uchar id, subVec, vecMode;
+    uchar id, subVec;
     exadr_t exAdr;
     cache_state_t state;
     
@@ -109,7 +109,7 @@
 	  bit expVec[NUM_SP], vec;
 	  uchar wrGrp, wrAdr, wrBk, 
           uaWrGrp, uaWrAdr, uaWrBk, 
-          subVec, vecMode, vecModeExp;
+          subVec;
   }dse2rfm_s;
   
   typedef struct{
@@ -117,12 +117,12 @@
     word op0;
     bit en, srReq, expFu, missBr, expMSC, s2gp;
     opcode_e op;
-    uchar tid, srAdr, vecMode, tidExpFu, tidExpMSC, vecModeExpFu;
+    uchar tid, srAdr, tidExpFu, tidExpMSC, vecModeExpFu;
   }spu2dse_s;
   
   typedef struct{
     uchar tid, tidCancel;
-    bit en, pres[NUM_SP], wrEn, rsp, cancel;
+    bit en, pres[NUM_SP], wrEn, cancel;
     word srRes;  
   }dse2spu_s;
   
@@ -131,7 +131,7 @@
           uaWrGrp, uaWrAdr, uaWrBk, tid;
     bit en, priv, vec, wr, uaWrEn, nonBlock, noExt, sendRotRight;
     opcode_e op;
-    uchar vecMode, subVec, mrfAdr;
+    uchar subVec, mrfAdr;
     update_adr_t ua;
     access_typ_t at;
   }ise2dse_s;
@@ -145,7 +145,7 @@
         scl,
         noExtLd, noExtSt,
         rlsPipLd, rlsPipSt;
-    uchar tid, tidNoExt, vecMode, pendExLoad, pendExStore, pendSMsg, ldq, stq;
+    uchar tid, tidNoExt, pendExLoad, pendExStore, pendSMsg, ldq, stq;
     cause_dse_t cause;
   }dse2ise_s;
   

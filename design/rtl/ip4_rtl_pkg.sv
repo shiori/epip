@@ -84,21 +84,9 @@ parameter uchar WID_AXI_DATA    = 64,
                 WID_AXI_ID      = 4,
                 BYTES_AXI_DATA  = WID_AXI_DATA / 8;
 
-parameter uchar LAT_MAC           = 5,
-                LAT_SFU           = 16,
-                LAT_RF            = 1,
-                LAT_RBP           = 1,
-                LAT_VWBP          = 1,    ///vector writeback bypass time
-                LAT_WB            = 4,
-                LAT_ISE           = 2,
-                LAT_IFE           = 2,
-                LAT_L1M           = 1,
-                LAT_XCHG          = 2,
-                LAT_SWBP          = 1;    ///dse writeback bypass time
-                
 parameter uint  NUM_SP            = 8,
                 NUM_VEC           = 32,
-                NUM_SFU           = 2,
+                NUM_SFU           = NUM_SP,
                 NUM_THREAD        = 4,
                 NUM_FU            = 3,
                 NUM_FU_RP         = 4,
@@ -115,8 +103,21 @@ parameter uint  NUM_SP            = 8,
                 NUM_INST_SRF      = 32;
 
 parameter uchar CYC_VEC       = NUM_VEC / NUM_SP,     ///4
-                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///16 
+                CYC_HVEC      = CYC_VEC / 2,          ///2
+                CYC_SFU_BUSY  = NUM_VEC / NUM_SFU;    ///4 
 
+parameter uchar LAT_MAC           = 5,
+                LAT_SFU           = 16,
+                LAT_RF            = 1,
+                LAT_RBP           = 1,
+                LAT_VWBP          = 1,    ///vector writeback bypass time
+                LAT_WB            = 4,
+                LAT_ISE           = 2,
+                LAT_IFE           = 2,
+                LAT_L1M           = 1,
+                LAT_XCHG          = CYC_HVEC,
+                LAT_SWBP          = 1;    ///dse writeback bypass time
+                
 parameter uint  NUM_SMEM_GRP      = 4,
                 NUM_SMEM_GRP_W    = 512,
                 NUM_DCHE_CL       = CYC_VEC,
@@ -236,7 +237,7 @@ parameter uchar INDEX_ENT    = 7 , /// entry bits
                 TYPE_WIDTH   = 3,  /// Page Size Type bit width
                 ASID_WIDTH   = 8,
                 IFE_REQ_BUF  = 2,
-                VADR_START   = 14,  /// 8K 14BIT START for tlb and dse
+                VADR_START   = max2(14, WID_WORD + WID_SMEM_BK + WID_DCHE_CL + WID_SMEM_GRP),  /// 8K 14BIT START for tlb and dse
                 PFN_WIDTH    = 26,
                 PADR_WIDTH   = VADR_START + PFN_WIDTH;    ///36
 

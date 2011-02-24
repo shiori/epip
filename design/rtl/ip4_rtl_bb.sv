@@ -29,7 +29,8 @@ module ip4_sm_bk import ip4_rtl_pkg::*; (
 endmodule
 
 module ip4_tm import ip4_rtl_pkg::*; (
-  input logic clk, wr0,
+  input logic clk, wrTag, wrCnt, wrSt,
+        bit[WID_SMEM_GRP - 1:0] grp0, grp1,
         bit[WID_DCHE_IDX - 1:0] adr0, adr1,
         cache_t datai,
   output cache_t datao0, datao1      

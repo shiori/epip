@@ -9,9 +9,11 @@ import ip4_rtl_pkg::*;
 `define IP4_FPGA_MODE
 
 `define IP4_DEF_PARAM \
-  parameter uchar pbId = 0;
+  parameter uchar pbId = 0;\
+  parameter padr_t srMapBase = 0;
   
 `define IP4_PARAM \
-  .pbId   (pbId)
-
+  .pbId       (pbId),\
+  .srMapBase  (srMapBase)
+  
 `endif

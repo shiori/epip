@@ -331,7 +331,7 @@ class ip4_tlm_dse extends ovm_component;
     exQueAlloc[STAGE_RRF_SEL] = 0;
                   
     ///**sel stage, ld st request
-    if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL]
+    if(v.fmSPU[STAGE_RRF_SEL] != null && v.fmRFM[STAGE_RRF_SEL] != null && v.fmISE[STAGE_RRF_SEL] != null
         && v.fmISE[STAGE_RRF_SEL].op inside {ld_ops, st_ops}) begin
       tr_ise2dse ise = v.fmISE[STAGE_RRF_SEL];
       tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL];
@@ -480,7 +480,7 @@ class ip4_tlm_dse extends ovm_component;
                     selCacheRdy = 1;
                     if(!(selLock2CL && selCacheAso == asoIdx)) begin
                       selCacheAso = asoIdx;
-                      hit = cache[grp][asoIdx].tag == tag;
+                      hit = cache[grp][idx].tag[asoIdx] == tag;
                       if(cache[grp][idx].state[asoIdx] == cs_inv)
                         hit = 0;
                       if(stReq && cache[grp][idx].state[asoIdx] == cs_shared)
