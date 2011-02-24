@@ -1,6 +1,6 @@
   typedef struct{
     bit en, vec, wrEn[2];
-    opcode_e op;
+    opcode_e opcode;
     cmp_opcode_e cop;
     uchar wrBk, wrAdr, wrGrp;
     rbk_sel_e bpSel[NUM_FU_RP];

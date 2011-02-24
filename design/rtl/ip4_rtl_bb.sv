@@ -41,3 +41,21 @@ module ip4_tm_bk import ip4_rtl_pkg::*; (
 `endif
 `endif  
 endmodule
+
+module ip4_fcmp import ip4_rtl_pkg::*; (
+  input logic clk,
+        wordu op0, op1,
+        opcode_e opcode,
+  output wordu r
+);
+  `include "ip4_rtl.svh"
+  
+`ifdef IP4_ASIC_MODE
+`else
+`ifdef IP4_FPGA_MODE
+
+
+`endif
+`endif    
+    
+endmodule

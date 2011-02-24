@@ -10,17 +10,50 @@
 ///Log:
 ///Created by Andy Chen on Feb 20 2011
 
-module ip4_rtl_sp import ip4_rtl_pkg::*; (
+module ip4_rtl_ffu import ip4_rtl_pkg::*; (
   input logic clk,
-        wordu op[3][4],
-        opcode_e opcode,
-  output wordu res[3][2]
+        wordu op[NUM_FU][NUM_FU_RP][NUM_SP],
+        opcode_e opcode[NUM_FU],
+  output wordu r[NUM_FU][2][NUM_SP]
+);
+  `include "ip4_rtl.svh"
+   
+  genvar i, j;
+   
+  for(i = 0; i < NUM_FU; i++) begin : fu
+    for(j = 0; j < NUM_SP; j++) begin : sp
+      ip4_fcmp fcmp(
+        .clk,
+        .opcode   (opcode[i]),
+        .op0      (op[i][0][j]),
+        .op1      (op[i][1][j]),
+        .r        (r[i][0][j])
+       );
+    end
+  end
+endmodule
+
+module ip4_rtl_nfu import ip4_rtl_pkg::*; (
+  input logic clk,
+        wordu op[NUM_FU][NUM_FU_RP][NUM_SP],
+        opcode_e opcode[NUM_FU],
+  output wordu r[NUM_FU][2][NUM_SP]
 );
   `include "ip4_rtl.svh"
   
     
 endmodule
 
+module ip4_rtl_lfu import ip4_rtl_pkg::*; (
+  input logic clk,
+        wordu op[NUM_FU][NUM_FU_RP][NUM_SP],
+        opcode_e opcode[NUM_FU],
+  output wordu r[NUM_FU][2][NUM_SP]
+);
+  `include "ip4_rtl.svh"
+  
+    
+endmodule
 
 module ip4_rtl_spa(
   input logic clk, rst_n,
@@ -29,73 +62,129 @@ module ip4_rtl_spa(
   `include "ip4_rtl.svh"
   `IP4_DEF_PARAM
   
-  spu2spa_s fmSPU;
-  ise2spa_s fmISE[STAGE_RRF_EXE0:0], fmISEn[STAGE_RRF_EXE0:0];
-  ise2spa_fu_s fu;
-  rfm2spa_s fmRFM[STAGE_EXE_VWBP:1], fmRFMn[STAGE_EXE_VWBP:1];
-  ise2spu_s fmSPU[STAGE_EXE_CMP:1], fmSPUn[STAGE_EXE_CMP:1];
-  word op[NUM_FU_RP][NUM_SP];
-  bit exeExp;
+  typedef struct {
+    spu2spa_s fmSPU;
+    rfm2spa_s fmRFM;
+    ise2spa_s fmISE[STAGE_RRF_EXE0:0];
+
+    spa2rfm_s rfm[STAGE_EXE_VWBP:1];
+    spa2ise_s ise[STAGE_EXE_VWBP:1];
+    spa2spu_s spu[STAGE_EXE_CMP:1];
+    spa2dse_s dse[STAGE_EXE_VWBP:1];
+  }vars;
   
+  vars v, vn;
+  
+  opcode_e opcode[NUM_FU];
+  wordu opN[NUM_FU][NUM_FU_RP][NUM_SP],
+        opF[NUM_FU][NUM_FU_RP][NUM_SP],
+        opL[NUM_FU][NUM_FU_RP][NUM_SP],
+        rN[NUM_FU][2][NUM_SP],
+        rF[NUM_FU][2][NUM_SP],
+        rL[NUM_FU][2][NUM_SP];
+    
   always_ff @(posedge clk or negedge rst_n)
     if(!rst_n) begin
-      fmSPU <= '{default : 0};
-      fmISE <= '{default : '{default : 0}};
+      v <= '{default : 0};
     end
     else begin
-      fmSPU <= inf.spu2spa;
-      fmISE <= fmISEn;
+      v <= vn;
     end
   
   always_comb
   begin : comb_proc
+    ise2spa_s ise;
+    spu2spa_s spu;
+    rfm2spa_s rfm;
+    
+    vn = '{default : 0};
+    ise = v.fmISE[STAGE_RRF_EXE0];
+    spu = v.fmSPU;
+    rfm = v.fmRFM;
+    
     for(int i = STAGE_RRF_EXE0; i > 0; i--)
-      fmISEn[i] = fmISE[i - 1];
-    fmISEn[0] = inf.ise2spa;
+      vn.fmISE[i] = v.fmISE[i - 1];
+    vn.fmISE[0] = inf.ise2spa;
    
   
     for(int fid = NUM_FU - 1; fid >= 0; fid--) begin ///SNUM_FU = 3  foreach(ise.fu[fid])
-      fu = fmISE.fu[fid];
+      ise2spa_fu_s fu;
+      bit[WORD_BITS:0] op[NUM_FU_RP][NUM_SP], r0[NUM_SP];
+      word r1[NUM_SP];
+      bit exeExp;
+      
+      op = '{default :0};
+      r0 = '{default : 0};
+      r1 = '{default : 0};
+      fu = ise.fu[fid];
+      exeExp = 0;
+      
       if(!fu.en) continue;
       
-      if(fu.op inside {sfu_only_ops}) begin
+      if(fu.opcode inside {sfu_only_ops}) begin
       end
-      
-      else beign
-      ///normal operations
-        fmRFMn[1].fu[fid].wrGrp = fu.wrGrp;
-        fmRFMn[1].fu[fid].wrAdr = fu.wrAdr;
-        fmRFMn[1].fu[fid].wrBk  = fu.wrBk;
-        fmRFMn[1].fu[fid].vec  = fu.vec;
-        fmRFMn[1].fu[fid].wrEn = fmSPU.fu[fid].emsk;
-        fmRFMn[1].fu[fid].wr = fmISE.fu[fid].wrEn;
-        fmRFMn[1].fu[fid].tid = fmISE.tid;
-        fmRFMn[1].fu[fid].subVec = fmISE.subVec;
-        fmRFMn[1].fu[fid].en = 1;
+      else begin
+        ///fast operations
+        vn.rfm[1].fu[fid].wrGrp = fu.wrGrp;
+        vn.rfm[1].fu[fid].wrAdr = fu.wrAdr;
+        vn.rfm[1].fu[fid].wrBk  = fu.wrBk;
+        vn.rfm[1].fu[fid].vec  = fu.vec;
+        vn.rfm[1].fu[fid].wrEn = spu.fu[fid].emsk;
+        vn.rfm[1].fu[fid].wr = ise.fu[fid].wrEn;
+        vn.rfm[1].fu[fid].tid = ise.tid;
+        vn.rfm[1].fu[fid].subVec = ise.subVec;
+        vn.rfm[1].fu[fid].en = 1;
         
-        for(int i = 3; i >= 0; i--)
-          op[i] = fmRFM.fu[fid].rp[i].op;
+        for(int i = 0; i < NUM_FU_RP; i++)
+          for(int j = 0; j < NUM_SP; j++)
+            op[i][j] = {rfm.fu[fid].rp[i].op[j][WORD_BITS - 1], rfm.fu[fid].rp[i].op[j]};
          
         ///bypass op
-        if(fu.op inside {bp_ops}) begin
+        if(fu.opcode inside {bp_ops}) begin
           for(int i = NUM_FU - 1; i >= 0; i-- )   ///NUM_FU = 3  foreach(fu_cfg[i])
             for(int rp = NUM_FU_RP - 1; rp >= 0; rp-- ) ///NUM_FU_RP = 4  foreach(op[rp])
               if(i < fid && fu.bpSel[rp] == rbk_sel_e'(selfu0 + i))
-                op[rp] = fmRFM[1].fu[i].res0;
+                for(int j = 0; j < NUM_SP; j++)
+                  op[i][j] = {vn.rfm[1].fu[i].res0[j][WORD_BITS - 1], vn.rfm[1].fu[i].res0[j]};
         end
         
-        proc_data(fu.op, fu.cop, fmISE.prMerge, fmISE.subVec, fmISE.rndMode, fmSPU.fu[fid].emsk, op,
-                    presCmp0, presCmp1, fmRFMn[1].fu[fid].res0, fmRFMn[1].fu[fid].res1,
-                    fmRFMn[1].fu[fid].expFlag);
-                    
+        case(fu.opcode)
+          op_nop,
+          op_s2gp,
+          op_bp0:   for(int i = 0; i < NUM_SP; i++) r0[i] = op[0][i];
+          op_fmax,  
+          op_fmin:  for(int i = 0; i < NUM_SP; i++) r0[i] = rF[fid][0][i];
+        endcase
+                           
         for(int sp = NUM_SP - 1; sp >= 0; sp--)///NUM_SP = 8
-          if(fmRFMn[1].fu[fid].expFlag[sp] != 0)
+          if(vn.rfm[1].fu[fid].expFlag[sp] != 0)
             exeExp = 1;
       end
-                    
+    end
   end : comb_proc
-  ///-------------------------------------other functions-----------------------------------------
- 
+      
+  ip4_rtl_nfu nfu(
+    .clk,
+    .op     (opN),
+    .opcode (opcode),
+    .r      (rN)
+  );
+
+  ip4_rtl_ffu ffu(
+    .clk,
+    .op     (opF),
+    .opcode (opcode),
+    .r      (rF)
+  );
+    
+  ip4_rtl_lfu lfu(
+    .clk,
+    .op     (opL),
+    .opcode (opcode),
+    .r      (rL)
+  );
+
+/* 
   bit pres[NUM_SP];
   bit[WORD_BITS:0] op0[NUM_SP], op1[NUM_SP], op2[NUM_SP], op3[NUM_SP], r0[NUM_SP] = '{default:0};
   
@@ -160,6 +249,6 @@ module ip4_rtl_spa(
                 else
                   break;
   
-  
+  */
 endmodule : ip4_rtl_spa
 
