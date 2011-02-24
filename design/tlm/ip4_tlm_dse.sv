@@ -555,6 +555,8 @@ class ip4_tlm_dse extends ovm_component;
                       break;
                     end
                   end
+                  if(!found)
+                    ex = 0;
                 end                
               end
               else begin
