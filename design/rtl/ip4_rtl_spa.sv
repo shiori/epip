@@ -52,7 +52,8 @@ module ip4_rtl_spa(
     for(int i = STAGE_RRF_EXE0; i > 0; i--)
       fmISEn[i] = fmISE[i - 1];
     fmISEn[0] = inf.ise2spa;
-    
+   
+  
     for(int fid = NUM_FU - 1; fid >= 0; fid--) begin ///SNUM_FU = 3  foreach(ise.fu[fid])
       fu = fmISE.fu[fid];
       if(!fu.en) continue;
@@ -101,7 +102,7 @@ module ip4_rtl_spa(
   case(op)
   op_nop,
   op_s2gp,
-  op_bp0:   for(int i = NUM_SP - 1; i >= 0; i--)
+  op_bp0:   for(int i = NUM_SP - 1; i >= 0; i--)///foreach(r0[i]) NUM_SP = 8
               r0[i] = op0[i];
   op_bp1:   for(int i = NUM_SP - 1; i >= 0; i--)
               r0[i] = op1[i];
@@ -109,6 +110,56 @@ module ip4_rtl_spa(
               r0[i] = op2[i];
   op_bp3:   for(int i = NUM_SP - 1; i >= 0; i--)
               r0[i] = op3[i];
-    
+              
+  op_and:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] =o[0][i] & o[1][i];
+  op_or:    for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] | o[1][i];
+  op_xor:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] ^ o[1][i];
+  op_nor:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = ~(o[0][i] | o[1][i]);
+  op_add:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = signed'(op0[i]) + signed'(op1[i]);
+  op_uadd:  for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = op0[i] + op1[i];
+  op_sub:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = signed'(op0[i]) - signed'(op1[i]);
+  op_usub:  for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = unsigned'(o[0][i]) - unsigned'(o[1][i]);
+  op_srl:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] >> o[1][i];
+  op_sra:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] >>> o[1][i];
+  op_sll:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] << o[1][i];
+  op_ror:   for(int i = NUM_SP - 1; i >= 0; i--)
+              {r1[i], r0[i]} = {o[0][i], o[0][i]} >> o[1][i];
+  op_lid:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] + i + subVec;
+  op_shf4a: for(int i = NUM_SP - 1; i >= 0; i--) 
+              r0[i] = op0[op1[i][2:0]];
+  op_max:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = op0[i] > op1[i] ? op0[i] : op1[i];
+  op_min:   for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = op0[i] > op1[i] ? op1[i] : op0[i];
+  op_umax:  for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] > o[1][i] ? o[0][i] : o[1][i];
+  op_umin:  for(int i = NUM_SP - 1; i >= 0; i--)
+              r0[i] = o[0][i] > o[1][i] ? o[1][i] : o[0][i];
+  op_clo:   for(int i = NUM_SP - 1; i >= 0; i--)
+              for(int j=WORD_BITS-1; j>=0; j--)
+                if(o[0][i][j])
+                  r0[i]++;
+                else
+                  break;
+  op_clz:   for(int i = NUM_SP - 1; i >= 0; i--)
+              for(int j=WORD_BITS-1; j>=0; j--)
+                if(!o[0][i][j])
+                  r0[i]++;
+                else
+                  break;
+  
+  
 endmodule : ip4_rtl_spa
 
