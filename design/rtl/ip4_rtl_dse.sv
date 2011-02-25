@@ -70,9 +70,11 @@ module ip4_rtl_dse(
         is_nmapnc[NUM_SP],
         is_mapch[NUM_SP];
     uchar cacheGrp,
-          tid;
+          tid,
+          subVec;
     cause_dse_t expCause;
     opcode_e opcode;
+    sxg_t sxg;
   } dvars;
 
   typedef struct {
@@ -372,15 +374,16 @@ module ip4_rtl_dse(
       automatic spu2dse_s spu = v.fmSPU[STAGE_RRF_SEL];
       automatic eif2dse_s eif = v.fmEIF[STAGE_RRF_SEL];
       automatic tlb2dse_s tlb = v.fmTLB;
-      automatic dvars d = v.d[STAGE_RRF_SEL];
+      automatic dvars d = v.d[STAGE_RRF_SEL],
+                      dn = vn.d[STAGE_RRF_SXG0];
       automatic word tlbVAdr;
-      automatic dvars dn = vn.d[STAGE_RRF_SXG0];
       
-      if(spu.en && rfm.en && ise.en && (d.is_ld || d.is_st)) begin : valid_en
+      if(spu.en && rfm.en && ise.en && (d.is_ld || d.is_st))
+      begin : valid_en
         automatic padr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
                          smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - s.srCacheGrp) * SGRP_SIZE,
                          smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
-        automatic uchar minSlot = ise.vec ? 0 : LAT_XCHG - 1,
+        automatic uchar minSlot = 0,///ise.vec ? 0 : LAT_XCHG - 1,
                         cyc = ise.subVec & `GML(WID_XCHG);
         automatic bit last = ise.subVec == (CYC_VEC - 1) || !ise.vec,
                       xhgEnd = ise.subVec == (CYC_HVEC - 1) || last,
@@ -390,7 +393,8 @@ module ip4_rtl_dse(
         automatic bit llrdy = 0;
         automatic uchar llid;
 
-        vn.d[STAGE_RRF_SEL].exReq = 0;
+        dn.exReq = 0;
+        dn.subVec = ise.subVec;
         
         if(!tlb.en)
           tlb = s.tlbCached;
@@ -405,7 +409,10 @@ module ip4_rtl_dse(
             sn.selNeedLock2CL |= tlb.coherency && d.is_st;
           end
         end
-                
+        
+        if(dn.subVec == 0)
+          sxgBuf = '{default : 0};
+          
         for(int sp = 0; sp < NUM_SP; sp++) begin : sp_iter
           automatic padr_t padr;
           automatic bit nc, exp;
@@ -523,12 +530,6 @@ module ip4_rtl_dse(
                         hit = 0;
                       if(hit) begin
                         adr.aso = asoIdx;
-///                        if(!asohit[asoIdx]) begin
-///                          if(cache[grp][idx].cnt[asoIdx] >= 2)
-///                            cache[grp][idx].cnt[asoIdx] -= 2;
-///                          else
-///                            cache[grp][idx].cnt[asoIdx] = 0;
-///                        end
                         sn.asohit[asoIdx] = 1;
                         if(!sn.needExOc)
                           ex = 0;
@@ -604,9 +605,6 @@ module ip4_rtl_dse(
                           
               ///lock to this cache line if accessed
               sn.selLock2CL |= sn.selNeedLock2CL && oc;
-              ///if write to owner without need2lockcl change it to dirty
-///              if(oc && !sn.selNeedLock2CL && cache[selCacheGrp][selCacheIdx].state[selCacheAso] == cs_exclusive)
-///               cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_dirty;
             end : ex_cache
             ///**shared mem
             else if(oc) begin : oc_acc
@@ -816,24 +814,48 @@ module ip4_rtl_dse(
           sn.selCoherency = 0;
           sn.selNeedLock2CL = 0;
         end
+
+        ///if write to owner without need2lockcl change it to dirty
+        for(int i = 0; i < NUM_DCHE_ASO; i++)
+          if(sn.asohit[i]) begin
+            if(d.is_st && !sn.selNeedLock2CL && tms0.state[i] == cs_exclusive)
+              tmi.state[i] = cs_dirty;
+            if(tms0.cnt[i] >= 2)
+              tmi.cnt[i] -= 2;
+            else
+              tmi.cnt[i] = 0;
+          end
         
         if(last) begin
           ///cache state (silent) transitions
-///          if(sn.selLock2CL) begin
-///            case(cache[selCacheGrp][selCacheIdx].state[selCacheAso])
-///            cs_exclusive: cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_modified;
-///            cs_owned,
-///            cs_shared:    cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_inv;
-///            ///this case happens only when tlb cc bit changed
-///            cs_dirty:     cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_modified;
-///            endcase
-///          end
+          if(sn.selLock2CL) begin
+            tmWrSt = 1;
+            case(tms0.state[sn.selCacheAso])
+            cs_exclusive: tmi.state[sn.selCacheAso] = cs_modified;
+            cs_owned,
+            cs_shared:    tmi.state[sn.selCacheAso] = cs_inv;
+            ///this case happens only when tlb cc bit changed
+            cs_dirty:     tmi.state[sn.selCacheAso] = cs_modified;
+            default :     tmWrSt = 0;
+            endcase
+          end
           sn.selExRdy = 0;
           sn.selLock2CL = 0;
         end
+        sn.asohit = '{default : '0};
       end : valid_en
     end : sel_stage_ld_st
     
+    begin : last_sxg
+      automatic ise2dse_s ise = v.fmISE[STAGE_RRF_SXG];
+      automatic rfm2dse_s rfm = v.fmRFM[STAGE_RRF_SXG];
+      automatic spu2dse_s spu = v.fmSPU[STAGE_RRF_SXG];
+      automatic eif2dse_s eif = v.fmEIF[STAGE_RRF_SXG];
+      automatic dvars d = v.d[STAGE_RRF_SXG],
+                      dn = vn.d[STAGE_RRF_DC];      
+      dn.sxg = s.sxgBuf[LAT_XCHG][d.subVec];
+      
+    end : last_sxg
     
     begin : last_proc
       sn.sxgBuf[0] = sxgBuf;
