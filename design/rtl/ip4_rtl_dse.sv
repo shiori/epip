@@ -10,11 +10,14 @@
 ///Log:
 ///Created by Andy Chen on Feb 23 2011
 
+`include "ip4_rtl.svh"
+
 module ip4_rtl_dse(
   input logic clk, rst_n,
   ip4_int_if.dse inf
 );
-  `include "ip4_rtl.svh"
+  `include "ip4_tlm_ts.svh"
+  import ip4_rtl_pkg::*;
   `IP4_DEF_PARAM
   
   typedef struct {
@@ -31,19 +34,25 @@ module ip4_rtl_dse(
     
     bit exp[NUM_SP], oc[NUM_SP], ex[NUM_SP], re[NUM_SP];
     
-    ushort ladr[NUM_SP];
+    bit[WID_DCHE_CL + WID_SMEM_BK + WID_WORD - 1:0] ladr[NUM_SP];
     uchar sl[NUM_SP][WORD_BYTES],
           bk[NUM_SP][WORD_BYTES],
           os[NUM_SP][WORD_BYTES];
     opcode_e op;
     uchar tid;
   }sxg_t;
-
+    
   typedef struct { 
     ///load xchg data struct
     wordu data[NUM_SP];
     bit vrfWEn[NUM_SP];
   }lxg_t;
+
+  typedef struct{
+    exadr_t adr;
+    uchar tid[NUM_DCHE_CL][NUM_SP];
+    bit en[NUM_DCHE_CL][NUM_SP];
+  }ll_ck_t;
   
   typedef struct {
     bit is_ld,
@@ -51,14 +60,19 @@ module ip4_rtl_dse(
         is_word,
         is_half,
         is_byte,
-        exReq;
+        exReq,
+        expReq,
+        endian;
     word tlbReqVAdr,
          cacheIdx;
     bit is_nmapch[NUM_SP],
         is_ejtags[NUM_SP],
         is_nmapnc[NUM_SP],
         is_mapch[NUM_SP];
-    uchar cacheGrp;
+    uchar cacheGrp,
+          tid;
+    cause_dse_t expCause;
+    opcode_e opcode;
   } dvars;
 
   typedef struct {
@@ -66,7 +80,8 @@ module ip4_rtl_dse(
 ///    word srMapBase;
     uchar srCacheGrp,
           sendExpTid,
-          selCacheAso;
+          selCacheAso,
+          llNext;
 ///cacheGrpEn[NUM_SMEM_GRP],
     bit sendExp,
         tlbRdy,
@@ -76,6 +91,8 @@ module ip4_rtl_dse(
         selCoherency,
         selNoCache,
         selLock2CL,
+        selExpReq,
+        selValidReq,
         needExOc,
         selNeedLock2CL,
         selExp;
@@ -83,7 +100,8 @@ module ip4_rtl_dse(
     bit[WID_SMEM_GRP - 1:0] grpMsk;
     exadr_t selExAdr;
     bit asohit[NUM_DCHE_ASO];
-    sxg_t sxgBuf[LAT_XCHG];
+    sxg_t sxgBuf[LAT_XCHG:0][LAT_XCHG]; ///sxg pip has LAT_XCHG stages
+    ll_ck_t llCk[NUM_LLCK];
   } svars;
       
   typedef struct {
@@ -106,12 +124,12 @@ module ip4_rtl_dse(
   svars s, sn;
     
   wordu dmi[NUM_SP], dmo[NUM_SP], dms[NUM_SP];
-  smadr_t dmAdr[NUM_SP];
+  smadr_t dmRAdr[NUM_SP], dmWAdr[NUM_SP];
   logic dmWr[NUM_SP];
 
   bit tmWrTag, tmWrCnt, tmWrSt;
-  bit[WID_DCHE_IDX - 1:0] tmAdr0, tmAdr1;
-  bit[WID_SMEM_GRP - 1:0] tmGrp0, tmGrp1;
+  bit[WID_DCHE_IDX - 1:0] tmAdr0, tmAdr1, tmWAdr;
+  bit[WID_SMEM_GRP - 1:0] tmGrp0, tmGrp1, tmWGrp;
   cache_t tmi, tmo0, tmo1, tms0, tms1;
     
   always_ff @(posedge clk or negedge rst_n)
@@ -125,14 +143,15 @@ module ip4_rtl_dse(
     else begin
       v <= vn;
       s <= sn;
-      dms <= dmo;
       tms0 <= tmo0;
       tms1 <= tmo1;
+      if(!sn.selLock2CL)
+        dms <= dmo;
     end
   
   always_comb
   begin : comb_proc
-    automatic sxg_t sxgBuf[LAT_XCHG] = s.sxgBuf;
+    automatic sxg_t sxgBuf[LAT_XCHG] = s.sxgBuf[0];
     
     begin : pip_init
       vn = '{default : '0};
@@ -173,9 +192,12 @@ module ip4_rtl_dse(
         vn.eif[i] = v.eif[i - 1];
       vn.eif[STAGE_RRF_SXG0] = '{default : '0};
 
-      for(int i = NUM_THREAD; i > 0; i--)
+      for(int i = 0; i < NUM_THREAD; i++)
         vn.cancel[i] = v.cancel[i] << 1;
-    
+      
+      for(int i = LAT_XCHG; i > 0; i--)
+        sn.sxgBuf[i] = s.sxgBuf[i - 1];
+        
       ///cancel from spa
       if(v.fmSPA != null && v.fmSPA.cancel)
         vn.cancel[v.fmSPA.tid] |= `GML(STAGE_RRF_DC);
@@ -197,13 +219,16 @@ module ip4_rtl_dse(
         sn.tlbCached = v.fmTLB;
         
       dmWr = '{default : '0};
-      dmAdr = '{default : '0};
+      dmWAdr = '{default : '0};
+      dmRAdr = '{default : '0};
       dmi = '{default : '0};
       tmWrTag = '0;
       tmAdr0 = '0;
       tmAdr1 = '0;
+      tmWAdr = '0;
       tmGrp0 = '0;
       tmGrp1 = '0;
+      tmWGrp = '0;
       tmi = tms0;
     end : pip_init
     
@@ -349,20 +374,21 @@ module ip4_rtl_dse(
       automatic tlb2dse_s tlb = v.fmTLB;
       automatic dvars d = v.d[STAGE_RRF_SEL];
       automatic word tlbVAdr;
+      automatic dvars dn = vn.d[STAGE_RRF_SXG0];
       
-      if(spu.en && rfm.en && ise.en && (d.is_ld || d.is_st)) begin
+      if(spu.en && rfm.en && ise.en && (d.is_ld || d.is_st)) begin : valid_en
         automatic padr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
                          smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - s.srCacheGrp) * SGRP_SIZE,
                          smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
-        automatic uchar minSlot,
+        automatic uchar minSlot = ise.vec ? 0 : LAT_XCHG - 1,
                         cyc = ise.subVec & `GML(WID_XCHG);
         automatic bit last = ise.subVec == (CYC_VEC - 1) || !ise.vec,
                       xhgEnd = ise.subVec == (CYC_HVEC - 1) || last,
                       needExOc = 0,
                       exNeedSxg = 0;
-        padr_t lladr;
-        bit llrdy;
-        uchar llid;
+        automatic exadr_t lladr;
+        automatic bit llrdy = 0;
+        automatic uchar llid;
 
         vn.d[STAGE_RRF_SEL].exReq = 0;
         
@@ -379,15 +405,11 @@ module ip4_rtl_dse(
             sn.selNeedLock2CL |= tlb.coherency && d.is_st;
           end
         end
-
-        if(!ise.vec)
-          minSlot = LAT_XCHG - 1;
-        else
-          minSlot = 0;
                 
-        for(int sp = 0; sp < NUM_SP; sp++) begin
-          padr_t padr;
-          bit nc, exp;
+        for(int sp = 0; sp < NUM_SP; sp++) begin : sp_iter
+          automatic padr_t padr;
+          automatic bit nc, exp;
+          automatic wordu st = rfm.st[sp];
           automatic bit oc = spu.emsk[sp],
                         ex = spu.emsk[sp] && !ise.noExt,
                         ocWEn;
@@ -397,9 +419,9 @@ module ip4_rtl_dse(
                           slot = minSlot,
                           cl = 0,
                           clc = 0;
-          smadr_t adr;
-          wordu res;
-          tag_t tag;
+          automatic smadr_t adr;
+///          wordu res;
+          automatic tag_t tag;
           
           begin : init
           if(d.is_nmapnc[sp]) begin
@@ -475,7 +497,8 @@ module ip4_rtl_dse(
             cl = padr.ex.c.cl;
             clc = ise.vec ? cl & `GML(WID_XCHG) : 0;
             tag = padr.ex.c.t;
-
+            exNeedSxg = (!((cl < LAT_XCHG) ^ (ise.subVec < LAT_XCHG))) || !ise.vec;
+            
             ///----------------------start access----------------------------
             ///external mem
             ///**cache address:   | grp | aso | idx | cl | bk | offset |
@@ -551,7 +574,6 @@ module ip4_rtl_dse(
                 automatic bit exhit = sn.selExAdr.c.t == padr.ex.c.t && sn.selExAdr.c.idx == padr.ex.c.idx,
                               found = 0;
                 if(!sn.selExRdy || exhit) begin
-                  exNeedSxg = (!((cl < LAT_XCHG) ^ (ise.subVec < LAT_XCHG))) || !ise.vec;
                   sn.selExRdy = 1;
                   sn.selNoCache |= nc;
                   sn.selExAdr = padr.ex;
@@ -570,7 +592,7 @@ module ip4_rtl_dse(
                     end
                     if(!found)
                       ex = 0;
-                  end                
+                  end
                 end
                 else begin
                   ex = 0;
@@ -588,20 +610,21 @@ module ip4_rtl_dse(
             end : ex_cache
             ///**shared mem
             else if(oc) begin : oc_acc
-/*              if(padr >= smEnd) begin
-                if(!selExp) begin
-                  selCause = EC_SMBOND;
-                  selExp = 1;
+              if(padr >= smEnd) begin
+                if(!sn.selExp) begin
+                  sn.selCause = EC_SMBOND;
+                  sn.selExp = 1;
                   exp = 1;
                 end
                 oc = 0;
               end
               
               begin
-                bit found = 0;
+                automatic bit found = 0;
                 for(int s = minSlot; s < LAT_XCHG; s++) begin
-                  if(((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk])
-                      && !sxgBuf[s].exMemOpy[bk]) begin
+                  if((!sxgBuf[s].exMemOpy[bk]) &&
+                    ((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]))
+                  begin
                     sxgBuf[s].sMemOpy[bk] = oc;
                     slot = s;
                     found = 1;
@@ -611,47 +634,47 @@ module ip4_rtl_dse(
                 end
                 oc = oc && found;
               end
-            end
-            
+            end : oc_acc
+           
             ///load link & store conditional
-            if(ise.op inside {op_ll, op_sc} && (oc || ex)) begin
-              bit found = 0, failed = 1;
-              uint idx = padr.ex.c.idx;
-  ///            uint tag = adr >> (WID_WORD + WID_SMEM_BK + WID_DCHE_CL);
+            if(ise.op inside {op_ll, op_sc} && (oc || ex))
+            begin : ll_sc_proc
+              automatic bit found = 0, failed = 1;
+              automatic uint idx = padr.ex.c.idx;
               if(!llrdy) begin
                 ///one cycle can only check one valid address in vector
                 llrdy = 1;
-                foreach(llCk[i]) begin
-                  if(llCk[i].adr.c.t == tag && llCk[i].adr.c.idx == idx) begin
+                for(int i = 0; i < NUM_LLCK; i++) begin
+                  if(sn.llCk[i].adr.c.t == tag && sn.llCk[i].adr.c.idx == idx) begin
                     found = 1;
                     llid = i;
-                    lladr = tag;
+                    lladr = padr.ex;
                   end
                 end
                 if(!found && ise.op == op_ll) begin
                   ///no entry found, if its a ll, allocate one
-                  llNext++;
-                  if(llNext >= NUM_LLCK)
-                    llNext = 0;
-                  llid = llNext;
+                  sn.llNext++;
+                  if(sn.llNext >= NUM_LLCK)
+                    sn.llNext = 0;
+                  llid = sn.llNext;
                   found = 1;
-                  llCk[llid].adr.c.t = tag;
-                  llCk[llid].adr.c.idx = idx;
-                  llCk[llid].en = '{default : 0};
+                  sn.llCk[llid].adr.c.t = tag;
+                  sn.llCk[llid].adr.c.idx = idx;
+                  sn.llCk[llid].en = '{default : 0};
                 end
               end
               else
-                found = lladr == tag;
+                found = lladr.c.t == tag && lladr.c.idx == idx;
               
-              if(found) begin /// && !llAdrCk[cl][bk] && 
+              if(found) begin
                 if(ise.op == op_ll) begin
-                  llCk[llid].en[cl][bk] = 1;
-                  llCk[llid].tid[cl][bk] = ise.tid;
+                  sn.llCk[llid].en[cl][bk] = 1;
+                  sn.llCk[llid].tid[cl][bk] = ise.tid;
                 end
                 else begin
                   ///store conditional
-                  failed = !(llCk[llid].en[cl][bk] && llCk[llid].tid[cl][bk] == ise.tid);
-                  llCk[llid].en[cl][bk] = 0;  ///so following sc failed
+                  failed = !(sn.llCk[llid].en[cl][bk] && sn.llCk[llid].tid[cl][bk] == ise.tid);
+                  sn.llCk[llid].en[cl][bk] = 0;  ///so following sc failed
                 end
               end
               
@@ -659,7 +682,7 @@ module ip4_rtl_dse(
                 oc = 0;
                 ex = 0;
               end
-            end
+            end : ll_sc_proc
             
             ///sxg stage, filling sxgBuf, exchange data
             if(oc) begin
@@ -667,14 +690,14 @@ module ip4_rtl_dse(
               sxgBuf[slot].sMemGrp[bk] = grp;
             end
             
-            ocWEn = stReq && oc;
+            ocWEn = d.is_st && oc;
             
-            if(oc || ex) begin
+            if(oc || ex) begin : sxg_stage
               case(ise.op)
               op_sw,
               op_sc:
                 for(int os2 = 0; os2 < WORD_BYTES; os2++) begin
-                  uchar os3 = selEndian ? os2 : WORD_BYTES - os2;
+                  automatic uchar os3 = sn.selEndian ? os2 : WORD_BYTES - os2;
                   if(exNeedSxg) begin
                     sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
                     sxgBuf[slot].exSxgEn[bk][os3] = ex;
@@ -696,9 +719,9 @@ module ip4_rtl_dse(
                 end
               op_sh:
               begin
-                 uchar adr2 = os & `GMH(WID_HALF);
+                 automatic uchar adr2 = os & `GMH(WID_HALF);
                  for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
-                  uchar os3 = selEndian ? adr2 + os2 : WORD_BYTES - adr2 - os2;
+                  automatic uchar os3 = sn.selEndian ? adr2 + os2 : WORD_BYTES - adr2 - os2;
                   if(exNeedSxg) begin
                     sxgBuf[slot].stData[bk].b[os3] = st.b[os2];
                     sxgBuf[slot].exSxgEn[bk][os3] = ex;
@@ -714,7 +737,7 @@ module ip4_rtl_dse(
               op_lh,
               op_lhu:
               begin
-                uchar adr2 = os & `GMH(WID_HALF);
+                automatic uchar adr2 = os & `GMH(WID_HALF);
                 for(int os2 = 0; os2 < HALF_BYTES; os2++) begin
                   sxgBuf[minSlot + clc].exEn[bk][adr2 + os2] = ex;
                   sxgBuf[minSlot + cyc].os[sp][os2] = adr2 + os2;
@@ -724,7 +747,7 @@ module ip4_rtl_dse(
               end
               op_sb:
               begin
-                uchar os3 = selEndian ? os : WORD_BYTES - os;
+                automatic uchar os3 = sn.selEndian ? os : WORD_BYTES - os;
                 if(exNeedSxg) begin
                   sxgBuf[slot].stData[bk].b[os3] = st.b[0];
                   sxgBuf[slot].exSxgEn[bk][os3] = ex;
@@ -744,14 +767,81 @@ module ip4_rtl_dse(
                 sxgBuf[minSlot + cyc].sl[sp][0] = slot - minSlot;
                 sxgBuf[minSlot + cyc].bk[sp][0] = bk;
               end
-              endcase*/
-            end : oc_acc
+              endcase
+            end : sxg_stage
           end : acc_data
+          sxgBuf[minSlot + cyc].exp[sp] = exp;
+          sxgBuf[minSlot + cyc].oc[sp] = oc;
+          sxgBuf[minSlot + cyc].ex[sp] = ex;
+          sxgBuf[minSlot + cyc].re[sp] = (ise.vec ? spu.emsk[sp] : sp == 0) && !oc && !ex;
+          sxgBuf[minSlot + cyc].ladr[sp] = padr;/// & `GML(WID_DCHE_CL + WID_SMEM_BK + WID_WORD);
+         
+          sn.selValidReq |= oc || ex;
+          dn.exReq |= ex;
+        end : sp_iter
+        dn.expCause = sn.selCause;
+        dn.endian = sn.selEndian;
+        
+        sn.selExpReq |= sn.selExp;
+  
+        ///start resolve exp
+        if(last) begin
+          automatic bit res = sn.selExpReq;
+          if(ise.nonBlock)
+            res &= !sn.selValidReq;
+          
+          if(ise.vec)  
+            for(int i = 0; i < CYC_VEC; i++)
+              vn.d[STAGE_RRF_SXG0 + i].expReq = res;
+          else
+            dn.expReq = res;
+          sn.sendExp = res;            
+          sn.sendExpTid = ise.tid;
+          sn.selExpReq = 0;
+          sn.selValidReq = 0;
         end
-      end
+        else
+          dn.expReq = 1;
+
+        dn.opcode = ise.op;
+        dn.tid = ise.tid;
+///        sxg[STAGE_RRF_SEL] = sxgBuf[minSlot + cyc];
+        
+        ///finish one half wrap or whole request
+        if(xhgEnd) begin
+          sn.selExp = 0;
+          sn.selNoCache = 0;
+          sn.selEndian = 0;
+          sn.selWriteAlloc = 0;
+          sn.selCoherency = 0;
+          sn.selNeedLock2CL = 0;
+        end
+        
+        if(last) begin
+          ///cache state (silent) transitions
+///          if(sn.selLock2CL) begin
+///            case(cache[selCacheGrp][selCacheIdx].state[selCacheAso])
+///            cs_exclusive: cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_modified;
+///            cs_owned,
+///            cs_shared:    cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_inv;
+///            ///this case happens only when tlb cc bit changed
+///            cs_dirty:     cache[selCacheGrp][selCacheIdx].state[selCacheAso] = cs_modified;
+///            endcase
+///          end
+          sn.selExRdy = 0;
+          sn.selLock2CL = 0;
+        end
+      end : valid_en
     end : sel_stage_ld_st
     
-    sn.sxgBuf = sxgBuf;
+    
+    begin : last_proc
+      sn.sxgBuf[0] = sxgBuf;
+      if(sn.selLock2CL) begin
+        vn.d[STAGE_RRF_TAG].cacheIdx = v.d[STAGE_RRF_TAG].cacheIdx;
+        vn.d[STAGE_RRF_TAG].cacheGrp = v.d[STAGE_RRF_TAG].cacheGrp;
+      end
+    end : last_proc
   end : comb_proc
   
   genvar i;
@@ -760,7 +850,8 @@ module ip4_rtl_dse(
     ip4_sm_bk d(
       .clk,
       .wr     (dmWr[i]),
-      .adr    (dmAdr[i]),
+      .radr   (dmRAdr[i]),
+      .wadr   (dmWAdr[i]),
       .datai  (dmi[i]),
       .datao  (dmo[i])
     );
@@ -774,12 +865,14 @@ module ip4_rtl_dse(
     .wrCnt  (tmWrCnt),
     .adr0   (tmAdr0),
     .adr1   (tmAdr1),
+    .wadr   (tmWAdr),
     .grp0   (tmGrp0),
     .grp1   (tmGrp1),
+    .wgrp   (tmWGrp),
     .datai  (tmi),
     .datao0 (tmo0),
     .datao1 (tmo1)
-);
+  );
 
 endmodule : ip4_rtl_dse
 

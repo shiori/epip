@@ -360,7 +360,7 @@ typedef enum uchar {
 }round_mode_t;
 
 ///the MOESI protocol plus a dirty state meaning no cc and modified
-typedef enum uchar {
+typedef enum bit[2:0] {
   cs_inv,     cs_shared,    cs_owned,     cs_exclusive,   cs_modified,
   cs_dirty
 }cache_state_t;
@@ -585,9 +585,9 @@ parameter uchar NUM_MAX_IGRP_BYTES  = 44;
 parameter uchar NUM_IBUF_BYTES      = NUM_MAX_IGRP_BYTES + NUM_IFET_BYTES;
 
 typedef struct{
-  tag_t tag[NUM_DCHE_ASO];
-  cache_state_t state[NUM_DCHE_ASO];
-  uchar cnt[NUM_DCHE_ASO];
+  tag_t[NUM_DCHE_ASO] tag;
+  cache_state_t[NUM_DCHE_ASO] state;
+  bit[1:0][NUM_DCHE_ASO] cnt;
 }cache_t;
 
 `include "ip4_rtl_inst.svh"

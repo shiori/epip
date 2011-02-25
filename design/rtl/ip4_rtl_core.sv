@@ -10,12 +10,15 @@
 ///Log:
 ///Created by Andy Chen on Feb 21 2011
 
+`include "ip4_rtl.svh"
+
 module ip4_rtl_core(
   input logic clk, rst_n,
   ip4_axi_if.mst axim,
   ip4_axi_if.slv axis
   );
-  `include "ip4_rtl.svh"
+  `include "ip4_tlm_ts.svh"
+  import ip4_rtl_pkg::*;
   `IP4_DEF_PARAM
   
   ip4_int_if inf();

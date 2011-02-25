@@ -9,6 +9,7 @@
 /// =============================================================================
 ///Log:
 ///Created by Andy Chen on Feb 20 2011
+`include "ip4_rtl.svh"
 
 module ip4_rtl_ffu import ip4_rtl_pkg::*; (
   input logic clk,
@@ -21,8 +22,7 @@ module ip4_rtl_ffu import ip4_rtl_pkg::*; (
              uo[NUM_FU][NUM_SP],
          bit [7:0] st[2][NUM_FU][NUM_SP]
 );
-  `include "ip4_rtl.svh"
-  
+  `include "ip4_tlm_ts.svh"
   
   bit [7:0] st0Cmp[NUM_FU][NUM_SP],
             st1Cmp[NUM_FU][NUM_SP];
@@ -76,8 +76,7 @@ module ip4_rtl_nfu import ip4_rtl_pkg::*; (
         opcode_e opcode[NUM_FU],
   output wordu r[2][NUM_FU][NUM_SP]
 );
-  `include "ip4_rtl.svh"
-  
+  `include "ip4_tlm_ts.svh"
     
 endmodule
 
@@ -87,8 +86,7 @@ module ip4_rtl_lfu import ip4_rtl_pkg::*; (
         opcode_e opcode[NUM_FU],
   output wordu r[2][NUM_FU][NUM_SP]
 );
-  `include "ip4_rtl.svh"
-  
+  `include "ip4_tlm_ts.svh"
     
 endmodule
 
@@ -96,7 +94,8 @@ module ip4_rtl_spa(
   input logic clk, rst_n,
   ip4_int_if.spa inf
 );
-  `include "ip4_rtl.svh"
+  `include "ip4_tlm_ts.svh"
+  import ip4_rtl_pkg::*;  
   `IP4_DEF_PARAM
   
   typedef struct {
