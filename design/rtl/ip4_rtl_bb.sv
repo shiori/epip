@@ -144,13 +144,14 @@ module ip4_tm import ip4_rtl_pkg::*; (
 `endif  
 endmodule
 
-module ip4_fcmp import ip4_rtl_pkg::*; (
-  input word op0, op1,
-  output word max, min,
+module ip4_fcmp(
+  input ip4_rtl_pkg::word op0, op1,
+  output ip4_rtl_pkg::word max, min,
          bit[7:0] st0, st1,
          bit eq, lt, gt, uo
 );
   `include "ip4_tlm_ts.svh"
+  import ip4_rtl_pkg::*;
   
 `ifdef IP4_ASIC_MODE
 

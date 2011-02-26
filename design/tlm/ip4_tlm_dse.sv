@@ -135,13 +135,13 @@ class ip4_tlm_dse extends ovm_component;
   local uchar sendExpTid;
 ///  local bit[CYC_VEC - 1 : 0] dcReRun;
   
-  local sxg_t sxgBuf[LAT_XCHG],
-              sxglxg[LAT_XCHG],
-              sxgexst[LAT_XCHG],
+  local sxg_t sxgBuf[CYC_HVEC],
+              sxglxg[CYC_HVEC],
+              sxgexst[CYC_HVEC],
               sxg[STAGE_RRF_VWB:STAGE_RRF_SEL];
   
   local wordu dcFlushData[STAGE_RRF_LXG:STAGE_RRF_DC][NUM_SP];
-  local lxg_t lxgBuf[LAT_XCHG],
+  local lxg_t lxgBuf[CYC_HVEC],
               lxg[STAGE_RRF_LXG:STAGE_RRF_DC];
   
   local ldQue_t ldQue[NUM_LDQUE];
@@ -153,8 +153,8 @@ class ip4_tlm_dse extends ovm_component;
   local uchar llNext;
   
   local wordu xhgData[NUM_SP], eifRes[NUM_SP], spRes[NUM_SP], smWData[NUM_SP],
-              dcExData[NUM_SP], dcDataRB[LAT_XCHG][NUM_SP];
-  local bit dcExEmsk[NUM_SP], dcEmskRB[LAT_XCHG][NUM_SP];
+              dcExData[NUM_SP], dcDataRB[CYC_HVEC][NUM_SP];
+  local bit dcExEmsk[NUM_SP], dcEmskRB[CYC_HVEC][NUM_SP];
   
   `ovm_component_utils_begin(ip4_tlm_dse)
     `ovm_field_int(pbId, OVM_ALL_ON)
@@ -260,17 +260,17 @@ class ip4_tlm_dse extends ovm_component;
       bit needXhgData = ise.op inside {op_pera, op_perb, op_tmrf, st_ops},
           needXhgEmsk = ise.op inside {op_pera, op_tmrf};
       if(needXhgData) begin
-        if(ise.subVec < LAT_XCHG) begin
+        if(ise.subVec < CYC_HVEC) begin
           if(v.fmRFM[STAGE_RRF_DC] != null) begin
             dcDataRB[ise.subVec] = v.fmRFM[STAGE_RRF_DC].st;
-            if(v.fmRFM[STAGE_RRF_DC - LAT_XCHG] != null)
-              dcExData = v.fmRFM[STAGE_RRF_DC - LAT_XCHG].st;
+            if(v.fmRFM[STAGE_RRF_DC - CYC_HVEC] != null)
+              dcExData = v.fmRFM[STAGE_RRF_DC - CYC_HVEC].st;
           end
           if(needXhgEmsk) begin
             if(v.fmSPU[STAGE_RRF_DC] != null) begin
               dcEmskRB[ise.subVec] = v.fmSPU[STAGE_RRF_DC].emsk;
-              if(v.fmSPU[STAGE_RRF_DC - LAT_XCHG] != null)
-                dcExEmsk = v.fmSPU[STAGE_RRF_DC - LAT_XCHG].emsk;
+              if(v.fmSPU[STAGE_RRF_DC - CYC_HVEC] != null)
+                dcExEmsk = v.fmSPU[STAGE_RRF_DC - CYC_HVEC].emsk;
             end
           end
           else if(v.fmSPU[STAGE_RRF_DC] != null)
@@ -278,9 +278,9 @@ class ip4_tlm_dse extends ovm_component;
         end
         else begin
           if(v.fmRFM[STAGE_RRF_DC] != null)
-            dcExData = dcDataRB[ise.subVec - LAT_XCHG];
+            dcExData = dcDataRB[ise.subVec - CYC_HVEC];
           if(needXhgEmsk)
-            dcExEmsk = dcEmskRB[ise.subVec - LAT_XCHG];
+            dcExEmsk = dcEmskRB[ise.subVec - CYC_HVEC];
           else if(v.fmSPU[STAGE_RRF_DC] != null)
             dcExEmsk = v.fmSPU[STAGE_RRF_DC].emsk;
         end
@@ -290,13 +290,13 @@ class ip4_tlm_dse extends ovm_component;
     if(v.fmEIF[STAGE_RRF_DC] != null) begin
       tr_eif2dse eif = v.fmEIF[STAGE_RRF_DC];
       if(eif.loadRsp) begin
-        if(eif.subVec < LAT_XCHG) begin
+        if(eif.subVec < CYC_HVEC) begin
           dcDataRB[eif.subVec] = v.fmEIF[STAGE_RRF_DC].data;
-          if(v.fmEIF[STAGE_RRF_DC - LAT_XCHG] != null)
-            dcExData = v.fmEIF[STAGE_RRF_DC - LAT_XCHG].data;
+          if(v.fmEIF[STAGE_RRF_DC - CYC_HVEC] != null)
+            dcExData = v.fmEIF[STAGE_RRF_DC - CYC_HVEC].data;
         end
         else
-          dcExData = dcDataRB[eif.subVec - LAT_XCHG];
+          dcExData = dcDataRB[eif.subVec - CYC_HVEC];
       end
     end
   endfunction
@@ -353,7 +353,7 @@ class ip4_tlm_dse extends ovm_component;
       bit asohit[NUM_DCHE_ASO] = '{default : 0};
       
       if(!ise.vec || ise.vecMode == 0)
-        minSlot = LAT_XCHG - 1;
+        minSlot = CYC_HVEC - 1;
       else
         minSlot = 0;
         
@@ -517,7 +517,7 @@ class ip4_tlm_dse extends ovm_component;
             ///cache hit, allocate exchange bank
             if(oc) begin
               bit found = 0;
-              for(int s = minSlot; s < LAT_XCHG; s++) begin
+              for(int s = minSlot; s < CYC_HVEC; s++) begin
                 if(((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk])
                     && !sxgBuf[s].exMemOpy[bk]) begin
                   sxgBuf[s].sMemOpy[bk] = 1;
@@ -538,14 +538,14 @@ class ip4_tlm_dse extends ovm_component;
               bit exhit = (selExAdr >> exWid) == (padr.ex >> exWid),
                   found = 0;
               if(!selExRdy || exhit) begin
-                exNeedSxg = (!((cl < LAT_XCHG) ^ (ise.subVec < LAT_XCHG)))
-                            || (ise.vecMode < LAT_XCHG) || !ise.vec;
+                exNeedSxg = (!((cl < CYC_HVEC) ^ (ise.subVec < CYC_HVEC)))
+                            || (ise.vecMode < CYC_HVEC) || !ise.vec;
                 selExRdy = 1;
                 selNoCache |= nc;
                 selExAdr = padr.ex; /// >> (WID_SMEM_BK + WID_WORD);
                 ///some ex stores needs sxg xchg network too
                 if(exNeedSxg && stReq) begin
-                  for(int s = minSlot; s < LAT_XCHG; s++) begin
+                  for(int s = minSlot; s < CYC_HVEC; s++) begin
                     if((!sxgBuf[s].exMemOpy[bk] || sxgBuf[s].sMemAdr[bk] == cl)
                         && !sxgBuf[s].sMemOpy[bk]) begin
                       sxgBuf[s].exMemOpy[bk] = 1;
@@ -587,7 +587,7 @@ class ip4_tlm_dse extends ovm_component;
             
             begin
               bit found = 0;
-              for(int s = minSlot; s < LAT_XCHG; s++) begin
+              for(int s = minSlot; s < CYC_HVEC; s++) begin
                 if(((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk])
                     && !sxgBuf[s].exMemOpy[bk]) begin
                   sxgBuf[s].sMemOpy[bk] = oc;
@@ -835,8 +835,8 @@ class ip4_tlm_dse extends ovm_component;
       if(xhgEnd) begin
         `ip4_info("sel_dse_xhgEnd", $psprintf("subVec %0d, Lock2CL %0d, selCacheIdx %0d, selCacheAso %0d, selCacheGrp %0d, expReq %0d", 
                         ise.subVec, selLock2CL, selCacheIdx, selCacheAso, selCacheGrp, expReq[STAGE_RRF_SEL]), OVM_FULL)          
-///        for(int i = minSlot; i < LAT_XCHG; i++)
-///          sxg[STAGE_RRF_SEL + LAT_XCHG -1 - i] = sxgBuf[i];
+///        for(int i = minSlot; i < CYC_HVEC; i++)
+///          sxg[STAGE_RRF_SEL + CYC_HVEC -1 - i] = sxgBuf[i];
         selExp = 0;
         selNoCache = 0;
         selEndian = 0;
@@ -891,7 +891,7 @@ class ip4_tlm_dse extends ovm_component;
 
 ///        sxg[STAGE_RRF_SXG0].slot[sp] = slot;
 ///        sxg[STAGE_RRF_SXG0].xhg[sp] = xhg << WID_WORD;
-        if((slot < LAT_XCHG) ^ (ise.subVec < LAT_XCHG))
+        if((slot < CYC_HVEC) ^ (ise.subVec < CYC_HVEC))
           sxgBuf[cyc].sl[sp] = '{default : slot};
         else
           sxgBuf[cyc].sl[sp] = '{default : CYC_VEC};
@@ -925,12 +925,12 @@ class ip4_tlm_dse extends ovm_component;
       
       ///finish one half wrap or whole request
       if(xhgEnd) begin
-        for(int j = 0; j < LAT_XCHG; j++) begin
-          tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + LAT_XCHG - 1 - j];
-          tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL + LAT_XCHG - 1 - j];
+        for(int j = 0; j < CYC_HVEC; j++) begin
+          tr_rfm2dse rfm = v.fmRFM[STAGE_RRF_SEL + CYC_HVEC - 1 - j];
+          tr_spu2dse spu = v.fmSPU[STAGE_RRF_SEL + CYC_HVEC - 1 - j];
           uchar subVec = (ise.subVec & `GMH(WID_XCHG)) + j;
           if(rfm == null || spu == null) continue;
-          for(int i = 0; i < LAT_XCHG; i++) begin
+          for(int i = 0; i < CYC_HVEC; i++) begin
             foreach(rfm.base[sp]) begin
               if(subVec == sxgBuf[i].sMemGrp[sp]) begin
                 sxgBuf[i].stData[sp] = rfm.st[sxgBuf[i].sMemAdr[sp]];
@@ -940,7 +940,7 @@ class ip4_tlm_dse extends ovm_component;
           end
         end
 ///        for(int i = 0; i <= cyc; i++)
-///          sxg[STAGE_RRF_SEL + i] = sxgBuf[LAT_XCHG - 1 - i];
+///          sxg[STAGE_RRF_SEL + i] = sxgBuf[CYC_HVEC - 1 - i];
         foreach(sxgBuf[i])
           sxgBuf[i] = new();
       end
@@ -962,7 +962,7 @@ class ip4_tlm_dse extends ovm_component;
       
       ///only 3 types of rsp,  1, 2, 4 cycs
       if(!eif.vec || eif.vecMode == 0)
-        minSlot = LAT_XCHG - 1;
+        minSlot = CYC_HVEC - 1;
       else
         minSlot = 0;
         
@@ -1000,13 +1000,13 @@ class ip4_tlm_dse extends ovm_component;
           sxgBuf[minSlot + cyc].op = ldQue[eif.id].op;
           sxgBuf[minSlot + cyc].tid = ldQue[eif.id].tid;
           
-          for(int i = minSlot; i < LAT_XCHG; i++) begin
+          for(int i = minSlot; i < CYC_HVEC; i++) begin
             uchar qs, excl;
             if(!eif.vec) begin
               qs = 0;
               excl = eif.exAdr & `GMH(WID_XCHG);
             end
-            else if(eif.vecMode < LAT_XCHG) begin
+            else if(eif.vecMode < CYC_HVEC) begin
               qs = eif.subVec & `GML(WID_XCHG);
               excl = (eif.exAdr & `GMH(WID_XCHG) & `GML(WID_CYC)) + eif.subVec;
             end
@@ -1018,7 +1018,7 @@ class ip4_tlm_dse extends ovm_component;
               uchar cl = (ldQue[eif.id].ladr[qs][sp] >> (WID_WORD + WID_SMEM_BK)) & `GML(WID_DCHE_CL),
                     bk = (ldQue[eif.id].ladr[qs][sp] >> WID_WORD) & `GML(WID_SMEM_BK),
                     os = ldQue[eif.id].ladr[qs][sp] & `GML(WID_WORD);
-              bit needSxg = !((cl < LAT_XCHG) ^ (excl < LAT_XCHG));
+              bit needSxg = !((cl < CYC_HVEC) ^ (excl < CYC_HVEC));
               sxgBuf[i].sl[sp] = needSxg ? '{default : CYC_VEC} : '{default : cl};
               
               case(ldQue[eif.id].op)
@@ -1151,8 +1151,8 @@ class ip4_tlm_dse extends ovm_component;
         sxg[STAGE_RRF_SEL] = sxgBuf[minSlot + cyc];
         
         if(xhgEnd) begin
-///          for(int i = minSlot; i < LAT_XCHG; i++)
-///            sxg[STAGE_RRF_SXG0 + LAT_XCHG - 1 - i] = sxgBuf[i];
+///          for(int i = minSlot; i < CYC_HVEC; i++)
+///            sxg[STAGE_RRF_SXG0 + CYC_HVEC - 1 - i] = sxgBuf[i];
           foreach(sxgBuf[i])
             sxgBuf[i] = new();
           selExp = 0;
@@ -1386,17 +1386,17 @@ class ip4_tlm_dse extends ovm_component;
         exDataSel = ise.op == op_fmrf;/// && eif2 != null; ///a fmrf valid?
         st2Ex = stReq && exReq[STAGE_RRF_DC];
      
-        if(ise.subVec < LAT_XCHG)
+        if(ise.subVec < CYC_HVEC)
           foreach(sxgexst[i])
-            sxgexst[i] = sxg[STAGE_RRF_DC + ise.subVec - LAT_XCHG - i];
+            sxgexst[i] = sxg[STAGE_RRF_DC + ise.subVec - CYC_HVEC - i];
         else
           foreach(sxgexst[i])
             sxgexst[i] = sxg[STAGE_RRF_DC + ise.subVec - i];
           
         if(!ise.vec || ise.vecMode == 0)
-          minSlot = LAT_XCHG - 1;
-        else/// if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < LAT_XCHG)
-          minSlot = 0;///LAT_XCHG - 1 - (ise.vecMode & `GML(WID_XCHG));
+          minSlot = CYC_HVEC - 1;
+        else/// if((ise.vecMode - (ise.subVec & `GMH(WID_XCHG))) < CYC_HVEC)
+          minSlot = 0;///CYC_HVEC - 1 - (ise.vecMode & `GML(WID_XCHG));
       end
       if(eif != null) begin /// && eif2 != null
         bit allocFail = 0;
@@ -1410,7 +1410,7 @@ class ip4_tlm_dse extends ovm_component;
         cyc = eif.subVec & `GML(WID_XCHG);
         if(exLdRsp || exRd) begin
           if(!eif.vec || eif.vecMode == 0)
-            minSlot = LAT_XCHG - 1;
+            minSlot = CYC_HVEC - 1;
           else
             minSlot = 0;
         end
@@ -1457,7 +1457,7 @@ class ip4_tlm_dse extends ovm_component;
           
       ///at begining, get the sxg info
       if(cyc == 0)
-        for(int j = minSlot; j < LAT_XCHG; j++)
+        for(int j = minSlot; j < CYC_HVEC; j++)
           sxglxg[j] = sxg[STAGE_RRF_DC + minSlot - j];
             
       ///load data exchange
@@ -1495,7 +1495,7 @@ class ip4_tlm_dse extends ovm_component;
         else
           continue;
         
-        for(int j = minSlot; j < LAT_XCHG; j++) begin
+        for(int j = minSlot; j < CYC_HVEC; j++) begin
           if(sxglxg[j] == null)
             continue;
           for(int os = 0; os < WORD_BYTES; os++) begin
@@ -1518,8 +1518,8 @@ class ip4_tlm_dse extends ovm_component;
             wEn = dcExEmsk;
             if(per || tmsg || exLdRsp) begin
               if(slot < CYC_VEC) begin
-                if(slot >= LAT_XCHG)
-                  slot -= LAT_XCHG;
+                if(slot >= CYC_HVEC)
+                  slot -= CYC_HVEC;
               end
             end
             else if(shf4) begin
@@ -1545,8 +1545,8 @@ class ip4_tlm_dse extends ovm_component;
       end
       
       if(xhgEnd) begin
-        for(int i = minSlot; i < LAT_XCHG; i++)
-          lxg[STAGE_RRF_DC + LAT_XCHG - 1 - i] = lxgBuf[i];
+        for(int i = minSlot; i < CYC_HVEC; i++)
+          lxg[STAGE_RRF_DC + CYC_HVEC - 1 - i] = lxgBuf[i];
         foreach(lxgBuf[i])
           lxgBuf[i] = new();
       end

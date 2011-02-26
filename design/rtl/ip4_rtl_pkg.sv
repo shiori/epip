@@ -115,7 +115,7 @@ parameter uchar LAT_MAC           = 5,
                 LAT_ISE           = 2,
                 LAT_IFE           = 2,
                 LAT_L1M           = 1,
-                LAT_XCHG          = CYC_HVEC,
+                LAT_SEL           = 1,
                 LAT_SWBP          = 1;    ///dse writeback bypass time
                 
 parameter uint  NUM_SMEM_GRP      = 4,
@@ -139,7 +139,7 @@ parameter uchar WID_WORD        = n2w(WORD_BYTES),
                 WID_VID         = n2w(NUM_VEC),
                 WID_SP          = n2w(NUM_SP),
                 WID_CYC         = n2w(CYC_VEC),
-                WID_XCHG        = n2w(LAT_XCHG),
+                WID_XCHG        = n2w(CYC_HVEC),
                 WID_IFET        = n2w(NUM_IFET_BYTES),
                 WID_PRF_P_GRP   = n2w(NUM_PRF_P_GRP),
                 WID_INST_ADR    = n2w(NUM_INST_ADR),
@@ -187,13 +187,13 @@ parameter uchar STAGE_RRF_RRC0    = LAT_RF + LAT_RBP - 1,           ///1
                 STAGE_RRF_SEL     = STAGE_RRF_TAG + 1,              ///4
                 STAGE_RRF_DPRB    = STAGE_RRF_SEL + CYC_VEC,        ///8
                 STAGE_RRF_DPRW    = STAGE_RRF_DPRB + 1,             ///9
-                STAGE_RRF_SXG0    = STAGE_RRF_SEL + 1,              ///5
-                STAGE_RRF_SXG     = STAGE_RRF_SEL + LAT_XCHG,       ///6
-                STAGE_RRF_DEM     = STAGE_RRF_SEL + 1,              ///5
+                STAGE_RRF_SXG0    = STAGE_RRF_SEL + LAT_SEL,        ///5
+                STAGE_RRF_SXG     = STAGE_RRF_SXG0 + CYC_HVEC - 1,  ///6
+                STAGE_RRF_DEM     = STAGE_RRF_SEL + LAT_SEL,        ///5
                 STAGE_RRF_DBR     = STAGE_RRF_DEM + 1,              ///6
                 STAGE_RRF_DC      = STAGE_RRF_SXG + LAT_L1M,        ///7
                 STAGE_RRF_LXG0    = STAGE_RRF_DC + 1,               ///8
-                STAGE_RRF_LXG     = STAGE_RRF_DC + LAT_XCHG,        ///9 must > STAGE_RRF_DPRW
+                STAGE_RRF_LXG     = STAGE_RRF_DC + CYC_HVEC,        ///9 must > STAGE_RRF_DPRW
                 STAGE_RRF_VWBP    = STAGE_RRF_EXE + LAT_VWBP,       ///10
                 STAGE_RRF_VWB     = STAGE_RRF_VWBP + 1,             ///11
                 STAGE_RRF_VWB_END = STAGE_RRF_VWBP + CYC_VEC,       ///14
@@ -417,7 +417,7 @@ typedef enum uchar {
   op_mvs,     op_rmsg,    op_smsg
 } opcode_e;
 
-parameter opcode_e bp_ops[] = '{
+parameter opcode_e bp_ops[36] = '{
   op_cmp,     op_ucmp,
   op_and,     op_or,      op_xor,     op_nor,
   op_add,     op_uadd,    op_sub,     op_usub,
@@ -430,7 +430,7 @@ parameter opcode_e bp_ops[] = '{
   op_fabs,    op_fdim
 };
 
-parameter opcode_e sfu_only_ops[] = '{
+parameter opcode_e sfu_only_ops[24] = '{
   op_div,     op_udiv,    op_quo,
   op_uquo,    op_res,     op_ures,
   op_fdiv,    op_fexp2,
@@ -442,7 +442,7 @@ parameter opcode_e sfu_only_ops[] = '{
   op_fatanh
 };
 
-parameter opcode_e mac_ops[] = '{
+parameter opcode_e mac_ops[24] = '{
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,      
   op_umul,    op_smul,    op_umad,    op_smad,    op_umsu,    
@@ -451,7 +451,7 @@ parameter opcode_e mac_ops[] = '{
   op_fmad,    op_fmsu
 };
 
-parameter opcode_e alu_ops[] = '{
+parameter opcode_e alu_ops[58] = '{
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,      
   op_umul,    op_smul,    op_umad,    op_smad,    op_umsu,    
@@ -470,7 +470,7 @@ parameter opcode_e alu_ops[] = '{
   op_fabs,    op_fdim
 };
 
-parameter opcode_e sfu_ops[] = '{
+parameter opcode_e sfu_ops[41] = '{
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,      
   op_and,     op_or,      op_xor,     op_nor,
@@ -484,7 +484,7 @@ parameter opcode_e sfu_ops[] = '{
   op_fabs,    op_fdim
 };
 
-parameter opcode_e dse_ops[] = '{
+parameter opcode_e dse_ops[22] = '{
   op_pera,    op_perb,    op_shf4a,   op_shf4b,
   op_lw,      op_sw,      op_lh,      op_sh,
   op_lb,      op_sb,      op_ll,      op_sc,
@@ -493,16 +493,16 @@ parameter opcode_e dse_ops[] = '{
   op_tmrf,    op_fmrf
 };
 
-parameter opcode_e ld_ops[] = '{
+parameter opcode_e ld_ops[6] = '{
   op_lw,      op_lh,      op_lb,      op_ll,
   op_lhu,     op_lbu
 };
 
-parameter opcode_e st_ops[] = '{
+parameter opcode_e st_ops[4] = '{
   op_sw,      op_sh,      op_sb,      op_sc
 };
 
-parameter opcode_e spu_ops[] = '{
+parameter opcode_e spu_ops[17] = '{
   op_gp2s,    op_s2gp,    op_br,      op_fcr,
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_msync,   op_alloc,
@@ -510,17 +510,17 @@ parameter opcode_e spu_ops[] = '{
   op_mvs
 };
 
-parameter opcode_e ise_ops[] = '{
+parameter opcode_e ise_ops[11] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk,     op_tsync,   op_syna,    op_synld,
   op_synst,   op_msync,   op_alloc
 };
 
-parameter opcode_e tlb_ops[] = '{
+parameter opcode_e tlb_ops[4] = '{
   op_tlbp,    op_tlbr,    op_tlbwi,   op_tlbwr
 };
 
-parameter opcode_e spu_com_ops[] = '{
+parameter opcode_e spu_com_ops[36] = '{
   op_nop,     op_cmp,     op_ucmp,    op_bp0,
   op_bp1,     op_bp2,     op_bp3,
   op_and,     op_or,      op_xor,     op_nor,
@@ -533,7 +533,7 @@ parameter opcode_e spu_com_ops[] = '{
   op_fabs,    op_fdim
 };
 
-parameter opcode_e ise_zw_ops[] = '{
+parameter opcode_e ise_zw_ops[5] = '{
   op_sys,     op_eret,    op_wait,    op_exit,
   op_brk
 };
@@ -550,12 +550,12 @@ typedef enum uchar {
   SR_SUPM[0:1]
 }special_reg_t;
 
-parameter special_reg_t tlb_sr[] = '{
+parameter special_reg_t tlb_sr[6] = '{
   SR_INDEX,     SR_RANDOM,    SR_ENTRY_L0,    SR_ENTRY_L1,
   SR_ENTRY_HI,  SR_ASID
 };
 
-parameter special_reg_t non_kernel_sr[] = '{
+parameter special_reg_t non_kernel_sr[3] = '{
   SR_EXEC,     SR_UEE,       SR_UER
 };
 
@@ -585,14 +585,13 @@ parameter uchar NUM_MAX_IGRP_BYTES  = 44;
 parameter uchar NUM_IBUF_BYTES      = NUM_MAX_IGRP_BYTES + NUM_IFET_BYTES;
 
 typedef struct{
-  tag_t[NUM_DCHE_ASO] tag;
-  cache_state_t[NUM_DCHE_ASO] state;
-  bit[1:0][NUM_DCHE_ASO] cnt;
+  tag_t[NUM_DCHE_ASO - 1:0] tag;
+  cache_state_t[NUM_DCHE_ASO - 1:0] state;
+  bit[1:0][NUM_DCHE_ASO - 1:0] cnt;
 }cache_t;
 
 `include "ip4_rtl_inst.svh"
 `include "ip4_rtl_def.svh"
-
 
 endpackage : ip4_rtl_pkg
 

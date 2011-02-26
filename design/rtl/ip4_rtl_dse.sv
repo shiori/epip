@@ -62,7 +62,9 @@ module ip4_rtl_dse(
         is_byte,
         exReq,
         expReq,
-        endian;
+        endian,
+        last,
+        xhgEnd;
     word tlbReqVAdr,
          cacheIdx;
     bit is_nmapch[NUM_SP],
@@ -74,7 +76,7 @@ module ip4_rtl_dse(
           subVec;
     cause_dse_t expCause;
     opcode_e opcode;
-    sxg_t sxg;
+    sxg_t sxg[CYC_HVEC];
   } dvars;
 
   typedef struct {
@@ -102,7 +104,7 @@ module ip4_rtl_dse(
     bit[WID_SMEM_GRP - 1:0] grpMsk;
     exadr_t selExAdr;
     bit asohit[NUM_DCHE_ASO];
-    sxg_t sxgBuf[LAT_XCHG:0][LAT_XCHG]; ///sxg pip has LAT_XCHG stages
+    sxg_t sxgSel[LAT_SEL][CYC_HVEC], sxgDC[CYC_HVEC], sxgLxg[CYC_HVEC];
     ll_ck_t llCk[NUM_LLCK];
   } svars;
       
@@ -153,7 +155,7 @@ module ip4_rtl_dse(
   
   always_comb
   begin : comb_proc
-    automatic sxg_t sxgBuf[LAT_XCHG] = s.sxgBuf[0];
+    automatic sxg_t sxgBuf[CYC_HVEC] = s.sxgSel[0];
     
     begin : pip_init
       vn = '{default : '0};
@@ -196,9 +198,6 @@ module ip4_rtl_dse(
 
       for(int i = 0; i < NUM_THREAD; i++)
         vn.cancel[i] = v.cancel[i] << 1;
-      
-      for(int i = LAT_XCHG; i > 0; i--)
-        sn.sxgBuf[i] = s.sxgBuf[i - 1];
         
       ///cancel from spa
       if(v.fmSPA != null && v.fmSPA.cancel)
@@ -383,7 +382,7 @@ module ip4_rtl_dse(
         automatic padr_t smStart = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE,
                          smEnd   = srMapBase + SMEM_OFFSET + pbId * SMEM_SIZE + (NUM_SMEM_GRP - s.srCacheGrp) * SGRP_SIZE,
                          smEnd2  = srMapBase + SMEM_OFFSET + (pbId + 1) * SMEM_SIZE;  
-        automatic uchar minSlot = 0,///ise.vec ? 0 : LAT_XCHG - 1,
+        automatic uchar minSlot = ise.vec ? 0 : CYC_HVEC - 1,
                         cyc = ise.subVec & `GML(WID_XCHG);
         automatic bit last = ise.subVec == (CYC_VEC - 1) || !ise.vec,
                       xhgEnd = ise.subVec == (CYC_HVEC - 1) || last,
@@ -395,6 +394,8 @@ module ip4_rtl_dse(
 
         dn.exReq = 0;
         dn.subVec = ise.subVec;
+        dn.last = last;
+        dn.xhgEnd = xhgEnd;
         
         if(!tlb.en)
           tlb = s.tlbCached;
@@ -504,7 +505,7 @@ module ip4_rtl_dse(
             cl = padr.ex.c.cl;
             clc = ise.vec ? cl & `GML(WID_XCHG) : 0;
             tag = padr.ex.c.t;
-            exNeedSxg = (!((cl < LAT_XCHG) ^ (ise.subVec < LAT_XCHG))) || !ise.vec;
+            exNeedSxg = (!((cl < CYC_HVEC) ^ (ise.subVec < CYC_HVEC))) || !ise.vec;
             
             ///----------------------start access----------------------------
             ///external mem
@@ -554,7 +555,7 @@ module ip4_rtl_dse(
               ///cache hit, allocate exchange bank
               if(oc) begin
                 automatic bit found = 0;
-                for(int s = minSlot; s < LAT_XCHG; s++) begin
+                for(int s = minSlot; s < CYC_HVEC; s++) begin
                   if(!sxgBuf[s].exMemOpy[bk] &&
                     ((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]))
                   begin
@@ -580,7 +581,7 @@ module ip4_rtl_dse(
                   sn.selExAdr = padr.ex;
                   ///some ex stores needs sxg xchg network too
                   if(exNeedSxg && d.is_st) begin
-                    for(int s = minSlot; s < LAT_XCHG; s++) begin
+                    for(int s = minSlot; s < CYC_HVEC; s++) begin
                       if(!sxgBuf[s].sMemOpy[bk] &&
                         (!sxgBuf[s].exMemOpy[bk] || sxgBuf[s].sMemAdr[bk] == cl))
                       begin
@@ -619,7 +620,7 @@ module ip4_rtl_dse(
               
               begin
                 automatic bit found = 0;
-                for(int s = minSlot; s < LAT_XCHG; s++) begin
+                for(int s = minSlot; s < CYC_HVEC; s++) begin
                   if((!sxgBuf[s].exMemOpy[bk]) &&
                     ((sxgBuf[s].sMemAdr[bk] == adr && sxgBuf[s].sMemGrp[bk] == grp) || !sxgBuf[s].sMemOpy[bk]))
                   begin
@@ -803,7 +804,6 @@ module ip4_rtl_dse(
 
         dn.opcode = ise.op;
         dn.tid = ise.tid;
-///        sxg[STAGE_RRF_SEL] = sxgBuf[minSlot + cyc];
         
         ///finish one half wrap or whole request
         if(xhgEnd) begin
@@ -844,6 +844,7 @@ module ip4_rtl_dse(
         end
         sn.asohit = '{default : '0};
       end : valid_en
+      dn.sxg = sxgBuf;
     end : sel_stage_ld_st
     
     begin : last_sxg
@@ -853,12 +854,14 @@ module ip4_rtl_dse(
       automatic eif2dse_s eif = v.fmEIF[STAGE_RRF_SXG];
       automatic dvars d = v.d[STAGE_RRF_SXG],
                       dn = vn.d[STAGE_RRF_DC];      
-      dn.sxg = s.sxgBuf[LAT_XCHG][d.subVec];
       
+      for(int bk = 0; bk < NUM_SP; bk++) begin
+        
+      end
     end : last_sxg
     
     begin : last_proc
-      sn.sxgBuf[0] = sxgBuf;
+      sn.sxgSel[1] = sxgBuf;
       if(sn.selLock2CL) begin
         vn.d[STAGE_RRF_TAG].cacheIdx = v.d[STAGE_RRF_TAG].cacheIdx;
         vn.d[STAGE_RRF_TAG].cacheGrp = v.d[STAGE_RRF_TAG].cacheGrp;
